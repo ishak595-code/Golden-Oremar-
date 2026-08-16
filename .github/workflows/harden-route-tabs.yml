@@ -1,0 +1,54 @@
+name: Harden Route Tabs
+
+on:
+  push:
+    branches: [agent/route-tab-hardening]
+    paths:
+      - '.github/workflows/harden-route-tabs.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Apply audited route cleanup
+        run: node migration-tools/apply-route-tab-hardening.mjs src/App.tsx
+      - name: Re-audit route tabs
+        run: node migration-tools/audit-route-tabs.mjs src/App.tsx
+      - name: Verify route boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "SUPPORTED_TABS" src/App.tsx
+          grep -q "isSupportedTab(rawTab)" src/App.tsx
+          ! grep -q "currentTab === 'vendor-store'" src/App.tsx
+          ! grep -q "selectedVendor" src/App.tsx
+          ! grep -q "setCurrentTab(tabFromUrl)" src/App.tsx
+      - name: Production build
+        run: npm run build
+      - name: Commit verified hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/harden-route-tabs.yml
+          rm -f .github/workflows/audit-route-tabs.yml
+          rm -f migration-tools/apply-route-tab-hardening.mjs
+          rm -f migration-tools/audit-route-tabs.mjs
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'Harden app route tab allowlist'
+          git push origin HEAD:agent/route-tab-hardening
