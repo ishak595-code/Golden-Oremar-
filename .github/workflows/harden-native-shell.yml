@@ -21,6 +21,10 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Apply native shell hardening
@@ -37,8 +41,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          java -version
+          test "$(javac -version 2>&1 | awk '{print $2}' | cut -d. -f1)" -eq 21
           grep -q 'namespace = "com.goldenoremar.app"' android/app/build.gradle
           grep -q 'applicationId "com.goldenoremar.app"' android/app/build.gradle
+          grep -q 'sourceCompatibility JavaVersion.VERSION_21' android/app/build.gradle
+          grep -q 'targetCompatibility JavaVersion.VERSION_21' android/app/build.gradle
+          grep -q "jvmTarget = '21'" android/app/build.gradle
           test -f android/app/src/main/java/com/goldenoremar/app/MainActivity.kt
           test ! -f android/app/src/main/java/com/market/app/MainActivity.kt
           grep -q '^package com.goldenoremar.app$' android/app/src/main/java/com/goldenoremar/app/MainActivity.kt
