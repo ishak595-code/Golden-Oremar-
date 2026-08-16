@@ -19,6 +19,10 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Producer verification, origin verification and follower metrics are shown from server-backed data.
 - Producer profile follow/follow-state uses the same server truth.
 - Product cards, catalog search, producer products, cart and product detail use stock-aware quantity handling and accessible quantity controls.
+- CategoryDirectory reuses the same canonical product card instead of a weaker parallel card; category quantity, producer metrics, error/loading/empty states and mobile controls share the same server-backed customer contract.
+- Home quick categories come from the live category ordering/product availability instead of hard-coded slugs.
+- Home spotlight selection comes from real featured/sellable catalog data instead of a hard-coded product name.
+- Producer trust metrics fail safe: if metric hydration is unavailable, verification or follower values are not invented.
 
 ## Completed structured product safety package
 - Existing published `product_health` content is reused; no duplicate health-content system is created.
@@ -38,8 +42,19 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Existing About, Returns, Privacy and messaging support flows remain intact. A Terms card is still not invented when no verified published Terms record exists.
 - The live FAQ migration is mirrored into GitHub for schema/content replay.
 
+## Completed mobile visual/accessibility finalization packages
+- Public metadata/PWA copy, zoom behavior and client env boundary are hardened.
+- Canonical product card density and live data are reused across home, search, producer and category customer surfaces.
+- The home showcase preserves server order, uses real live category/featured data and respects reduced-motion behavior.
+- Shared mobile header/search/action controls use explicit accessible names, visible focus, minimum ~44px interaction targets and real cart/unread counts.
+- Bottom mobile navigation is a real `nav` landmark, reports the active page with `aria-current`, keeps safe-area placement and uses readable labels.
+- Account subview changes move focus to the new panel heading and return focus context to the Account heading when navigating back.
+- Shared account panels use explicit `aria-labelledby` / `aria-describedby` relationships.
+- Address add/edit uses the shared accessible-dialog focus trap, Escape handling, scroll lock and focus restoration.
+- Address deletion requires a separate accessible destructive confirmation; save/delete operations block duplicate actions and report completion state.
+
 ## Current active package
-Mobile visual finalization: audit the remaining customer-facing screens for consistent spacing, typography, touch targets, safe areas, empty/error/loading states and reduced-motion behavior without redesigning already-completed modules.
+Account settings and remaining account interactions: harden async saving/session/account-closure feedback, busy states, validation/error announcements and destructive-action clarity without changing the existing secure backend contracts.
 
 ## Release gates still required on Apple hardware
 A real Xcode archive/build, signing check and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
