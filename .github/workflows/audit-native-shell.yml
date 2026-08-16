@@ -1,0 +1,30 @@
+name: Audit Native Shell
+
+on:
+  push:
+    branches: [agent/native-identity-shell-hardening]
+    paths:
+      - '.github/workflows/audit-native-shell.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit navigation and native identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '--- App navigation/back references ---'
+          grep -n -E "CapApp|backButton|const goBack|function goBack|navigateToTab|settings\.theme|showGiftModal|showNotifications|isFilterPanelOpen|isSortPanelOpen" src/App.tsx | head -n 160 || true
+          echo '--- Native helper ---'
+          cat src/native.ts
+          echo '--- Android identity ---'
+          grep -R -n -E "com\.market\.app|com\.goldenoremar\.app|E-Ticaret|Golden Oremar|allowBackup" android/app/src/main android/app/build.gradle capacitor.config.ts || true
+          echo '--- iOS identity ---'
+          grep -R -n -E "com\.market\.app|com\.goldenoremar\.app|E-Ticaret|Golden Oremar|PRODUCT_BUNDLE_IDENTIFIER|CFBundleDisplayName" ios/App/App ios/App/App.xcodeproj/project.pbxproj capacitor.config.ts || true
+          echo '--- Safe area ---'
+          grep -n -E "safe-area|env\(safe-area" src/index.css || true
