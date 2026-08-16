@@ -1,12 +1,14 @@
-
 import React,{useEffect,useState}from'react';
 import{getMyProducerApplicationDraft,getMyProducerDashboard,updateProducerInventory,withdrawProducerProductChange}from'./api';
 import{EmptyState,ErrorState,LoadingState,Money,Panel}from'./ui';
+import ProducerOrdersPanel from'../producer-orders/ProducerOrdersPanel';
+import ProducerTraceabilityPanel from'../producer-traceability/ProducerTraceabilityPanel';
+import ProducerFinancePanel from'../producer-finance/ProducerFinancePanel';
 
 export default function SellerPanel({
  producer,onOpenApplication,onOpenProductManager
 }:{producer:any|null;onOpenApplication?:()=>void;onOpenProductManager?:()=>void}){
- const[dash,setDash]=useState<any>(null);const[draft,setDraft]=useState<any>(null);const[loading,setLoading]=useState(true);const[error,setError]=useState('');
+ const[dash,setDash]=useState<any>(null);const[draft,setDraft]=useState<any>(null);const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[subview,setSubview]=useState<'dashboard'|'orders'|'traceability'|'finance'>('dashboard');
  async function load(){
   try{
    setLoading(true);setError('');
@@ -15,9 +17,9 @@ export default function SellerPanel({
   }catch(e:any){setError(e?.message||'Satıcı bilgileri yüklenemedi.');}
   finally{setLoading(false);}
  }
- useEffect(()=>{void load();},[producer?.id]);
- if(loading)return<LoadingState label="Satıcı hesabı yükleniyor"/>;
- if(error)return<ErrorState message={error} onRetry={load}/>;
+ useEffect(()=>{setSubview('dashboard');void load();},[producer?.id]);
+ if(loading&&subview==='dashboard')return<LoadingState label="Satıcı hesabı yükleniyor"/>;
+ if(error&&subview==='dashboard')return<ErrorState message={error} onRetry={load}/>;
 
  if(!producer){
    return<Panel title="Satıcı Ol" description="Golden Oremar satıcı başvuruları doğrulama ve belge incelemesinden geçer.">
@@ -33,67 +35,45 @@ export default function SellerPanel({
    </Panel>;
  }
 
+ if(subview==='orders')return<ProducerOrdersPanel onBack={()=>setSubview('dashboard')} onChanged={load}/>;
+ if(subview==='traceability')return<ProducerTraceabilityPanel onBack={()=>setSubview('dashboard')} onChanged={load}/>;
+ if(subview==='finance')return<ProducerFinancePanel onBack={()=>setSubview('dashboard')}/>;
+
  const summary=dash?.summary||{};
  return<div className="space-y-5">
-  <Panel title={dash?.profile?.display_name||'Satıcı Paneli'} description="Ürün, stok, izlenebilirlik ve finans özetinizi yönetin.">
+  <Panel title={dash?.profile?.display_name||'Satıcı Paneli'} description="Sipariş, ürün, stok, izlenebilirlik ve finans operasyonlarınızı yönetin.">
    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-    <div className="rounded-xl bg-gray-50 dark:bg-gray-800 p-3"><div className="text-xl font-bold">{summary.publishedProducts||0}</div><div className="text-xs">Yayındaki ürün</div></div>
-    <div className="rounded-xl bg-gray-50 dark:bg-gray-800 p-3"><div className="text-xl font-bold">{summary.reviewProducts||0}</div><div className="text-xs">İncelemede</div></div>
-    <div className="rounded-xl bg-gray-50 dark:bg-gray-800 p-3"><div className="text-xl font-bold">{summary.pendingChanges||0}</div><div className="text-xs">Bekleyen değişiklik</div></div>
-    <div className="rounded-xl bg-gray-50 dark:bg-gray-800 p-3"><div className="text-xl font-bold">{summary.lowStockVariants||0}</div><div className="text-xs">Düşük stok</div></div>
+    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{summary.publishedProducts||0}</div><div className="text-xs">Yayındaki ürün</div></div>
+    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{summary.reviewProducts||0}</div><div className="text-xs">İncelemede</div></div>
+    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{summary.pendingChanges||0}</div><div className="text-xs">Bekleyen değişiklik</div></div>
+    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{summary.lowStockVariants||0}</div><div className="text-xs">Düşük stok</div></div>
    </div>
-   <div className="mt-4 text-sm font-semibold text-brand-green">
-    {dash?.profile?.is_verified?'Üretici doğrulandı':''}{dash?.profile?.production_location?' • '+dash.profile.production_location:''}
-   </div>
-   <button onClick={onOpenProductManager} className="mt-4 min-h-11 w-full rounded-xl bg-brand-green font-bold text-white">Ürün yönetimini aç</button>
+   <div className="mt-4 text-sm font-semibold text-brand-green">{dash?.profile?.is_verified?'Üretici doğrulandı':''}{dash?.profile?.production_location?' • '+dash.profile.production_location:''}</div>
   </Panel>
 
+  <section aria-labelledby="seller-operations-title"><h2 id="seller-operations-title" className="mb-3 text-lg font-bold">Operasyonlar</h2><div className="grid gap-3 sm:grid-cols-2">
+   <button onClick={()=>setSubview('orders')} className="min-h-20 rounded-2xl border border-brand-green/30 bg-brand-green/5 p-4 text-left"><div className="font-bold">Siparişler</div><div className="mt-1 text-sm text-gray-500">Size ait ödenmiş kalemleri hazırlayın ve gerçek takip numarasıyla kargoya verin.</div><span className="mt-2 inline-block font-semibold text-brand-green">Sipariş operasyonunu aç</span></button>
+   <button onClick={onOpenProductManager} className="min-h-20 rounded-2xl border p-4 text-left"><div className="font-bold">Ürün Yönetimi</div><div className="mt-1 text-sm text-gray-500">Yeni ürün, varyant ve yayın değişikliklerini yönetin.</div><span className="mt-2 inline-block font-semibold text-brand-green">Ürün yönetimini aç</span></button>
+   <button onClick={()=>setSubview('traceability')} className="min-h-20 rounded-2xl border p-4 text-left"><div className="font-bold">Lot & İzlenebilirlik</div><div className="mt-1 text-sm text-gray-500">Hasat, üretim, köy, parti olayları ve yayınlanan trace kodları.</div><span className="mt-2 inline-block font-semibold text-brand-green">Lot yönetimini aç</span></button>
+   <button onClick={()=>setSubview('finance')} className="min-h-20 rounded-2xl border p-4 text-left"><div className="font-bold">Finans</div><div className="mt-1 text-sm text-gray-500">Gerçek bakiye ve payout geçmişini görüntüleyin.</div><span className="mt-2 inline-block font-semibold text-brand-green">Finans detaylarını aç</span></button>
+  </div></section>
+
   <Panel title="Stok Yönetimi" description="Rezervasyondaki müşteri stoğu korunur; güncelleme sürüm kontrollüdür.">
-   {!dash?.inventory?.length?<EmptyState title="Stok kaydı yok" body="Ürün varyantları oluştuğunda burada görünecek."/>:
-   <div className="space-y-3">{dash.inventory.map((i:any)=><InventoryRow key={i.variantId} item={i} onSaved={load}/>)}</div>}
+   {!dash?.inventory?.length?<EmptyState title="Stok kaydı yok" body="Ürün varyantları oluştuğunda burada görünecek."/>:<div className="space-y-3">{dash.inventory.map((i:any)=><InventoryRow key={i.variantId} item={i} onSaved={load}/>)}</div>}
   </Panel>
 
   <Panel title="Bekleyen Ürün Değişiklikleri">
-   {!dash?.changeRequests?.length?<EmptyState title="Bekleyen değişiklik yok" body="Yayındaki bir üründe değişiklik yaptığınızda admin onayı için burada görünür."/>:
-   <div className="space-y-3">{dash.changeRequests.map((r:any)=><div key={r.id} className="rounded-xl border p-4">
-    <div className="font-bold">{r.productName}</div><div className="text-sm text-gray-500">Durum: {r.status}</div>
-    {r.reviewReason?<p className="mt-2 text-sm text-red-700">{r.reviewReason}</p>:null}
-    {r.status==='pending'?<button onClick={async()=>{await withdrawProducerProductChange(r.id);await load();}} className="mt-3 min-h-11 rounded-lg border px-3 font-semibold">Talebi geri çek</button>:null}
-   </div>)}</div>}
+   {!dash?.changeRequests?.length?<EmptyState title="Bekleyen değişiklik yok" body="Yayındaki bir üründe değişiklik yaptığınızda admin onayı için burada görünür."/>:<div className="space-y-3">{dash.changeRequests.map((r:any)=><div key={r.id} className="rounded-xl border p-4"><div className="font-bold">{r.productName}</div><div className="text-sm text-gray-500">Durum: {r.status}</div>{r.reviewReason?<p className="mt-2 text-sm text-red-700">{r.reviewReason}</p>:null}{r.status==='pending'?<button onClick={async()=>{await withdrawProducerProductChange(r.id);await load();}} className="mt-3 min-h-11 rounded-lg border px-3 font-semibold">Talebi geri çek</button>:null}</div>)}</div>}
   </Panel>
 
-  <Panel title="Lot ve İzlenebilirlik">
-   <div className="grid grid-cols-3 gap-2">
-    <div className="rounded-xl bg-gray-50 dark:bg-gray-800 p-3 text-center"><div className="font-bold">{summary.draftBatches||0}</div><div className="text-xs">Taslak</div></div>
-    <div className="rounded-xl bg-gray-50 dark:bg-gray-800 p-3 text-center"><div className="font-bold">{summary.reviewBatches||0}</div><div className="text-xs">İncelemede</div></div>
-    <div className="rounded-xl bg-gray-50 dark:bg-gray-800 p-3 text-center"><div className="font-bold">{summary.releasedBatches||0}</div><div className="text-xs">Yayınlandı</div></div>
-   </div>
-  </Panel>
+  <Panel title="Lot Özeti"><div className="grid grid-cols-3 gap-2"><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{summary.draftBatches||0}</div><div className="text-xs">Taslak</div></div><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{summary.reviewBatches||0}</div><div className="text-xs">İncelemede</div></div><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{summary.releasedBatches||0}</div><div className="text-xs">Yayınlandı</div></div></div></Panel>
 
-  <Panel title="Finans">
-   {!dash?.finance?.balances?.length?<p className="text-sm text-gray-500">Henüz finans hareketi yok.</p>:
-   <div className="space-y-2">{dash.finance.balances.map((b:any,index:number)=><div key={index} className="rounded-xl border p-3">
-    <div className="text-sm text-gray-500">{b.currency||'TRY'}</div>
-    <div className="font-bold"><Money minor={b.availableMinor||b.available_minor||0} currency={b.currency||'TRY'}/></div>
-   </div>)}</div>}
-  </Panel>
+  <Panel title="Finans Özeti">{!dash?.finance?.balances?.length?<p className="text-sm text-gray-500">Henüz finans hareketi yok.</p>:<div className="space-y-2">{dash.finance.balances.map((b:any,index:number)=><div key={index} className="rounded-xl border p-3"><div className="text-sm text-gray-500">{b.currency||'TRY'}</div><div className="font-bold"><Money minor={b.availableMinor||b.availableToPayoutMinor||0} currency={b.currency||'TRY'}/></div></div>)}</div>}</Panel>
  </div>;
 }
 
 function InventoryRow({item,onSaved}:{item:any;onSaved:()=>Promise<void>|void}){
  const[available,setAvailable]=useState(Number(item.availableQuantity||0));const[reorder,setReorder]=useState(Number(item.reorderLevel||0));const[busy,setBusy]=useState(false);const[error,setError]=useState('');
- async function save(){
-  try{setBusy(true);setError('');await updateProducerInventory({variantId:item.variantId,availableQuantity:available,reorderLevel:reorder,expectedVersion:Number(item.version)});await onSaved();}
-  catch(e:any){setError(e?.message||'Stok güncellenemedi.');}finally{setBusy(false);}
- }
- return<div className="rounded-xl border p-4">
-  <div className="font-bold">{item.productName} — {item.variantName}</div>
-  <div className="mt-1 text-sm text-gray-500">Satılabilir: {item.sellableQuantity} • Rezerve: {item.reservedQuantity}</div>
-  {error?<div role="alert" className="mt-2 text-sm text-red-700">{error}</div>:null}
-  <div className="mt-3 grid grid-cols-2 gap-3">
-   <label><span className="text-xs font-semibold">Toplam mevcut</span><input type="number" min="0" value={available} onChange={e=>setAvailable(Number(e.target.value))} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3"/></label>
-   <label><span className="text-xs font-semibold">Düşük stok eşiği</span><input type="number" min="0" value={reorder} onChange={e=>setReorder(Number(e.target.value))} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3"/></label>
-  </div>
-  <button onClick={save} disabled={busy} className="mt-3 min-h-11 w-full rounded-lg border font-bold disabled:opacity-50">{busy?'Kaydediliyor…':'Stoğu güncelle'}</button>
- </div>;
+ async function save(){try{setBusy(true);setError('');await updateProducerInventory({variantId:item.variantId,availableQuantity:available,reorderLevel:reorder,expectedVersion:Number(item.version)});await onSaved();}catch(e:any){setError(e?.message||'Stok güncellenemedi.');}finally{setBusy(false);}}
+ return<div className="rounded-xl border p-4"><div className="font-bold">{item.productName} — {item.variantName}</div><div className="mt-1 text-sm text-gray-500">Satılabilir: {item.sellableQuantity} • Rezerve: {item.reservedQuantity}</div>{error?<div role="alert" className="mt-2 text-sm text-red-700">{error}</div>:null}<div className="mt-3 grid grid-cols-2 gap-3"><label><span className="text-xs font-semibold">Toplam mevcut</span><input type="number" min="0" value={available} onChange={e=>setAvailable(Number(e.target.value))} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3"/></label><label><span className="text-xs font-semibold">Düşük stok eşiği</span><input type="number" min="0" value={reorder} onChange={e=>setReorder(Number(e.target.value))} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3"/></label></div><button onClick={save} disabled={busy} className="mt-3 min-h-11 w-full rounded-lg border font-bold disabled:opacity-50">{busy?'Kaydediliyor…':'Stoğu güncelle'}</button></div>;
 }
