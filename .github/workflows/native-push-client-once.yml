@@ -1,0 +1,379 @@
+name: Native Push Client Once
+
+on:
+  push:
+    branches: [agent/admin-supabase-retire-node]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: ${{ !contains(github.event.head_commit.message, '[native-push-client-applied]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: agent/admin-supabase-retire-node
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install official Capacitor push plugin
+        run: npm install --save-exact @capacitor/push-notifications@8.1.2 --no-audit --no-fund
+
+      - name: Add native push bridge and account registration
+        shell: bash
+        run: |
+          mkdir -p src/features/notifications
+          cat > src/features/notifications/nativePush.ts <<'EOF'
+          import { Capacitor } from '@capacitor/core';
+          import { PushNotifications, type ActionPerformed, type PluginListenerHandle, type Token } from '@capacitor/push-notifications';
+          import { registerNativePushToken, unregisterNativePushDevice } from '../account/api';
+
+          export type NativePushAction = {
+            actionUrl: string | null;
+            metadata: Record<string, unknown>;
+          };
+
+          export type NativePushRegistrationResult = {
+            status: 'registered' | 'denied' | 'unsupported' | 'not-configured';
+            deviceId?: string;
+          };
+
+          const DEVICE_ID_KEY = 'golden-oremar:push-device-id';
+          const PUSH_CHANNEL_ID = 'golden-oremar-updates';
+          const registrationTimeoutMs = 15000;
+          const subscribers = new Set<(action: NativePushAction) => void>();
+          let pendingAction: NativePushAction | null = null;
+          let listenersReady = false;
+          let listenerHandles: PluginListenerHandle[] = [];
+          let pendingRegistration: {
+            resolve: (result: NativePushRegistrationResult) => void;
+            reject: (error: Error) => void;
+            timer: ReturnType<typeof setTimeout>;
+          } | null = null;
+
+          function pushEnvironment(): 'development' | 'production' {
+            const configured = String(import.meta.env.VITE_PUSH_ENVIRONMENT || '').trim().toLowerCase();
+            if (configured === 'development') return 'development';
+            if (configured === 'production') return 'production';
+            return import.meta.env.DEV ? 'development' : 'production';
+          }
+
+          export function isNativePushPlatform() {
+            return Capacitor.isNativePlatform() && (Capacitor.getPlatform() === 'android' || Capacitor.getPlatform() === 'ios');
+          }
+
+          export function isNativePushProviderConfigured() {
+            return isNativePushPlatform() && String(import.meta.env.VITE_NATIVE_PUSH_ENABLED || '').toLowerCase() === 'true';
+          }
+
+          function normalizeMetadata(value: unknown): Record<string, unknown> {
+            if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+            return value as Record<string, unknown>;
+          }
+
+          function parseAction(event: ActionPerformed): NativePushAction {
+            const data = normalizeMetadata(event.notification?.data);
+            let metadata: Record<string, unknown> = data;
+            if (typeof data.metadata === 'string') {
+              try { metadata = { ...data, ...normalizeMetadata(JSON.parse(data.metadata)) }; } catch { metadata = data; }
+            } else if (data.metadata && typeof data.metadata === 'object') {
+              metadata = { ...data, ...normalizeMetadata(data.metadata) };
+            }
+            const rawUrl = data.actionUrl ?? data.action_url ?? metadata.actionUrl ?? metadata.action_url;
+            return { actionUrl: typeof rawUrl === 'string' && rawUrl.trim() ? rawUrl.trim() : null, metadata };
+          }
+
+          function emitAction(action: NativePushAction) {
+            if (!subscribers.size) {
+              pendingAction = action;
+              return;
+            }
+            for (const subscriber of subscribers) subscriber(action);
+          }
+
+          function settleRegistration(error?: unknown, result?: NativePushRegistrationResult) {
+            if (!pendingRegistration) return;
+            clearTimeout(pendingRegistration.timer);
+            const pending = pendingRegistration;
+            pendingRegistration = null;
+            if (error) pending.reject(error instanceof Error ? error : new Error(String(error)));
+            else pending.resolve(result || { status: 'registered' });
+          }
+
+          async function handleRegistration(token: Token) {
+            try {
+              const platform = Capacitor.getPlatform();
+              if (platform !== 'android' && platform !== 'ios') throw new Error('Desteklenmeyen push platformu.');
+              const value = String(token.value || '').trim();
+              if (!value) throw new Error('Cihaz bildirim anahtarı alınamadı.');
+              const registered = await registerNativePushToken({
+                provider: platform === 'android' ? 'fcm' : 'apns',
+                platform,
+                token: value,
+                environment: pushEnvironment(),
+              });
+              const deviceId = String(registered?.id || '').trim();
+              if (!deviceId) throw new Error('Cihaz bildirim kaydı doğrulanamadı.');
+              window.localStorage.setItem(DEVICE_ID_KEY, deviceId);
+              settleRegistration(undefined, { status: 'registered', deviceId });
+            } catch (error) {
+              settleRegistration(error);
+            }
+          }
+
+          export async function initNativePushListeners() {
+            if (!isNativePushPlatform() || listenersReady) return;
+            listenerHandles = await Promise.all([
+              PushNotifications.addListener('registration', token => { void handleRegistration(token); }),
+              PushNotifications.addListener('registrationError', event => {
+                settleRegistration(new Error(String(event?.error || 'Cihaz push kaydı başarısız oldu.')));
+              }),
+              PushNotifications.addListener('pushNotificationActionPerformed', event => {
+                emitAction(parseAction(event));
+              }),
+            ]);
+            listenersReady = true;
+          }
+
+          export function subscribeNativePushActions(listener: (action: NativePushAction) => void) {
+            subscribers.add(listener);
+            if (pendingAction) {
+              const action = pendingAction;
+              pendingAction = null;
+              queueMicrotask(() => listener(action));
+            }
+            return () => subscribers.delete(listener);
+          }
+
+          export async function getNativePushPermission() {
+            if (!isNativePushPlatform()) return 'unsupported' as const;
+            const status = await PushNotifications.checkPermissions();
+            return status.receive;
+          }
+
+          export async function enableNativePushRegistration(): Promise<NativePushRegistrationResult> {
+            if (!isNativePushPlatform()) return { status: 'unsupported' };
+            if (!isNativePushProviderConfigured()) return { status: 'not-configured' };
+            await initNativePushListeners();
+
+            let permission = await PushNotifications.checkPermissions();
+            if (permission.receive === 'prompt' || permission.receive === 'prompt-with-rationale') {
+              permission = await PushNotifications.requestPermissions();
+            }
+            if (permission.receive !== 'granted') return { status: 'denied' };
+
+            if (Capacitor.getPlatform() === 'android') {
+              await PushNotifications.createChannel({
+                id: PUSH_CHANNEL_ID,
+                name: 'Golden Oremar',
+                description: 'Sipariş, ödeme, teslimat ve hesap bildirimleri',
+              });
+            }
+
+            if (pendingRegistration) settleRegistration(new Error('Yeni cihaz kaydı başlatıldı.'));
+            const result = new Promise<NativePushRegistrationResult>((resolve, reject) => {
+              const timer = setTimeout(() => {
+                if (pendingRegistration) pendingRegistration = null;
+                reject(new Error('Cihaz bildirim kaydı zaman aşımına uğradı.'));
+              }, registrationTimeoutMs);
+              pendingRegistration = { resolve, reject, timer };
+            });
+            try {
+              await PushNotifications.register();
+            } catch (error) {
+              settleRegistration(error);
+            }
+            return result;
+          }
+
+          export async function disableNativePushRegistration() {
+            if (!isNativePushPlatform()) return;
+            const deviceId = window.localStorage.getItem(DEVICE_ID_KEY);
+            if (deviceId) {
+              await unregisterNativePushDevice(deviceId);
+            }
+            await PushNotifications.unregister();
+            window.localStorage.removeItem(DEVICE_ID_KEY);
+          }
+
+          export async function removeNativePushListeners() {
+            await Promise.all(listenerHandles.map(handle => handle.remove().catch(() => undefined)));
+            listenerHandles = [];
+            listenersReady = false;
+          }
+          EOF
+
+          cat >> src/features/account/api.ts <<'EOF'
+
+          export async function registerNativePushToken(input: {
+            provider: 'fcm' | 'apns';
+            platform: 'android' | 'ios';
+            token: string;
+            environment: 'development' | 'production';
+          }) {
+            const { data, error } = await supabase.rpc('register_push_token_v1', {
+              p_provider: input.provider,
+              p_platform: input.platform,
+              p_token: input.token,
+              p_environment: input.environment,
+            });
+            return unwrap<any>(data, error);
+          }
+
+          export async function unregisterNativePushDevice(deviceId: string) {
+            const { data, error } = await supabase.rpc('unregister_push_device_v1', {
+              p_device_id: deviceId,
+            });
+            return unwrap<boolean>(data, error);
+          }
+          EOF
+
+          cat > supabase/migrations/20260816225200_add_exact_device_push_unregister_rpc.sql <<'EOF'
+          create or replace function public.unregister_push_device_v1(p_device_id uuid)
+          returns boolean
+          language plpgsql
+          security definer
+          set search_path to ''
+          as $function$
+          declare
+            caller_id uuid := auth.uid();
+            changed boolean := false;
+          begin
+            if caller_id is null then
+              raise exception 'authentication_required' using errcode = '42501';
+            end if;
+
+            update private.device_push_tokens
+            set disabled_at = timezone('utc', now()),
+                updated_at = timezone('utc', now())
+            where id = p_device_id
+              and user_id = caller_id
+              and disabled_at is null;
+
+            changed := found;
+            return changed;
+          end;
+          $function$;
+
+          revoke all on function public.unregister_push_device_v1(uuid) from public;
+          grant execute on function public.unregister_push_device_v1(uuid) to authenticated;
+          EOF
+
+      - name: Wire native push into settings, app navigation and native projects
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          settings = Path('src/features/account/SettingsPanel.tsx')
+          s = settings.read_text()
+          import_marker = "import type{AppTheme}from'../appearance/theme';"
+          if import_marker not in s: raise SystemExit('Settings import marker missing')
+          s = s.replace(import_marker, import_marker + "\nimport{disableNativePushRegistration,enableNativePushRegistration,getNativePushPermission,isNativePushPlatform,isNativePushProviderConfigured}from'../notifications/nativePush';", 1)
+
+          state_marker = " const[prefs,setPrefs]=useState<any>(null);const[prefsLoading,setPrefsLoading]=useState(true);const[prefsBusy,setPrefsBusy]=useState(false);const[prefsError,setPrefsError]=useState('');const[prefsMessage,setPrefsMessage]=useState('');"
+          if state_marker not in s: raise SystemExit('Settings prefs state marker missing')
+          s = s.replace(state_marker, state_marker + "\n const[nativePushPermission,setNativePushPermission]=useState<string>('unknown');const nativePushPlatform=isNativePushPlatform();const nativePushConfigured=isNativePushProviderConfigured();", 1)
+
+          load_marker = " useEffect(()=>{void loadPrefs();void loadNewsletter();},[]);"
+          if load_marker not in s: raise SystemExit('Settings load marker missing')
+          s = s.replace(load_marker, " useEffect(()=>{void loadPrefs();void loadNewsletter();if(nativePushPlatform){void getNativePushPermission().then(value=>setNativePushPermission(String(value))).catch(()=>setNativePushPermission('unknown'));}},[]);", 1)
+
+          save_old = " async function savePrefs(){\n  if(!prefs||prefsBusy)return;\n  try{setPrefsBusy(true);setPrefsError('');setPrefsMessage('');setPrefs(await updateNotificationPreferences(prefs));setPrefsMessage('Bildirim tercihleriniz kaydedildi.');}\n  catch(e:any){setPrefsError(e?.message||'Bildirim tercihleri kaydedilemedi.');}\n  finally{setPrefsBusy(false);}\n }"
+          save_new = " async function savePrefs(){\n  if(!prefs||prefsBusy)return;\n  try{setPrefsBusy(true);setPrefsError('');setPrefsMessage('');\n   if(nativePushPlatform&&prefs.pushEnabled){const registration=await enableNativePushRegistration();if(registration.status==='not-configured')throw new Error('Cihaz push sağlayıcısı henüz üretim anahtarlarıyla yapılandırılmadı.');if(registration.status==='denied')throw new Error('Cihaz bildirim izni verilmedi. Sistem ayarlarından bildirimlere izin verin.');setNativePushPermission('granted');}\n   if(nativePushPlatform&&!prefs.pushEnabled){await disableNativePushRegistration();setNativePushPermission(String(await getNativePushPermission()));}\n   setPrefs(await updateNotificationPreferences(prefs));setPrefsMessage('Bildirim tercihleriniz kaydedildi.');}\n  catch(e:any){setPrefsError(e?.message||'Bildirim tercihleri kaydedilemedi.');}\n  finally{setPrefsBusy(false);}\n }"
+          if save_old not in s: raise SystemExit('Settings savePrefs marker missing')
+          s = s.replace(save_old, save_new, 1)
+
+          push_label = '<label className="flex min-h-11 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"><span className="font-bold">Push bildirimleri</span><input disabled={prefsBusy} type="checkbox" className="h-5 w-5 shrink-0" checked={!!prefs.pushEnabled} onChange={e=>setPrefs({...prefs,pushEnabled:e.target.checked})}/></label>'
+          if push_label not in s: raise SystemExit('Push toggle marker missing')
+          push_ui = push_label + "{nativePushPlatform?<div className={`rounded-xl border p-3 text-sm ${nativePushConfigured?'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200':'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200'}`}><div className=\"font-semibold\">Cihaz push durumu</div><div className=\"mt-1\">{nativePushConfigured?`Sağlayıcı yapılandırması hazır. Sistem izni: ${nativePushPermission}.`:'Uygulama kodu hazır. FCM/APNs üretim yapılandırması eklenmeden cihaz kaydı açılmaz.'}</div><div className=\"mt-1 text-xs opacity-80\">Bildirim izni yalnız Push bildirimleri seçilip kaydedildiğinde istenir.</div></div>:null}"
+          s = s.replace(push_label, push_ui, 1)
+          settings.write_text(s)
+
+          main = Path('src/main.tsx')
+          m = main.read_text()
+          native_import = "import { initNativeFeatures } from './native';"
+          if native_import not in m: raise SystemExit('main native import missing')
+          m = m.replace(native_import, native_import + "\nimport { initNativePushListeners } from './features/notifications/nativePush';", 1)
+          init_marker = 'void initNativeFeatures(initialTheme);'
+          if init_marker not in m: raise SystemExit('main init marker missing')
+          m = m.replace(init_marker, init_marker + "\nvoid initNativePushListeners().catch(error => console.warn('Native push listener init failed:', error));", 1)
+          main.write_text(m)
+
+          app = Path('src/App.tsx')
+          a = app.read_text()
+          import_marker = "import { useConnectivity } from './features/resilience/useConnectivity';"
+          if import_marker not in a: raise SystemExit('App import marker missing')
+          a = a.replace(import_marker, import_marker + "import { subscribeNativePushActions } from './features/notifications/nativePush';", 1)
+          account_state = "  const [accountView, setAccountView] = useState<string>('menu');\n  const authRecovery = useAuthRecoveryCoordinator();\n  const { unreadCount, setUnreadCount, refreshUnreadCount } = useUnreadNotificationCount(!!currentUser);"
+          if account_state not in a: raise SystemExit('App account state marker missing')
+          listener = "  const [accountView, setAccountView] = useState<string>('menu');\n  const authRecovery = useAuthRecoveryCoordinator();\n  const { unreadCount, setUnreadCount, refreshUnreadCount } = useUnreadNotificationCount(!!currentUser);\n\n  useEffect(() => subscribeNativePushActions(({ actionUrl, metadata }) => {\n    const url = String(actionUrl || '');\n    const meta = metadata as Record<string, any>;\n    if (url.includes('/messages/')) {\n      const conversationId = String(meta.conversationId || url.split('/messages/')[1]?.split(/[?#/]/)[0] || '');\n      setAccountView(conversationId ? `messages:${conversationId}` : 'messages');\n    } else if (meta.orderId) {\n      setAccountView(`orders:${String(meta.orderId)}`);\n    } else if (url.includes('/orders/')) {\n      const orderId = String(url.split('/orders/')[1]?.split(/[?#/]/)[0] || '');\n      setAccountView(orderId ? `orders:${orderId}` : 'orders');\n    } else if (url.includes('/settings')) {\n      setAccountView('settings');\n    } else if (url.includes('/messages')) {\n      setAccountView('messages');\n    } else {\n      setAccountView('notifications');\n    }\n    setCurrentTab('account');\n    setTabHistory(previous => previous[previous.length - 1] === 'account' ? previous : [...previous, 'account']);\n    void refreshUnreadCount();\n  }), [refreshUnreadCount]);"
+          a = a.replace(account_state, listener, 1)
+          app.write_text(a)
+
+          config = Path('capacitor.config.ts')
+          c = config.read_text()
+          if '/// <reference types="@capacitor/push-notifications" />' not in c:
+              c = '/// <reference types="@capacitor/push-notifications" />\n' + c
+          splash_end = '      spinnerColor: "#ffffff",\n    },\n'
+          if splash_end not in c: raise SystemExit('Capacitor splash marker missing')
+          c = c.replace(splash_end, splash_end + "    PushNotifications: {\n      presentationOptions: ['badge', 'sound', 'banner', 'list'],\n    },\n", 1)
+          config.write_text(c)
+
+          env = Path('.env.example')
+          e = env.read_text()
+          if 'VITE_NATIVE_PUSH_ENABLED=' not in e:
+              e += "\n# Native push is deliberately disabled until Android FCM and iOS APNs capabilities are configured.\nVITE_NATIVE_PUSH_ENABLED=false\n# Use development for APNs sandbox builds, production for release builds.\nVITE_PUSH_ENVIRONMENT=production\n"
+          env.write_text(e)
+
+          delegate = Path('ios/App/App/AppDelegate.swift')
+          d = delegate.read_text()
+          marker = "    func application(_ application: UIApplication,\n                     configurationForConnecting connectingSceneSession: UISceneSession,\n                     options: UIScene.ConnectionOptions) -> UISceneConfiguration {"
+          if marker not in d: raise SystemExit('AppDelegate scene marker missing')
+          callbacks = "    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {\n        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)\n    }\n\n    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {\n        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)\n    }\n\n"
+          d = d.replace(marker, callbacks + marker, 1)
+          delegate.write_text(d)
+          PY
+
+      - name: Synchronize native plugin projects
+        run: |
+          npm run build
+          npx cap sync android
+          npx cap sync ios
+
+      - name: Run release quality gate
+        run: npm run quality
+
+      - name: Verify push integration is credential-safe
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '"@capacitor/push-notifications": "8.1.2"' package.json
+          grep -q 'VITE_NATIVE_PUSH_ENABLED=false' .env.example
+          grep -q 'capacitorDidRegisterForRemoteNotifications' ios/App/App/AppDelegate.swift
+          grep -q 'register_push_token_v1' src/features/account/api.ts
+          grep -q 'unregister_push_device_v1' src/features/account/api.ts
+          grep -q 'PushNotifications.register' src/features/notifications/nativePush.ts
+          test ! -f android/app/google-services.json
+          if git grep -nE '(private_key|APNS_KEY|FCM_SERVICE_ACCOUNT|BEGIN PRIVATE KEY)' -- ':!package-lock.json'; then
+            echo 'Push integration must not commit provider credentials.' >&2
+            exit 1
+          fi
+
+      - name: Commit verified native push client integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/native-push-client-once.yml
+          git add -A
+          git commit -m "Prepare real native push registration without fake provider credentials [native-push-client-applied]"
+          git push origin HEAD:agent/admin-supabase-retire-node
