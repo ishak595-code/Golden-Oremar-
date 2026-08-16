@@ -114,6 +114,12 @@
   --brand-green: #3C98C5; --brand-gold: #E0BC66; --brand-earth: #C38158;
 }
 
+/* Bright dark-mode accent buttons need dark foregrounds; accent text itself remains bright. */
+:root[data-theme="dark"] .bg-brand-green.text-white,
+:root[data-theme="dark"] .bg-brand-gold.text-white {
+  color: #07110D;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--bg-main);
