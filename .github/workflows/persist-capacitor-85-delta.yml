@@ -1,0 +1,203 @@
+name: Persist Capacitor 8.5 Delta
+
+on:
+  push:
+    branches: [agent/capacitor-85-delta]
+    paths:
+      - '.github/workflows/persist-capacitor-85-delta.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  persist:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Apply verified package and Android delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs');
+          const p=JSON.parse(fs.readFileSync('package.json','utf8'));
+          Object.assign(p.dependencies,{
+            '@capacitor/android':'8.5.0','@capacitor/app':'8.1.1','@capacitor/browser':'8.0.4',
+            '@capacitor/core':'8.5.0','@capacitor/haptics':'8.0.2','@capacitor/ios':'8.5.0',
+            '@capacitor/keyboard':'8.0.5','@capacitor/network':'8.0.1',
+            '@capacitor/splash-screen':'8.0.2','@capacitor/status-bar':'8.0.3'
+          });
+          p.devDependencies['@capacitor/cli']='8.5.0';
+          fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n');
+          NODE
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('android/build.gradle'); s=p.read_text()
+          if "kotlin-gradle-plugin:2.2.20" not in s:
+              old="classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22'"
+              if s.count(old)!=1: raise SystemExit('Unexpected Kotlin plugin baseline')
+              s=s.replace(old,"classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.20'")
+              p.write_text(s)
+          p=Path('android/app/build.gradle'); s=p.read_text()
+          if 'kotlin-stdlib:2.2.20' not in s:
+              old='implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"'
+              if s.count(old)!=1: raise SystemExit('Unexpected Kotlin stdlib baseline')
+              p.write_text(s.replace(old,'implementation "org.jetbrains.kotlin:kotlin-stdlib:2.2.20"'))
+          PY
+
+      - name: Apply verified iOS UIScene delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > ios/App/App/SceneDelegate.swift <<'SWIFT'
+          import UIKit
+          import Capacitor
+
+          class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+              var window: UIWindow?
+
+              func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+                  guard let windowScene = scene as? UIWindowScene else { return }
+                  window = UIWindow(windowScene: windowScene)
+                  window?.rootViewController = CAPBridgeViewController()
+                  window?.makeKeyAndVisible()
+                  SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
+              }
+
+              func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+                  SceneDelegateProxy.shared.scene(scene, openURLContexts: URLContexts)
+              }
+
+              func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+                  SceneDelegateProxy.shared.scene(scene, continue: userActivity)
+              }
+          }
+          SWIFT
+
+          python - <<'PY'
+          from pathlib import Path
+          import plistlib,re
+
+          p=Path('ios/App/App/AppDelegate.swift'); s=p.read_text()
+          if 'configurationForConnecting connectingSceneSession' not in s:
+              anchor='''    func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {\n        // Called when the app was launched with an activity, including Universal Links.\n        // Feel free to add additional processing here, but if you want the App API to support\n        // tracking app url opens, make sure to keep this call\n        return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)\n    }\n'''
+              block=anchor+'''\n    func application(_ application: UIApplication,\n                     configurationForConnecting connectingSceneSession: UISceneSession,\n                     options: UIScene.ConnectionOptions) -> UISceneConfiguration {\n        let config = UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)\n        config.delegateClass = SceneDelegate.self\n        return config\n    }\n'''
+              if s.count(anchor)!=1: raise SystemExit('Unexpected AppDelegate baseline')
+              p.write_text(s.replace(anchor,block))
+
+          p=Path('ios/App/App/Info.plist')
+          with p.open('rb') as f: data=plistlib.load(f)
+          data['UIApplicationSceneManifest']={
+            'UIApplicationSupportsMultipleScenes':False,
+            'UISceneConfigurations':{'UIWindowSceneSessionRoleApplication':[{
+              'UISceneConfigurationName':'Default Configuration',
+              'UISceneDelegateClassName':'$(PRODUCT_MODULE_NAME).SceneDelegate',
+              'UISceneStoryboardFile':'Main'}]}}
+          with p.open('wb') as f: plistlib.dump(data,f,fmt=plistlib.FMT_XML,sort_keys=False)
+
+          p=Path('ios/App/App.xcodeproj/project.pbxproj'); s=p.read_text()
+          bid='A85CE0010000000000000001'; fid='A85CE0020000000000000002'
+          assert re.fullmatch(r'[0-9A-F]{24}',bid) and re.fullmatch(r'[0-9A-F]{24}',fid)
+          if 'SceneDelegate.swift in Sources' not in s:
+              reps=[
+                ('\t\t504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };',f'\t\t504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {{isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; }};\n\t\t{bid} /* SceneDelegate.swift in Sources */ = {{isa = PBXBuildFile; fileRef = {fid} /* SceneDelegate.swift */; }};'),
+                ('\t\t504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };',f'\t\t504EC3071FED79650016851F /* AppDelegate.swift */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; }};\n\t\t{fid} /* SceneDelegate.swift */ = {{isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; }};'),
+                ('\t\t\t\t504EC3071FED79650016851F /* AppDelegate.swift */,',f'\t\t\t\t504EC3071FED79650016851F /* AppDelegate.swift */,\n\t\t\t\t{fid} /* SceneDelegate.swift */,'),
+                ('\t\t\t\t504EC3081FED79650016851F /* AppDelegate.swift in Sources */,',f'\t\t\t\t504EC3081FED79650016851F /* AppDelegate.swift in Sources */,\n\t\t\t\t{bid} /* SceneDelegate.swift in Sources */,'),
+              ]
+              for old,new in reps:
+                  if s.count(old)!=1: raise SystemExit('Unexpected PBX baseline')
+                  s=s.replace(old,new)
+              p.write_text(s)
+          PY
+
+      - name: Refresh lockfile and verify current social auth is untouched
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+          node - <<'NODE'
+          const fs=require('fs');const lock=JSON.parse(fs.readFileSync('package-lock.json','utf8'));
+          const expected={'@capacitor/core':'8.5.0','@capacitor/android':'8.5.0','@capacitor/ios':'8.5.0','@capacitor/cli':'8.5.0','@capacitor/browser':'8.0.4'};
+          for(const [n,v] of Object.entries(expected)){const a=lock.packages?.[`node_modules/${n}`]?.version;if(a!==v)throw new Error(`${n}: ${a}`)}
+          NODE
+          grep -q 'VITE_GOOGLE_AUTH_ENABLED' .env.example
+          grep -q 'VITE_FACEBOOK_AUTH_ENABLED' .env.example
+          grep -q "from '@capacitor/browser'" src/features/auth/api.ts
+          grep -q 'signInWithOAuth' src/features/auth/api.ts
+          grep -q 'skipBrowserRedirect: native' src/features/auth/api.ts
+
+      - name: Build, sync and validate native contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run build
+          npx cap sync android
+          npx cap sync ios
+          grep -q "kotlin-gradle-plugin:2.2.20" android/build.gradle
+          grep -q 'kotlin-stdlib:2.2.20' android/app/build.gradle
+          grep -q 'minSdkVersion = 24' android/variables.gradle
+          grep -q 'compileSdkVersion = 36' android/variables.gradle
+          grep -q 'targetSdkVersion = 36' android/variables.gradle
+          grep -q 'JavaVersion.VERSION_21' android/app/build.gradle
+          grep -q 'SceneDelegate.swift in Sources' ios/App/App.xcodeproj/project.pbxproj
+          grep -q 'SceneDelegateProxy.shared.scene' ios/App/App/SceneDelegate.swift
+          grep -q 'UIApplicationSceneManifest' ios/App/App/Info.plist
+          grep -q 'configurationForConnecting' ios/App/App/AppDelegate.swift
+          grep -q 'android:scheme="com.goldenoremar.app"' android/app/src/main/AndroidManifest.xml
+
+      - name: Compile Android debug app
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Record persistent status
+        shell: bash
+        run: |
+          cat > docs/IMPLEMENTATION_STATUS.md <<'MD'
+          # Golden Oremar Implementation Status
+
+          Last updated: 2026-08-16
+
+          This file is intentionally concise. Detailed sequencing lives in `MOBILE_PRODUCT_ROADMAP.md`; persistence rules live in `PERSISTENCE_AND_CHANGE_LEDGER.md`.
+
+          ## Current phase
+          Mobile-first customer experience hardening before admin-panel finalization.
+
+          ## Completed platform/auth package
+          - Stable Capacitor 8.5 core/platform baseline with locked official plugin versions.
+          - Android API 36, minSdk 24, Java 21, Kotlin 2.2.20, Gradle 8.14.3 and AGP 8.13.0.
+          - iOS deployment target 15.0 with Capacitor 8.5 UIScene lifecycle and preserved auth deep-link routing.
+          - Provider-gated Google/Facebook OAuth remains integrated through the existing Supabase/deep-link session flow; buttons remain disabled unless explicitly enabled.
+          - A permanent mobile CI gate is maintained separately under `.github/workflows/mobile-quality.yml`.
+
+          ## Current active package
+          Dynamic product-card/store metrics: review summary, verified producer, follower count, stock/variant truth and follow state.
+
+          ## Release gates still required on Apple hardware
+          A real Xcode archive/build and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
+          MD
+
+      - name: Commit verified non-workflow delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add package.json package-lock.json android/build.gradle android/app/build.gradle \
+            ios/App/App/SceneDelegate.swift ios/App/App/AppDelegate.swift ios/App/App/Info.plist \
+            ios/App/App.xcodeproj/project.pbxproj ios/App/CapApp-SPM/Package.swift docs/IMPLEMENTATION_STATUS.md
+          git diff --cached --stat
+          git commit -m 'Complete verified Capacitor 8.5 native delta'
+          git push origin HEAD:agent/capacitor-85-delta
