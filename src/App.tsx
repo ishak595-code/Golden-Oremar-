@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { AdminPage } from './pages/AdminPage';import AccountCenter from './features/account/AccountCenter';import ProducerApplicationFlow from './features/producer-onboarding/ProducerApplicationFlow';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import PublicInfoScreen from './features/storefront/PublicInfoScreen';import PublicHealthScreen from './features/content/PublicHealthScreen';import PublicEventsScreen from './features/engagement/PublicEventsScreen';import PublicContactScreen from './features/engagement/PublicContactScreen';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CategoryDirectoryScreen from './features/catalog/CategoryDirectoryScreen';import PublicProducerScreen from './features/catalog/PublicProducerScreen';import ProductDetailScreen from './features/catalog/ProductDetailScreen';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchResults from './features/catalog/CatalogSearchResults';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import AuthScreen from './features/auth/AuthScreen';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import CartCheckoutFlow from './features/cart/CartCheckoutFlow';import GiftOrderFlow from './features/gifts/GiftOrderFlow';import { query } from 'firebase/firestore';
+import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { AdminPage } from './pages/AdminPage';import AccountCenter from './features/account/AccountCenter';import ProducerApplicationFlow from './features/producer-onboarding/ProducerApplicationFlow';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import PublicInfoScreen from './features/storefront/PublicInfoScreen';import PublicHealthScreen from './features/content/PublicHealthScreen';import PublicEventsScreen from './features/engagement/PublicEventsScreen';import PublicContactScreen from './features/engagement/PublicContactScreen';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CategoryDirectoryScreen from './features/catalog/CategoryDirectoryScreen';import PublicProducerScreen from './features/catalog/PublicProducerScreen';import ProductDetailScreen from './features/catalog/ProductDetailScreen';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchResults from './features/catalog/CatalogSearchResults';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import AuthScreen from './features/auth/AuthScreen';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import CartCheckoutFlow from './features/cart/CartCheckoutFlow';import GiftOrderFlow from './features/gifts/GiftOrderFlow';import { syncNativeAppearance } from './native';import { query } from 'firebase/firestore';
 
 // --- Types ---
 type Tab = 'home' | 'categories' | 'cart' | 'account' | 'product-detail' | 'search-results' | 'producer-profile' | 'events' | 'health' | 'contact' | 'about' | 'admin';
@@ -316,29 +316,60 @@ function AppContent() {
   };
 
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      CapApp.addListener('backButton', ({ canGoBack }) => {
-        if (!canGoBack || tabHistory.length <= 1) {
-          CapApp.exitApp();
-        } else {
-          goBack();
-        }
-      });
+    if (!Capacitor.isNativePlatform()) return;
 
-      Network.addListener('networkStatusChange', status => {
-        if (!status.connected) {
-          showToast('İnternet bağlantısı kesildi.');
-        }
-      });
-    }
+    let disposed = false;
+    let appBackHandle: { remove: () => Promise<void> } | undefined;
+    let networkHandle: { remove: () => Promise<void> } | undefined;
+
+    void CapApp.addListener('backButton', () => {
+      if (isSearchFocused) {
+        setIsSearchFocused(false);
+        return;
+      }
+      if (showGiftModal) {
+        setShowGiftModal(false);
+        return;
+      }
+      if (showNotifications) {
+        setShowNotifications(false);
+        return;
+      }
+      if (isFilterPanelOpen) {
+        setIsFilterPanelOpen(false);
+        return;
+      }
+      if (isSortPanelOpen) {
+        setIsSortPanelOpen(false);
+        return;
+      }
+      if (currentTab === 'account' && accountView !== 'menu') {
+        setAccountView('menu');
+        return;
+      }
+      if (tabHistory.length > 1) {
+        goBack();
+        return;
+      }
+      void CapApp.exitApp();
+    }).then(handle => {
+      if (disposed) void handle.remove();
+      else appBackHandle = handle;
+    });
+
+    void Network.addListener('networkStatusChange', status => {
+      if (!status.connected) showToast('İnternet bağlantısı kesildi.');
+    }).then(handle => {
+      if (disposed) void handle.remove();
+      else networkHandle = handle;
+    });
 
     return () => {
-      if (Capacitor.isNativePlatform()) {
-        CapApp.removeAllListeners();
-        Network.removeAllListeners();
-      }
+      disposed = true;
+      if (appBackHandle) void appBackHandle.remove();
+      if (networkHandle) void networkHandle.remove();
     };
-  }, [tabHistory, currentTab, accountView]);
+  }, [tabHistory, currentTab, accountView, isSearchFocused, showGiftModal, showNotifications, isFilterPanelOpen, isSortPanelOpen]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -366,6 +397,9 @@ function AppContent() {
   // Effects
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', settings.theme);
+    void syncNativeAppearance(settings.theme).catch(error => {
+      console.warn('Native appearance sync failed', error);
+    });
   }, [settings.theme]);
 
   // Audio Helper
