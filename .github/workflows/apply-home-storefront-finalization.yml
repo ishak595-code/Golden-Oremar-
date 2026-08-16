@@ -5,6 +5,7 @@ on:
     branches: [agent/home-storefront-dynamic-premium-finalization]
     paths:
       - '.github/workflows/apply-home-storefront-finalization.yml'
+      - 'migration-tools/patch-home-dynamic-premium.mjs'
 
 permissions:
   contents: write
