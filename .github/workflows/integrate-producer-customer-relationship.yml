@@ -1,0 +1,50 @@
+name: Integrate Producer Customer Relationship
+
+on:
+  push:
+    branches: [agent/producer-customer-relationship]
+    paths:
+      - '.github/workflows/integrate-producer-customer-relationship.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Patch App producer flows
+        run: node migration-tools/integration/apply-producer-customer-relationship.mjs src/App.tsx
+      - name: Verify producer integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "listFollowedProducerIds" src/features/catalog/PublicProducerScreen.tsx
+          grep -q "startProducerProductConversation" src/features/catalog/PublicProducerScreen.tsx
+          grep -q "Bu ürün hakkında sor" src/features/catalog/PublicProducerScreen.tsx
+          grep -q "available_quantity" src/features/catalog/PublicProducerScreen.tsx
+          grep -q "onOpenConversation=" src/App.tsx
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Production build
+        run: npm run build
+      - name: Commit verified integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/integrate-producer-customer-relationship.yml
+          rm -f migration-tools/integration/apply-producer-customer-relationship.mjs
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'Integrate producer customer relationship'
+          git push origin HEAD:agent/producer-customer-relationship
