@@ -9,6 +9,7 @@ import {
   publicCatalogUrl,
   removeCartItem,
   setCartItem,
+  startShippingQuoteSupport,
   type CartSnapshot,
   type CheckoutPreview,
 } from './api';
@@ -74,6 +75,8 @@ export default function CartCheckoutFlow({
   const [loading, setLoading] = useState(true);
   const [previewBusy, setPreviewBusy] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [quoteBusy, setQuoteBusy] = useState(false);
+  const [quoteSent, setQuoteSent] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState<any>(null);
   const idempotencyRef = useRef<string | null>(null);
@@ -138,6 +141,11 @@ export default function CartCheckoutFlow({
   async function updateQuantity(item: CartSnapshot['items'][number], nextQuantity: number) {
     try {
       setError('');
+      const maxAllowed = item.sellableQuantity != null ? Math.max(0, Number(item.sellableQuantity)) : null;
+      if (maxAllowed != null && nextQuantity > maxAllowed) {
+        setError(`Bu ürün için en fazla ${maxAllowed} adet sepete eklenebilir.`);
+        return;
+      }
       if (nextQuantity <= 0) {
         setCart(await removeCartItem(item.cartItemId));
       } else {
@@ -198,7 +206,7 @@ export default function CartCheckoutFlow({
       setSubmitting(true);
       setError('');
       if (!idempotencyRef.current) {
-        idempotencyRef.current = `checkout_${Date.now()}_${Math.random().toString(36).slice(2)}`.replace(/[^A-Za-z0-9_-]/g, '');
+        idempotencyRef.current = `checkout_${globalThis.crypto.randomUUID().replace(/-/g, '')}`;
       }
       const result = await createOrder({
         items: cart.items,
@@ -217,6 +225,21 @@ export default function CartCheckoutFlow({
       setError(friendlyReason(raw.split(':')[0]) || raw);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function requestShippingQuote() {
+    if (!cart?.items?.length || quoteBusy || quoteSent) return;
+    try {
+      setQuoteBusy(true);
+      setError('');
+      const cityLabel = [checkoutAddress?.district, checkoutAddress?.province].filter(Boolean).join(' / ');
+      await startShippingQuoteSupport({ countryCode, cityLabel, cart, preview });
+      setQuoteSent(true);
+    } catch (e: any) {
+      setError(e?.message || 'Kargo teklif talebi oluşturulamadı.');
+    } finally {
+      setQuoteBusy(false);
     }
   }
 
@@ -267,7 +290,7 @@ export default function CartCheckoutFlow({
             <div className="flex items-center rounded-xl border" aria-label={`${item.productName} adet seçimi`}>
               <button onClick={() => updateQuantity(item, item.quantity - 1)} aria-label="Adedi azalt" className="min-h-11 min-w-11 p-2"><Minus className="mx-auto h-4 w-4" /></button>
               <span className="min-w-10 text-center font-bold" aria-live="polite">{item.quantity}</span>
-              <button onClick={() => updateQuantity(item, item.quantity + 1)} aria-label="Adedi artır" className="min-h-11 min-w-11 p-2"><Plus className="mx-auto h-4 w-4" /></button>
+              <button onClick={() => updateQuantity(item, item.quantity + 1)} disabled={(!item.available) || (item.sellableQuantity != null && item.quantity >= Number(item.sellableQuantity))} aria-label="Adedi artır" className="min-h-11 min-w-11 p-2 disabled:cursor-not-allowed disabled:opacity-40"><Plus className="mx-auto h-4 w-4" /></button>
             </div>
             <div className="flex items-center gap-3">
               <strong><Money minor={item.lineTotalMinor} currency={cart.currency} /></strong>
@@ -326,6 +349,11 @@ export default function CartCheckoutFlow({
       </div>
       {preview?.shipping?.publicNote ? <p className="mt-3 text-xs text-gray-500">{preview.shipping.publicNote}</p> : null}
       {preview && !preview.canCheckout ? <div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{friendlyReason(preview.blockingReason)}</div> : null}
+      {preview && !preview.canCheckout && countryCode !== 'TR' && ['manual_shipping_quote_required','shipping_rate_not_configured','shipping_zone_not_configured','international_shipping_weight_missing'].includes(preview.blockingReason || '') ? <div className="mt-3 rounded-xl border border-brand-green/30 bg-brand-green/5 p-3">
+        <p className="text-sm text-gray-700 dark:text-gray-200">Otomatik fiyat verilemiyorsa destek ekibine bu sepet ve hedef ülke bilgisiyle kargo teklif talebi gönderebilirsiniz.</p>
+        <button onClick={() => void requestShippingQuote()} disabled={quoteBusy || quoteSent} className="mt-3 min-h-11 w-full rounded-xl border border-brand-green px-4 font-bold text-brand-green disabled:opacity-50">{quoteSent ? 'Kargo teklif talebi gönderildi' : quoteBusy ? 'Talep gönderiliyor…' : 'Kargo teklifi talebini gönder'}</button>
+        {quoteSent ? <p role="status" aria-live="polite" className="mt-2 text-xs text-green-700">Talebiniz güvenli destek konuşmasına iletildi. Destek ekibi hedef ülke ve ürün koşullarını inceleyecek.</p> : null}
+      </div> : null}
       {(preview?.missingWeightQuantity || 0) > 0 && countryCode === 'TR' ? <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Bazı ürünlerde kargo ağırlığı eksik. Türkiye içi mevcut geçici kargo kuralı çalışabilir; yurt dışı checkout bu ürünlerle engellenir.</div> : null}
       <div className="mt-4 flex gap-2 rounded-xl bg-gray-50 dark:bg-gray-800 p-3 text-sm"><ShieldCheck className="h-5 w-5 shrink-0 text-brand-green" /><p>Fiyat, stok, kargo ve indirim sunucudan hesaplanır. “Siparişi oluştur” dediğinizde her şey yeniden doğrulanır.</p></div>
       <button onClick={submit} disabled={submitting || previewBusy || !preview?.canCheckout} className="mt-5 min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{submitting ? 'Sipariş oluşturuluyor…' : 'Siparişi Oluştur'}</button>
