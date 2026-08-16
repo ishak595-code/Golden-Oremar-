@@ -42,6 +42,15 @@ replaceExact(
 if (!text.includes('PasswordRecoveryScreen')) throw new Error('Password recovery screen integration missing');
 if (!text.includes('useAuthRecoveryCoordinator')) throw new Error('Auth recovery coordinator integration missing');
 if (!text.includes('authRecovery.recoveryPending')) throw new Error('Recovery state integration missing');
-
 fs.writeFileSync(file, text);
-console.log('Auth recovery App integration applied.');
+
+const authFile = 'src/features/auth/api.ts';
+let authText = fs.readFileSync(authFile, 'utf8');
+const oldRedirect = `export function getConfiguredAuthRedirectUrl(): string | undefined {\n  const configured = String(import.meta.env.VITE_AUTH_REDIRECT_URL || '').trim();\n  if (Capacitor.isNativePlatform()) {\n    return configured === NATIVE_AUTH_CALLBACK_URL ? configured : undefined;\n  }\n  if (configured) return configured;\n  if (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null') {\n    return \`${'${window.location.origin}'}/?tab=account\`;\n  }\n  return undefined;\n}`;
+const newRedirect = `export function getConfiguredAuthRedirectUrl(): string | undefined {\n  const webConfigured = String(import.meta.env.VITE_AUTH_REDIRECT_URL || '').trim();\n  const nativeConfigured = String(import.meta.env.VITE_NATIVE_AUTH_REDIRECT_URL || '').trim();\n  if (Capacitor.isNativePlatform()) {\n    return nativeConfigured === NATIVE_AUTH_CALLBACK_URL ? nativeConfigured : undefined;\n  }\n  if (webConfigured) return webConfigured;\n  if (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null') {\n    return \`${'${window.location.origin}'}/?tab=account\`;\n  }\n  return undefined;\n}`;
+const redirectCount = authText.split(oldRedirect).length - 1;
+if (redirectCount !== 1) throw new Error(`Expected one auth redirect function, found ${redirectCount}`);
+authText = authText.replace(oldRedirect, newRedirect);
+fs.writeFileSync(authFile, authText);
+
+console.log('Auth recovery App integration and redirect separation applied.');
