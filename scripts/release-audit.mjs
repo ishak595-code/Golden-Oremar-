@@ -35,6 +35,7 @@ const forbiddenRepoArtifacts = [
   'grep_ana.txt',
   'output.txt',
   'temp.txt',
+  'metadata.json',
   'src/data.ts',
   'src/data/healthData.ts',
 ];
