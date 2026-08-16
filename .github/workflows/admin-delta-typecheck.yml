@@ -29,7 +29,7 @@ jobs:
           set +e
           npm run lint 2>&1 | tee /tmp/typecheck.log
           set -e
-          if grep -E "(src/pages/AdminPage\.tsx|src/admin/(AdminCampaigns|AdminFinance|AdminReviews|supabaseAdminApi|AdminUsers|userAdminApi|AdminVendorApplications|producerApplicationAdminApi|producerDocumentApi|AdminVendors|producerAdminApi|AdminDashboard|dashboardApi|AdminProducts|productAdminApi|AdminOrders|orderAdminApi|AdminStock|inventoryAdminApi|AdminReturns|returnAdminApi|AdminCategories|categoryAdminApi|AdminEvents|eventAdminApi)\.(ts|tsx)).*error TS" /tmp/typecheck.log; then
+          if grep -E "(src/pages/AdminPage\.tsx|src/admin/(AdminCampaigns|AdminFinance|AdminReviews|supabaseAdminApi|AdminUsers|userAdminApi|AdminVendorApplications|producerApplicationAdminApi|producerDocumentApi|AdminVendors|producerAdminApi|AdminDashboard|dashboardApi|AdminProducts|productAdminApi|AdminOrders|orderAdminApi|AdminStock|inventoryAdminApi|AdminReturns|returnAdminApi|AdminCategories|categoryAdminApi|AdminEvents|eventAdminApi|AdminNotifications|notificationAdminApi)\.(ts|tsx)).*error TS" /tmp/typecheck.log; then
             echo 'TypeScript errors found in Golden Oremar admin migration delta.' >&2
             exit 1
           fi
