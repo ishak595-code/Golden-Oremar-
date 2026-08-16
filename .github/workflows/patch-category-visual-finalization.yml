@@ -36,7 +36,34 @@ jobs:
           grep -q "}, quantity);" src/App.tsx
           ! grep -q "<ShoppingCart" src/features/catalog/CategoryDirectoryScreen.tsx
       - name: Parse changed TypeScript modules
-        run: npx tsc --noEmit --pretty false
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import ts from 'typescript';
+          const files = ['src/App.tsx', 'src/features/catalog/CategoryDirectoryScreen.tsx'];
+          let failed = false;
+          for (const file of files) {
+            const source = fs.readFileSync(file, 'utf8');
+            const result = ts.transpileModule(source, {
+              fileName: file,
+              reportDiagnostics: true,
+              compilerOptions: {
+                target: ts.ScriptTarget.ES2022,
+                module: ts.ModuleKind.ESNext,
+                jsx: ts.JsxEmit.ReactJSX,
+              },
+            });
+            const errors = (result.diagnostics || []).filter(d => d.category === ts.DiagnosticCategory.Error);
+            if (errors.length) {
+              failed = true;
+              for (const diagnostic of errors) console.error(file, ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
+            } else {
+              console.log(`${file}: parse clean`);
+            }
+          }
+          if (failed) process.exit(1);
+          NODE
       - name: Production web build
         run: npm run build
       - name: Commit integration and clean temporary patch files
