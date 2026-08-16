@@ -17,6 +17,7 @@ import SellerPanel from'./SellerPanel';
 import ProducerProductManager from'../producer-products/ProducerProductManager';
 import ProducerProfilePanel from'./ProducerProfilePanel';
 import NotificationsPanel from'./NotificationsPanel';
+import MessagesPanel from'./MessagesPanel';
 import ReviewsPanel from'./ReviewsPanel';
 
 const menu=[
@@ -28,6 +29,7 @@ const menu=[
  ['gifts','Hediye Ettiklerim',Gift,'Hediye olarak verdiğiniz siparişler'],
  ['addresses','Adreslerim',MapPin,'Teslimat adresleri'],
  ['payments','Ödeme Yöntemlerim',WalletCards,'Güvenli ödeme hareketleri'],
+ ['messages','Mesajlarım',MessageCircle,'Destek ve üretici konuşmaları'],
  ['notifications','Bildirimler',Bell,'Sipariş, ödeme, kargo ve sistem bildirimleri'],
  ['contact','İletişim',MessageCircle,'Golden Oremar ile iletişime geçin'],
  ['support','Yardım & Destek',HelpCircle,'Hakkımızda, iade, gizlilik ve destek'],
@@ -39,7 +41,7 @@ export default function AccountCenter({
 }:{
  requestedView?:string; theme?:string; onThemeChange?:(theme:'light'|'dark')=>void; onOpenProduct?:(slug:string)=>void; onOpenProducer?:(slug:string)=>void; onStartGift?:()=>void; onOpenMessages?:()=>void; onOpenNotificationAction?:(url:string,metadata:any)=>void; onOpenContact?:()=>void; onOpenHealth?:()=>void; onOpenEvents?:()=>void; onOpenAdmin?:()=>void; onOpenSellerApplication?:()=>void; onOpenSellerProductManager?:()=>void; onBack?:()=>void;
 }){
- const[overview,setOverview]=useState<AccountOverview|null>(null);const[view,setView]=useState<AccountView>('home');const[loading,setLoading]=useState(true);const[error,setError]=useState('');
+ const[overview,setOverview]=useState<AccountOverview|null>(null);const[view,setView]=useState<AccountView>('home');const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[messageConversationId,setMessageConversationId]=useState('');
  async function refresh(){try{setLoading(true);setError('');setOverview(await getAccountOverview());}catch(e:any){setError(e?.message||'Hesap bilgileri yüklenemedi.');}finally{setLoading(false);}}
  useEffect(()=>{void refresh();},[]);
  useEffect(()=>{
@@ -50,6 +52,8 @@ export default function AccountCenter({
    support:'support'
   };
   if(!requestedView)return;
+  if(requestedView.startsWith('messages:')){setMessageConversationId(requestedView.slice('messages:'.length));setView('messages');return;}
+  if(requestedView==='messages'){setMessageConversationId('');setView('messages');return;}
   if(requestedView==='contact'){onOpenContact?.();return;}
   const next=map[requestedView];
   if(next)setView(next);
@@ -67,7 +71,8 @@ export default function AccountCenter({
   if(view==='gifts')return<GiftsPanel onStartGift={onStartGift}/>;
   if(view==='payments')return<PaymentsPanel/>;
   if(view==='notifications')return<NotificationsPanel onOpenAction={onOpenNotificationAction}/>;
-  if(view==='support')return<SupportPanel locale={overview.profile.locale} onOpenMessages={onOpenMessages}/>;
+  if(view==='messages')return<MessagesPanel initialConversationId={messageConversationId}/>;
+  if(view==='support')return<SupportPanel locale={overview.profile.locale} onOpenMessages={()=>setView('messages')}/>;
   if(view==='seller')return<SellerPanel producer={overview.producer} onOpenApplication={onOpenSellerApplication} onOpenProductManager={()=>{if(onOpenSellerProductManager)onOpenSellerProductManager();else setView('producer-products');}}/>;
   if(view==='producer-products')return<ProducerProductManager onBack={()=>setView('seller')}/>;
   if(view==='producer-profile-edit')return<ProducerProfilePanel onChanged={refresh}/>;

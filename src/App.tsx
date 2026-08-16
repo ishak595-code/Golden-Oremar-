@@ -774,8 +774,11 @@ function AppContent() {
           onOpenEvents={() => navigateToTab('events')}
           onOpenAdmin={() => navigateToTab('admin')}
           onOpenSellerApplication={() => setAccountView('vendor-apply')}
-          onOpenNotificationAction={(url) => {
-            if (url?.includes('/messages/')) setAccountView('support');
+          onOpenNotificationAction={(url, metadata) => {
+            if (url?.includes('/messages/')) {
+              const conversationId = metadata?.conversationId || url.split('/messages/')[1]?.split(/[?#/]/)[0] || '';
+              setAccountView(conversationId ? `messages:${conversationId}` : 'messages');
+            }
             else if (url?.includes('producer')) setAccountView('seller');
             else if (url?.includes('order')) setAccountView('orders');
           }}
