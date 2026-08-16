@@ -48,11 +48,12 @@ export function isPasswordRecoveryCallbackUrl(url: string) {
 }
 
 export function getConfiguredAuthRedirectUrl(): string | undefined {
-  const configured = String(import.meta.env.VITE_AUTH_REDIRECT_URL || '').trim();
+  const webConfigured = String(import.meta.env.VITE_AUTH_REDIRECT_URL || '').trim();
+  const nativeConfigured = String(import.meta.env.VITE_NATIVE_AUTH_REDIRECT_URL || '').trim();
   if (Capacitor.isNativePlatform()) {
-    return configured === NATIVE_AUTH_CALLBACK_URL ? configured : undefined;
+    return nativeConfigured === NATIVE_AUTH_CALLBACK_URL ? nativeConfigured : undefined;
   }
-  if (configured) return configured;
+  if (webConfigured) return webConfigured;
   if (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null') {
     return `${window.location.origin}/?tab=account`;
   }
