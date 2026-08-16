@@ -59,9 +59,13 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Notification preferences, newsletter, password, session and closure actions have explicit busy guards and duplicate-action protection.
 - Password confirmation exposes mismatch validation to assistive technology and enforces the existing 8-72 character client boundary before backend verification.
 - Account closure now uses an accessible confirmation alert dialog before the existing secure backend request; active closure cancellation has its own busy/error/status feedback.
+- Account order/return dialogs now reuse the canonical shared accessible-dialog engine instead of maintaining a second focus-trap implementation.
+- Avatar removal and pending-payment order cancellation require explicit accessible destructive confirmation before existing secure backend mutations run.
+- Order detail suppresses its parent focus trap while a nested return/cancellation dialog is open, preventing competing modal focus loops.
+- Return request/detail loading states remain true modal overlays with Escape/focus-return/body-scroll behavior instead of exposing the background screen during asynchronous loading.
 
 ## Current active package
-Remaining customer account interactions and shared modal reliability: audit profile/avatar, orders and other account actions for focus restoration, destructive-action confirmation, loading/error states and duplicate-action protection without rebuilding completed backend workflows.
+Favorites, followed producers, gifts and payment-history account surfaces: harden retry/error clearing, per-row async busy states, success announcements, focus-visible controls and duplicate-action protection while preserving their existing secure backend contracts.
 
 ## Release gates still required on Apple hardware
 A real Xcode archive/build, signing check and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
