@@ -1,0 +1,107 @@
+name: Native Push Client Finalize
+
+on:
+  push:
+    branches: [agent/admin-supabase-retire-node]
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: agent/admin-supabase-retire-node
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Rebuild verified native push integration
+        shell: bash
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess, yaml
+
+          workflow = yaml.safe_load(Path('.github/workflows/native-push-client-retry.yml').read_text())
+          replay = next(step for step in workflow['jobs']['integrate']['steps'] if step.get('name') == 'Replay integration with TypeScript corrections')
+          subprocess.run(['bash', '-euo', 'pipefail', '-c', replay['run']], check=True)
+
+          push_path = Path('src/features/notifications/nativePush.ts')
+          push = push_path.read_text()
+          old = """export async function disableNativePushRegistration() {
+            if (!isNativePushPlatform()) return;
+            const deviceId = window.localStorage.getItem(DEVICE_ID_KEY);
+            if (deviceId) {
+              await unregisterNativePushDevice(deviceId);
+            }
+            await PushNotifications.unregister();
+            window.localStorage.removeItem(DEVICE_ID_KEY);
+          }"""
+          new = """export async function disableNativePushRegistration() {
+            if (!isNativePushPlatform()) return;
+            const deviceId = window.localStorage.getItem(DEVICE_ID_KEY);
+            const providerConfigured = isNativePushProviderConfigured();
+            if (!deviceId && !providerConfigured) return;
+            if (deviceId) {
+              await unregisterNativePushDevice(deviceId);
+            }
+            if (providerConfigured) {
+              await PushNotifications.unregister();
+            }
+            window.localStorage.removeItem(DEVICE_ID_KEY);
+          }"""
+          if old not in push:
+              raise SystemExit('Expected native push unregister block was not found')
+          push_path.write_text(push.replace(old, new, 1))
+
+          generated = Path('supabase/migrations/20260816225200_add_exact_device_push_unregister_rpc.sql')
+          exact = Path('supabase/migrations/20260816224817_add_exact_device_push_unregister_rpc.sql')
+          if generated.exists():
+              if exact.exists(): exact.unlink()
+              generated.rename(exact)
+          if not exact.exists():
+              raise SystemExit('Exact live Supabase push unregister migration is missing')
+          PY
+
+      - name: Run release quality gate
+        run: npm run quality
+
+      - name: Verify credential-safe native push architecture
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '"@capacitor/push-notifications": "8.1.2"' package.json
+          grep -q 'VITE_NATIVE_PUSH_ENABLED=false' .env.example
+          grep -q 'VITE_PUSH_ENVIRONMENT=production' .env.example
+          grep -q 'capacitorDidRegisterForRemoteNotifications' ios/App/App/AppDelegate.swift
+          grep -q 'register_push_token_v1' src/features/account/api.ts
+          grep -q 'unregister_push_device_v1' src/features/account/api.ts
+          grep -q 'PushNotifications.register' src/features/notifications/nativePush.ts
+          grep -q 'providerConfigured = isNativePushProviderConfigured' src/features/notifications/nativePush.ts
+          grep -q "type PluginListenerHandle } from '@capacitor/core'" src/features/notifications/nativePush.ts
+          test -f supabase/migrations/20260816224817_add_exact_device_push_unregister_rpc.sql
+          test ! -f supabase/migrations/20260816225200_add_exact_device_push_unregister_rpc.sql
+          test ! -f android/app/google-services.json
+          if git grep -nE '(APNS_KEY|FCM_SERVICE_ACCOUNT|BEGIN PRIVATE KEY)' -- ':!package-lock.json' ':!.github/workflows/**'; then
+            echo 'Provider credentials must not be committed to the repository.' >&2
+            exit 1
+          fi
+
+      - name: Commit verified native push integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/native-push-client-once.yml .github/workflows/native-push-client-retry.yml .github/workflows/native-push-client-finalize.yml
+          git add -A
+          git commit -m "Prepare real native push registration without fake provider credentials [native-push-client-applied]"
+          git push origin HEAD:agent/admin-supabase-retire-node
