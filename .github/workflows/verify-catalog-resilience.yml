@@ -1,0 +1,66 @@
+name: Verify Catalog Resilience
+
+on:
+  push:
+    branches:
+      - agent/catalog-resilience-images
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/catalog-resilience-images
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install dependencies
+        run: npm ci
+      - name: Apply guarded catalog resilience patch
+        run: node .github/scripts/apply-catalog-resilience.mjs
+      - name: Validate resilience contracts
+        run: |
+          grep -q "const requestId=useRef(0);" src/features/catalog/ProductDetailScreen.tsx
+          grep -q "requestId.current!==current" src/features/catalog/ProductDetailScreen.tsx
+          grep -q "fetchPriority=\"high\"" src/features/catalog/ProductDetailScreen.tsx
+          grep -q "decoding=\"async\"" src/features/catalog/CatalogProductCard.tsx
+          grep -q "fetchPriority=\"high\"" src/features/catalog/PublicProducerScreen.tsx
+          ! grep -q "// Audio Helper" src/App.tsx
+          ! grep -q "case 'drop'" src/App.tsx
+      - name: Parse changed TypeScript modules
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import ts from 'typescript';
+          const files=['src/App.tsx','src/features/catalog/ProductDetailScreen.tsx','src/features/catalog/PublicProducerScreen.tsx','src/features/catalog/CatalogProductCard.tsx'];
+          let failed=false;
+          for(const file of files){const r=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext},reportDiagnostics:true,fileName:file});const errors=(r.diagnostics||[]).filter(d=>d.category===ts.DiagnosticCategory.Error);if(errors.length){failed=true;console.error(file,errors.map(d=>ts.flattenDiagnosticMessageText(d.messageText,'\n')));}}
+          if(failed)process.exit(1);
+          NODE
+      - name: Production web build
+        run: npm run build
+      - name: Synchronize Android project
+        run: npx cap sync android
+      - name: Compile Android debug app
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+      - name: Commit verified catalog resilience
+        run: |
+          rm -f .github/scripts/apply-catalog-resilience.mjs .github/workflows/verify-catalog-resilience.yml
+          git config user.name "Golden Oremar Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Harden catalog async resilience and image loading [skip ci]"
+          git push origin HEAD:agent/catalog-resilience-images
