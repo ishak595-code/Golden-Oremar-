@@ -15,8 +15,10 @@ import { AdminFinance } from '../admin/AdminFinance';
 import { AdminNotifications } from '../admin/AdminNotifications';
 import { AdminVendorApplications } from '../admin/AdminVendorApplications';
 import { AdminEvents } from '../admin/AdminEvents';
-import { VendorFinance } from '../admin/VendorFinance';
-import { AdminVendorProfile } from '../admin/AdminVendorProfile';
+import ProducerProductManager from '../features/producer-products/ProducerProductManager';
+import ProducerOrdersPanel from '../features/producer-orders/ProducerOrdersPanel';
+import ProducerFinancePanel from '../features/producer-finance/ProducerFinancePanel';
+import ProducerProfilePanel from '../features/account/ProducerProfilePanel';
 import { useCustomerSession } from '../features/auth/useCustomerSession';
 
 interface AdminPageProps {
@@ -58,25 +60,34 @@ export function AdminPage({ onLogout, onBack }: AdminPageProps) {
     );
   }
 
-  const renderContent = () => {
+  const renderProducerContent = () => {
+    if (!isVendor || isAdmin) return null;
+    switch (activeTab) {
+      case 'dashboard': return <AdminDashboard setActiveTab={setActiveTab} />;
+      case 'profile': return <ProducerProfilePanel />;
+      case 'products': return <ProducerProductManager onBack={() => setActiveTab('dashboard')} />;
+      case 'stock': return <ProducerProductManager onBack={() => setActiveTab('dashboard')} />;
+      case 'orders': return <ProducerOrdersPanel onBack={() => setActiveTab('dashboard')} />;
+      case 'finance': return <ProducerFinancePanel onBack={() => setActiveTab('dashboard')} />;
+      default:
+        return (
+          <div className="flex items-center justify-center h-full px-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Yetkisiz Erişim</h2>
+              <p className="text-gray-500 dark:text-gray-400">Bu bölüm yalnızca yönetici hesaplarına açıktır.</p>
+            </div>
+          </div>
+        );
+    }
+  };
+
+  const renderAdminContent = () => {
     if (activeTab === 'dashboard') return <AdminDashboard setActiveTab={setActiveTab} />;
-    if (activeTab === 'profile') return <AdminVendorProfile setActiveTab={setActiveTab} />;
     if (activeTab === 'products') return <AdminProducts setActiveTab={setActiveTab} />;
     if (activeTab === 'product-approvals') return <AdminProducts setActiveTab={setActiveTab} initialView="pending" />;
     if (activeTab === 'orders') return <AdminOrders setActiveTab={setActiveTab} />;
     if (activeTab === 'stock') return <AdminStock setActiveTab={setActiveTab} />;
-    if (activeTab === 'finance') return isVendor && !isAdmin ? <VendorFinance /> : <AdminFinance />;
-
-    if (!isAdmin) {
-      return (
-        <div className="flex items-center justify-center h-full px-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Yetkisiz Erişim</h2>
-            <p className="text-gray-500 dark:text-gray-400">Bu bölüm yalnızca yönetici hesaplarına açıktır.</p>
-          </div>
-        </div>
-      );
-    }
+    if (activeTab === 'finance') return <AdminFinance />;
 
     switch (activeTab) {
       case 'users': return <AdminUsers />;
@@ -95,7 +106,7 @@ export function AdminPage({ onLogout, onBack }: AdminPageProps) {
 
   return (
     <AdminLayout activeTab={activeTab} setActiveTab={setActiveTab} onBack={onBack} onLogout={onLogout}>
-      {renderContent()}
+      {isAdmin ? renderAdminContent() : renderProducerContent()}
     </AdminLayout>
   );
 }
