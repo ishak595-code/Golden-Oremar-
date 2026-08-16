@@ -29,7 +29,7 @@ jobs:
           set -euo pipefail
           grep -q "MessagesPanel" src/features/account/AccountCenter.tsx
           grep -q "Mesajlarım" src/features/account/AccountCenter.tsx
-          grep -q "messages:${conversationId}" src/App.tsx || grep -q "messages:\${conversationId}" src/App.tsx
+          grep -q "setAccountView(conversationId ?" src/App.tsx
           grep -q "message-attachments" src/features/account/messagesApi.ts
           grep -q "send_conversation_message_v1" src/features/account/messagesApi.ts
       - name: Install dependencies
