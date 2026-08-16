@@ -52,6 +52,9 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Shared account panels use explicit `aria-labelledby` / `aria-describedby` relationships.
 - Address add/edit uses the shared accessible-dialog focus trap, Escape handling, scroll lock and focus restoration.
 - Address deletion requires a separate accessible destructive confirmation; save/delete operations block duplicate actions and report completion state.
+- Customer appearance is now a personal device preference rather than the legacy global Firestore `settings/general` theme value.
+- Initial appearance is resolved before first render from the saved device preference or OS color scheme and is synchronized with the native status bar.
+- Light mode now has a real ivory/white surface system with dark forest text and AA-checked green/gold/muted text contrast; dark mode retains the premium forest palette.
 
 ## Current active package
 Account settings and remaining account interactions: harden async saving/session/account-closure feedback, busy states, validation/error announcements and destructive-action clarity without changing the existing secure backend contracts.
