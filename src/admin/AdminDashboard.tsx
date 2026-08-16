@@ -1,399 +1,178 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { ShoppingBag, Users, DollarSign, TrendingUp, Package, Clock, ArrowUpRight, ArrowDownRight, Activity, Calendar as CalendarIcon, Store, FileText } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
-import { useData } from '../context/DataContext';
-
-const salesData = [
-  { name: 'Pzt', sales: 4000, orders: 24 },
-  { name: 'Sal', sales: 3000, orders: 18 },
-  { name: 'Çar', sales: 2000, orders: 12 },
-  { name: 'Per', sales: 2780, orders: 16 },
-  { name: 'Cum', sales: 1890, orders: 10 },
-  { name: 'Cmt', sales: 2390, orders: 14 },
-  { name: 'Paz', sales: 3490, orders: 20 },
-];
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, BadgeCheck, Boxes, Check, CircleDollarSign, Clock3, FileCheck2, Loader2, Package, RefreshCw, RotateCcw, ShoppingBag, Store, Users } from 'lucide-react';
+import { useCustomerSession } from '../features/auth/useCustomerSession';
+import {
+  dashboardErrorMessage,
+  formatMinor,
+  getAdminOperationsOverview,
+  getMyProducerDashboardV2,
+  type AdminOperationsOverview,
+  type ProducerDashboardV2,
+} from './dashboardApi';
 
 interface AdminDashboardProps {
   setActiveTab?: (tab: string) => void;
 }
 
-export function AdminDashboard({ setActiveTab }: AdminDashboardProps = {}) {
-  const { orders, products, users, currentUser, vendorApplications } = useData();
-  const [loading, setLoading] = useState(true);
+function StatCard({ label, value, helper, icon }: { label: string; value: React.ReactNode; helper?: string; icon: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</div>
+          <div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{value}</div>
+          {helper && <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">{helper}</div>}
+        </div>
+        <div className="rounded-xl bg-brand-green/10 p-2.5 text-brand-green">{icon}</div>
+      </div>
+    </div>
+  );
+}
 
-  const stats = useMemo(() => {
-    const isVendor = currentUser?.role === 'vendor';
-    const vendorProducts = isVendor ? products.filter(p => p.vendor_id === currentUser.id || p.vendorId === currentUser.id) : products;
-    const vendorOrders = isVendor ? orders.filter(o => o.vendorId === currentUser.id || o.items?.some(i => i.vendorId === currentUser.id || i.vendor_id === currentUser.id)) : orders;
-
-    const totalSales = vendorOrders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
-    const todayOrders = vendorOrders.filter(order => new Date(order.date).toDateString() === new Date().toDateString()).length;
-    const pendingOrders = vendorOrders.filter(order => order.status === 'pending').length;
-    const readyToShip = vendorOrders.filter(order => order.status === 'payment_pending_escrow').length;
-    const lowStock = vendorProducts.filter(product => product.stock < 10).length;
-    const newUsers = users.filter(user => new Date(user.joinDate).toDateString() === new Date().toDateString()).length;
-    const pendingVendors = vendorApplications?.filter(app => app.status === 'pending').length || 0;
-    const pendingProducts = vendorProducts.filter(product => !product.is_approved && !product.is_rejected).length;
-    const rejectedProducts = vendorProducts.filter(product => product.is_rejected).length;
-    // Mock data for vendor visits and followers if needed, or actual followers if available.
-    // For now we can generate a consistent mock number based on their ID, or just static.
-    const isVendorDetails = currentUser?.role === 'vendor' ? {
-        followers: Math.floor(Math.random() * 50) + 10,
-        visits: Math.floor(Math.random() * 500) + 100
-    } : null;
-
-    return {
-      totalSales,
-      todayOrders,
-      pendingOrders,
-      readyToShip,
-      lowStock,
-      newUsers,
-      pendingVendors,
-      pendingProducts,
-      rejectedProducts,
-      vendorDetails: isVendorDetails
-    };
-  }, [orders, products, users, currentUser, vendorApplications]);
-
-  const recentOrders = useMemo(() => {
-    const isVendor = currentUser?.role === 'vendor';
-    const vendorOrders = isVendor ? orders.filter(o => o.vendorId === currentUser.id || o.items?.some(i => i.vendorId === currentUser.id || i.vendor_id === currentUser.id)) : orders;
-    return [...vendorOrders].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
-  }, [orders, currentUser]);
-
-  useEffect(() => {
-    // Simulate loading for a smoother transition
-    const timer = setTimeout(() => setLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (loading) {
-    return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-green"></div></div>;
-  }
+function AdminOverview({ data, setActiveTab }: { data: AdminOperationsOverview; setActiveTab?: (tab: string) => void }) {
+  const queueRows = [
+    { key: 'vendor-applications', label: 'Satıcı başvuruları', value: data.counts.producer_applications, helper: 'Gönderilen, incelenen veya ek bilgi bekleyen', icon: <Store className="h-5 w-5" aria-hidden="true" /> },
+    { key: 'product-approvals', label: 'Ürün incelemeleri', value: data.counts.product_reviews, helper: 'Yayın öncesi onay bekleyen ürünler', icon: <Package className="h-5 w-5" aria-hidden="true" /> },
+    { key: 'reviews', label: 'Yorum moderasyonu', value: data.counts.review_moderation, helper: 'Onay bekleyen müşteri yorumları', icon: <FileCheck2 className="h-5 w-5" aria-hidden="true" /> },
+    { key: 'orders', label: 'Açık siparişler', value: data.counts.open_orders, helper: 'Aktif sipariş yaşam döngüsündeki kayıtlar', icon: <ShoppingBag className="h-5 w-5" aria-hidden="true" /> },
+  ];
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Panel Genel Bakış</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Mağazanızın güncel durumunu takip edin.</p>
-        </div>
-        <div className="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
-          <CalendarIcon className="w-4 h-4 text-gray-500" />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Bugün</span>
-        </div>
-      </div>
-      
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <DollarSign className="w-24 h-24 text-blue-600" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600">
-                <DollarSign className="w-6 h-6" />
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Toplam Satış</div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{stats.totalSales.toLocaleString('tr-TR')} ₺</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Package className="w-24 h-24 text-orange-600" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl text-orange-600">
-                <Package className="w-6 h-6" />
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Bugünkü Siparişler</div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{stats.todayOrders}</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Clock className="w-24 h-24 text-yellow-600" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl text-yellow-600">
-                <Clock className="w-6 h-6" />
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Bekleyen Siparişler</div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{stats.pendingOrders}</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <TrendingUp className="w-24 h-24 text-red-600" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-xl text-red-600">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Stokta Azalan Ürünler</div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{stats.lowStock}</div>
-            </div>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Aktif kullanıcı" value={data.counts.active_users.toLocaleString('tr-TR')} helper="Silinmemiş aktif hesaplar" icon={<Users className="h-5 w-5" aria-hidden="true" />} />
+        <StatCard label="Doğrulanmış üretici" value={data.counts.verified_producers.toLocaleString('tr-TR')} helper="Aktif ve kimliği doğrulanmış" icon={<BadgeCheck className="h-5 w-5" aria-hidden="true" />} />
+        <StatCard label="Yayındaki ürün" value={data.counts.published_products.toLocaleString('tr-TR')} helper="Aktif katalog ürünleri" icon={<Boxes className="h-5 w-5" aria-hidden="true" />} />
+        <StatCard label="İade talepleri" value={data.counts.return_requests.toLocaleString('tr-TR')} helper="Açık iade iş akışları" icon={<RotateCcw className="h-5 w-5" aria-hidden="true" />} />
       </div>
 
-      {/* Approval Stats */}
-      {(currentUser?.role === 'admin' || currentUser?.role === 'super_admin') && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div 
-            onClick={() => setActiveTab && setActiveTab('vendor-applications')}
-            className="bg-emerald-50 dark:bg-emerald-900/10 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 flex items-center justify-between group cursor-pointer hover:shadow-md transition-all"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-600/20">
-                <Users className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-emerald-900 dark:text-emerald-400 font-bold">Satıcı Başvuruları</h4>
-                <p className="text-sm text-emerald-700 dark:text-emerald-500/70">Onay bekleyen {stats.pendingVendors} yeni başvuru var.</p>
-              </div>
-            </div>
-            <div className="text-3xl font-black text-emerald-600">{stats.pendingVendors}</div>
-          </div>
-
-          <div 
-            onClick={() => setActiveTab && setActiveTab('product-approvals')}
-            className="bg-blue-50 dark:bg-blue-900/10 p-6 rounded-2xl border border-blue-100 dark:border-blue-900/30 flex items-center justify-between group cursor-pointer hover:shadow-md transition-all"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-600/20">
-                <ShoppingBag className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-blue-900 dark:text-blue-400 font-bold">Ürün Onayları</h4>
-                <p className="text-sm text-blue-700 dark:text-blue-500/70">İncelenmeyi bekleyen {stats.pendingProducts} yeni ürün var.</p>
-              </div>
-            </div>
-            <div className="text-3xl font-black text-blue-600">{stats.pendingProducts}</div>
-          </div>
+      <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-labelledby="finance-summary-title">
+        <div className="flex items-start justify-between gap-3">
+          <div><h3 id="finance-summary-title" className="text-lg font-bold text-gray-900 dark:text-white">Tahsilat Özeti</h3><p className="mt-1 text-xs text-gray-500">Gerçek ödeme ve başarılı iade hareketlerinden hesaplanır.</p></div>
+          <CircleDollarSign className="h-5 w-5 text-gray-400" aria-hidden="true" />
         </div>
-      )}
-
-      {/* Vendor Stats */}
-      {currentUser?.role === 'vendor' && stats.vendorDetails && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="bg-purple-50 dark:bg-purple-900/10 p-6 rounded-2xl border border-purple-100 dark:border-purple-900/30 flex items-center justify-between group hover:shadow-md transition-all">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-purple-600 text-white flex items-center justify-center shadow-lg shadow-purple-600/20">
-                <Users className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-purple-900 dark:text-purple-400 font-bold">Mağaza Takipçileri</h4>
-                <p className="text-sm text-purple-700 dark:text-purple-500/70">Toplam organik takipçi sayısı</p>
-              </div>
-            </div>
-            <div className="text-3xl font-black text-purple-600">{stats.vendorDetails.followers}</div>
-          </div>
-
-          <div className="bg-indigo-50 dark:bg-indigo-900/10 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between group hover:shadow-md transition-all">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/20">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-indigo-900 dark:text-indigo-400 font-bold">Mağaza Ziyareti</h4>
-                <p className="text-sm text-indigo-700 dark:text-indigo-500/70">Son 30 gündeki mağaza ziyaretleri</p>
-              </div>
-            </div>
-            <div className="text-3xl font-black text-indigo-600">{stats.vendorDetails.visits}</div>
-          </div>
-
-          <div 
-            onClick={() => setActiveTab && setActiveTab('products')}
-            className="bg-orange-50 dark:bg-orange-900/10 p-6 rounded-2xl border border-orange-100 dark:border-orange-900/30 flex items-center justify-between group cursor-pointer hover:shadow-md transition-all sm:col-span-2"
-          >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-orange-600 text-white flex items-center justify-center shadow-lg shadow-orange-600/20">
-                <ShoppingBag className="w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-orange-900 dark:text-orange-400 font-bold">Ürün Onay Durumları</h4>
-                <p className="text-sm text-orange-700 dark:text-orange-500/70">
-                  <span className="font-semibold text-amber-600">{stats.pendingProducts}</span> ürün onay bekliyor, <span className="font-semibold text-red-600">{stats.rejectedProducts}</span> ürün reddedildi.
-                </p>
-              </div>
-            </div>
-          </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {data.finance_by_currency.map(row => <div key={row.currency} className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="text-xs font-semibold text-gray-500">{row.currency}</div><div className="mt-2 text-xl font-bold text-gray-900 dark:text-white">{formatMinor(row.net_collected_minor, row.currency)}</div><div className="mt-2 grid grid-cols-2 gap-2 text-xs"><div><span className="text-gray-500">Tahsil</span><div className="font-medium text-gray-800 dark:text-gray-200">{formatMinor(row.captured_minor, row.currency)}</div></div><div><span className="text-gray-500">İade</span><div className="font-medium text-gray-800 dark:text-gray-200">{formatMinor(row.refunded_minor, row.currency)}</div></div></div></div>)}
+          {data.finance_by_currency.length === 0 && <div className="sm:col-span-2 xl:col-span-3 py-5 text-center text-sm text-gray-500">Henüz doğrulanmış ödeme hareketi yok.</div>}
         </div>
-      )}
+      </section>
 
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Satış Trendi</h3>
-            <select className="text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 outline-none">
-              <option>Bu Hafta</option>
-              <option>Geçen Hafta</option>
-              <option>Bu Ay</option>
-            </select>
-          </div>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={salesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  formatter={(value: number) => [`${value} ₺`, 'Satış']}
-                />
-                <Area type="monotone" dataKey="sales" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Operasyon kuyrukları">
+        {queueRows.map(row => <button key={row.key} type="button" onClick={() => setActiveTab?.(row.key)} className="min-h-32 rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm transition hover:border-brand-green/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green dark:border-gray-700 dark:bg-gray-800"><div className="flex items-start justify-between gap-3"><div className="rounded-xl bg-brand-green/10 p-2.5 text-brand-green">{row.icon}</div><div className="text-2xl font-black text-gray-900 dark:text-white">{row.value}</div></div><div className="mt-4 font-semibold text-gray-900 dark:text-white">{row.label}</div><div className="mt-1 text-xs text-gray-500">{row.helper}</div></button>)}
+      </section>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Sipariş Analizi</h3>
-          <div className="h-72 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={salesData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-                <Tooltip 
-                  cursor={{ fill: 'transparent' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                />
-                <Bar dataKey="orders" fill="#f59e0b" radius={[4, 4, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-labelledby="recent-orders-title">
+          <div className="border-b border-gray-100 p-5 dark:border-gray-700"><h3 id="recent-orders-title" className="font-bold text-gray-900 dark:text-white">Son Siparişler</h3><p className="mt-1 text-xs text-gray-500">En yeni 10 gerçek sipariş.</p></div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-700">{data.recent_orders.map(order => <div key={order.id} className="flex items-center justify-between gap-3 p-4"><div className="min-w-0"><div className="truncate font-semibold text-gray-900 dark:text-white">{order.order_number}</div><div className="mt-1 text-xs text-gray-500">{order.status} · {order.payment_status} · {order.fulfillment_status}</div></div><div className="shrink-0 text-right"><div className="font-semibold text-gray-900 dark:text-white">{formatMinor(order.total_minor, order.currency)}</div><div className="mt-1 text-xs text-gray-500">{new Date(order.created_at).toLocaleDateString('tr-TR')}</div></div></div>)}{data.recent_orders.length === 0 && <div className="p-8 text-center text-sm text-gray-500">Henüz sipariş yok.</div>}</div>
+        </section>
+
+        <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-labelledby="admin-queue-title">
+          <h3 id="admin-queue-title" className="font-bold text-gray-900 dark:text-white">Diğer Yönetim Kuyrukları</h3>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="text-xs text-gray-500">Ürün değişiklik talepleri</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{data.counts.product_change_requests}</div></div>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="text-xs text-gray-500">Destek konuşmaları</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{data.counts.support_conversations}</div></div>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="text-xs text-gray-500">Hesap kapatma talepleri</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{data.counts.account_closures}</div></div>
+            <div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="text-xs text-gray-500">İşlenen satıcı ödemeleri</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{data.counts.producer_payouts}</div></div>
           </div>
-        </div>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function ProducerOverview({ data, setActiveTab }: { data: ProducerDashboardV2; setActiveTab?: (tab: string) => void }) {
+  const primaryBalance = data.finance.balances[0];
+  const profile = data.profile;
+  const summary = data.summary;
+  const commerce = data.commerce;
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div><div className="flex flex-wrap items-center gap-2"><h2 className="text-2xl font-bold text-gray-900 dark:text-white">{profile.display_name}</h2>{profile.is_verified && <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-800 dark:bg-green-950/40 dark:text-green-200"><BadgeCheck className="h-4 w-4" aria-hidden="true" /> Doğrulanmış satıcı</span>}</div><p className="mt-1 text-sm text-gray-500">{profile.production_location || 'Üretim yeri henüz belirtilmemiş'}</p></div><button type="button" onClick={() => setActiveTab?.('profile')} className="min-h-11 rounded-xl border border-gray-200 px-4 py-2 font-semibold text-gray-700 hover:border-brand-green hover:text-brand-green dark:border-gray-700 dark:text-gray-200">Mağaza profilini düzenle</button></div>
       </div>
 
-      {/* Recent Orders & Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col">
-          <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Son Siparişler</h3>
-            <button className="text-sm text-brand-green font-medium hover:underline">Tümünü Gör</button>
-          </div>
-          <div className="overflow-x-auto flex-1">
-            <table className="w-full text-left text-sm text-gray-600 dark:text-gray-400">
-              <thead className="bg-gray-50 dark:bg-gray-900/50 text-xs uppercase font-semibold text-gray-500">
-                <tr>
-                  <th className="px-6 py-4">Sipariş No</th>
-                  <th className="px-6 py-4">Müşteri</th>
-                  <th className="px-6 py-4">Tarih</th>
-                  <th className="px-6 py-4">Tutar</th>
-                  <th className="px-6 py-4">Durum</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {recentOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">#{order.id.substring(0, 8)}</td>
-                    <td className="px-6 py-4">{order.customer}</td>
-                    <td className="px-6 py-4">{new Date(order.date).toLocaleDateString('tr-TR')}</td>
-                    <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{Number(order.total) || 0} ₺</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        order.status === 'delivered' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                        order.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
-                        order.status === 'pending' ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400' :
-                        order.status === 'payment_pending_escrow' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                        order.status === 'shipped' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                        order.status === 'cancelled' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                        'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                      }`}>
-                        {order.status === 'delivered' ? 'Teslim Edildi' :
-                         order.status === 'completed' ? 'Tamamlandı' :
-                         order.status === 'pending' ? 'Bekliyor' :
-                         order.status === 'payment_pending_escrow' ? 'Ödeme Bekleniyor' :
-                         order.status === 'shipped' ? 'Kargoda' : 
-                         order.status === 'cancelled' ? 'İptal Edildi' : order.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-                {recentOrders.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-gray-500">Henüz sipariş bulunmuyor.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Takipçi" value={commerce.followerCount.toLocaleString('tr-TR')} helper="Gerçek mağaza takipleri" icon={<Users className="h-5 w-5" aria-hidden="true" />} />
+        <StatCard label="Müşteri" value={commerce.customerCount.toLocaleString('tr-TR')} helper="Sipariş vermiş benzersiz müşteri" icon={<Users className="h-5 w-5" aria-hidden="true" />} />
+        <StatCard label="Açık sipariş" value={commerce.openOrderCount.toLocaleString('tr-TR')} helper="Hazırlama ve sevkiyat sürecinde" icon={<ShoppingBag className="h-5 w-5" aria-hidden="true" />} />
+        <StatCard label="Yayındaki ürün" value={summary.publishedProducts.toLocaleString('tr-TR')} helper={`${summary.lowStockVariants} düşük stok varyantı`} icon={<Package className="h-5 w-5" aria-hidden="true" />} />
+      </div>
 
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Uygulamalar & Araçlar</h3>
-            </div>
-            <div className="p-4 flex-1 overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4">
-                <button 
-                  onClick={() => setActiveTab && setActiveTab('profile')}
-                  className="p-4 rounded-2xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 hover:bg-brand-green/10 hover:border-brand-green/30 transition-all flex flex-col items-center text-center gap-3 group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-brand-green group-hover:scale-110 transition-transform shadow-sm">
-                    <Store className="w-6 h-6" />
-                  </div>
-                  <span className="font-semibold text-gray-900 dark:text-white text-sm">Mağaza Profili</span>
-                </button>
-                <button 
-                  onClick={() => setActiveTab && setActiveTab('products')}
-                  className="p-4 rounded-2xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 hover:bg-orange-500/10 hover:border-orange-500/30 transition-all flex flex-col items-center text-center gap-3 group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform shadow-sm">
-                    <ShoppingBag className="w-6 h-6" />
-                  </div>
-                  <span className="font-semibold text-gray-900 dark:text-white text-sm">Ürünlerim</span>
-                </button>
-                <button 
-                  onClick={() => setActiveTab && setActiveTab('orders')}
-                  className="p-4 rounded-2xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 hover:bg-blue-500/10 hover:border-blue-500/30 transition-all flex flex-col items-center text-center gap-3 group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform shadow-sm">
-                    <Package className="w-6 h-6" />
-                  </div>
-                  <span className="font-semibold text-gray-900 dark:text-white text-sm">Siparişlerim</span>
-                </button>
-                <button 
-                  onClick={() => setActiveTab && setActiveTab('finance')}
-                  className="p-4 rounded-2xl border border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 hover:bg-purple-500/10 hover:border-purple-500/30 transition-all flex flex-col items-center text-center gap-3 group"
-                >
-                  <div className="w-12 h-12 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform shadow-sm">
-                    <DollarSign className="w-6 h-6" />
-                  </div>
-                  <span className="font-semibold text-gray-900 dark:text-white text-sm">Finans & Ödemeler</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-labelledby="producer-finance-title">
+        <div className="flex items-start justify-between gap-3"><div><h3 id="producer-finance-title" className="font-bold text-gray-900 dark:text-white">Satıcı Finans Özeti</h3><p className="mt-1 text-xs text-gray-500">Komisyon, bekleyen bakiye ve ödenebilir bakiye gerçek ledger kayıtlarından gelir.</p></div><CircleDollarSign className="h-5 w-5 text-gray-400" aria-hidden="true" /></div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="text-xs text-gray-500">Platform komisyonu</div><div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">%{(data.finance.commissionBasisPoints / 100).toLocaleString('tr-TR')}</div></div>{primaryBalance ? <><div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="text-xs text-gray-500">Bekleyen bakiye</div><div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{formatMinor(primaryBalance.pendingMinor, primaryBalance.currency)}</div></div><div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="text-xs text-gray-500">Ödenebilir bakiye</div><div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{formatMinor(primaryBalance.availableToPayoutMinor, primaryBalance.currency)}</div></div><div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="text-xs text-gray-500">Toplam net gelir</div><div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{formatMinor(primaryBalance.lifetimeNetMinor, primaryBalance.currency)}</div></div></> : <div className="sm:col-span-2 lg:col-span-3 rounded-xl bg-gray-50 p-4 text-sm text-gray-500 dark:bg-gray-900/60">Henüz finansal hareket yok.</div>}</div>
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Ürün ve izlenebilirlik durumları">
+        <button type="button" onClick={() => setActiveTab?.('products')} className="rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm hover:border-brand-green/40 dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Onay bekleyen ürün</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{summary.reviewProducts}</div></button>
+        <button type="button" onClick={() => setActiveTab?.('products')} className="rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm hover:border-brand-green/40 dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Reddedilen ürün</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{summary.rejectedProducts}</div></button>
+        <button type="button" onClick={() => setActiveTab?.('products')} className="rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm hover:border-brand-green/40 dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Bekleyen değişiklik</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{summary.pendingChanges}</div></button>
+        <button type="button" onClick={() => setActiveTab?.('stock')} className="rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-sm hover:border-brand-green/40 dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">İncelemedeki parti</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{summary.reviewBatches}</div></button>
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-labelledby="producer-recent-orders-title">
+        <div className="border-b border-gray-100 p-5 dark:border-gray-700"><h3 id="producer-recent-orders-title" className="font-bold text-gray-900 dark:text-white">Mağazanın Son Siparişleri</h3><p className="mt-1 text-xs text-gray-500">Yalnızca bu üreticiye ait sipariş kalemlerinin tutarı gösterilir.</p></div>
+        <div className="divide-y divide-gray-100 dark:divide-gray-700">{commerce.recentOrders.map(order => <button key={order.id} type="button" onClick={() => setActiveTab?.('orders')} className="flex w-full items-center justify-between gap-3 p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700/40"><div className="min-w-0"><div className="truncate font-semibold text-gray-900 dark:text-white">{order.orderNumber}</div><div className="mt-1 text-xs text-gray-500">{order.status} · {order.fulfillmentStatus}</div></div><div className="shrink-0 text-right"><div className="font-semibold text-gray-900 dark:text-white">{formatMinor(order.producerTotalMinor, order.currency)}</div><div className="mt-1 text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString('tr-TR')}</div></div></button>)}{commerce.recentOrders.length === 0 && <div className="p-8 text-center text-sm text-gray-500">Henüz mağaza siparişi yok.</div>}</div>
+      </section>
+    </div>
+  );
+}
+
+export function AdminDashboard({ setActiveTab }: AdminDashboardProps = {}) {
+  const { currentUser, authReady } = useCustomerSession();
+  const roles = useMemo(() => Array.isArray(currentUser?.roles) ? currentUser.roles.map(String) : [], [currentUser?.roles]);
+  const isAdmin = roles.includes('admin') || roles.includes('super_admin');
+  const isProducer = roles.includes('producer') || currentUser?.role === 'vendor';
+  const [adminData, setAdminData] = useState<AdminOperationsOverview | null>(null);
+  const [producerData, setProducerData] = useState<ProducerDashboardV2 | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+
+  const load = async () => {
+    if (!authReady || !currentUser) return;
+    setLoading(true);
+    setError('');
+    try {
+      if (isAdmin) {
+        setAdminData(await getAdminOperationsOverview());
+        setProducerData(null);
+      } else if (isProducer) {
+        setProducerData(await getMyProducerDashboardV2());
+        setAdminData(null);
+      } else {
+        throw new Error('Bu hesap yönetim paneline bağlı değil.');
+      }
+    } catch (err) {
+      setError(dashboardErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (authReady && currentUser) void load();
+  }, [authReady, currentUser?.id, isAdmin, isProducer]);
+
+  const refresh = async () => {
+    await load();
+    setToast('Panel verileri yenilendi.');
+    window.setTimeout(() => setToast(''), 2500);
+  };
+
+  if (!authReady || loading) return <div role="status" className="flex min-h-64 items-center justify-center gap-2 text-gray-500"><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Canlı panel verileri yükleniyor...</div>;
+
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Panel Genel Bakış</h1><p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Sahte sayaç veya rastgele metrik yok. Bu ekran yalnızca canlı Supabase sözleşmelerini gösterir.</p></div><button type="button" onClick={() => void refresh()} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 py-2 font-semibold text-gray-700 flex items-center justify-center gap-2 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"><RefreshCw className="h-4 w-4" aria-hidden="true" /> Yenile</button></header>
+
+      {error && <div role="alert" className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" /> <span>{error}</span></div>}
+      {!error && isAdmin && adminData && <AdminOverview data={adminData} setActiveTab={setActiveTab} />}
+      {!error && !isAdmin && producerData && <ProducerOverview data={producerData} setActiveTab={setActiveTab} />}
+
+      {toast && <div role="status" className="fixed bottom-4 right-4 z-[70] flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-white shadow-2xl"><Check className="h-5 w-5 text-green-400" aria-hidden="true" /> {toast}</div>}
     </div>
   );
 }
