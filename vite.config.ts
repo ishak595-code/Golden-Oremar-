@@ -8,6 +8,28 @@ import { VitePWA } from 'vite-plugin-pwa';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const vendorChunk = (id: string) => {
+  if (!id.includes('node_modules')) return undefined;
+
+  if (id.includes('/react/') || id.includes('/react-dom/') || id.includes('/scheduler/')) {
+    return 'vendor-react';
+  }
+
+  if (id.includes('/@supabase/') || id.includes('/ws/')) {
+    return 'vendor-supabase';
+  }
+
+  if (id.includes('/@capacitor/')) {
+    return 'vendor-capacitor';
+  }
+
+  if (id.includes('/lucide-react/')) {
+    return 'vendor-icons';
+  }
+
+  return undefined;
+};
+
 export default defineConfig(() => ({
   plugins: [
     react(),
@@ -59,6 +81,13 @@ export default defineConfig(() => ({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: vendorChunk,
+      },
     },
   },
   server: {
