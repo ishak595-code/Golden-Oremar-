@@ -18,10 +18,14 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Server-backed review rating/count and stock/variant truth are surfaced on customer product surfaces.
 - Producer verification, origin verification and follower metrics are shown from server-backed data.
 - Producer profile follow/follow-state uses the same server truth.
-- Existing completed search/card integrations are preserved and must not be rebuilt.
+
+## Completed quantity and add-to-cart interaction package
+- Product cards, catalog search, producer products and cart already use stock-aware quantity handling and were preserved.
+- Product detail now uses accessible 44px minimum +/- controls, polite quantity announcements and server-derived stock boundaries instead of the remaining raw number field.
+- Add-to-cart continues using the selected server variant and selected quantity; no client-side price or stock authority was introduced.
 
 ## Current active package
-Audit and complete only the still-missing accessible, stock-safe product quantity increase/decrease and add-to-cart microinteractions across remaining product/card surfaces. Reuse the existing search quantity integration rather than recreating it.
+Structured product content enrichment: description, origin, usage/storage and health/nutrition information using published/server-backed fields, with source/warning handling and no invented health claims.
 
 ## Release gates still required on Apple hardware
 A real Xcode archive/build, signing check and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
