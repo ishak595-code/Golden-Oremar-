@@ -1,0 +1,76 @@
+name: Final Verify Native Auth Recovery
+
+on:
+  push:
+    branches: [agent/native-auth-recovery]
+    paths:
+      - '.github/workflows/final-verify-native-auth-recovery.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Type-check new auth recovery modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx tsc --noEmit --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --jsx react-jsx --types vite/client \
+            src/lib/supabase.ts \
+            src/features/auth/api.ts \
+            src/features/auth/AuthScreen.tsx \
+            src/features/auth/PasswordRecoveryScreen.tsx \
+            src/features/auth/useAuthRecoveryCoordinator.ts
+      - name: Validate final auth recovery contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "Capacitor, type PluginListenerHandle" src/features/auth/useAuthRecoveryCoordinator.ts
+          grep -q "import { App as CapApp } from '@capacitor/app'" src/features/auth/useAuthRecoveryCoordinator.ts
+          grep -q "VITE_NATIVE_AUTH_REDIRECT_URL" src/features/auth/api.ts
+          grep -q "nativeConfigured === NATIVE_AUTH_CALLBACK_URL" src/features/auth/api.ts
+          grep -q "PasswordRecoveryScreen" src/App.tsx
+          grep -q "authRecovery.recoveryPending" src/App.tsx
+          grep -q "VITE_NATIVE_AUTH_REDIRECT_URL=com.goldenoremar.app://auth/callback" .env.example
+          grep -q 'android:scheme="com.goldenoremar.app"' android/app/src/main/AndroidManifest.xml
+          grep -q '<string>com.goldenoremar.app</string>' ios/App/App/Info.plist
+      - name: Production web build
+        run: npm run build
+      - name: Synchronize Capacitor projects
+        run: |
+          npx cap sync android
+          npx cap sync ios
+      - name: Compile Android debug app
+        working-directory: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+      - name: Commit verified final state
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/final-verify-native-auth-recovery.yml
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'Finalize typed native auth recovery flow'
+          git push origin HEAD:agent/native-auth-recovery
