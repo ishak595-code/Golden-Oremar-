@@ -1,0 +1,76 @@
+name: Verify Account Address Accessibility
+
+on:
+  push:
+    branches: [agent/account-navigation-address-accessibility]
+    paths:
+      - '.github/workflows/verify-account-address-accessibility.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Validate focused accessibility contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'data-account-panel-heading' src/features/account/ui.tsx
+          grep -q 'aria-labelledby={titleId}' src/features/account/ui.tsx
+          grep -q "querySelector<HTMLElement>('\[data-account-panel-heading\],h1,h2,h3')" src/features/account/AccountCenter.tsx
+          grep -q 'homeTitleRef.current?.focus' src/features/account/AccountCenter.tsx
+          grep -q "useAccessibleDialog<HTMLFormElement>" src/features/account/AddressesPanel.tsx
+          grep -q 'role="alertdialog"' src/features/account/AddressesPanel.tsx
+          grep -q 'Adres penceresini kapat' src/features/account/AddressesPanel.tsx
+          grep -q "setDeleteCandidate(a)" src/features/account/AddressesPanel.tsx
+          ! grep -q "onClick={() => remove(a.id)}" src/features/account/AddressesPanel.tsx
+      - name: Parse changed TypeScript modules
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import ts from 'typescript';
+          const files = [
+            'src/features/account/ui.tsx',
+            'src/features/account/AccountCenter.tsx',
+            'src/features/account/AddressesPanel.tsx',
+          ];
+          let failed = false;
+          for (const file of files) {
+            const result = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
+              fileName: file,
+              reportDiagnostics: true,
+              compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.ReactJSX },
+            });
+            const errors = (result.diagnostics || []).filter(d => d.category === ts.DiagnosticCategory.Error);
+            if (errors.length) {
+              failed = true;
+              for (const diagnostic of errors) console.error(file, ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
+            } else console.log(`${file}: parse clean`);
+          }
+          if (failed) process.exit(1);
+          NODE
+      - name: Production web build
+        run: npm run build
+      - name: Clean verifier from source branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/verify-account-address-accessibility.yml
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git commit -m 'Verify account address accessibility package'
+          git push origin HEAD:agent/account-navigation-address-accessibility
