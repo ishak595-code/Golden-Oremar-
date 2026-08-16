@@ -322,3 +322,25 @@ export async function unsubscribeMyNewsletter() {
   const { data, error } = await supabase.rpc('unsubscribe_my_newsletter_v1');
   return unwrap<boolean>(data, error);
 }
+
+export async function registerNativePushToken(input: {
+  provider: 'fcm' | 'apns';
+  platform: 'android' | 'ios';
+  token: string;
+  environment: 'development' | 'production';
+}) {
+  const { data, error } = await supabase.rpc('register_push_token_v1', {
+    p_provider: input.provider,
+    p_platform: input.platform,
+    p_token: input.token,
+    p_environment: input.environment,
+  });
+  return unwrap<any>(data, error);
+}
+
+export async function unregisterNativePushDevice(deviceId: string) {
+  const { data, error } = await supabase.rpc('unregister_push_device_v1', {
+    p_device_id: deviceId,
+  });
+  return unwrap<boolean>(data, error);
+}

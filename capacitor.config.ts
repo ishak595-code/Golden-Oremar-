@@ -1,3 +1,4 @@
+/// <reference types="@capacitor/push-notifications" />
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
@@ -11,6 +12,9 @@ const config: CapacitorConfig = {
       showSpinner: true,
       androidSpinnerStyle: "large",
       spinnerColor: "#ffffff",
+    },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'banner', 'list'],
     },
   },
 };

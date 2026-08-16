@@ -4,6 +4,7 @@ import{ErrorState,Panel}from'./ui';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 import PremiumPreferencesPanel from'./PremiumPreferencesPanel';
 import type{AppTheme}from'../appearance/theme';
+import{disableNativePushRegistration,enableNativePushRegistration,getNativePushPermission,isNativePushPlatform,isNativePushProviderConfigured}from'../notifications/nativePush';
 
 const keys=[
  ['orderPush','Sipariş durumları'],['paymentPush','Ödeme durumları'],['shipmentPush','Kargo ve teslimat'],
@@ -15,6 +16,7 @@ type SessionAction='current'|'others'|'all'|null;
 
 export default function SettingsPanel({closure,onChanged,profile,theme='light',onThemeChange}:{closure:any;onChanged:()=>Promise<void>|void;profile?:any;theme?:AppTheme;onThemeChange?:(theme:AppTheme)=>void}){
  const[prefs,setPrefs]=useState<any>(null);const[prefsLoading,setPrefsLoading]=useState(true);const[prefsBusy,setPrefsBusy]=useState(false);const[prefsError,setPrefsError]=useState('');const[prefsMessage,setPrefsMessage]=useState('');
+ const[nativePushPermission,setNativePushPermission]=useState<string>('unknown');const nativePushPlatform=isNativePushPlatform();const nativePushConfigured=isNativePushProviderConfigured();
  const[currentPassword,setCurrentPassword]=useState('');const[newPassword,setNewPassword]=useState('');const[confirmPassword,setConfirmPassword]=useState('');const[passwordBusy,setPasswordBusy]=useState(false);const[passwordError,setPasswordError]=useState('');const[passwordMessage,setPasswordMessage]=useState('');
  const[newsletter,setNewsletter]=useState<any>(null);const[newsletterLoading,setNewsletterLoading]=useState(true);const[newsletterBusy,setNewsletterBusy]=useState(false);const[newsletterError,setNewsletterError]=useState('');const[newsletterMessage,setNewsletterMessage]=useState('');
  const[sessionBusy,setSessionBusy]=useState<SessionAction>(null);const[sessionError,setSessionError]=useState('');const[sessionMessage,setSessionMessage]=useState('');
@@ -32,11 +34,14 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
   catch{setNewsletter({status:'none',email:profile?.email||null});setNewsletterError('E-bülten durumu şu anda alınamadı.');}
   finally{setNewsletterLoading(false);}
  }
- useEffect(()=>{void loadPrefs();void loadNewsletter();},[]);
+ useEffect(()=>{void loadPrefs();void loadNewsletter();if(nativePushPlatform){void getNativePushPermission().then(value=>setNativePushPermission(String(value))).catch(()=>setNativePushPermission('unknown'));}},[]);
 
  async function savePrefs(){
   if(!prefs||prefsBusy)return;
-  try{setPrefsBusy(true);setPrefsError('');setPrefsMessage('');setPrefs(await updateNotificationPreferences(prefs));setPrefsMessage('Bildirim tercihleriniz kaydedildi.');}
+  try{setPrefsBusy(true);setPrefsError('');setPrefsMessage('');
+   if(nativePushPlatform&&prefs.pushEnabled){const registration=await enableNativePushRegistration();if(registration.status==='not-configured')throw new Error('Cihaz push sağlayıcısı henüz üretim anahtarlarıyla yapılandırılmadı.');if(registration.status==='denied')throw new Error('Cihaz bildirim izni verilmedi. Sistem ayarlarından bildirimlere izin verin.');setNativePushPermission('granted');}
+   if(nativePushPlatform&&!prefs.pushEnabled){await disableNativePushRegistration();setNativePushPermission(String(await getNativePushPermission()));}
+   setPrefs(await updateNotificationPreferences(prefs));setPrefsMessage('Bildirim tercihleriniz kaydedildi.');}
   catch(e:any){setPrefsError(e?.message||'Bildirim tercihleri kaydedilemedi.');}
   finally{setPrefsBusy(false);}
  }
@@ -115,7 +120,7 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
    {prefsError?<ErrorState message={prefsError} onRetry={()=>void loadPrefs()}/>:null}
    {prefsMessage?<div role="status" aria-live="polite" className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{prefsMessage}</div>:null}
    {prefsLoading?<div role="status" className="text-sm text-gray-500">Bildirim ayarları yükleniyor…</div>:prefs?<div className="space-y-2" aria-busy={prefsBusy}>
-    <label className="flex min-h-11 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"><span className="font-bold">Push bildirimleri</span><input disabled={prefsBusy} type="checkbox" className="h-5 w-5 shrink-0" checked={!!prefs.pushEnabled} onChange={e=>setPrefs({...prefs,pushEnabled:e.target.checked})}/></label>
+    <label className="flex min-h-11 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"><span className="font-bold">Push bildirimleri</span><input disabled={prefsBusy} type="checkbox" className="h-5 w-5 shrink-0" checked={!!prefs.pushEnabled} onChange={e=>setPrefs({...prefs,pushEnabled:e.target.checked})}/></label>{nativePushPlatform?<div className={`rounded-xl border p-3 text-sm ${nativePushConfigured?'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200':'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200'}`}><div className="font-semibold">Cihaz push durumu</div><div className="mt-1">{nativePushConfigured?`Sağlayıcı yapılandırması hazır. Sistem izni: ${nativePushPermission}.`:'Uygulama kodu hazır. FCM/APNs üretim yapılandırması eklenmeden cihaz kaydı açılmaz.'}</div><div className="mt-1 text-xs opacity-80">Bildirim izni yalnız Push bildirimleri seçilip kaydedildiğinde istenir.</div></div>:null}
     {keys.map(([key,label])=><label key={key} className="flex min-h-11 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"><span>{label}</span><input disabled={prefsBusy} type="checkbox" className="h-5 w-5 shrink-0" checked={!!prefs[key]} onChange={e=>setPrefs({...prefs,[key]:e.target.checked})}/></label>)}
     <button type="button" disabled={prefsBusy} onClick={()=>void savePrefs()} className="min-h-11 w-full rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{prefsBusy?'Kaydediliyor…':'Bildirim tercihlerini kaydet'}</button>
    </div>:null}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { useCustomerSession } from './features/auth/useCustomerSession';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { useAccessibleDialog } from './features/accessibility/useAccessibleDialog';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { useDeviceTheme } from './features/appearance/useDeviceTheme';import { useConnectivity } from './features/resilience/useConnectivity';
+import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { useCustomerSession } from './features/auth/useCustomerSession';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { useAccessibleDialog } from './features/accessibility/useAccessibleDialog';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { useDeviceTheme } from './features/appearance/useDeviceTheme';import { useConnectivity } from './features/resilience/useConnectivity';import { subscribeNativePushActions } from './features/notifications/nativePush';
 
 
 const AdminPage = React.lazy(() => import('./pages/LegacyAdminEntry'));
@@ -94,6 +94,29 @@ function AppContent() {
   const [accountView, setAccountView] = useState<string>('menu');
   const authRecovery = useAuthRecoveryCoordinator();
   const { unreadCount, setUnreadCount, refreshUnreadCount } = useUnreadNotificationCount(!!currentUser);
+
+  useEffect(() => subscribeNativePushActions(({ actionUrl, metadata }) => {
+    const url = String(actionUrl || '');
+    const meta = metadata as Record<string, any>;
+    if (url.includes('/messages/')) {
+      const conversationId = String(meta.conversationId || url.split('/messages/')[1]?.split(/[?#/]/)[0] || '');
+      setAccountView(conversationId ? `messages:${conversationId}` : 'messages');
+    } else if (meta.orderId) {
+      setAccountView(`orders:${String(meta.orderId)}`);
+    } else if (url.includes('/orders/')) {
+      const orderId = String(url.split('/orders/')[1]?.split(/[?#/]/)[0] || '');
+      setAccountView(orderId ? `orders:${orderId}` : 'orders');
+    } else if (url.includes('/settings')) {
+      setAccountView('settings');
+    } else if (url.includes('/messages')) {
+      setAccountView('messages');
+    } else {
+      setAccountView('notifications');
+    }
+    setCurrentTab('account');
+    setTabHistory(previous => previous[previous.length - 1] === 'account' ? previous : [...previous, 'account']);
+    void refreshUnreadCount();
+  }), [refreshUnreadCount]);
   const { isOnline, restoreSequence } = useConnectivity();
 
   useEffect(() => {
