@@ -1,0 +1,74 @@
+name: Apply Mobile Shell Accessibility
+
+on:
+  push:
+    branches: [agent/mobile-shell-accessibility-premium]
+    paths:
+      - '.github/workflows/apply-mobile-shell-accessibility.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Apply exact mobile shell patch
+        run: node migration-tools/patch-mobile-shell-accessibility-v2.mjs
+      - name: Validate shell accessibility contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'aria-label="Ürün, üretici veya köy ara"' src/App.tsx
+          grep -q 'min-h-11 min-w-11' src/App.tsx
+          grep -q '<nav aria-label="Ana gezinme"' src/App.tsx
+          grep -q "aria-current={active ? 'page' : undefined}" src/App.tsx
+          grep -q 'text-\[11px\]' src/App.tsx
+          grep -q 'accessibilityLabel={cart.length > 0' src/App.tsx
+          grep -q 'accessibilityLabel={unreadCount > 0' src/App.tsx
+          ! grep -q 'aria-label="Golden Oremar Logo"' src/App.tsx
+          ! grep -q 'className="relative p-2 text-gray-500 dark:text-gray-440' src/App.tsx
+      - name: Parse App source
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import ts from 'typescript';
+          const file = 'src/App.tsx';
+          const result = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
+            fileName: file,
+            reportDiagnostics: true,
+            compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext, jsx: ts.JsxEmit.ReactJSX },
+          });
+          const errors = (result.diagnostics || []).filter(d => d.category === ts.DiagnosticCategory.Error);
+          if (errors.length) {
+            for (const diagnostic of errors) console.error(ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n'));
+            process.exit(1);
+          }
+          console.log('src/App.tsx: parse clean');
+          NODE
+      - name: Production web build
+        run: npm run build
+      - name: Commit verified shell and clean temporary files
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/apply-mobile-shell-accessibility.yml
+          rm -f migration-tools/patch-mobile-shell-accessibility.mjs
+          rm -f migration-tools/patch-mobile-shell-accessibility-v2.mjs
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'Finalize premium accessible mobile shell'
+          git push origin HEAD:agent/mobile-shell-accessibility-premium
