@@ -10,6 +10,7 @@ export type AccountView =
   | 'gifts'
   | 'payments'
   | 'notifications'
+  | 'messages'
   | 'contact'
   | 'support'
   | 'seller'
