@@ -27,26 +27,7 @@ jobs:
           java-version: '21'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Bind temporary patch sections to React state markers
-        shell: bash
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path=Path('migration-tools/harden-mobile-sheets-a11y-v3.mjs')
-          text=path.read_text()
-          replacements={
-            "'      {/* Filter Bottom Sheet / Drawer */}'":"'{isFilterPanelOpen && ('",
-            "'      {/* Sort Bottom Sheet / Drawer */}'":"'{isSortPanelOpen && ('",
-            "'      {/* Toast */}'":"'{toast.visible && ('",
-            "'      {/* Real Gift Order Flow */}'":"'function App()'",
-          }
-          for old,new in replacements.items():
-              if text.count(old)!=1:
-                  raise SystemExit(f'section boundary marker changed: {old}')
-              text=text.replace(old,new,1)
-          path.write_text(text)
-          PY
-      - name: Apply section-scoped sheet accessibility patch
+      - name: Apply sheet accessibility patch
         run: node migration-tools/harden-mobile-sheets-a11y-v3.mjs
       - name: Type-check accessibility hook
         run: npx tsc --noEmit --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --jsx react-jsx --types vite/client src/features/accessibility/useAccessibleDialog.ts
