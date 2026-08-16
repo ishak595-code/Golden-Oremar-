@@ -4,7 +4,9 @@ import { App as CapApp } from '@capacitor/app';
 import { supabase } from '../../lib/supabase';
 import {
   clearBrowserAuthCallbackArtifacts,
+  closeNativeAuthBrowser,
   consumeNativeAuthCallbackUrl,
+  isNativeAuthCallbackUrl,
   isPasswordRecoveryCallbackUrl,
 } from './api';
 
@@ -33,12 +35,15 @@ export function useAuthRecoveryCoordinator() {
 
     const handleNativeUrl = async (url?: string) => {
       if (!url) return;
+      const isAuthCallback = isNativeAuthCallbackUrl(url);
       try {
         const result = await consumeNativeAuthCallbackUrl(url);
         if (!result.handled || disposed) return;
+        await closeNativeAuthBrowser();
         setCallbackHandled(true);
         if (result.recovery) setRecoveryPending(true);
       } catch (e: any) {
+        if (isAuthCallback) await closeNativeAuthBrowser();
         if (!disposed) {
           setCallbackHandled(true);
           setError(String(e?.message || 'Kimlik doğrulama bağlantısı işlenemedi.'));

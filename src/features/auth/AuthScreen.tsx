@@ -1,12 +1,22 @@
 import React, { useRef, useState } from 'react';
 import { Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react';
-import { requestPasswordReset, signInWithEmail, signUpWithEmail } from './api';
+import {
+  getSocialAuthAvailability,
+  requestPasswordReset,
+  signInWithEmail,
+  signUpWithEmail,
+  startSocialAuth,
+  type SocialAuthProvider,
+} from './api';
 
 type Mode = 'login' | 'register' | 'forgot';
 
 function authErrorMessage(raw: string) {
   const value = raw.toLowerCase();
   if (value.includes('native_auth_redirect_not_configured')) return 'Mobil şifre sıfırlama bağlantısı henüz güvenli dönüş adresine bağlanmamış. Lütfen destek ile iletişime geçin.';
+  if (value.includes('social_auth_redirect_not_configured')) return 'Sosyal giriş için güvenli uygulama dönüş adresi henüz yapılandırılmamış.';
+  if (value.includes('social_provider_not_configured')) return 'Bu sosyal giriş sağlayıcısı henüz Golden Oremar hesabına güvenli biçimde bağlanmamış.';
+  if (value.includes('provider is not enabled') || value.includes('unsupported provider')) return 'Bu sosyal giriş sağlayıcısı Supabase tarafında henüz etkin değil.';
   if (value.includes('invalid login credentials')) return 'E-posta veya şifre hatalı.';
   if (value.includes('email not confirmed')) return 'E-posta adresinizi doğruladıktan sonra giriş yapabilirsiniz.';
   if (value.includes('password should be at least')) return 'Şifre yeterince güçlü değil.';
@@ -24,6 +34,8 @@ export default function AuthScreen({
   title?: string;
   description?: string;
 }) {
+  const socialAvailability = getSocialAuthAvailability();
+  const hasSocialAuth = socialAvailability.google || socialAvailability.facebook;
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,6 +43,7 @@ export default function AuthScreen({
   const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [socialBusy, setSocialBusy] = useState<SocialAuthProvider | null>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const errorRef = useRef<HTMLDivElement>(null);
@@ -40,6 +53,21 @@ export default function AuthScreen({
     setError('');
     setMessage('');
     setPassword('');
+  }
+
+  async function socialSignIn(provider: SocialAuthProvider) {
+    setError('');
+    setMessage('');
+    try {
+      setSocialBusy(provider);
+      await startSocialAuth(provider);
+      setMessage(`${provider === 'google' ? 'Google' : 'Facebook'} güvenli giriş penceresi açıldı. İşlemi tamamladıktan sonra Golden Oremar'a geri döneceksiniz.`);
+    } catch (e: any) {
+      setError(authErrorMessage(String(e?.message || e)));
+      queueMicrotask(() => errorRef.current?.focus());
+    } finally {
+      setSocialBusy(null);
+    }
   }
 
   async function submit(event: React.FormEvent) {
@@ -91,18 +119,32 @@ export default function AuthScreen({
     }
   }
 
+  const interactionBusy = busy || socialBusy !== null;
+
   return <main className="mx-auto flex min-h-[70vh] max-w-lg items-center p-4 sm:p-6" aria-labelledby="auth-title">
-    <section className="w-full rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-7">
+    <section className="w-full rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-7" aria-busy={interactionBusy}>
       <div className="text-center">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-gold/10 text-brand-gold"><LockKeyhole className="h-7 w-7" /></div>
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-green/10 text-brand-green"><LockKeyhole className="h-7 w-7" /></div>
         <h1 id="auth-title" className="mt-4 text-2xl font-bold">{title}</h1>
         <p className="mt-2 text-sm text-gray-500">{description}</p>
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-2" role="tablist" aria-label="Hesap işlemi">
-        <button type="button" role="tab" aria-selected={mode === 'login'} onClick={() => switchMode('login')} className={`min-h-11 rounded-xl border font-bold ${mode === 'login' ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : ''}`}>Giriş Yap</button>
-        <button type="button" role="tab" aria-selected={mode === 'register'} onClick={() => switchMode('register')} className={`min-h-11 rounded-xl border font-bold ${mode === 'register' ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : ''}`}>Hesap Aç</button>
+        <button type="button" role="tab" aria-selected={mode === 'login'} disabled={interactionBusy} onClick={() => switchMode('login')} className={`min-h-11 rounded-xl border font-bold disabled:opacity-50 ${mode === 'login' ? 'border-brand-green bg-brand-green/10 text-brand-green' : ''}`}>Giriş Yap</button>
+        <button type="button" role="tab" aria-selected={mode === 'register'} disabled={interactionBusy} onClick={() => switchMode('register')} className={`min-h-11 rounded-xl border font-bold disabled:opacity-50 ${mode === 'register' ? 'border-brand-green bg-brand-green/10 text-brand-green' : ''}`}>Hesap Aç</button>
       </div>
+
+      {mode !== 'forgot' && hasSocialAuth ? <div className="mt-5 space-y-3" aria-label="Sosyal hesap ile devam et">
+        {socialAvailability.google ? <button type="button" disabled={interactionBusy} onClick={() => void socialSignIn('google')} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white px-4 font-bold text-gray-900 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:hover:bg-gray-900">
+          <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-full border text-sm font-black">G</span>
+          {socialBusy === 'google' ? 'Google açılıyor…' : 'Google ile devam et'}
+        </button> : null}
+        {socialAvailability.facebook ? <button type="button" disabled={interactionBusy} onClick={() => void socialSignIn('facebook')} className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white px-4 font-bold text-gray-900 shadow-sm transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:hover:bg-gray-900">
+          <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-full border text-sm font-black">f</span>
+          {socialBusy === 'facebook' ? 'Facebook açılıyor…' : 'Facebook ile devam et'}
+        </button> : null}
+        <div className="flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /><span className="text-xs font-semibold text-gray-400">veya e-posta ile</span><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /></div>
+      </div> : null}
 
       <form onSubmit={submit} className="mt-5 space-y-4" noValidate>
         {error ? <div ref={errorRef} tabIndex={-1} role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div> : null}
@@ -117,14 +159,14 @@ export default function AuthScreen({
 
         {mode !== 'forgot' ? <label className="block"><span className="text-sm font-semibold">Şifre</span><div className="relative mt-1"><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} className="min-h-12 w-full rounded-xl border bg-transparent px-3 pr-12" /><button type="button" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'} className="absolute right-1 top-1/2 min-h-11 min-w-11 -translate-y-1/2 rounded-lg p-2 text-gray-500">{showPassword ? <EyeOff className="mx-auto h-5 w-5" /> : <Eye className="mx-auto h-5 w-5" />}</button></div>{mode === 'register' ? <span className="mt-1 block text-xs text-gray-500">En az 8 karakter kullanın.</span> : null}</label> : null}
 
-        <button disabled={busy} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50">{busy ? 'İşlem yapılıyor…' : mode === 'login' ? 'Giriş Yap' : mode === 'register' ? 'Hesap Oluştur' : 'Sıfırlama Bağlantısı Gönder'}</button>
+        <button disabled={interactionBusy} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50">{busy ? 'İşlem yapılıyor…' : mode === 'login' ? 'Giriş Yap' : mode === 'register' ? 'Hesap Oluştur' : 'Sıfırlama Bağlantısı Gönder'}</button>
       </form>
 
       <div className="mt-4 text-center">
-        {mode === 'login' ? <button type="button" onClick={() => switchMode('forgot')} className="min-h-11 px-3 text-sm font-semibold text-brand-gold">Şifremi unuttum</button> : mode === 'forgot' ? <button type="button" onClick={() => switchMode('login')} className="min-h-11 px-3 text-sm font-semibold text-brand-gold">Giriş ekranına dön</button> : null}
+        {mode === 'login' ? <button type="button" disabled={interactionBusy} onClick={() => switchMode('forgot')} className="min-h-11 px-3 text-sm font-semibold text-brand-green disabled:opacity-50">Şifremi unuttum</button> : mode === 'forgot' ? <button type="button" disabled={interactionBusy} onClick={() => switchMode('login')} className="min-h-11 px-3 text-sm font-semibold text-brand-green disabled:opacity-50">Giriş ekranına dön</button> : null}
       </div>
 
-      <div className="mt-5 rounded-xl bg-gray-50 p-3 text-xs leading-5 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Google, Apple ve Facebook girişleri ancak ilgili Supabase sağlayıcıları ve mobil yönlendirme adresleri gerçekten yapılandırıldıktan sonra gösterilecektir. Bu sürüm sahte sosyal giriş yapmaz.</div>
+      {!hasSocialAuth ? <div className="mt-5 rounded-xl bg-gray-50 p-3 text-xs leading-5 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Google ve Facebook girişleri yalnız ilgili sağlayıcılar Golden Oremar için gerçekten yapılandırıldığında otomatik olarak görünür. Bu sürüm sahte sosyal giriş butonu göstermez.</div> : null}
     </section>
   </main>;
 }
