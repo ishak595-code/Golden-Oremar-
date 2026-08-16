@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, BookOpen, Heart, Leaf, Search, Utensils, X } from 'lucide-react';
 import { contentPublicUrl, getPublicContentEntry, listContentFavoriteReferences, listPublicContent, toggleContentFavorite, type ContentType } from './api';
+import ProductSafetyPanel from './ProductSafetyPanel';
 
 type Props = {
   onBack: () => void;
@@ -115,6 +116,7 @@ function ContentDialog({ detail, onClose, onOpenProduct }: { detail: any; onClos
     {image ? <img src={image} alt="" className="max-h-80 w-full object-cover" /> : null}
     <div className="p-5 sm:p-7">
       {detail.summary ? <p className="mb-5 text-lg leading-7 text-gray-600 dark:text-gray-300">{detail.summary}</p> : null}
+      {detail.type === 'product_health' ? <ProductSafetyPanel safety={detail.safety} summary={detail.summary} heading="Saklama, kullanım ve güvenlik" className="mb-5" /> : null}
       {detail.sanitizedHtml ? <div className="prose max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: detail.sanitizedHtml }} /> : <div className="whitespace-pre-wrap leading-7 text-gray-700 dark:text-gray-300">{detail.markdown}</div>}
       {detail.type !== 'recipe' ? <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Bu içerik genel ürün kullanımı ve gıda güvenliği bilgisidir; tanı veya tedavi önerisi değildir.</div> : null}
       {detail.relatedProduct ? <button onClick={() => { onClose(); onOpenProduct?.(detail.relatedProduct.slug); }} className="mt-5 min-h-11 rounded-xl bg-brand-green px-4 font-bold text-white">İlgili ürünü aç</button> : null}
