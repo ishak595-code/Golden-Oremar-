@@ -1,36 +1,52 @@
 {
-  "generatedAt": "2026-08-16T21:32:00+00:00",
+  "generatedAt": "2026-08-16T22:44:00+00:00",
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "liveMigrationCount": 120,
-  "latestMigration": "20260816211940_add_remaining_foreign_key_indexes_v2",
+  "liveMigrationCount": 122,
+  "latestMigration": "20260816224048_harden_product_shipping_weight_input",
   "securityAdvisorLints": 0,
   "performanceBlockingLints": 0,
   "edgeFunctions": {
-    "contact-submit": {
-      "status": "ACTIVE",
-      "version": 1
-    },
-    "event-reservation": {
-      "status": "ACTIVE",
-      "version": 2
-    }
+    "contact-submit": { "status": "ACTIVE", "version": 1 },
+    "event-reservation": { "status": "ACTIVE", "version": 2 }
   },
   "validation": {
     "typescriptScope": "shipped-application-source",
     "typescriptSyntaxErrors": 0,
     "productionWebBuild": "PASS",
+    "releaseArchitectureAudit": "PASS",
     "firebaseRuntimeResidue": "PASS_NONE_FOUND",
-    "mobileBrandAssets": "REGENERATED_FROM_SOURCE_SVG",
-    "androidReleaseBundle": "PENDING_RECHECK_AFTER_ASSET_REGENERATION",
-    "iosSimulatorCompile": "PENDING_RECHECK_AFTER_ASSET_REGENERATION",
-    "mobileQualityGate": "RUNNING"
+    "legacyStaticCatalogRuntime": "PASS_RETIRED",
+    "catalogReadinessQualityGate": "PASS",
+    "supabaseSecurityAdvisor": "PASS_ZERO_LINTS",
+    "mobileBrandAssets": "PASS_VALIDATED_PNG",
+    "androidReleaseBundle": "LAST_GREEN_AWAITING_LATEST_HEAD_RECHECK",
+    "iosSimulatorCompile": "LAST_GREEN_AWAITING_LATEST_HEAD_RECHECK",
+    "mobileQualityGate": "RUNNING_LATEST_HEAD"
   },
   "truthfulnessChecks": {
     "adminFakeMetricsRetired": true,
     "firebaseDataContextRetired": true,
     "legacyNodeSqliteRuntimeRetired": true,
+    "legacyStaticProductSourceRetired": true,
+    "obsoleteSourceMutatorsRetired": true,
     "productProducerMetricsDynamic": true,
-    "customerProductSafetyDynamic": true
+    "customerProductSafetyDynamic": true,
+    "catalogIntegrityMetricsDynamic": true,
+    "sellerShippingWeightValidatedClientAndServer": true,
+    "internationalReadinessDoesNotInventShippingWeight": true
+  },
+  "liveCatalogAudit": {
+    "publishedActiveProducts": 42,
+    "activeVerifiedOriginVerifiedProducers": 44,
+    "categories": 9,
+    "publishedMissingCategory": 0,
+    "publishedMissingProducer": 0,
+    "publishedMissingImages": 0,
+    "publishedInvalidPrimaryImageCount": 0,
+    "publishedMissingActivePricedVariant": 0,
+    "publishedTrackedWithoutInventory": 0,
+    "activeVariantsMissingShippingWeightForPerishableProducts": 14,
+    "note": "Missing real shipping weights are surfaced to seller and admin instead of being fabricated."
   }
 }

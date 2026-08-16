@@ -1,8 +1,8 @@
 {
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "appliedMigrationCount": 120,
-  "latestMigration": "20260816211940_add_remaining_foreign_key_indexes_v2",
+  "appliedMigrationCount": 122,
+  "latestMigration": "20260816224048_harden_product_shipping_weight_input",
   "securityAdvisorLints": 0,
   "performanceBlockingLints": 0,
   "edgeFunctions": {
@@ -57,9 +57,15 @@
     "firebase-datacontext-runtime-retired",
     "firebase-package-retired",
     "legacy-node-sqlite-runtime-retired",
+    "legacy-source-mutators-retired",
+    "legacy-static-catalog-data-retired",
+    "metadata-microphone-residue-retired",
+    "release-architecture-audit",
+    "admin-catalog-integrity-readiness",
+    "seller-shipping-weight-integrity",
     "react19-types-aligned",
     "cross-platform-mobile-quality-gate"
   ],
   "integrationEntryPoint": "frontend/integration/apply-all-current.mjs",
-  "nextBlock": "cross-platform-release-validation-performance-accessibility-and-external-provider-readiness"
+  "nextBlock": "native-push-provider-preparation-payment-provider-readiness-final-accessibility-performance-and-release-audit"
 }
