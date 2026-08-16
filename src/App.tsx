@@ -982,7 +982,7 @@ function AppContent() {
                 id="mobile-search-input"
                 type="text"
                 className="block w-full pl-[46px] pr-[46px] py-[14px] bg-gray-100 hover:bg-gray-200/40 dark:bg-[#16191E] dark:hover:bg-[#1d2127] border border-transparent rounded-xl text-xs text-brand-text placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-brand-gold/45 focus:bg-white dark:focus:bg-[#16191E] transition-all font-medium h-11"
-                placeholder="Şifa dolusu doğal ürünler..."
+                placeholder="Ürün, üretici veya köy ara..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
@@ -1074,7 +1074,7 @@ function AppContent() {
                   id="unified-search-input"
                   type="text"
                   className="block w-full pl-[48px] pr-[48px] py-[14px] bg-gray-100 hover:bg-gray-200/40 dark:bg-[#16191E] dark:hover:bg-[#1d2127] border border-transparent rounded-xl text-sm text-brand-text placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-brand-gold/45 focus:bg-white dark:focus:bg-[#16191E] transition-all shadow-inner focus:shadow-md font-medium h-[46px]"
-                  placeholder="Şifa arayın: Karakovan Balı, Köy Tereyağı, Organik Işkın..."
+                  placeholder="Ürün, üretici veya köy ara: Karakovan Balı, Köy Tereyağı, Işkın..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
@@ -1163,7 +1163,7 @@ function AppContent() {
                 <span>Sırala: {
                   sortOption === 'price-asc' ? 'En Düşük Fiyat' :
                   sortOption === 'price-desc' ? 'En Yüksek Fiyat' :
-                  sortOption === 'rating' ? 'En Popüler' : 'Önerilen'
+                  sortOption === 'rating' ? 'En Yüksek Puan' : 'Önerilen'
                 }</span>
               </button>
             </div>
@@ -1275,7 +1275,7 @@ function AppContent() {
             <div className="text-center space-y-2 w-full px-4">
               <h3 className="text-base font-bold text-white tracking-wide">Sizi dinliyoruz...</h3>
               <p className="text-sm font-semibold text-[#CBD5E0] min-h-[3rem] px-4 py-2 bg-gray-900/40 rounded-xl border border-gray-850/50 break-words leading-relaxed max-h-32 overflow-y-auto font-mono">
-                {speechText || "Doğal ürünlerimizin adını fısıldayın..."}
+                {speechText || "Aramak istediğiniz ürünün adını söyleyin..."}
               </p>
               {voiceError && (
                 <p className="text-xs text-red-500 font-medium animate-pulse">{voiceError}</p>
@@ -1308,7 +1308,7 @@ function AppContent() {
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <SlidersHorizontal className="w-4 h-4 text-brand-gold" /> Gelişmiş Filtreleme
               </h3>
-              <p className="text-xs text-gray-400">Aradığınız şifayı kolayca konumlandırın.</p>
+              <p className="text-xs text-gray-400">Kategori, köken ve fiyatla sonuçları daraltın.</p>
             </div>
 
             <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
@@ -1657,10 +1657,10 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
                         <div className="bg-brand-gold/10 dark:bg-brand-gold/5 rounded-3xl p-6 md:p-10 border border-brand-gold/20">
                           <div className="flex flex-col lg:flex-row gap-8 items-center">
                             <div className="flex-1 space-y-4">
-                              <div className="text-brand-gold font-bold tracking-widest uppercase text-xs">Günün Fırsatı</div>
-                              <h2 className="text-3xl md:text-4xl font-serif text-brand-green dark:text-white">Bugünün Önerisi</h2>
+                              <div className="text-brand-gold font-bold tracking-widest uppercase text-xs">Öne Çıkan Ürün</div>
+                              <h2 className="text-3xl md:text-4xl font-serif text-brand-green dark:text-white">Katalog Seçkisi</h2>
                               <p className="text-gray-600 dark:text-gray-400 text-lg">
-                                Golden Oremar'ın en seçkin ürünlerinden biri bugün sizin için özel olarak seçildi. Doğallığı ve lezzetiyle sofranıza değer katacak.
+                                Golden Oremar kataloğundan öne çıkan bir ürün. Ürün, üretici, varyant ve menşe bilgilerini inceleyerek karar verebilirsiniz.
                               </p>
                             </div>
                             <div className="w-full lg:w-1/2 xl:w-1/3">
@@ -1690,12 +1690,12 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
                           </div>
                           <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
                             <div>
-                              <div className="text-brand-gold font-bold tracking-widest uppercase text-xs mb-3">Sınırlı Üretim</div>
+                              <div className="text-brand-gold font-bold tracking-widest uppercase text-xs mb-3">Mevsim Seçkisi</div>
                               <h2 className="text-3xl md:text-5xl font-serif text-brand-green dark:text-white mb-4">
                                 {section.title}
                               </h2>
                               <p className="text-gray-600 dark:text-gray-400 max-w-xl text-lg">
-                                Golden Oremar'ın uyanışıyla gelen taze şifalı otlar, ilk sağım sütler ve doğanın en nadide hediyeleri.
+                                Mevsimlik ürünleri, üretici bilgilerini ve mevcut ürün ayrıntılarını bu seçkide inceleyin.
                               </p>
                             </div>
                           </div>
