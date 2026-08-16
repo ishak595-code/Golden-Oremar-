@@ -1,0 +1,50 @@
+name: Integrate Checkout Hardening and Shipping Quote Support
+
+on:
+  push:
+    branches: [agent/checkout-hardening-support-quote]
+    paths:
+      - '.github/workflows/integrate-checkout-hardening-support-quote.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Patch checkout flow
+        run: node migration-tools/integration/apply-checkout-hardening-support-quote.mjs src/features/cart/CartCheckoutFlow.tsx
+      - name: Verify checkout integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "startShippingQuoteSupport" src/features/cart/CartCheckoutFlow.tsx
+          grep -q "Kargo teklifi talebini gönder" src/features/cart/CartCheckoutFlow.tsx
+          grep -q "globalThis.crypto.randomUUID" src/features/cart/CartCheckoutFlow.tsx
+          grep -q "sellableQuantity != null" src/features/cart/CartCheckoutFlow.tsx
+          ! grep -q "Math.random().toString(36)" src/features/cart/CartCheckoutFlow.tsx
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Production build
+        run: npm run build
+      - name: Commit verified integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/integrate-checkout-hardening-support-quote.yml
+          rm -f migration-tools/integration/apply-checkout-hardening-support-quote.mjs
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'Harden checkout and connect shipping quote support'
+          git push origin HEAD:agent/checkout-hardening-support-quote
