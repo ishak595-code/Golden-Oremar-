@@ -1,0 +1,36 @@
+name: Admin Delta TypeScript Gate
+
+on:
+  push:
+    branches:
+      - agent/admin-supabase-retire-node
+
+permissions:
+  contents: read
+
+jobs:
+  admin-delta-typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check changed admin TypeScript files
+        shell: bash
+        run: |
+          set +e
+          npm run lint 2>&1 | tee /tmp/typecheck.log
+          set -e
+          if grep -E "(src/pages/AdminPage\.tsx|src/admin/(AdminCampaigns|AdminFinance|AdminReviews|supabaseAdminApi|AdminUsers|userAdminApi|AdminVendorApplications|producerApplicationAdminApi|producerDocumentApi)\.(ts|tsx)).*error TS" /tmp/typecheck.log; then
+            echo 'TypeScript errors found in Golden Oremar admin migration delta.' >&2
+            exit 1
+          fi
+          echo 'No TypeScript errors in the admin migration delta.'
