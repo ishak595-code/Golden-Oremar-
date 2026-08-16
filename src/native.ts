@@ -16,10 +16,10 @@ export const syncNativeAppearance = async (theme?: string) => {
   await StatusBar.setStyle({ style: resolved === 'dark' ? Style.Dark : Style.Light });
 };
 
-export const initNativeFeatures = async () => {
+export const initNativeFeatures = async (theme?: string) => {
   if (!Capacitor.isNativePlatform()) return;
   try {
-    await syncNativeAppearance();
+    await syncNativeAppearance(theme);
     await SplashScreen.hide();
   } catch (error) {
     console.warn('Native features init error:', error);
