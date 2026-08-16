@@ -43,9 +43,10 @@ Kaynak kod veya build dosyaları veritabanına kopyalanmaz. Canlı müşteri/KYC
 - Mobil alt gezinme: `nav` landmark, `aria-current`, safe-area ve okunabilir 11px etiketler.
 - Hesap alt görünüm focus yönetimi ve ortak panel heading semantiği.
 - Adres ekle/düzenle için shared accessible-dialog davranışı; adres silmede destructive confirmation; duplicate-action guards ve canlı durum geri bildirimi.
-- Kişisel görünüm tercihi cihazda `golden-oremar:appearance-theme:v1` anahtarıyla tutulur; müşteri tema seçimi legacy global Firestore ayarına yazılmaz.
-- İlk render öncesi kaydedilmiş tema veya OS color-scheme uygulanır ve native status bar aynı tema ile senkronlanır.
-- Aydınlık tema gerçek açık yüzey/koyu metin tokenlarına taşınmıştır; temel light kart üzerindeki ana metin/yeşil/altın/muted metin kontrastları otomatik kontrol edilir.
+- Kişisel görünüm parlaklığı cihazda `golden-oremar:appearance-theme:v1` anahtarıyla tutulur; müşteri görünümü legacy global Firestore ayarına yazılmaz.
+- Premium renk imzası cihazda `golden-oremar:premium-palette:v1` anahtarıyla tutulur ve Aydınlık/Karanlık seçiminden bağımsızdır.
+- Beş canonical palette id kullanılır: `emerald`, `ruby`, `obsidian`, `pearl`, `sapphire`. Palette yalnız küçük dekoru değil `bg/text/border/primary/gold/earth` token ailesini birlikte değiştirir.
+- İlk render öncesinde kayıtlı brightness ve palette uygulanır; native status bar brightness ile senkronlanır.
 - Hesap Ayarları async işlemleri işlem türüne göre ayrı error/status/busy durumları kullanır; şifre, bülten, bildirim, oturum ve hesap-kapatma hataları yanlış panelde gösterilmez.
 - Bildirim kaydı ve diğer Ayarlar mutasyonları çift tetiklenmeye karşı busy guard kullanır; hesap kapatma backend isteğinden önce accessible confirmation alertdialog üzerinden açık onay alır.
 - Hesap içindeki modal davranışı tek canonical `useAccessibleDialog` motorundan gelir; account özel eski focus-trap yalnız compatibility wrapper olarak aynı hook'u çağırır.
@@ -66,6 +67,10 @@ Kaynak kod veya build dosyaları veritabanına kopyalanmaz. Canlı müşteri/KYC
 - Sağlık & Tarifler ekranı içerik favorilerinde per-item busy/status kullanır; detail/loading modalı canonical accessible dialog davranışını paylaşır.
 - Sağlık içerik detayı loading isteği request-id guard ile iptal edilebilir; kullanıcı modalı kapattıktan sonra eski async yanıt içeriği yeniden açamaz.
 - Sağlık içeriğinin backend-sanitized HTML ve ürün güvenliği bilgisi korunur; yeni tedavi/sağlık iddiası eklenmez.
+- Kişisel bildirim sesi cihazda `golden-oremar:notification-sound:v1` anahtarıyla tutulur. İlk kurulum varsayılanı `rain-drop` / Yağmur Damlası'dır.
+- Bildirim ses motoru harici/kopya ses dosyasına dayanmaz; Yağmur Damlası, Dağ Horozu, Kuş Korosu, Dere & Rüzgâr ve Yayla Çanı kısa procedural Web Audio imzalarıdır.
+- İlk unread hydration sessiz baseline kurar. Yalnız hydration sonrasında unread count gerçekten artarsa seçilen uygulama-içi ses denenir; eski okunmamışlar uygulama açılışında ses üretmez.
+- İşletim sistemi sessiz modu, bildirim izinleri ve native notification channel ayarları cihaz tarafında nihai otoritedir; web/in-app ses seçimi bunları bypass etmez.
 - Yayınlanmış SSS/Yardım içerik entegrasyonu; olmayan Terms metni uydurulmaz.
 - Yapılandırılmış ürün güvenliği / sağlık uyarıları ve kaynak modeli.
 
@@ -110,6 +115,8 @@ Migration history Supabase'in migration tablosunda tutulmaktadır. Önemli son m
 16. Checkout UI kendi client busy kilidini kullanır ama fiyat/stok/kargo/kupon/idempotency otoritesi daima server tarafında kalır; client doğrulaması güvenlik sınırı sayılmaz.
 17. Public ekranlarda geçici ağ/servis hatası, gerçekten yayınlanmamış içerik/kanal durumu gibi gösterilmez; failure state ve empty/unpublished state ayrı tutulur.
 18. Uzun async detail istekleri kullanıcı modalı kapatıldıktan sonra UI'ı stale yanıtla yeniden açamaz; uygun request/cancellation guard kullanılır.
+19. Premium palette ve notification sound cihaz-kullanıcı tercihleridir; Supabase admin/site config ile karıştırılmaz ve başka kullanıcıya global uygulanmaz.
+20. İlk veri hydration'ı yeni olay sayılmaz; ses/haptic gibi attention feedback yalnız baseline sonrasında gerçek yeni durum değişiminde çalışır.
 
 ## Harici konfigürasyon notu
 Google/Facebook OAuth, ödeme sağlayıcısı, kargo sağlayıcısı ve store signing gibi dış credential gerektiren özellikler; kod hazır olsa bile ilgili sağlayıcı gerçekten yapılandırılmadan "aktif" kabul edilmez.
