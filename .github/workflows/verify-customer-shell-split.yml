@@ -36,18 +36,28 @@ jobs:
           ! grep -q "context/DataContext" src/App.tsx
           ! grep -q "firebase/firestore" src/App.tsx
           ! grep -q "from './data'" src/App.tsx
+          ! grep -q "firebase" src/ErrorBoundary.tsx
           ! grep -q "goldenoremar@gmail.com" src/pages/AdminPage.tsx
           ! grep -q "ramcofero.yt@gmail.com" src/pages/AdminPage.tsx
           grep -q "roles.includes('admin')" src/pages/AdminPage.tsx
           grep -q "initialCurrentUser" src/context/DataContext.tsx
+          grep -q "role=\"alert\"" src/ErrorBoundary.tsx
       - name: Parse changed TypeScript modules
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           import ts from 'typescript';
-          const files=['src/App.tsx','src/features/auth/useCustomerSession.ts','src/pages/LegacyAdminEntry.tsx','src/pages/AdminPage.tsx','src/context/DataContext.tsx'];
+          const files=['src/App.tsx','src/ErrorBoundary.tsx','src/features/auth/useCustomerSession.ts','src/pages/LegacyAdminEntry.tsx','src/pages/AdminPage.tsx','src/context/DataContext.tsx'];
           let failed=false;
-          for(const file of files){const r=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext},reportDiagnostics:true,fileName:file});const errors=(r.diagnostics||[]).filter(d=>d.category===ts.DiagnosticCategory.Error);if(errors.length){failed=true;console.error(file,errors.map(d=>ts.flattenDiagnosticMessageText(d.messageText,'\n')));}}
+          for(const file of files){
+            const r=ts.transpileModule(fs.readFileSync(file,'utf8'),{
+              compilerOptions:{jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext},
+              reportDiagnostics:true,
+              fileName:file
+            });
+            const errors=(r.diagnostics||[]).filter(d=>d.category===ts.DiagnosticCategory.Error);
+            if(errors.length){failed=true;console.error(file,errors.map(d=>ts.flattenDiagnosticMessageText(d.messageText,'\n')));}
+          }
           if(failed)process.exit(1);
           NODE
       - name: Production web build and startup budget
@@ -62,33 +72,20 @@ jobs:
           echo "CUSTOMER_ENTRY_BYTES_SAVED=$SAVED"
           test "$SAVED" -ge 90000
           test "$BYTES" -lt 1050000
-      - name: Diagnose remaining Firebase startup path
-        run: |
-          echo '--- Firebase imports remaining in source tree ---'
-          grep -RInE "from ['\"]firebase|from ['\"][^'\"]*firebase|import\(['\"][^'\"]*firebase" src --include='*.ts' --include='*.tsx' || true
-          echo '--- Built entry marker context ---'
-          node --input-type=module <<'NODE'
-          import fs from 'node:fs';
-          const html=fs.readFileSync('dist/index.html','utf8');
-          const match=html.match(/assets\/index-[^"']+\.js/);
-          if(!match)throw new Error('entry asset missing');
-          const entry=fs.readFileSync('dist/'+match[0],'utf8');
-          for(const marker of ['Firestore','firebaseapp.com','@firebase']){
-            const index=entry.indexOf(marker);
-            console.log(`MARKER_${marker}=${index}`);
-            if(index>=0)console.log(entry.slice(Math.max(0,index-500),Math.min(entry.length,index+900)));
-          }
-          NODE
-      - name: Confirm Firebase moved behind lazy boundary
+      - name: Confirm Firebase moved behind lazy admin boundary
         run: |
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
           const html=fs.readFileSync('dist/index.html','utf8');
           const match=html.match(/assets\/index-[^"']+\.js/);
           if(!match)throw new Error('entry asset missing');
-          const entry=fs.readFileSync('dist/'+match[0],'utf8');
+          const entryPath='dist/'+match[0];
+          const entry=fs.readFileSync(entryPath,'utf8');
           const forbidden=['Firestore','firebaseapp.com','@firebase'];
-          for(const marker of forbidden){if(entry.includes(marker))throw new Error(`Firebase marker remained in customer entry: ${marker}`);}
+          for(const marker of forbidden){
+            if(entry.includes(marker))throw new Error(`Firebase marker remained in customer entry: ${marker}`);
+          }
+          console.log(`Firebase-free customer entry: ${entryPath} (${Buffer.byteLength(entry)} bytes)`);
           NODE
       - name: Synchronize Android project
         run: npx cap sync android
