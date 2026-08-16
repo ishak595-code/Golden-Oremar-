@@ -707,14 +707,15 @@ function AppContent() {
           reference={selectedProducerReference}
           authenticated={!!currentUser}
           onBack={goBack}
-          onLoginRequired={() => { showToast('Üreticiyi takip etmek için hesabınıza giriş yapın.'); navigateToTab('account'); }}
+          onLoginRequired={() => { showToast('Bu işlem için hesabınıza giriş yapın.'); navigateToTab('account'); }}
+          onOpenConversation={(conversationId) => { setAccountView(`messages:${conversationId}`); navigateToTab('account'); }}
           onOpenProduct={(slug) => {
             setSelectedProduct(null);
             setSelectedProductReference(slug);
             navigateToTab('product-detail');
           }}
-          onAddToCart={async (product) => {
-            await addToCart(product, 1);
+          onAddToCart={async (product, quantity) => {
+            await addToCart(product, quantity);
           }}
         />
       );
@@ -814,13 +815,14 @@ function AppContent() {
           authenticated={!!currentUser}
           onBack={goBack}
           onLoginRequired={() => { showToast('Bu işlem için hesabınıza giriş yapın.'); navigateToTab('account'); }}
+          onOpenConversation={(conversationId) => { setAccountView(`messages:${conversationId}`); navigateToTab('account'); }}
           onOpenProduct={(slug) => {
             setSelectedProduct(null);
             setSelectedProductReference(slug);
             navigateToTab('product-detail');
           }}
-          onAddToCart={async (item) => {
-            await addToCart({ id: item.id, slug: item.slug, name: item.name, variantId: item.variantId }, 1);
+          onAddToCart={async (item, quantity) => {
+            await addToCart({ id: item.id, slug: item.slug, name: item.name, variantId: item.variantId }, quantity);
           }}
         />
       );

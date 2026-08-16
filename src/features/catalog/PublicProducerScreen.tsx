@@ -1,101 +1,38 @@
-import React, { useEffect, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Heart, MapPin, Package, ShoppingCart, Star, Store } from 'lucide-react';
-import { getPublicProducerProfile, publicCatalogUrl, toggleProducerFollow } from './api';
+import React,{useEffect,useRef,useState}from'react';
+import{ArrowLeft,CheckCircle2,Heart,MapPin,MessageCircle,Package,Send,Star,Store,X}from'lucide-react';
+import{getPublicProducerProfile,listFollowedProducerIds,publicCatalogUrl,startProducerProductConversation,toggleProducerFollow}from'./api';
+import CatalogProductCard from'./CatalogProductCard';
 
-type Props = {
-  reference: string;
-  authenticated: boolean;
-  onBack: () => void;
-  onLoginRequired: () => void;
-  onOpenProduct: (slug: string) => void;
-  onAddToCart: (product: { id: string; slug: string; name: string; variantId: string }) => Promise<void> | void;
+type Props={
+ reference:string;
+ authenticated:boolean;
+ onBack:()=>void;
+ onLoginRequired:()=>void;
+ onOpenProduct:(slug:string)=>void;
+ onAddToCart:(product:{id:string;slug:string;name:string;variantId:string},quantity:number)=>Promise<void>|void;
+ onOpenConversation?:(conversationId:string)=>void;
 };
 
-export default function PublicProducerScreen({ reference, authenticated, onBack, onLoginRequired, onOpenProduct, onAddToCart }: Props) {
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
-  const [status, setStatus] = useState('');
-  const [following, setFollowing] = useState<boolean | null>(null);
-
-  async function load() {
-    try {
-      setLoading(true); setError('');
-      setProfile(await getPublicProducerProfile(reference));
-    } catch (err: any) {
-      setError(err?.message || 'Üretici profili yüklenemedi.');
-    } finally { setLoading(false); }
-  }
-  useEffect(() => { void load(); }, [reference]);
-
-  async function follow() {
-    if (!authenticated) { onLoginRequired(); return; }
-    if (!profile?.id) return;
-    try {
-      setBusy(true); setError(''); setStatus('');
-      const result = await toggleProducerFollow(profile.id);
-      setFollowing(!!result?.following);
-      setStatus(result?.following ? 'Üreticiyi takip etmeye başladınız.' : 'Üretici takibi bırakıldı.');
-    } catch (err: any) { setError(err?.message || 'Takip işlemi tamamlanamadı.'); }
-    finally { setBusy(false); }
-  }
-
-  if (loading) return <div role="status" className="mx-auto max-w-6xl p-8 text-center">Üretici profili yükleniyor…</div>;
-  if (!profile) return <div className="mx-auto max-w-6xl p-6"><div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">{error || 'Üretici bulunamadı.'}</div><button onClick={onBack} className="mt-4 min-h-11 rounded-xl border px-4">Geri</button></div>;
-
-  const activeBadges = Array.isArray(profile.badges) ? profile.badges.filter((item: any) => item.active) : [];
-  const structuredLocation = [profile.location?.village, profile.location?.district, profile.location?.province].filter(Boolean).join(', ');
-  const locationText = structuredLocation || profile.location_label || 'Türkiye';
-
-  return (
-    <article className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
-      <button onClick={onBack} className="mb-5 min-h-11 rounded-xl border px-4 font-semibold"><ArrowLeft className="mr-2 inline h-4 w-4" />Geri</button>
-      {error ? <div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div> : null}
-      {status ? <div role="status" aria-live="polite" className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800">{status}</div> : null}
-
-      <section className="overflow-hidden rounded-3xl border bg-white dark:bg-gray-900">
-        <div className="h-44 bg-gradient-to-br from-brand-green/70 to-brand-gold/30 sm:h-60">
-          {profile.cover_path ? <img src={publicCatalogUrl(profile.cover_path)} alt="" className="h-full w-full object-cover" /> : null}
-        </div>
-        <div className="p-5 sm:p-7">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-            <div className="-mt-16 grid h-28 w-28 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow-lg dark:border-gray-900 dark:bg-gray-800">
-              {profile.logo_path ? <img src={publicCatalogUrl(profile.logo_path)} alt="" className="h-full w-full object-cover" /> : <Store className="h-10 w-10 text-brand-gold" />}
-            </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-3xl font-bold text-brand-green dark:text-brand-gold">{profile.display_name}</h1>
-              <div className="mt-2 flex flex-wrap gap-2">{activeBadges.map((badge: any) => <span key={badge.key} className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1.5 text-xs font-bold text-green-800"><CheckCircle2 className="h-3.5 w-3.5" />{badge.label}</span>)}</div>
-              <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-gray-500">
-                <span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4 text-brand-gold" />{locationText}</span>
-                <span className="inline-flex items-center gap-1"><Package className="h-4 w-4 text-brand-gold" />{profile.product_count || 0} ürün</span>
-                {Number(profile.rating_count || 0) > 0 ? <span className="inline-flex items-center gap-1"><Star className="h-4 w-4 fill-brand-gold text-brand-gold" />{Number(profile.rating_average || 0).toFixed(1)} ({profile.rating_count})</span> : null}
-              </div>
-            </div>
-            <button onClick={follow} disabled={busy} className="min-h-11 rounded-xl border border-brand-gold/40 px-5 font-bold text-brand-gold disabled:opacity-50"><Heart className="mr-2 inline h-4 w-4" />{following === true ? 'Takibi bırak' : 'Takip et'}</button>
-          </div>
-          {profile.description ? <p className="mt-6 leading-7 text-gray-600 dark:text-gray-300">{profile.description}</p> : null}
-          {profile.story ? <div className="mt-5 rounded-2xl bg-gray-50 p-4 dark:bg-gray-800"><h2 className="font-bold">Üretici Hikâyesi</h2><p className="mt-2 whitespace-pre-wrap leading-7 text-gray-600 dark:text-gray-300">{profile.story}</p></div> : null}
-          <p className="mt-4 text-xs text-gray-500">Gizlilik nedeniyle üreticinin ev adresi, telefon, e-posta, banka/KYC bilgileri ve kesin koordinatları public profilde gösterilmez.</p>
-        </div>
-      </section>
-
-      <section className="mt-7" aria-labelledby="producer-products-title">
-        <h2 id="producer-products-title" className="text-2xl font-bold text-brand-green dark:text-brand-gold">Ürünleri</h2>
-        {!profile.products?.length ? <div className="mt-4 rounded-2xl border border-dashed p-8 text-center text-gray-500">Bu üreticinin yayında ürünü bulunmuyor.</div> : (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {profile.products.map((product: any) => (
-              <article key={product.id} className="overflow-hidden rounded-2xl border bg-white dark:bg-gray-900">
-                <button onClick={() => onOpenProduct(product.slug)} className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
-                  <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-800">{product.image_path ? <img src={publicCatalogUrl(product.image_path)} alt={product.name} className="h-full w-full object-cover" /> : null}</div>
-                  <div className="p-4"><h3 className="line-clamp-2 font-bold">{product.name}</h3><p className="mt-1 text-sm text-gray-500">{product.origin || locationText}</p><div className="mt-3 font-bold text-brand-green dark:text-brand-gold">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: product.currency || 'TRY' }).format(Number(product.price_minor || 0) / 100)}</div></div>
-                </button>
-                <div className="px-4 pb-4"><button onClick={() => onAddToCart({ id: product.id, slug: product.slug, name: product.name, variantId: product.variant_id })} className="min-h-11 w-full rounded-xl bg-brand-green px-3 font-bold text-white"><ShoppingCart className="mr-2 inline h-4 w-4" />Sepete Ekle</button></div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-    </article>
-  );
+export default function PublicProducerScreen({reference,authenticated,onBack,onLoginRequired,onOpenProduct,onAddToCart,onOpenConversation}:Props){
+ const[profile,setProfile]=useState<any>(null);const[loading,setLoading]=useState(true);const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[status,setStatus]=useState('');const[following,setFollowing]=useState<boolean|null>(null);const[questionProduct,setQuestionProduct]=useState<any>(null);const[question,setQuestion]=useState('');const[messageBusy,setMessageBusy]=useState(false);const questionRef=useRef<HTMLTextAreaElement>(null);
+ async function load(){try{setLoading(true);setError('');setStatus('');const[producer,followIds]=await Promise.all([getPublicProducerProfile(reference),authenticated?listFollowedProducerIds().catch(()=>[]):Promise.resolve([])]);setProfile(producer);setFollowing(authenticated?followIds.includes(String(producer?.id)):false);}catch(err:any){setError(err?.message||'Üretici profili yüklenemedi.');}finally{setLoading(false);}}
+ useEffect(()=>{void load();},[reference,authenticated]);
+ useEffect(()=>{if(questionProduct)setTimeout(()=>questionRef.current?.focus(),30);},[questionProduct?.id]);
+ async function follow(){if(!authenticated){onLoginRequired();return;}if(!profile?.id)return;try{setBusy(true);setError('');setStatus('');const result=await toggleProducerFollow(profile.id);setFollowing(!!result?.following);setStatus(result?.following?'Üreticiyi takip etmeye başladınız.':'Üretici takibi bırakıldı.');}catch(err:any){setError(err?.message||'Takip işlemi tamamlanamadı.');}finally{setBusy(false);}}
+ function ask(product:any){if(!authenticated){onLoginRequired();return;}setError('');setStatus('');setQuestionProduct(product);setQuestion('');}
+ async function sendQuestion(){if(!profile?.id||!questionProduct?.id)return;const body=question.trim();if(!body){setError('Üreticiye göndermek istediğiniz mesajı yazın.');return;}try{setMessageBusy(true);setError('');const result=await startProducerProductConversation({producerId:profile.id,productId:questionProduct.id,productName:questionProduct.name,message:body});setQuestion('');setQuestionProduct(null);setStatus('Mesajınız üreticiye güvenli konuşma üzerinden gönderildi.');if(result?.conversationId)onOpenConversation?.(result.conversationId);}catch(err:any){setError(err?.message||'Üreticiye mesaj gönderilemedi.');}finally{setMessageBusy(false);}}
+ if(loading)return<div role="status" className="mx-auto max-w-6xl p-8 text-center">Üretici profili yükleniyor…</div>;
+ if(!profile)return<div className="mx-auto max-w-6xl p-6"><div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">{error||'Üretici bulunamadı.'}</div><button onClick={onBack} className="mt-4 min-h-11 rounded-xl border px-4">Geri</button></div>;
+ const activeBadges=Array.isArray(profile.badges)?profile.badges.filter((item:any)=>item.active):[];const structuredLocation=[profile.location?.village,profile.location?.district,profile.location?.province].filter(Boolean).join(', ');const locationText=structuredLocation||profile.location_label||'Türkiye';
+ return<article className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
+  <button onClick={onBack} className="mb-5 min-h-11 rounded-xl border px-4 font-semibold"><ArrowLeft className="mr-2 inline h-4 w-4"/>Geri</button>
+  {error?<div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>:null}{status?<div role="status" aria-live="polite" className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800">{status}</div>:null}
+  <section className="overflow-hidden rounded-3xl border bg-white dark:bg-gray-900">
+   <div className="h-44 bg-gradient-to-br from-brand-green/70 to-brand-gold/30 sm:h-60">{profile.cover_path?<img src={publicCatalogUrl(profile.cover_path)} alt={`${profile.display_name} kapak görseli`} className="h-full w-full object-cover"/>:null}</div>
+   <div className="p-5 sm:p-7"><div className="flex flex-col gap-5 sm:flex-row sm:items-start"><div className="-mt-16 grid h-28 w-28 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-white bg-gray-100 shadow-lg dark:border-gray-900 dark:bg-gray-800">{profile.logo_path?<img src={publicCatalogUrl(profile.logo_path)} alt={`${profile.display_name} logosu`} className="h-full w-full object-cover"/>:<Store className="h-10 w-10 text-brand-gold"/>}</div><div className="min-w-0 flex-1"><h1 className="text-3xl font-bold text-brand-green dark:text-brand-gold">{profile.display_name}</h1><div className="mt-2 flex flex-wrap gap-2">{activeBadges.map((badge:any)=><span key={badge.key} className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1.5 text-xs font-bold text-green-800"><CheckCircle2 className="h-3.5 w-3.5"/>{badge.label}</span>)}</div><div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-gray-500"><span className="inline-flex items-center gap-1"><MapPin className="h-4 w-4 text-brand-gold"/>{locationText}</span><span className="inline-flex items-center gap-1"><Package className="h-4 w-4 text-brand-gold"/>{profile.product_count||0} ürün</span>{Number(profile.rating_count||0)>0?<span className="inline-flex items-center gap-1"><Star className="h-4 w-4 fill-brand-gold text-brand-gold"/>{Number(profile.rating_average||0).toFixed(1)} ({profile.rating_count})</span>:null}</div></div><button onClick={()=>void follow()} disabled={busy} aria-pressed={following===true} className="min-h-11 rounded-xl border border-brand-gold/40 px-5 font-bold text-brand-gold disabled:opacity-50"><Heart className={`mr-2 inline h-4 w-4 ${following?'fill-brand-gold':''}`}/>{following===true?'Takibi bırak':'Takip et'}</button></div>
+   {profile.description?<p className="mt-6 leading-7 text-gray-600 dark:text-gray-300">{profile.description}</p>:null}{profile.story?<div className="mt-5 rounded-2xl bg-gray-50 p-4 dark:bg-gray-800"><h2 className="font-bold">Üretici Hikâyesi</h2><p className="mt-2 whitespace-pre-wrap leading-7 text-gray-600 dark:text-gray-300">{profile.story}</p></div>:null}<p className="mt-4 text-xs text-gray-500">Gizlilik nedeniyle üreticinin ev adresi, telefon, e-posta, banka/KYC bilgileri ve kesin koordinatları public profilde gösterilmez.</p></div>
+  </section>
+  {questionProduct?<section aria-labelledby="producer-question-title" className="mt-6 rounded-2xl border border-brand-green/30 bg-brand-green/5 p-4"><div className="flex items-start justify-between gap-3"><div><h2 id="producer-question-title" className="font-bold">{questionProduct.name} hakkında üreticiye sor</h2><p className="mt-1 text-sm text-gray-500">Konuşma bu ürüne bağlanır; üretici ürün bağlamını görür.</p></div><button onClick={()=>{setQuestionProduct(null);setQuestion('');}} className="min-h-11 rounded-lg border px-3" aria-label="Mesaj formunu kapat"><X className="h-4 w-4"/></button></div><label className="mt-3 block"><span className="text-sm font-semibold">Mesajınız</span><textarea ref={questionRef} value={question} onChange={e=>setQuestion(e.target.value)} maxLength={5000} rows={4} className="mt-1 w-full rounded-xl border bg-white p-3 dark:bg-gray-900" placeholder="Ürün, üretim yöntemi, teslimat veya kullanım hakkında sorunuzu yazın."/><span className="mt-1 block text-xs text-gray-500">{question.length}/5000</span></label><button onClick={()=>void sendQuestion()} disabled={messageBusy||!question.trim()} className="mt-3 min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50"><Send className="mr-2 inline h-4 w-4"/>{messageBusy?'Gönderiliyor…':'Üreticiye güvenli mesaj gönder'}</button></section>:null}
+  <section className="mt-7" aria-labelledby="producer-products-title"><h2 id="producer-products-title" className="text-2xl font-bold text-brand-green dark:text-brand-gold">Ürünleri</h2>{!profile.products?.length?<div className="mt-4 rounded-2xl border border-dashed p-8 text-center text-gray-500">Bu üreticinin yayında ürünü bulunmuyor.</div>:<div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{profile.products.map((product:any)=>{const cardProduct={id:product.id,slug:product.slug,name:product.name,category:'Üretici ürünü',price:Number(product.price_minor||0)/100,originalPrice:product.compare_at_price_minor?Number(product.compare_at_price_minor)/100:null,currency:product.currency||'TRY',image:publicCatalogUrl(product.image_path),origin:product.origin||locationText,unit:product.unit_label||product.variant_name,stock:product.available_quantity??null,stockMode:product.stock_mode,is_featured:!!product.featured,preOrder:product.stock_mode==='preorder',variantId:product.variant_id,variantName:product.variant_name,producerName:profile.display_name,reviewCount:0,rating:0};return<div key={product.id} className="flex flex-col gap-2"><CatalogProductCard product={cardProduct} onClick={()=>onOpenProduct(product.slug)} onAddToCart={(_,quantity)=>onAddToCart({id:product.id,slug:product.slug,name:product.name,variantId:product.variant_id},quantity)}/><button onClick={()=>ask(product)} className="min-h-11 rounded-xl border border-brand-green/40 px-3 font-semibold text-brand-green"><MessageCircle className="mr-2 inline h-4 w-4"/>Bu ürün hakkında sor</button></div>;})}</div>}</section>
+ </article>;
 }
