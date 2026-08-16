@@ -18,6 +18,7 @@ import ProducerProfilePanel from'./ProducerProfilePanel';
 import NotificationsPanel from'./NotificationsPanel';
 import MessagesPanel from'./MessagesPanel';
 import ReviewsPanel from'./ReviewsPanel';
+import type{AppTheme}from'../appearance/theme';
 
 const menu=[
  ['profile','Profilimi Düzenle',UserRound,'Ad, telefon, dil ve izinler'],
@@ -38,7 +39,7 @@ const menu=[
 export default function AccountCenter({
  requestedView,theme,onThemeChange,onOpenProduct,onOpenProducer,onStartGift,onOpenMessages,onOpenNotificationAction,onUnreadNotificationCountChange,onOpenContact,onOpenHealth,onOpenEvents,onOpenAdmin,onOpenSellerApplication,onOpenSellerProductManager,onBack
 }:{
- requestedView?:string; theme?:string; onThemeChange?:(theme:'light'|'dark')=>void; onOpenProduct?:(slug:string)=>void; onOpenProducer?:(slug:string)=>void; onStartGift?:()=>void; onOpenMessages?:()=>void; onOpenNotificationAction?:(url:string,metadata:any)=>void; onUnreadNotificationCountChange?:(count:number)=>void; onOpenContact?:()=>void; onOpenHealth?:()=>void; onOpenEvents?:()=>void; onOpenAdmin?:()=>void; onOpenSellerApplication?:()=>void; onOpenSellerProductManager?:()=>void; onBack?:()=>void;
+ requestedView?:string; theme?:AppTheme; onThemeChange?:(theme:AppTheme)=>void; onOpenProduct?:(slug:string)=>void; onOpenProducer?:(slug:string)=>void; onStartGift?:()=>void; onOpenMessages?:()=>void; onOpenNotificationAction?:(url:string,metadata:any)=>void; onUnreadNotificationCountChange?:(count:number)=>void; onOpenContact?:()=>void; onOpenHealth?:()=>void; onOpenEvents?:()=>void; onOpenAdmin?:()=>void; onOpenSellerApplication?:()=>void; onOpenSellerProductManager?:()=>void; onBack?:()=>void;
 }){
  const[overview,setOverview]=useState<AccountOverview|null>(null);const[view,setView]=useState<AccountView>('home');const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[messageConversationId,setMessageConversationId]=useState('');const[orderDetailId,setOrderDetailId]=useState('');
  const viewContentRef=useRef<HTMLDivElement|null>(null);const homeTitleRef=useRef<HTMLHeadingElement|null>(null);const previousViewRef=useRef<AccountView>('home');

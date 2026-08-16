@@ -614,7 +614,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    let isFirstLoadNotifications = true;
     // Listen to Notifications
     let unsubNotifications = () => {};
     if (currentUser) {
@@ -625,30 +624,6 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           notifs.push({ id: doc.id, ...doc.data() } as Notification);
         });
         
-        if (!isFirstLoadNotifications) {
-          const hasNewUnread = snapshot.docChanges().some(change => change.type === 'added' && change.doc.data().read === false);
-          if (hasNewUnread) {
-            try {
-              // Subtle notification sound using Web Audio API to avoid requiring external assets
-              const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-              const audioCtx = new AudioContext();
-              const oscillator = audioCtx.createOscillator();
-              const gainNode = audioCtx.createGain();
-              oscillator.connect(gainNode);
-              gainNode.connect(audioCtx.destination);
-              oscillator.type = 'sine';
-              oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
-              gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
-              gainNode.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.05);
-              gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
-              oscillator.start(audioCtx.currentTime);
-              oscillator.stop(audioCtx.currentTime + 0.3);
-            } catch (e) {
-              console.log("Audio play failed");
-            }
-          }
-        }
-        isFirstLoadNotifications = false;
 
         // Sort by date descending
         notifs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
