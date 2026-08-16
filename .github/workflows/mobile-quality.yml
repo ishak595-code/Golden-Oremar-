@@ -29,6 +29,9 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Release architecture audit
+        run: npm run audit:release
+
       - name: Validate current native baseline and preserved OAuth
         shell: bash
         run: |
@@ -122,6 +125,9 @@ jobs:
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+
+      - name: Release architecture audit
+        run: npm run audit:release
 
       - name: Build and synchronize iOS
         run: npm run build && npx cap sync ios
