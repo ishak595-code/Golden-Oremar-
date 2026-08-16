@@ -42,7 +42,6 @@ jobs:
             'src/admin/AdminCategories.tsx',
             'src/admin/AdminContent.tsx',
             'src/admin/AdminEvents.tsx',
-            'src/admin/AdminSettings.tsx',
           ]:
             path = Path(filename)
             text = path.read_text()
@@ -51,6 +50,14 @@ jobs:
             if old not in text:
               raise SystemExit(f'{filename}: Field child typing target not found')
             path.write_text(text.replace(old, new, 1))
+
+          settings = Path('src/admin/AdminSettings.tsx')
+          text = settings.read_text()
+          old = "children:React.ReactElement;key?:React.Key}"
+          new = "children:React.ReactElement<{className?:string}>;key?:React.Key}"
+          if old not in text:
+            raise SystemExit('AdminSettings Field child typing target not found')
+          settings.write_text(text.replace(old, new, 1))
 
           layout = Path('src/admin/AdminLayout.tsx')
           text = layout.read_text()
