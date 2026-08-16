@@ -41,13 +41,13 @@ jobs:
           else:
               replacements = [
                   ('\t\t504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };',
-                   '\t\t504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };\n\t\tA85CENE10000000000000001 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A85CENE20000000000000002 /* SceneDelegate.swift */; };'),
+                   '\t\t504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };\n\t\tA85CE0010000000000000001 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A85CE0020000000000000002 /* SceneDelegate.swift */; };'),
                   ('\t\t504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };',
-                   '\t\t504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };\n\t\tA85CENE20000000000000002 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };'),
+                   '\t\t504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };\n\t\tA85CE0020000000000000002 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };'),
                   ('\t\t\t\t504EC3071FED79650016851F /* AppDelegate.swift */,',
-                   '\t\t\t\t504EC3071FED79650016851F /* AppDelegate.swift */,\n\t\t\t\tA85CENE20000000000000002 /* SceneDelegate.swift */,'),
+                   '\t\t\t\t504EC3071FED79650016851F /* AppDelegate.swift */,\n\t\t\t\tA85CE0020000000000000002 /* SceneDelegate.swift */,'),
                   ('\t\t\t\t504EC3081FED79650016851F /* AppDelegate.swift in Sources */,',
-                   '\t\t\t\t504EC3081FED79650016851F /* AppDelegate.swift in Sources */,\n\t\t\t\tA85CENE10000000000000001 /* SceneDelegate.swift in Sources */,'),
+                   '\t\t\t\t504EC3081FED79650016851F /* AppDelegate.swift in Sources */,\n\t\t\t\tA85CE0010000000000000001 /* SceneDelegate.swift in Sources */,'),
               ]
               for old, new in replacements:
                   count = text.count(old)
@@ -62,7 +62,8 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import plistlib
+          import plistlib, re
+          from pathlib import Path
           with open('ios/App/App/Info.plist','rb') as f:
               p=plistlib.load(f)
           manifest=p.get('UIApplicationSceneManifest')
@@ -71,7 +72,11 @@ jobs:
           cfg=manifest['UISceneConfigurations']['UIWindowSceneSessionRoleApplication'][0]
           assert cfg['UISceneDelegateClassName']=='$(PRODUCT_MODULE_NAME).SceneDelegate'
           assert cfg['UISceneConfigurationName']=='Default Configuration'
-          print('Info.plist scene lifecycle validated')
+          project=Path('ios/App/App.xcodeproj/project.pbxproj').read_text()
+          for object_id in ('A85CE0010000000000000001','A85CE0020000000000000002'):
+              assert re.fullmatch(r'[0-9A-F]{24}', object_id), object_id
+              assert object_id in project
+          print('iOS scene lifecycle and Xcode identifiers validated')
           PY
           grep -q 'SceneDelegate.swift in Sources' ios/App/App.xcodeproj/project.pbxproj
           grep -q 'SceneDelegateProxy.shared.scene' ios/App/App/SceneDelegate.swift
