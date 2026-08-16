@@ -1,0 +1,50 @@
+name: Audit Legacy Node Runtime
+
+on:
+  push:
+    branches:
+      - agent/legacy-node-runtime-audit
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/legacy-node-runtime-audit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Inventory legacy runtime references
+        run: |
+          echo '--- API callers outside legacy server ---'
+          git grep -nE "['\"]\/api\/|fetch\([^\n]*\/api\/|axios[^\n]*\/api\/" -- ':!server.ts' ':!server/**' ':!package-lock.json' || true
+          echo '--- Legacy server file references outside itself ---'
+          git grep -nE "server\.ts|server/db|database\.sqlite" -- ':!server.ts' ':!server/**' ':!package-lock.json' ':!.github/**' || true
+          echo '--- Runtime dependency imports ---'
+          for pattern in "express" "better-sqlite3" "bcryptjs" "jsonwebtoken" "stripe" "cors" "dotenv"; do
+            echo "### $pattern"
+            git grep -n "$pattern" -- '*.ts' '*.tsx' '*.js' '*.mjs' '*.cjs' ':!package-lock.json' || true
+          done
+      - name: Inventory root maintenance scripts
+        run: |
+          printf '%s\n' '--- Root JS/CJS/MJS helpers ---'
+          find . -maxdepth 1 -type f \( -name '*.js' -o -name '*.cjs' -o -name '*.mjs' -o -name '*.ts' \) -printf '%f\n' | sort
+          printf '%s\n' '--- Helpers importing Firebase/server DB ---'
+          git grep -nE "firebase|better-sqlite3|server/db|database.sqlite" -- '*.cjs' '*.mjs' ':!package-lock.json' || true
+      - name: Verify normal production path does not require server
+        run: |
+          npm ci
+          npm run build
+          test -f dist/index.html
+      - name: Report package script contract
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+          console.log('DEV_SCRIPT='+pkg.scripts?.dev);
+          console.log('SERVER_RUNTIME_DEPS='+JSON.stringify(Object.fromEntries(['express','better-sqlite3','bcryptjs','jsonwebtoken','stripe','cors','dotenv','tsx'].map(name=>[name,pkg.dependencies?.[name]??pkg.devDependencies?.[name]??null]))));
+          NODE
