@@ -1,0 +1,95 @@
+name: Mobile Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Validate mobile baseline and preserved auth
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const pkg = require('./package.json');
+          const expected = {
+            '@capacitor/android':'8.5.0',
+            '@capacitor/app':'8.1.1',
+            '@capacitor/browser':'8.0.4',
+            '@capacitor/core':'8.5.0',
+            '@capacitor/haptics':'8.0.2',
+            '@capacitor/ios':'8.5.0',
+            '@capacitor/keyboard':'8.0.5',
+            '@capacitor/network':'8.0.1',
+            '@capacitor/splash-screen':'8.0.2',
+            '@capacitor/status-bar':'8.0.3'
+          };
+          for (const [name, version] of Object.entries(expected)) {
+            if (pkg.dependencies?.[name] !== version) throw new Error(`${name}: expected ${version}, got ${pkg.dependencies?.[name]}`);
+          }
+          if (pkg.devDependencies?.['@capacitor/cli'] !== '8.5.0') throw new Error('@capacitor/cli must be 8.5.0');
+          NODE
+          grep -q "com.android.tools.build:gradle:8.13.0" android/build.gradle
+          grep -q "kotlin-gradle-plugin:2.2.20" android/build.gradle
+          grep -q 'gradle-8.14.3-all.zip' android/gradle/wrapper/gradle-wrapper.properties
+          grep -q 'minSdkVersion = 24' android/variables.gradle
+          grep -q 'compileSdkVersion = 36' android/variables.gradle
+          grep -q 'targetSdkVersion = 36' android/variables.gradle
+          grep -q 'JavaVersion.VERSION_21' android/app/build.gradle
+          grep -q "jvmTarget = '21'" android/app/build.gradle
+          grep -q 'kotlin-stdlib:2.2.20' android/app/build.gradle
+          grep -q 'density' android/app/src/main/AndroidManifest.xml
+          grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;' ios/App/App.xcodeproj/project.pbxproj
+          grep -q 'SceneDelegate.swift in Sources' ios/App/App.xcodeproj/project.pbxproj
+          grep -q 'SceneDelegateProxy.shared.scene' ios/App/App/SceneDelegate.swift
+          grep -q 'UIApplicationSceneManifest' ios/App/App/Info.plist
+          grep -q 'configurationForConnecting' ios/App/App/AppDelegate.swift
+          grep -q 'VITE_GOOGLE_AUTH_ENABLED' .env.example
+          grep -q 'VITE_FACEBOOK_AUTH_ENABLED' .env.example
+          grep -q "from '@capacitor/browser'" src/features/auth/api.ts
+          grep -q 'signInWithOAuth' src/features/auth/api.ts
+          grep -q 'skipBrowserRedirect: native' src/features/auth/api.ts
+
+      - name: Production web build
+        run: npm run build
+
+      - name: Synchronize Android and iOS
+        run: npx cap sync android && npx cap sync ios
+
+      - name: Ensure native sync is reproducible
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet; then
+            echo 'Capacitor sync changed tracked native files. Commit the generated changes before merging.' >&2
+            git diff --stat
+            git diff
+            exit 1
+          fi
+
+      - name: Compile Android debug app
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew :app:assembleDebug --no-daemon
