@@ -5,6 +5,7 @@ on:
     branches: [agent/mobile-shell-accessibility-premium]
     paths:
       - '.github/workflows/apply-mobile-shell-accessibility.yml'
+      - 'migration-tools/repair-mobile-shell-patch.mjs'
 
 permissions:
   contents: write
@@ -23,6 +24,8 @@ jobs:
           cache: npm
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
+      - name: Repair patch string escaping
+        run: node migration-tools/repair-mobile-shell-patch.mjs
       - name: Apply exact mobile shell patch
         run: node migration-tools/patch-mobile-shell-accessibility-v2.mjs
       - name: Validate shell accessibility contracts
@@ -66,6 +69,7 @@ jobs:
           rm -f .github/workflows/apply-mobile-shell-accessibility.yml
           rm -f migration-tools/patch-mobile-shell-accessibility.mjs
           rm -f migration-tools/patch-mobile-shell-accessibility-v2.mjs
+          rm -f migration-tools/repair-mobile-shell-patch.mjs
           git config user.name 'Golden Oremar Automation'
           git config user.email 'actions@users.noreply.github.com'
           git add -A
