@@ -10,6 +10,7 @@ type Props = {
   onProducer: (id: string, slug: string, label: string) => void;
   onCategory: (slug: string, label: string) => void;
   onAllResults: (query: string) => void;
+  onRequestClose: () => void;
 };
 
 const iconFor = (kind: CatalogSuggestion['kind']) =>
@@ -23,6 +24,7 @@ export default function CatalogSearchOverlay({
   onProducer,
   onCategory,
   onAllResults,
+  onRequestClose,
 }: Props) {
   const [items, setItems] = useState<CatalogSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,6 +77,17 @@ export default function CatalogSearchOverlay({
       className="absolute left-4 right-4 z-[100] mx-auto mt-2 max-h-[70vh] max-w-7xl overflow-y-auto rounded-2xl border border-brand-gold/20 bg-white shadow-2xl dark:bg-gray-900"
       role="region"
       aria-label="Arama önerileri"
+      onKeyDown={event => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          onRequestClose();
+        }
+      }}
+      onBlur={event => {
+        const next = event.relatedTarget;
+        if (next instanceof Node && event.currentTarget.contains(next)) return;
+        onRequestClose();
+      }}
     >
       {!query.trim() ? (
         <div className="p-5 text-sm text-gray-600 dark:text-gray-300">
