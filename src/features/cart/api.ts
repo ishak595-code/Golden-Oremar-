@@ -113,6 +113,39 @@ export async function createOrder(input: {
   return unwrap<any>(data, error);
 }
 
+export async function startShippingQuoteSupport(input: {
+  countryCode: string;
+  cityLabel?: string | null;
+  cart: CartSnapshot;
+  preview?: CheckoutPreview | null;
+}) {
+  const countryCode = input.countryCode.trim().toUpperCase();
+  const cityLabel = input.cityLabel?.trim() || '';
+  const lines = input.cart.items.slice(0, 25).map(item =>
+    `- ${item.productName} / ${item.variantName}: ${item.quantity} adet`
+  );
+  const reason = input.preview?.blockingReason || 'manual_shipping_quote_required';
+  const missingWeight = Number(input.preview?.missingWeightQuantity || 0);
+  const message = [
+    `Yurtdışı kargo teklifi talep ediyorum.`,
+    `Hedef ülke: ${countryCode}${cityLabel ? ` • ${cityLabel}` : ''}`,
+    `Sepet ara toplamı: ${input.cart.subtotalMinor} ${input.cart.currency} minor-unit`,
+    `Checkout durumu: ${reason}`,
+    missingWeight > 0 ? `Eksik doğrulanmış ağırlık adedi: ${missingWeight}` : '',
+    `Sepet:`,
+    ...lines,
+    input.cart.items.length > lines.length ? `- ve ${input.cart.items.length - lines.length} ek kalem` : '',
+    `Not: Kesin teslimat fiyatı ve uygunluk ödeme öncesinde doğrulanmalıdır.`,
+  ].filter(Boolean).join('\n');
+
+  const { data, error } = await supabase.rpc('start_support_conversation_v1', {
+    p_order_id: null,
+    p_subject: `Yurtdışı kargo teklifi – ${countryCode}`,
+    p_initial_message: message,
+  });
+  return unwrap<any>(data, error);
+}
+
 export async function getCheckoutAccountOverview() {
   const { data, error } = await supabase.rpc('get_my_account_overview_v1');
   return unwrap<any>(data, error);
