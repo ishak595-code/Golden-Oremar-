@@ -64,6 +64,17 @@ jobs:
           assert plist['CFBundleDisplayName']=='Golden Oremar'
           print('iOS plist validated')
           PY
+      - name: Repair and validate Gradle wrapper
+        working-directory: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! jar tf gradle/wrapper/gradle-wrapper.jar >/dev/null 2>&1; then
+            echo 'Existing Gradle wrapper jar is corrupt; replacing it from the official Gradle 8.14.3 source tag.'
+            curl -fsSL 'https://raw.githubusercontent.com/gradle/gradle/v8.14.3/gradle/wrapper/gradle-wrapper.jar' -o gradle/wrapper/gradle-wrapper.jar
+          fi
+          jar tf gradle/wrapper/gradle-wrapper.jar >/dev/null
+          grep -q 'gradle-8.14.3-all.zip' gradle/wrapper/gradle-wrapper.properties
       - name: Compile Android debug app
         working-directory: android
         shell: bash
