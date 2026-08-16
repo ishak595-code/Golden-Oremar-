@@ -18,7 +18,7 @@ export async function listPublicContent(type: ContentType, locale = 'tr', limit 
 }
 
 export async function getPublicContentEntry(reference: string, locale = 'tr') {
-  const { data, error } = await supabase.rpc('get_public_content_entry_v1', {
+  const { data, error } = await supabase.rpc('get_public_content_entry_v2', {
     p_reference: reference,
     p_locale: locale,
   });
