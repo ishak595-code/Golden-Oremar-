@@ -1,0 +1,85 @@
+name: Verify Search Header Accessibility
+
+on:
+  push:
+    branches: [agent/search-header-accessibility]
+    paths:
+      - '.github/workflows/verify-search-header-accessibility.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Apply search/header accessibility integration
+        run: node migration-tools/harden-search-header-a11y.mjs
+      - name: Type-check search overlay
+        run: npx tsc --noEmit --skipLibCheck --target ES2022 --module ESNext --moduleResolution Bundler --jsx react-jsx --types vite/client src/features/catalog/CatalogSearchOverlay.tsx
+      - name: Parse App TypeScript
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';import ts from 'typescript';
+          const file='src/App.tsx';const source=fs.readFileSync(file,'utf8');
+          const out=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX},reportDiagnostics:true,fileName:file});
+          const errors=(out.diagnostics||[]).filter(d=>d.category===ts.DiagnosticCategory.Error);
+          if(errors.length){console.error(errors.map(e=>ts.flattenDiagnosticMessageText(e.messageText,'\n')).join('\n'));process.exit(1);}
+          console.log('App parses cleanly');
+          NODE
+      - name: Validate search/header contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(grep -c 'aria-label="Katalogda ara"' src/App.tsx)" -eq 2
+          test "$(grep -c 'aria-controls="catalog-search-suggestions"' src/App.tsx)" -eq 2
+          test "$(grep -c 'aria-expanded={isSearchFocused}' src/App.tsx)" -eq 2
+          test "$(grep -c 'onBlur={handleSearchBlur}' src/App.tsx)" -eq 2
+          ! grep -q 'setTimeout(() => setIsSearchFocused(false), 200)' src/App.tsx
+          grep -q 'data-catalog-search-overlay="true"' src/features/catalog/CatalogSearchOverlay.tsx
+          grep -q 'onRequestClose' src/features/catalog/CatalogSearchOverlay.tsx
+          grep -q "event.key === 'Escape'" src/features/catalog/CatalogSearchOverlay.tsx
+          ! grep -q 'role="listbox"' src/features/catalog/CatalogSearchOverlay.tsx
+          ! grep -q 'role="option"' src/features/catalog/CatalogSearchOverlay.tsx
+          grep -q '<ul aria-label="Arama önerileri"' src/features/catalog/CatalogSearchOverlay.tsx
+          test "$(grep -c 'aria-haspopup="dialog"' src/App.tsx)" -ge 2
+          test "$(grep -c 'min-h-11 min-w-11' src/App.tsx)" -ge 6
+          grep -q 'onRequestClose={() => setIsSearchFocused(false)}' src/App.tsx
+      - name: Production web build
+        run: npm run build
+      - name: Synchronize Android project
+        run: npx cap sync android
+      - name: Compile Android debug app
+        working-directory: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+      - name: Commit verified search/header accessibility
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/verify-search-header-accessibility.yml
+          rm -f migration-tools/harden-search-header-a11y.mjs
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'Harden search and header accessibility'
+          git push origin HEAD:agent/search-header-accessibility
