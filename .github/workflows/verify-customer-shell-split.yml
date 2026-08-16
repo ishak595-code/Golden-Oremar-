@@ -62,6 +62,23 @@ jobs:
           echo "CUSTOMER_ENTRY_BYTES_SAVED=$SAVED"
           test "$SAVED" -ge 90000
           test "$BYTES" -lt 1050000
+      - name: Diagnose remaining Firebase startup path
+        run: |
+          echo '--- Firebase imports remaining in source tree ---'
+          grep -RInE "from ['\"]firebase|from ['\"][^'\"]*firebase|import\(['\"][^'\"]*firebase" src --include='*.ts' --include='*.tsx' || true
+          echo '--- Built entry marker context ---'
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const html=fs.readFileSync('dist/index.html','utf8');
+          const match=html.match(/assets\/index-[^"']+\.js/);
+          if(!match)throw new Error('entry asset missing');
+          const entry=fs.readFileSync('dist/'+match[0],'utf8');
+          for(const marker of ['Firestore','firebaseapp.com','@firebase']){
+            const index=entry.indexOf(marker);
+            console.log(`MARKER_${marker}=${index}`);
+            if(index>=0)console.log(entry.slice(Math.max(0,index-500),Math.min(entry.length,index+900)));
+          }
+          NODE
       - name: Confirm Firebase moved behind lazy boundary
         run: |
           node --input-type=module <<'NODE'
