@@ -40,9 +40,9 @@ export default defineConfig(() => ({
         enabled: true,
       },
       workbox: {
-        // The back-office bundle is deliberately lazy. Ordinary customers should not
-        // download administration code during service-worker installation.
-        globIgnores: ['**/LegacyAdminEntry-*.js'],
+        // Back-office modules are lazy and excluded from customer precache. They are
+        // fetched only after an authorized admin or producer opens the management UI.
+        globIgnores: ['**/LegacyAdminEntry-*.js', '**/Admin*.js'],
       },
       manifest: {
         id: '/',
