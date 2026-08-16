@@ -128,6 +128,31 @@ export async function toggleProducerFollow(producerId: string) {
   return unwrap<any>(data, error);
 }
 
+export async function listFollowedProducerIds(): Promise<string[]> {
+  const { data, error } = await supabase.rpc('list_my_followed_producers_v1');
+  if (error) throw error;
+  return (Array.isArray(data) ? data : []).map((row: any) => String(row.id));
+}
+
+export async function startProducerProductConversation(input: {
+  producerId: string;
+  productId: string;
+  productName: string;
+  message: string;
+}) {
+  const body = input.message.trim();
+  if (!body || body.length > 5000) throw new Error('Mesaj 1 ile 5000 karakter arasında olmalıdır.');
+  const subject = `Ürün hakkında: ${input.productName}`.slice(0, 200);
+  const { data, error } = await supabase.rpc('start_producer_conversation_v1', {
+    p_producer_id: input.producerId,
+    p_product_id: input.productId,
+    p_order_id: null,
+    p_subject: subject,
+    p_initial_message: body,
+  });
+  return unwrap<any>(data, error);
+}
+
 export type PublicCategory = {
   id: string;
   parentId?: string | null;
