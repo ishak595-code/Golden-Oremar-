@@ -1,0 +1,102 @@
+name: Verify Dynamic Product Producer Metrics
+
+on:
+  push:
+    branches: [agent/dynamic-product-producer-metrics]
+    paths:
+      - '.github/workflows/verify-dynamic-product-producer-metrics.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Integrate search quantity callback
+        run: node migration-tools/integrate-search-card-quantity.mjs
+
+      - name: Validate dynamic metric contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "get_public_producer_follow_metrics_v1" src/features/catalog/api.ts
+          grep -q "get_public_producer_profile_v2" src/features/catalog/api.ts
+          grep -q "producerFollowerCount" src/features/catalog/useLiveHomeCatalog.ts
+          grep -q "producerFollowerCount" src/features/catalog/CatalogProductCard.tsx
+          grep -q "follower_count" src/features/catalog/PublicProducerScreen.tsx
+          grep -q "average_rating" src/features/catalog/PublicProducerScreen.tsx
+          grep -q "getProducerFollowMetrics" src/features/catalog/CatalogSearchResults.tsx
+          grep -q "onAddToCart={async (item, quantity)" src/App.tsx
+          test -f supabase/migrations/20260816154940_add_public_producer_follow_metrics_v1.sql
+          test -f supabase/migrations/20260816155006_fix_public_producer_profile_v2_variable_collision.sql
+
+      - name: Parse changed TypeScript modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const ts = require('typescript');
+          const fs = require('fs');
+          const files = [
+            'src/features/catalog/api.ts',
+            'src/features/catalog/useLiveHomeCatalog.ts',
+            'src/features/catalog/CatalogProductCard.tsx',
+            'src/features/catalog/PublicProducerScreen.tsx',
+            'src/features/catalog/CatalogSearchResults.tsx',
+            'src/App.tsx',
+          ];
+          for (const file of files) {
+            const text = fs.readFileSync(file,'utf8');
+            const sf = ts.createSourceFile(file,text,ts.ScriptTarget.Latest,true,file.endsWith('.tsx')?ts.ScriptKind.TSX:ts.ScriptKind.TS);
+            if (sf.parseDiagnostics.length) {
+              console.error(file, sf.parseDiagnostics.map(d => d.messageText));
+              process.exitCode = 1;
+            }
+          }
+          NODE
+
+      - name: Production web build
+        run: npm run build
+
+      - name: Synchronize native projects
+        run: |
+          npx cap sync android
+          npx cap sync ios
+
+      - name: Compile Android debug app
+        working-directory: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Commit verified integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/verify-dynamic-product-producer-metrics.yml
+          rm -f migration-tools/integrate-search-card-quantity.mjs
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'Complete dynamic product and producer trust metrics'
+          git push origin HEAD:agent/dynamic-product-producer-metrics
