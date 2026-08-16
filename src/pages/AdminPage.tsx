@@ -1,30 +1,42 @@
-import React, { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { AdminLayout } from '../admin/AdminLayout';
-import { AdminDashboard } from '../admin/AdminDashboard';
-import { AdminProducts } from '../admin/AdminProducts';
-import { AdminOrders } from '../admin/AdminOrders';
-import { AdminReturns } from '../admin/AdminReturns';
-import { AdminUsers } from '../admin/AdminUsers';
-import { AdminContent } from '../admin/AdminContent';
-import { AdminSettings } from '../admin/AdminSettings';
-import { AdminCategories } from '../admin/AdminCategories';
-import { AdminVendors } from '../admin/AdminVendors';
-import { AdminStock } from '../admin/AdminStock';
-import { AdminReviews } from '../admin/AdminReviews';
-import { AdminCampaigns } from '../admin/AdminCampaigns';
-import { AdminFinance } from '../admin/AdminFinance';
-import { AdminNotifications } from '../admin/AdminNotifications';
-import { AdminVendorApplications } from '../admin/AdminVendorApplications';
-import { AdminEvents } from '../admin/AdminEvents';
-import ProducerProductManager from '../features/producer-products/ProducerProductManager';
-import ProducerOrdersPanel from '../features/producer-orders/ProducerOrdersPanel';
-import ProducerFinancePanel from '../features/producer-finance/ProducerFinancePanel';
-import ProducerProfilePanel from '../features/account/ProducerProfilePanel';
 import { useCustomerSession } from '../features/auth/useCustomerSession';
+
+const AdminDashboard = lazy(() => import('../admin/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
+const AdminProducts = lazy(() => import('../admin/AdminProducts').then(module => ({ default: module.AdminProducts })));
+const AdminOrders = lazy(() => import('../admin/AdminOrders').then(module => ({ default: module.AdminOrders })));
+const AdminReturns = lazy(() => import('../admin/AdminReturns').then(module => ({ default: module.AdminReturns })));
+const AdminUsers = lazy(() => import('../admin/AdminUsers').then(module => ({ default: module.AdminUsers })));
+const AdminContent = lazy(() => import('../admin/AdminContent').then(module => ({ default: module.AdminContent })));
+const AdminSettings = lazy(() => import('../admin/AdminSettings').then(module => ({ default: module.AdminSettings })));
+const AdminCategories = lazy(() => import('../admin/AdminCategories').then(module => ({ default: module.AdminCategories })));
+const AdminVendors = lazy(() => import('../admin/AdminVendors').then(module => ({ default: module.AdminVendors })));
+const AdminStock = lazy(() => import('../admin/AdminStock').then(module => ({ default: module.AdminStock })));
+const AdminReviews = lazy(() => import('../admin/AdminReviews').then(module => ({ default: module.AdminReviews })));
+const AdminCampaigns = lazy(() => import('../admin/AdminCampaigns').then(module => ({ default: module.AdminCampaigns })));
+const AdminFinance = lazy(() => import('../admin/AdminFinance').then(module => ({ default: module.AdminFinance })));
+const AdminNotifications = lazy(() => import('../admin/AdminNotifications').then(module => ({ default: module.AdminNotifications })));
+const AdminVendorApplications = lazy(() => import('../admin/AdminVendorApplications').then(module => ({ default: module.AdminVendorApplications })));
+const AdminEvents = lazy(() => import('../admin/AdminEvents').then(module => ({ default: module.AdminEvents })));
+const ProducerProductManager = lazy(() => import('../features/producer-products/ProducerProductManager'));
+const ProducerOrdersPanel = lazy(() => import('../features/producer-orders/ProducerOrdersPanel'));
+const ProducerFinancePanel = lazy(() => import('../features/producer-finance/ProducerFinancePanel'));
+const ProducerProfilePanel = lazy(() => import('../features/account/ProducerProfilePanel'));
 
 interface AdminPageProps {
   onLogout: () => void;
   onBack?: () => void;
+}
+
+function PanelLoading() {
+  return (
+    <div className="flex min-h-[45vh] items-center justify-center px-6" aria-busy="true">
+      <div className="text-center" role="status" aria-live="polite">
+        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-brand-green dark:border-gray-700 dark:border-t-brand-green" aria-hidden="true" />
+        <p className="mt-4 font-medium text-gray-700 dark:text-gray-200">Yönetim bölümü yükleniyor...</p>
+      </div>
+    </div>
+  );
 }
 
 export function AdminPage({ onLogout, onBack }: AdminPageProps) {
@@ -108,7 +120,9 @@ export function AdminPage({ onLogout, onBack }: AdminPageProps) {
 
   return (
     <AdminLayout activeTab={activeTab} setActiveTab={setActiveTab} onBack={onBack} onLogout={onLogout}>
-      {isAdmin ? renderAdminContent() : renderProducerContent()}
+      <Suspense fallback={<PanelLoading />}>
+        {isAdmin ? renderAdminContent() : renderProducerContent()}
+      </Suspense>
     </AdminLayout>
   );
 }
