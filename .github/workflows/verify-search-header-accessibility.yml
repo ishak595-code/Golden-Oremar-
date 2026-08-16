@@ -5,6 +5,8 @@ on:
     branches: [agent/search-header-accessibility]
     paths:
       - '.github/workflows/verify-search-header-accessibility.yml'
+      - 'migration-tools/harden-search-header-a11y.mjs'
+      - 'src/features/catalog/CatalogSearchOverlay.tsx'
 
 permissions:
   contents: write
