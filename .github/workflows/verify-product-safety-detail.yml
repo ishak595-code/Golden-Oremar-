@@ -1,0 +1,157 @@
+name: Verify Product Safety Detail
+
+on:
+  push:
+    branches: [agent/product-safety-detail]
+    paths:
+      - '.github/workflows/verify-product-safety-detail.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Connect existing safety RPC to catalog API
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/features/catalog/api.ts')
+          s=p.read_text()
+          anchor="""export async function getProductDetail(reference: string) {\n  const { data, error } = await supabase.rpc('get_public_product_detail_v1', {\n    p_reference: reference,\n  });\n  return unwrap<any>(data, error);\n}\n"""
+          addition=anchor+"""\nexport async function getProductSafety(reference: string, locale = 'tr') {\n  const { data, error } = await supabase.rpc('get_public_product_safety_v1', {\n    p_reference: reference,\n    p_locale: locale,\n  });\n  return unwrap<any>(data, error);\n}\n"""
+          if 'get_public_product_safety_v1' not in s:
+              if s.count(anchor)!=1: raise SystemExit(f'Unexpected product detail API anchor count: {s.count(anchor)}')
+              s=s.replace(anchor,addition)
+              p.write_text(s)
+          PY
+
+      - name: Mount safety panel only on product detail
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/features/catalog/ProductDetailScreen.tsx')
+          s=p.read_text()
+          import_anchor="import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProductFavorite}from'./api';"
+          import_new=import_anchor+"\nimport ProductSafetyPanel from'./ProductSafetyPanel';"
+          if "ProductSafetyPanel from'./ProductSafetyPanel'" not in s:
+              if s.count(import_anchor)!=1: raise SystemExit(f'Unexpected product detail import anchor: {s.count(import_anchor)}')
+              s=s.replace(import_anchor,import_new)
+          trace_anchor='''  <section className="mt-5 rounded-2xl border p-5"><h2 className="flex items-center gap-2 text-xl font-bold"><QrCode className="h-5 w-5 text-brand-gold"/>Lot / İzlenebilirlik</h2>'''
+          trace_new='''  <ProductSafetyPanel reference={detail.slug||detail.id}/>
+'''+trace_anchor
+          if '<ProductSafetyPanel reference={detail.slug||detail.id}/>' not in s:
+              if s.count(trace_anchor)!=1: raise SystemExit(f'Unexpected traceability anchor: {s.count(trace_anchor)}')
+              s=s.replace(trace_anchor,trace_new)
+          p.write_text(s)
+          PY
+
+      - name: Validate integration boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "get_public_product_safety_v1" src/features/catalog/api.ts
+          grep -q "ProductSafetyPanel from'./ProductSafetyPanel'" src/features/catalog/ProductDetailScreen.tsx
+          grep -q '<ProductSafetyPanel reference={detail.slug||detail.id}/>' src/features/catalog/ProductDetailScreen.tsx
+          grep -q 'claimPolicy' supabase/migrations/20260816162848_add_public_product_guidance_v1.sql
+          grep -q 'drop function if exists public.get_public_product_guidance_v1' supabase/migrations/20260816163025_harden_existing_product_safety_api_v1.sql
+          if grep -q 'claimPolicy' src/features/catalog/ProductSafetyPanel.tsx; then
+            echo 'Internal claim policy must not be rendered.' >&2
+            exit 1
+          fi
+          if grep -q 'verificationNeeded' src/features/catalog/ProductSafetyPanel.tsx; then
+            echo 'Internal verification workflow must not be rendered.' >&2
+            exit 1
+          fi
+
+      - name: Production web build
+        run: npm run build
+
+      - name: Synchronize native projects
+        run: npx cap sync android && npx cap sync ios
+
+      - name: Ensure native sync is reproducible
+        shell: bash
+        run: |
+          set -euo pipefail
+          unexpected=$(git diff --name-only | grep -v '^src/features/catalog/api.ts$' | grep -v '^src/features/catalog/ProductDetailScreen.tsx$' || true)
+          if [ -n "$unexpected" ]; then
+            echo "Unexpected tracked changes after native sync:" >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+
+      - name: Compile Android debug app
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Update persistent project state
+        shell: bash
+        run: |
+          cat > docs/IMPLEMENTATION_STATUS.md <<'MD'
+          # Golden Oremar Implementation Status
+
+          Last updated: 2026-08-16
+
+          This file is intentionally concise. Detailed sequencing lives in `MOBILE_PRODUCT_ROADMAP.md`; persistence rules live in `PERSISTENCE_AND_CHANGE_LEDGER.md`.
+
+          ## Current phase
+          Mobile-first customer experience hardening before admin-panel finalization.
+
+          ## Completed platform/auth package
+          - Stable Capacitor 8.5 core/platform baseline with locked official plugin versions.
+          - Android API 36, minSdk 24, Java 21, Kotlin 2.2.20, Gradle 8.14.3 and AGP 8.13.0.
+          - iOS deployment target 15.0 with Capacitor 8.5 UIScene lifecycle and preserved auth deep-link routing.
+          - Provider-gated Google/Facebook OAuth remains integrated through the existing Supabase/deep-link session flow; social buttons remain disabled unless explicitly enabled.
+          - Permanent mobile CI quality gate checks locked native baseline, production build, Capacitor Android/iOS sync reproducibility and Android debug compilation.
+
+          ## Completed dynamic product/customer trust packages
+          - Server-backed review, stock/variant, producer verification/origin and follower metrics are used across the customer catalog.
+          - Product cards, search, producer products, cart and product detail use stock-aware quantity handling; the remaining raw product-detail number field has been replaced by accessible +/- controls.
+
+          ## Completed structured product safety package
+          - Existing `product_health` content is reused; no new health copy is invented.
+          - All 42 published products have linked published safety content.
+          - The existing `get_public_product_safety_v1` API is the single public source and now returns a safe subset: preparation, storage, allergen/label guidance, warnings and HTTPS sources.
+          - Internal `claimPolicy` and `verificationNeeded` workflow metadata is no longer exposed by the public safety API.
+          - Requested content locale falls back to the real Turkish publication when a translation does not exist; the returned locale remains explicit.
+          - Product detail renders the structured safety content in accessible sections without treatment claims.
+
+          ## Current active package
+          Published FAQ/help integration and remaining customer self-service guidance. Reuse existing help/content systems rather than creating duplicate static pages.
+
+          ## Release gates still required on Apple hardware
+          A real Xcode archive/build, signing check and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
+          MD
+
+      - name: Commit verified frontend integration only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/features/catalog/api.ts src/features/catalog/ProductDetailScreen.tsx docs/IMPLEMENTATION_STATUS.md
+          git diff --cached --stat
+          git commit -m 'Connect structured product safety to product detail'
+          git push origin HEAD:agent/product-safety-detail
