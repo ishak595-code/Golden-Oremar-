@@ -677,6 +677,10 @@ function AppContent() {
         <ProductDetailScreen
           reference={productReference}
           authenticated={!!currentUser}
+          favoriteReferences={favorites}
+          onFavoriteChanged={(reference: string, isFavorite: boolean) => setFavorites((previous) => isFavorite
+            ? (previous.includes(reference) ? previous : [...previous, reference])
+            : previous.filter((item) => item !== reference))}
           onBack={goBack}
           onLoginRequired={() => { showToast('Bu işlem için hesabınıza giriş yapın.'); navigateToTab('account'); }}
           onCartChanged={fetchCart}
