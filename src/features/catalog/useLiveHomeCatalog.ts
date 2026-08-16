@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getProducerFollowMetrics, getPublicHomeCatalog, listPublicCategories, publicCatalogUrl } from './api';
+import { NETWORK_RESTORED_EVENT } from '../resilience/useConnectivity';
 
 export type LegacyHomeProduct = {
   id: string;
@@ -50,6 +51,13 @@ export function useLiveHomeCatalog() {
   const [categories, setCategories] = useState<LegacyHomeCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [reloadSequence, setReloadSequence] = useState(0);
+
+  useEffect(() => {
+    const restore = () => setReloadSequence(value => value + 1);
+    window.addEventListener(NETWORK_RESTORED_EVENT, restore);
+    return () => window.removeEventListener(NETWORK_RESTORED_EVENT, restore);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -122,8 +130,6 @@ export function useLiveHomeCatalog() {
           .sort((a, b) => a.sortOrder - b.sortOrder || b.productCount - a.productCount || a.name.localeCompare(b.name, 'tr')));
       } catch (err: any) {
         if (active) {
-          setProducts([]);
-          setCategories([]);
           setError(err?.message || 'Canlı katalog yüklenemedi.');
         }
       } finally {
@@ -131,7 +137,7 @@ export function useLiveHomeCatalog() {
       }
     })();
     return () => { active = false; };
-  }, []);
+  }, [reloadSequence]);
 
   return { products, categories, loading, error };
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { useAccessibleDialog } from './features/accessibility/useAccessibleDialog';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { useDeviceTheme } from './features/appearance/useDeviceTheme';import { query } from 'firebase/firestore';
+import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { useAccessibleDialog } from './features/accessibility/useAccessibleDialog';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { useDeviceTheme } from './features/appearance/useDeviceTheme';import { useConnectivity } from './features/resilience/useConnectivity';import { query } from 'firebase/firestore';
 
 
 const AdminPage = React.lazy(() => import('./pages/AdminPage').then(module => ({ default: module.AdminPage })));
@@ -93,7 +93,8 @@ function AppContent() {
 
   const [accountView, setAccountView] = useState<string>('menu');
   const authRecovery = useAuthRecoveryCoordinator();
-  const { unreadCount, setUnreadCount } = useUnreadNotificationCount(!!currentUser);
+  const { unreadCount, setUnreadCount, refreshUnreadCount } = useUnreadNotificationCount(!!currentUser);
+  const { isOnline, restoreSequence } = useConnectivity();
 
   useEffect(() => {
     if (!authRecovery.callbackHandled) return;
@@ -355,7 +356,6 @@ function AppContent() {
 
     let disposed = false;
     let appBackHandle: { remove: () => Promise<void> } | undefined;
-    let networkHandle: { remove: () => Promise<void> } | undefined;
 
     void CapApp.addListener('backButton', () => {
       if (authRecovery.recoveryPending) {
@@ -391,17 +391,9 @@ function AppContent() {
       else appBackHandle = handle;
     });
 
-    void Network.addListener('networkStatusChange', status => {
-      if (!status.connected) showToast('İnternet bağlantısı kesildi.');
-    }).then(handle => {
-      if (disposed) void handle.remove();
-      else networkHandle = handle;
-    });
-
     return () => {
       disposed = true;
       if (appBackHandle) void appBackHandle.remove();
-      if (networkHandle) void networkHandle.remove();
     };
   }, [tabHistory, currentTab, accountView, isSearchFocused, showGiftModal, isFilterPanelOpen, isSortPanelOpen, authRecovery.recoveryPending]);
 
@@ -479,6 +471,15 @@ function AppContent() {
       setCart([]);
     }
   };
+
+  useEffect(() => {
+    if (restoreSequence === 0) return;
+    showToast('İnternet bağlantısı geri geldi. Güncel veriler doğrulanıyor.');
+    if (currentUser) {
+      void fetchCart();
+      void refreshUnreadCount();
+    }
+  }, [restoreSequence, currentUser?.id]);
 
   useEffect(() => {
     void fetchCart();
@@ -876,6 +877,7 @@ function AppContent() {
           {/* Header */}
           {currentTab !== 'admin' && (
       <header className="sticky top-0 z-40 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800 shadow-sm transition-all duration-300" style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}>
+        {!isOnline ? <div role="status" aria-live="polite" className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-950 dark:border-amber-800 dark:bg-amber-950/70 dark:text-amber-100">Çevrimdışısınız. Son yüklenen bilgiler gösterilebilir; sepet, sipariş ve hesap değişiklikleri bağlantı geri gelene kadar tamamlanamaz.</div> : null}
         <div className="max-w-7xl mx-auto px-4 md:px-6 relative">
           {/* Mobile Layout: Single sleek, high-efficiency horizontal bar */}
           <div className="md:hidden flex h-16 items-center gap-3 py-1 animate-in fade-in slide-in-from-top-1 duration-300">
