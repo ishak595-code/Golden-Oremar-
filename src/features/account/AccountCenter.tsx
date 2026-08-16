@@ -1,4 +1,3 @@
-
 import React,{useEffect,useState}from'react';
 import{ArrowLeft,Bell,Calendar,ChevronRight,Gift,Heart,HelpCircle,Leaf,MapPin,MessageCircle,Package,Settings,ShieldCheck,Store,UserRound,WalletCards}from'lucide-react';
 import{getAccountOverview}from'./api';
@@ -37,12 +36,20 @@ const menu=[
 ] as const;
 
 export default function AccountCenter({
- requestedView,theme,onThemeChange,onOpenProduct,onOpenProducer,onStartGift,onOpenMessages,onOpenNotificationAction,onOpenContact,onOpenHealth,onOpenEvents,onOpenAdmin,onOpenSellerApplication,onOpenSellerProductManager,onBack
+ requestedView,theme,onThemeChange,onOpenProduct,onOpenProducer,onStartGift,onOpenMessages,onOpenNotificationAction,onUnreadNotificationCountChange,onOpenContact,onOpenHealth,onOpenEvents,onOpenAdmin,onOpenSellerApplication,onOpenSellerProductManager,onBack
 }:{
- requestedView?:string; theme?:string; onThemeChange?:(theme:'light'|'dark')=>void; onOpenProduct?:(slug:string)=>void; onOpenProducer?:(slug:string)=>void; onStartGift?:()=>void; onOpenMessages?:()=>void; onOpenNotificationAction?:(url:string,metadata:any)=>void; onOpenContact?:()=>void; onOpenHealth?:()=>void; onOpenEvents?:()=>void; onOpenAdmin?:()=>void; onOpenSellerApplication?:()=>void; onOpenSellerProductManager?:()=>void; onBack?:()=>void;
+ requestedView?:string; theme?:string; onThemeChange?:(theme:'light'|'dark')=>void; onOpenProduct?:(slug:string)=>void; onOpenProducer?:(slug:string)=>void; onStartGift?:()=>void; onOpenMessages?:()=>void; onOpenNotificationAction?:(url:string,metadata:any)=>void; onUnreadNotificationCountChange?:(count:number)=>void; onOpenContact?:()=>void; onOpenHealth?:()=>void; onOpenEvents?:()=>void; onOpenAdmin?:()=>void; onOpenSellerApplication?:()=>void; onOpenSellerProductManager?:()=>void; onBack?:()=>void;
 }){
  const[overview,setOverview]=useState<AccountOverview|null>(null);const[view,setView]=useState<AccountView>('home');const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[messageConversationId,setMessageConversationId]=useState('');const[orderDetailId,setOrderDetailId]=useState('');
- async function refresh(){try{setLoading(true);setError('');setOverview(await getAccountOverview());}catch(e:any){setError(e?.message||'Hesap bilgileri yüklenemedi.');}finally{setLoading(false);}}
+ async function refresh(){
+  try{
+   setLoading(true);setError('');
+   const next=await getAccountOverview();
+   setOverview(next);
+   onUnreadNotificationCountChange?.(Number(next?.summary?.unread_notification_count)||0);
+  }catch(e:any){setError(e?.message||'Hesap bilgileri yüklenemedi.');}
+  finally{setLoading(false);}
+ }
  useEffect(()=>{void refresh();},[]);
  useEffect(()=>{
   const map:Record<string,AccountView>={
@@ -72,7 +79,7 @@ export default function AccountCenter({
   if(view==='followed-producers')return<FollowedProducersPanel onOpenProducer={onOpenProducer}/>;
   if(view==='gifts')return<GiftsPanel onStartGift={onStartGift}/>;
   if(view==='payments')return<PaymentsPanel/>;
-  if(view==='notifications')return<NotificationsPanel onOpenAction={onOpenNotificationAction}/>;
+  if(view==='notifications')return<NotificationsPanel onOpenAction={onOpenNotificationAction} onUnreadCountChange={onUnreadNotificationCountChange}/>;
   if(view==='messages')return<MessagesPanel initialConversationId={messageConversationId}/>;
   if(view==='support')return<SupportPanel locale={overview.profile.locale} onOpenMessages={()=>setView('messages')}/>;
   if(view==='seller')return<SellerPanel producer={overview.producer} onOpenApplication={onOpenSellerApplication} onOpenProductManager={()=>{if(onOpenSellerProductManager)onOpenSellerProductManager();else setView('producer-products');}}/>;
