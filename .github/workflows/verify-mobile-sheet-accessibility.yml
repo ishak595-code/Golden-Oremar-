@@ -5,6 +5,8 @@ on:
     branches: [agent/mobile-sheet-accessibility]
     paths:
       - '.github/workflows/verify-mobile-sheet-accessibility.yml'
+      - 'src/features/accessibility/useAccessibleDialog.ts'
+      - 'migration-tools/harden-mobile-sheets-a11y-v3.mjs'
 
 permissions:
   contents: write
