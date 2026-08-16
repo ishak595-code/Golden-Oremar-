@@ -60,6 +60,12 @@ Kaynak kod veya build dosyaları veritabanına kopyalanmaz. Canlı müşteri/KYC
 - Tüm sepeti temizleme tek dokunuşla çalışmaz; canonical accessible confirmation dialog üzerinden açık onay ister.
 - Checkout submit kilidi son server preview doğrulamasından önce devreye girer ve aynı müşteri tıklamasının paralel preview/order yarışını engeller; server idempotency ana güvenlik otoritesi olarak korunur.
 - Cart error alert odak alır; coupon/shipping/submit/destructive kontrollerde explicit button/focus semantiği korunur.
+- Etkinlik kayıt modalı canonical accessible dialog kullanır; form busy iken tekrar gönderilmez, kayıt/load hataları odağa alınır ve kapasite/bekleme listesi gerçeği backend'den gelir.
+- İletişim ekranı geçici contact-config ağ hatasını "kanal yayınlanmadı" durumundan ayırır; form aktif kalır ve telefon/e-posta gibi iletişim bilgileri uydurulmaz.
+- İletişim formu client validation, busy guard, focused error ve başarı duyurusu kullanır; mevcut secure edge submission/honeypot backend'i korunur.
+- Sağlık & Tarifler ekranı içerik favorilerinde per-item busy/status kullanır; detail/loading modalı canonical accessible dialog davranışını paylaşır.
+- Sağlık içerik detayı loading isteği request-id guard ile iptal edilebilir; kullanıcı modalı kapattıktan sonra eski async yanıt içeriği yeniden açamaz.
+- Sağlık içeriğinin backend-sanitized HTML ve ürün güvenliği bilgisi korunur; yeni tedavi/sağlık iddiası eklenmez.
 - Yayınlanmış SSS/Yardım içerik entegrasyonu; olmayan Terms metni uydurulmaz.
 - Yapılandırılmış ürün güvenliği / sağlık uyarıları ve kaynak modeli.
 
@@ -102,6 +108,8 @@ Migration history Supabase'in migration tablosunda tutulmaktadır. Önemli son m
 14. Geri alınabilir list-row mutasyonlarında tüm ekranı kilitlemek yerine ilgili satır busy olur; hata temizlenir, sonuç duyurulur ve server gerçeğiyle yeniden senkronlanır.
 15. Ham backend durum kodu customer UI'da doğrudan bırakılmaz; bilinen değerler okunabilir etikete çevrilir, bilinmeyen değerler kaybolmadan güvenli fallback ile gösterilir.
 16. Checkout UI kendi client busy kilidini kullanır ama fiyat/stok/kargo/kupon/idempotency otoritesi daima server tarafında kalır; client doğrulaması güvenlik sınırı sayılmaz.
+17. Public ekranlarda geçici ağ/servis hatası, gerçekten yayınlanmamış içerik/kanal durumu gibi gösterilmez; failure state ve empty/unpublished state ayrı tutulur.
+18. Uzun async detail istekleri kullanıcı modalı kapatıldıktan sonra UI'ı stale yanıtla yeniden açamaz; uygun request/cancellation guard kullanılır.
 
 ## Harici konfigürasyon notu
 Google/Facebook OAuth, ödeme sağlayıcısı, kargo sağlayıcısı ve store signing gibi dış credential gerektiren özellikler; kod hazır olsa bile ilgili sağlayıcı gerçekten yapılandırılmadan "aktif" kabul edilmez.
