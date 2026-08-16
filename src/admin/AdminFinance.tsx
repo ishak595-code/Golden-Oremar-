@@ -1,181 +1,149 @@
-import React, { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, TrendingDown, Calendar, Search, Download } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import React, { useEffect, useMemo, useState } from 'react';
+import { CalendarDays, Download, Loader2, RefreshCw, TrendingDown, TrendingUp, WalletCards } from 'lucide-react';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { adminErrorMessage, adminFinanceReport, minorToMajor, minorToTry, type AdminFinanceReport } from './supabaseAdminApi';
+
+type RangeKey = '7days' | '30days' | 'thisMonth' | 'lastMonth';
+
+function dateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function resolveRange(key: RangeKey) {
+  const today = new Date();
+  today.setHours(12, 0, 0, 0);
+  if (key === 'thisMonth') return { from: dateKey(new Date(today.getFullYear(), today.getMonth(), 1, 12)), to: dateKey(today) };
+  if (key === 'lastMonth') {
+    const from = new Date(today.getFullYear(), today.getMonth() - 1, 1, 12);
+    const to = new Date(today.getFullYear(), today.getMonth(), 0, 12);
+    return { from: dateKey(from), to: dateKey(to) };
+  }
+  const days = key === '30days' ? 29 : 6;
+  const from = new Date(today);
+  from.setDate(today.getDate() - days);
+  return { from: dateKey(from), to: dateKey(today) };
+}
+
+function csvCell(value: string | number) {
+  const text = String(value ?? '');
+  return `"${text.replace(/"/g, '""')}"`;
+}
 
 export function AdminFinance() {
-  const [reports, setReports] = useState<any>({ dailySales: [], vendorIncome: [] });
+  const [report, setReport] = useState<AdminFinanceReport | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState('7days');
+  const [error, setError] = useState('');
+  const [dateRange, setDateRange] = useState<RangeKey>('7days');
 
-  useEffect(() => {
-    fetchFinanceReports();
-  }, [dateRange]);
+  const range = useMemo(() => resolveRange(dateRange), [dateRange]);
 
-  const fetchFinanceReports = async () => {
+  const load = async () => {
+    setLoading(true);
+    setError('');
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/admin/finance/reports', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setReports(data);
-      }
-    } catch (error) {
-      console.error('Error fetching finance reports:', error);
+      setReport(await adminFinanceReport(range.from, range.to));
+    } catch (err) {
+      setReport(null);
+      setError(adminErrorMessage(err, 'Finans raporu yüklenemedi.'));
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Yükleniyor...</div>;
+  useEffect(() => {
+    void load();
+  }, [range.from, range.to]);
 
-  const totalRevenue = reports.dailySales.reduce((sum: number, day: any) => sum + (Number(day.total_sales) || 0), 0);
-  const totalCommission = reports.vendorIncome.reduce((sum: number, vendor: any) => sum + (Number(vendor.total_commission) || 0), 0);
+  const chartData = useMemo(() => (report?.daily_sales || []).map(day => ({
+    date: new Date(`${day.date}T12:00:00`).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' }),
+    netSales: minorToMajor(day.net_sales_minor),
+    grossSales: minorToMajor(day.gross_sales_minor),
+    refunds: minorToMajor(day.refund_minor),
+  })), [report]);
+
+  const exportCsv = () => {
+    if (!report) return;
+    const rows = [
+      ['Golden Oremar Finans Raporu', `${report.from} / ${report.to}`],
+      ['Para Birimi', report.currency],
+      ['Sipariş Sayısı', report.totals.order_count],
+      ['Brüt Satış', minorToMajor(report.totals.gross_sales_minor)],
+      ['İade', minorToMajor(report.totals.refund_minor)],
+      ['Net Satış', minorToMajor(report.totals.net_sales_minor)],
+      ['Platform Komisyonu', minorToMajor(report.totals.commission_minor)],
+      ['Tahmini Satıcı Hakedişi', minorToMajor(report.totals.estimated_payout_minor)],
+      [],
+      ['Gün', 'Sipariş', 'Brüt Satış', 'İade', 'Net Satış'],
+      ...report.daily_sales.map(day => [day.date, day.order_count, minorToMajor(day.gross_sales_minor), minorToMajor(day.refund_minor), minorToMajor(day.net_sales_minor)]),
+      [],
+      ['Satıcı', 'Sipariş', 'Brüt Satış', 'Komisyon', 'Tahmini Hakediş'],
+      ...report.vendor_income.map(vendor => [vendor.vendor_name, vendor.order_count, minorToMajor(vendor.gross_sales_minor), minorToMajor(vendor.commission_minor), minorToMajor(vendor.estimated_payout_minor)]),
+    ];
+    const csv = `\uFEFF${rows.map(row => row.map(csvCell).join(';')).join('\n')}`;
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `golden-oremar-finans-${report.from}-${report.to}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const totals = report?.totals;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Finans Raporları</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Gelir, gider ve komisyon detaylarını inceleyin.</p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Sadece Supabase üzerinde doğrulanmış sipariş, iade, komisyon ve tahmini hakediş verileri gösterilir.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-green outline-none"
-          >
-            <option value="7days">Son 7 Gün</option>
-            <option value="30days">Son 30 Gün</option>
-            <option value="thisMonth">Bu Ay</option>
-            <option value="lastMonth">Geçen Ay</option>
-          </select>
-          <button className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-            <Download className="w-5 h-5" />
-            Dışa Aktar
-          </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <label className="relative">
+            <span className="sr-only">Rapor tarih aralığı</span>
+            <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+            <select value={dateRange} onChange={event => setDateRange(event.target.value as RangeKey)} className="min-h-11 w-full rounded-xl border border-gray-200 bg-white py-2 pl-9 pr-8 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-800 dark:text-white sm:w-auto">
+              <option value="7days">Son 7 gün</option><option value="30days">Son 30 gün</option><option value="thisMonth">Bu ay</option><option value="lastMonth">Geçen ay</option>
+            </select>
+          </label>
+          <button type="button" onClick={() => void load()} disabled={loading} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 py-2 text-gray-700 flex items-center justify-center gap-2 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> Yenile</button>
+          <button type="button" onClick={exportCsv} disabled={!report || loading} className="min-h-11 rounded-xl bg-brand-green px-4 py-2 text-white flex items-center justify-center gap-2 hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"><Download className="h-4 w-4" aria-hidden="true" /> CSV</button>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <DollarSign className="w-24 h-24 text-blue-600" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600">
-                <DollarSign className="w-6 h-6" />
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Toplam Ciro</div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{totalRevenue.toLocaleString('tr-TR')} ₺</div>
-            </div>
-          </div>
+      <div className="text-sm text-gray-500 dark:text-gray-400">Rapor aralığı: <strong className="text-gray-700 dark:text-gray-200">{range.from} - {range.to}</strong></div>
+
+      {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
+      {loading && <div role="status" className="flex min-h-32 items-center justify-center gap-2 rounded-2xl border border-gray-100 bg-white text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Finans verileri yükleniyor...</div>}
+
+      {!loading && report && totals && <>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="flex items-center gap-2 text-sm text-gray-500"><TrendingUp className="h-5 w-5 text-green-600" aria-hidden="true" /> Brüt satış</div><div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{minorToTry(totals.gross_sales_minor)} TRY</div><div className="mt-1 text-xs text-gray-500">{totals.order_count.toLocaleString('tr-TR')} ücretli sipariş</div></div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="flex items-center gap-2 text-sm text-gray-500"><TrendingDown className="h-5 w-5 text-orange-600" aria-hidden="true" /> İadeler</div><div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{minorToTry(totals.refund_minor)} TRY</div><div className="mt-1 text-xs text-gray-500">Başarılı refund hareketleri</div></div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="flex items-center gap-2 text-sm text-gray-500"><WalletCards className="h-5 w-5 text-blue-600" aria-hidden="true" /> Net satış</div><div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{minorToTry(totals.net_sales_minor)} TRY</div><div className="mt-1 text-xs text-gray-500">Brüt satış eksi başarılı iadeler</div></div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-sm text-gray-500">Platform komisyonu</div><div className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">{minorToTry(totals.commission_minor)} TRY</div><div className="mt-1 text-xs text-gray-500">Tahmini satıcı hakedişi: {minorToTry(totals.estimated_payout_minor)} TRY</div></div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <TrendingUp className="w-24 h-24 text-green-600" />
+        <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-labelledby="sales-chart-title">
+          <h3 id="sales-chart-title" className="text-lg font-bold text-gray-900 dark:text-white">Günlük net satış</h3>
+          <p className="mt-1 text-xs text-gray-500">Grafik TRY bazındadır.</p>
+          <div className="mt-5 h-72 w-full" aria-label="Günlük net satış grafiği">
+            <ResponsiveContainer width="100%" height="100%"><AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}><CartesianGrid strokeDasharray="3 3" vertical={false} /><XAxis dataKey="date" axisLine={false} tickLine={false} fontSize={12} /><YAxis axisLine={false} tickLine={false} fontSize={12} width={60} /><Tooltip formatter={(value: number) => [`${Number(value).toLocaleString('tr-TR', { maximumFractionDigits: 2 })} TRY`, 'Net satış']} /><Area type="monotone" dataKey="netSales" stroke="currentColor" fill="currentColor" fillOpacity={0.12} /></AreaChart></ResponsiveContainer>
           </div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Toplam Komisyon Geliri</div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{totalCommission.toLocaleString('tr-TR')} ₺</div>
-            </div>
-          </div>
-        </div>
+        </section>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <TrendingDown className="w-24 h-24 text-orange-600" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl text-orange-600">
-                <TrendingDown className="w-6 h-6" />
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Satıcılara Ödenecek</div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{(totalRevenue - totalCommission).toLocaleString('tr-TR')} ₺</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Günlük Satış Trendi</h3>
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={reports.dailySales} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                formatter={(value: number) => [`${value} ₺`, 'Satış']}
-              />
-              <Area type="monotone" dataKey="total_sales" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Vendor Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Satıcı Gelirleri</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600 dark:text-gray-400">
-            <thead className="bg-gray-50 dark:bg-gray-900/50 text-xs uppercase font-semibold text-gray-500">
-              <tr>
-                <th className="px-6 py-4">Satıcı</th>
-                <th className="px-6 py-4">Toplam Satış</th>
-                <th className="px-6 py-4">Komisyon Kesintisi</th>
-                <th className="px-6 py-4">Net Hakediş</th>
-                <th className="px-6 py-4 text-right">Durum</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {reports.vendorIncome.map((vendor: any, index: number) => (
-                <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{vendor.vendor_name}</td>
-                  <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{Number(vendor.total_sales) || 0} ₺</td>
-                  <td className="px-6 py-4 text-red-600">-{vendor.total_commission} ₺</td>
-                  <td className="px-6 py-4 font-bold text-green-600">{Number(vendor.total_sales - vendor.total_commission) || 0} ₺</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">
-                      Ödeme Bekliyor
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {reports.vendorIncome.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">Kayıt bulunamadı.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-labelledby="vendor-income-title">
+          <div className="border-b border-gray-100 p-5 dark:border-gray-700"><h3 id="vendor-income-title" className="text-lg font-bold text-gray-900 dark:text-white">Satıcı Gelirleri</h3><p className="mt-1 text-xs text-gray-500">Hakediş değeri rapor anındaki tahmindir. Gerçek payout kaydı oluşmadan ödeme yapılmış gibi gösterilmez.</p></div>
+          <div className="divide-y divide-gray-100 dark:divide-gray-700 md:hidden">{report.vendor_income.map(vendor => <article key={vendor.producer_id} className="p-4"><h4 className="font-semibold text-gray-900 dark:text-white">{vendor.vendor_name}</h4><dl className="mt-3 grid grid-cols-2 gap-3 text-sm"><div><dt className="text-xs text-gray-500">Brüt satış</dt><dd>{minorToTry(vendor.gross_sales_minor)} TRY</dd></div><div><dt className="text-xs text-gray-500">Komisyon</dt><dd>{minorToTry(vendor.commission_minor)} TRY</dd></div><div><dt className="text-xs text-gray-500">Tahmini hakediş</dt><dd className="font-semibold text-green-700 dark:text-green-300">{minorToTry(vendor.estimated_payout_minor)} TRY</dd></div><div><dt className="text-xs text-gray-500">Sipariş</dt><dd>{vendor.order_count}</dd></div></dl></article>)}</div>
+          <div className="hidden overflow-x-auto md:block"><table className="w-full text-left text-sm text-gray-600 dark:text-gray-300"><thead className="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-900/50"><tr><th className="px-6 py-4">Satıcı</th><th className="px-6 py-4">Sipariş</th><th className="px-6 py-4">Brüt satış</th><th className="px-6 py-4">Komisyon</th><th className="px-6 py-4">Tahmini hakediş</th></tr></thead><tbody className="divide-y divide-gray-100 dark:divide-gray-700">{report.vendor_income.map(vendor => <tr key={vendor.producer_id}><td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{vendor.vendor_name}</td><td className="px-6 py-4">{vendor.order_count}</td><td className="px-6 py-4">{minorToTry(vendor.gross_sales_minor)} TRY</td><td className="px-6 py-4">{minorToTry(vendor.commission_minor)} TRY</td><td className="px-6 py-4 font-semibold text-green-700 dark:text-green-300">{minorToTry(vendor.estimated_payout_minor)} TRY</td></tr>)}</tbody></table></div>
+          {report.vendor_income.length === 0 && <div className="p-8 text-center text-gray-500">Bu tarih aralığında doğrulanmış satıcı geliri yok.</div>}
+        </section>
+      </>}
     </div>
   );
 }
