@@ -1,8 +1,8 @@
 {
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "appliedMigrationCount": 122,
-  "latestMigration": "20260816224048_harden_product_shipping_weight_input",
+  "appliedMigrationCount": 125,
+  "latestMigration": "20260816230040_replace_storefront_demo_assets_with_live_catalog_assets",
   "securityAdvisorLints": 0,
   "performanceBlockingLints": 0,
   "edgeFunctions": {
@@ -63,9 +63,23 @@
     "release-architecture-audit",
     "admin-catalog-integrity-readiness",
     "seller-shipping-weight-integrity",
+    "native-push-client-preparation",
+    "exact-push-device-unregister-hardened",
+    "storefront-demo-assets-retired",
+    "recipe-live-catalog-alignment",
+    "admin-section-lazy-splitting-implemented",
+    "production-bundle-budget-implemented",
     "react19-types-aligned",
-    "cross-platform-mobile-quality-gate"
+    "cross-platform-mobile-quality-gate-baseline-green"
   ],
   "integrationEntryPoint": "frontend/integration/apply-all-current.mjs",
-  "nextBlock": "native-push-provider-preparation-payment-provider-readiness-final-accessibility-performance-and-release-audit"
+  "externalBlockers": [
+    "github-actions-billing-or-spending-limit",
+    "business-and-support-identity-required-for-live-sales",
+    "production-payment-provider-and-merchant-credentials",
+    "production-oauth-provider-configuration",
+    "production-fcm-apns-provider-configuration",
+    "mobile-store-signing-and-release-credentials"
+  ],
+  "nextBlock": "live-category-label-polish-payment-provider-readiness-push-dispatch-readiness-accessibility-performance-and-release-audit"
 }
