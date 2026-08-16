@@ -1,9 +1,10 @@
 {
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "appliedMigrationCount": 90,
-  "latestMigration": "20260816050443_minimize_public_storefront_readiness_v1",
+  "appliedMigrationCount": 120,
+  "latestMigration": "20260816211940_add_remaining_foreign_key_indexes_v2",
   "securityAdvisorLints": 0,
+  "performanceBlockingLints": 0,
   "edgeFunctions": {
     "contact-submit": { "status": "ACTIVE", "version": 1 },
     "event-reservation": { "status": "ACTIVE", "version": 2 }
@@ -29,17 +30,36 @@
     "customer-content-favorites",
     "public-storefront-config",
     "public-about-and-help-content",
-    "migrated-firestore-customer-listener-retirement",
     "producer-onboarding-v4-ui",
     "producer-product-management",
     "producer-profile-edit",
     "producer-location-change-request",
     "verified-purchase-review-center",
+    "dynamic-product-producer-metrics",
+    "product-safety-detail",
+    "faq-help-center",
+    "admin-dashboard-supabase-rpc",
+    "admin-products-supabase-rpc",
+    "admin-orders-supabase-rpc",
+    "admin-stock-supabase-rpc",
+    "admin-returns-supabase-rpc",
+    "admin-categories-supabase-rpc",
+    "admin-events-supabase-rpc",
+    "admin-notifications-supabase-rpc",
+    "admin-content-supabase-rpc",
+    "admin-settings-supabase-rpc",
     "admin-campaigns-supabase-rpc",
     "admin-finance-supabase-rpc",
     "admin-review-moderation-supabase-rpc",
-    "legacy-node-sqlite-runtime-retired"
+    "admin-users-supabase-rpc",
+    "admin-vendors-supabase-rpc",
+    "admin-vendor-applications-supabase-rpc",
+    "firebase-datacontext-runtime-retired",
+    "firebase-package-retired",
+    "legacy-node-sqlite-runtime-retired",
+    "react19-types-aligned",
+    "cross-platform-mobile-quality-gate"
   ],
   "integrationEntryPoint": "frontend/integration/apply-all-current.mjs",
-  "nextBlock": "remaining-admin-firestore-datacontext-migration-then-bundle-performance-and-mobile-release-audit"
+  "nextBlock": "cross-platform-release-validation-performance-accessibility-and-external-provider-readiness"
 }
