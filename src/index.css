@@ -30,7 +30,6 @@
 }
 
 :root {
-  /* Light theme: premium ivory surface with high-contrast forest typography. */
   color-scheme: light;
   --bg-main: #F4F7F5;
   --bg-card: #FFFFFF;
@@ -44,13 +43,54 @@
   --brand-earth: #7A431F;
 }
 
+/* İnci Beyazı: clean premium ivory with forest typography. */
 :root[data-theme="light"] {
   color-scheme: light;
+  --bg-main: #F7F8F6;
+  --bg-card: #FFFFFF;
+  --text-main: #14261C;
+  --text-muted: #52675C;
+  --text-muted-darker: #35483F;
+  --border-main: #D7E0DA;
+  --border-light: #E8EDE9;
+  --brand-gold: #8A6810;
+  --brand-green: #145A32;
+  --brand-earth: #7A431F;
 }
 
+/* Zümrüt Oremar: refined emerald accent without sacrificing reading contrast. */
+:root[data-theme="emerald"] {
+  color-scheme: light;
+  --bg-main: #F1F6F2;
+  --bg-card: #FCFFFD;
+  --text-main: #10372A;
+  --text-muted: #46685A;
+  --text-muted-darker: #2B5141;
+  --border-main: #C8DDD2;
+  --border-light: #E1ECE6;
+  --brand-gold: #A87D19;
+  --brand-green: #087A55;
+  --brand-earth: #765033;
+}
+
+/* Yakut Prestige: pearl surface, ruby accent and warm champagne companion. */
+:root[data-theme="ruby"] {
+  color-scheme: light;
+  --bg-main: #FBF6F7;
+  --bg-card: #FFFDFD;
+  --text-main: #3B1722;
+  --text-muted: #75515C;
+  --text-muted-darker: #5D3442;
+  --border-main: #E7D3D9;
+  --border-light: #F2E4E8;
+  --brand-gold: #A77C30;
+  --brand-green: #8F1D3B;
+  --brand-earth: #7B3B37;
+}
+
+/* Obsidyen Gece: deep forest-black surface with warm gold. */
 :root[data-theme="dark"] {
   color-scheme: dark;
-  /* Dark theme: deep Oremar forest green with warm premium gold. */
   --bg-main: #060F0C;
   --bg-card: #0A1C16;
   --text-main: #F4F7F5;
@@ -61,6 +101,21 @@
   --brand-gold: #EDC967;
   --brand-green: #27AE60;
   --brand-earth: #C36A31;
+}
+
+/* Şampanya Altın: warm cream surface with restrained bronze-gold accents. */
+:root[data-theme="champagne"] {
+  color-scheme: light;
+  --bg-main: #FBF6E9;
+  --bg-card: #FFFDF5;
+  --text-main: #332A18;
+  --text-muted: #6E6248;
+  --text-muted-darker: #51462F;
+  --border-main: #E5D8B8;
+  --border-light: #F0E7D1;
+  --brand-gold: #9A7118;
+  --brand-green: #705C27;
+  --brand-earth: #805338;
 }
 
 body {
@@ -80,7 +135,6 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   font-family: var(--font-serif);
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -103,7 +157,6 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   scrollbar-width: none;
 }
 
-/* Accessibility: respect the user’s reduced-motion preference. */
 @media (prefers-reduced-motion: reduce) {
   html:focus-within { scroll-behavior: auto; }
   *, *::before, *::after {
