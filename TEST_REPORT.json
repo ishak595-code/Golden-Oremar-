@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-16T23:05:00+00:00",
+  "generatedAt": "2026-08-16T23:16:00+00:00",
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "liveMigrationCount": 125,
-  "latestMigration": "20260816230040_replace_storefront_demo_assets_with_live_catalog_assets",
+  "liveMigrationCount": 126,
+  "latestMigration": "20260816231230_add_public_checkout_payment_readiness_v1",
   "securityAdvisorLints": 0,
   "performanceBlockingLints": 0,
   "edgeFunctions": {
@@ -20,6 +20,8 @@
     "catalogReadinessQualityGate": "PASS",
     "supabaseSecurityAdvisor": "PASS_ZERO_LINTS",
     "storefrontDemoAssetAudit": "PASS_ZERO_UNSPLASH_PICSUM_PLACEHOLDER_LOREM",
+    "checkoutPaymentReadinessRpc": "PASS_MANUAL_CONFIRMATION_NO_PROVIDER_SECRETS",
+    "checkoutPaymentReadinessSecurity": "PASS_SECURITY_INVOKER_EXPLICIT_ANON_AUTHENTICATED_EXECUTE",
     "mobileBrandAssets": "PASS_VALIDATED_PNG",
     "androidReleaseBundleBaseline": "PASS",
     "iosSimulatorCompileBaseline": "PASS",
@@ -38,6 +40,8 @@
     "sellerShippingWeightValidatedClientAndServer": true,
     "internationalReadinessDoesNotInventShippingWeight": true,
     "nativePushDoesNotInventProviderCredentials": true,
+    "checkoutDoesNotInventPaymentProvider": true,
+    "checkoutDoesNotExposeProviderSecrets": true,
     "storefrontHeroImagesUseLocalCatalogAssets": true,
     "legacyRecipeHeroImagesUseLocalCatalogAssets": true,
     "legacyRecipesAlignedToLiveCatalogProducts": true
@@ -57,10 +61,18 @@
     "publishedContentDemoAssetMatches": 0,
     "note": "Missing real shipping weights remain visible for correction and are never fabricated."
   },
+  "paymentReadiness": {
+    "mode": "manual_confirmation",
+    "provider": null,
+    "liveCardPaymentsEnabled": false,
+    "paymentVerificationRequired": true,
+    "requiresProviderConfiguration": true,
+    "storesProviderSecretsClientSide": false
+  },
   "externalBlockers": {
     "githubActions": "Jobs currently do not start because the GitHub account reports failed recent payments or a spending limit that must be increased.",
     "liveSalesIdentity": "Legal business and support contact identity are not configured in brand settings.",
-    "paymentProvider": "Production merchant/provider credentials are not configured; checkout correctly remains manual-confirmation based.",
+    "paymentProvider": "Production merchant/provider credentials are not configured; checkout remains truthful manual-confirmation mode and exposes readiness state without secrets.",
     "nativePushProviders": "Client and backend registration path are prepared, but production FCM/APNs configuration is intentionally absent.",
     "oauthProviders": "Production Google/Facebook provider configuration remains external.",
     "mobileSigning": "Store signing and release credentials remain external."
