@@ -6,6 +6,7 @@ type Mode = 'login' | 'register' | 'forgot';
 
 function authErrorMessage(raw: string) {
   const value = raw.toLowerCase();
+  if (value.includes('native_auth_redirect_not_configured')) return 'Mobil şifre sıfırlama bağlantısı henüz güvenli dönüş adresine bağlanmamış. Lütfen destek ile iletişime geçin.';
   if (value.includes('invalid login credentials')) return 'E-posta veya şifre hatalı.';
   if (value.includes('email not confirmed')) return 'E-posta adresinizi doğruladıktan sonra giriş yapabilirsiniz.';
   if (value.includes('password should be at least')) return 'Şifre yeterince güçlü değil.';
