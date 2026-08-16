@@ -19,17 +19,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo '=== Legacy admin component references ==='
-          for symbol in AdminInterface AdminMarketing AdminVendorProfile VendorFinance; do
+          echo '=== Legacy component references ==='
+          for symbol in AdminInterface AdminMarketing AdminVendorProfile VendorFinance LegacyAdminEntry DataProvider; do
             echo "--- ${symbol} ---"
             git grep -n "${symbol}" -- 'src/**' || true
           done
 
           echo '=== DataContext / Firebase residue under src ==='
-          git grep -nE "useData\(|DataContext|firebase/firestore|from ['\"]\.\.?/.*firebase['\"]|from ['\"]\.\.?/firebase['\"]" -- 'src/**' || true
+          git grep -nE "useData\(|DataContext|DataProvider|firebase/|from ['\"]\.\.?/.*firebase['\"]|from ['\"]\.\.?/firebase['\"]" -- 'src/**' || true
 
           echo '=== Admin files importing DataContext or Firebase ==='
-          git grep -nE "useData\(|DataContext|firebase/firestore|from ['\"]\.\.?/.*firebase['\"]|from ['\"]\.\.?/firebase['\"]" -- 'src/admin/**' || true
+          git grep -nE "useData\(|DataContext|DataProvider|firebase/|from ['\"]\.\.?/.*firebase['\"]|from ['\"]\.\.?/firebase['\"]" -- 'src/admin/**' || true
+
+          echo '=== firebase.ts references ==='
+          git grep -nE "from ['\"][^'\"]*firebase['\"]|from ['\"][^'\"]*firebase\.ts['\"]" -- 'src/**' || true
 
           echo '=== Local API residue ==='
           git grep -nE "['\"]\/api\/|fetch\([^\n]*\/api\/|axios[^\n]*\/api\/" -- 'src/**' || true
