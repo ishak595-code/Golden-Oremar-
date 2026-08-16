@@ -1,0 +1,35 @@
+name: Audit Legacy Admin Residue
+
+on:
+  push:
+    branches:
+      - agent/admin-supabase-retire-node
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Audit legacy admin component references
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '=== Legacy admin component references ==='
+          for symbol in AdminInterface AdminMarketing AdminVendorProfile VendorFinance; do
+            echo "--- ${symbol} ---"
+            git grep -n "${symbol}" -- 'src/**' || true
+          done
+
+          echo '=== DataContext / Firebase residue under src ==='
+          git grep -nE "useData\(|DataContext|firebase/firestore|from ['\"]\.\.?/.*firebase['\"]|from ['\"]\.\.?/firebase['\"]" -- 'src/**' || true
+
+          echo '=== Admin files importing DataContext or Firebase ==='
+          git grep -nE "useData\(|DataContext|firebase/firestore|from ['\"]\.\.?/.*firebase['\"]|from ['\"]\.\.?/firebase['\"]" -- 'src/admin/**' || true
+
+          echo '=== Local API residue ==='
+          git grep -nE "['\"]\/api\/|fetch\([^\n]*\/api\/|axios[^\n]*\/api\/" -- 'src/**' || true
