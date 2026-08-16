@@ -25,12 +25,21 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - All 42 published products have linked published structured safety content.
 - Product detail and health content reuse the existing `get_public_product_safety_v1` RPC and shared structured safety UI.
 - The public safety RPC keeps the published v2 customer contract while sanitizing warnings and source URLs and falling back to the real Turkish publication if a requested translation is unavailable.
-- Customer-facing `verificationNeeded` and `claimPolicy` fields remain available because the existing shared UI intentionally renders them as verification guidance and disclaimer text; their types are preserved.
+- Customer-facing verification/disclaimer fields used by the shared UI keep their intended public types.
 - Live safety migrations applied after the structured-safety merge are mirrored into GitHub so schema replay remains consistent.
 - Supabase Security Advisor reports no security lints after the final public safety contract alignment.
 
+## Completed published FAQ/help package
+- The existing published content system is reused; no duplicate hard-coded help database is created.
+- 13 Turkish FAQ entries are published across trust, account/discovery, seller, order/delivery, product-safety and account/privacy categories.
+- `list_public_faq_v1` is the single FAQ read RPC, supports the app locales and explicitly reports Turkish fallback when a requested translation is unavailable.
+- Account → Yardım & Destek loads the real FAQ source in an accessible searchable/category-filtered panel using native details/summary disclosure controls.
+- FAQ answers render as plain published text; unsanitized HTML is not injected.
+- Existing About, Returns, Privacy and messaging support flows remain intact. A Terms card is still not invented when no verified published Terms record exists.
+- The live FAQ migration is mirrored into GitHub for schema/content replay.
+
 ## Current active package
-Published FAQ/help integration and remaining customer self-service guidance. Reuse the existing content library, account help RPC and messaging support flow rather than creating duplicate static pages.
+Mobile visual finalization: audit the remaining customer-facing screens for consistent spacing, typography, touch targets, safe areas, empty/error/loading states and reduced-motion behavior without redesigning already-completed modules.
 
 ## Release gates still required on Apple hardware
 A real Xcode archive/build, signing check and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
