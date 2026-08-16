@@ -100,6 +100,14 @@ export async function getProductDetail(reference: string) {
   return unwrap<any>(data, error);
 }
 
+export async function getProductSafety(reference: string, locale = 'tr') {
+  const { data, error } = await supabase.rpc('get_public_product_safety_v1', {
+    p_reference: reference,
+    p_locale: locale,
+  });
+  return unwrap<any>(data, error);
+}
+
 export async function toggleProductFavorite(reference: string) {
   const { data, error } = await supabase.rpc('toggle_customer_favorite', {
     p_product_reference: reference,
