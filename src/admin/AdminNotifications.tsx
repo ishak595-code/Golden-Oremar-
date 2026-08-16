@@ -1,265 +1,169 @@
-import React, { useState, useEffect } from 'react';
-import { Send, Users, User, AlertCircle, CheckCircle, Mail, Bell } from 'lucide-react';
-import { useData } from '../context/DataContext';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Bell, Check, Info, Loader2, RefreshCw, Search, Send, Store, User, Users } from 'lucide-react';
+import { adminListPlatformUsers, type AdminPlatformUser } from './userAdminApi';
+import {
+  adminBroadcastNotification,
+  adminNotificationAudienceCount,
+  notificationAdminErrorMessage,
+  type NotificationTargetScope,
+  type PlatformNotificationType,
+} from './notificationAdminApi';
 
 export function AdminNotifications() {
-  const { users, addNotification, currentUser } = useData();
+  const [users, setUsers] = useState<AdminPlatformUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
   const [sending, setSending] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  
-  const [formData, setFormData] = useState({
+  const [countLoading, setCountLoading] = useState(false);
+  const [audienceCount, setAudienceCount] = useState(0);
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+  const [userSearch, setUserSearch] = useState('');
+  const [form, setForm] = useState({
+    scope: 'all' as NotificationTargetScope,
+    userId: '',
+    type: 'system' as PlatformNotificationType,
     title: '',
     message: '',
-    type: 'info',
-    target_role: 'all',
-    user_id: '',
-    sendEmail: false,
-    sendPush: true
+    actionUrl: '',
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSending(true);
-    setSuccessMessage('');
-    
+  const showToast = (message: string) => {
+    setToast(message);
+    window.setTimeout(() => setToast(''), 3500);
+  };
+
+  const loadUsers = async () => {
+    setLoadingUsers(true);
+    setError('');
     try {
-      let targetUsers: any[] = [];
-      
-      if (formData.target_role === 'all') {
-        targetUsers = users;
-      } else if (formData.target_role === 'vendor') {
-        targetUsers = users.filter((u: any) => u.role === 'vendor');
-      } else if (formData.target_role === 'specific') {
-        targetUsers = users.filter((u: any) => u.id === formData.user_id);
-      }
+      setUsers((await adminListPlatformUsers()).filter(user => user.status === 'active'));
+    } catch (err) {
+      setError(notificationAdminErrorMessage(err, 'Kullanıcı listesi yüklenemedi.'));
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
-      if (formData.sendPush) {
-         for (const user of targetUsers) {
-           addNotification({
-             userId: user.id || user.uid,
-             message: formData.message,
-             type: formData.type as 'order' | 'system' | 'campaign' | 'info'
-           });
-         }
-      }
+  useEffect(() => { void loadUsers(); }, []);
 
-      // Simulated email sending (No real backend to send emails)
-      if (formData.sendEmail) {
-         console.log(`Simulating email via DataContext for ${targetUsers.length} users with subject: ${formData.title}`);
-         // We would call a backend function here to deploy actual emails.
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (form.scope === 'specific' && !form.userId) {
+        setAudienceCount(0);
+        return;
       }
+      setCountLoading(true);
+      try {
+        const count = await adminNotificationAudienceCount(form.scope, form.userId || null);
+        if (!cancelled) setAudienceCount(count);
+      } catch (err) {
+        if (!cancelled) {
+          setAudienceCount(0);
+          setError(notificationAdminErrorMessage(err, 'Hedef kitle sayısı hesaplanamadı.'));
+        }
+      } finally {
+        if (!cancelled) setCountLoading(false);
+      }
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [form.scope, form.userId]);
 
-      setSuccessMessage('Bildirim(ler) başarıyla gönderildi.');
-      setFormData({
-        title: '',
-        message: '',
-        type: 'info',
-        target_role: 'all',
-        user_id: '',
-        sendEmail: false,
-        sendPush: true
+  const filteredUsers = useMemo(() => {
+    const q = userSearch.trim().toLocaleLowerCase('tr-TR');
+    const active = users.filter(user => user.status === 'active');
+    if (!q) return active.slice(0, 100);
+    return active.filter(user => `${user.name} ${user.email} ${user.role}`.toLocaleLowerCase('tr-TR').includes(q)).slice(0, 100);
+  }, [users, userSearch]);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (sending || audienceCount < 1) return;
+    setSending(true);
+    setError('');
+    try {
+      const result = await adminBroadcastNotification({
+        scope: form.scope,
+        userId: form.userId || null,
+        type: form.type,
+        title: form.title,
+        message: form.message,
+        actionUrl: form.actionUrl || null,
       });
-      setTimeout(() => setSuccessMessage(''), 3000);
-    } catch (error) {
-      console.error('Error sending notification:', error);
-      setErrorMessage('Bildirim gönderilirken bir hata oluştu.');
-      setTimeout(() => setErrorMessage(''), 3000);
+      showToast(`${Number(result.recipientCount || audienceCount).toLocaleString('tr-TR')} kullanıcı için bildirim oluşturuldu.`);
+      setForm(current => ({ ...current, title: '', message: '', actionUrl: '' }));
+    } catch (err) {
+      setError(notificationAdminErrorMessage(err));
     } finally {
       setSending(false);
     }
   };
 
+  const targetCard = (scope: NotificationTargetScope, label: string, icon: React.ReactNode, helper: string) => (
+    <button
+      type="button"
+      onClick={() => setForm(current => ({ ...current, scope, userId: scope === 'specific' ? current.userId : '' }))}
+      aria-pressed={form.scope === scope}
+      className={`min-h-24 rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green ${form.scope === scope ? 'border-brand-green bg-brand-green/10 text-brand-green' : 'border-gray-200 bg-white text-gray-700 hover:border-brand-green/40 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'}`}
+    >
+      <div className="flex items-center gap-2 font-semibold">{icon}{label}</div>
+      <div className="mt-2 text-xs opacity-75">{helper}</div>
+    </button>
+  );
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Bildirim & E-posta Gönder</h2>
-      </div>
-
-      {successMessage && (
-        <div className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 p-4 rounded-xl flex items-center gap-2">
-          <CheckCircle className="w-5 h-5" />
-          <span className="font-medium">{successMessage}</span>
-        </div>
-      )}
-
-      {errorMessage && (
-        <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 p-4 rounded-xl flex items-center gap-2">
-          <AlertCircle className="w-5 h-5" />
-          <span className="font-medium">{errorMessage}</span>
-        </div>
-      )}
-
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Hedef Kitle</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
-                  formData.target_role === 'all' 
-                    ? 'bg-brand-green/10 border-brand-green text-brand-green' 
-                    : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-brand-green/50'
-                }`}>
-                  <input 
-                    type="radio" 
-                    name="target" 
-                    value="all" 
-                    checked={formData.target_role === 'all'}
-                    onChange={(e) => setFormData({...formData, target_role: e.target.value})}
-                    className="hidden" 
-                  />
-                  <Users className="w-5 h-5" />
-                  <span className="font-medium">Tüm Kullanıcılar</span>
-                </label>
-                
-                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
-                  formData.target_role === 'vendor' 
-                    ? 'bg-brand-green/10 border-brand-green text-brand-green' 
-                    : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-brand-green/50'
-                }`}>
-                  <input 
-                    type="radio" 
-                    name="target" 
-                    value="vendor" 
-                    checked={formData.target_role === 'vendor'}
-                    onChange={(e) => setFormData({...formData, target_role: e.target.value})}
-                    className="hidden" 
-                  />
-                  <Users className="w-5 h-5" />
-                  <span className="font-medium">Sadece Satıcılar</span>
-                </label>
-
-                <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
-                  formData.target_role === 'specific' 
-                    ? 'bg-brand-green/10 border-brand-green text-brand-green' 
-                    : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-brand-green/50'
-                }`}>
-                  <input 
-                    type="radio" 
-                    name="target" 
-                    value="specific" 
-                    checked={formData.target_role === 'specific'}
-                    onChange={(e) => setFormData({...formData, target_role: e.target.value})}
-                    className="hidden" 
-                  />
-                  <User className="w-5 h-5" />
-                  <span className="font-medium">Belirli Kullanıcı</span>
-                </label>
-              </div>
-            </div>
-
-            {formData.target_role === 'specific' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kullanıcı Seçin</label>
-                <select
-                  required
-                  value={formData.user_id}
-                  onChange={(e) => setFormData({...formData, user_id: e.target.value})}
-                  className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                >
-                  <option value="">Kullanıcı seçin...</option>
-                  {users.map((user: any) => (
-                    <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Gönderim Kanalları</label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox"
-                    checked={formData.sendPush}
-                    onChange={(e) => setFormData({...formData, sendPush: e.target.checked})}
-                    className="rounded text-brand-green focus:ring-brand-green w-4 h-4 cursor-pointer"
-                  />
-                  <span className="text-gray-700 dark:text-gray-300 flex items-center gap-1"><Bell className="w-4 h-4" /> Uygulama İçi (Bildirimler)</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox"
-                    checked={formData.sendEmail}
-                    onChange={(e) => setFormData({...formData, sendEmail: e.target.checked})}
-                    className="rounded text-brand-green focus:ring-brand-green w-4 h-4 cursor-pointer"
-                  />
-                  <span className="text-gray-700 dark:text-gray-300 flex items-center gap-1"><Mail className="w-4 h-4" /> E-posta (Bülten)</span>
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bildirim Türü</label>
-              <select
-                value={formData.type}
-                onChange={(e) => setFormData({...formData, type: e.target.value})}
-                className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-              >
-                <option value="info">Bilgilendirme</option>
-                <option value="success">Başarılı İşlem</option>
-                <option value="warning">Uyarı</option>
-                <option value="campaign">Kampanya</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Başlık</label>
-              <input
-                type="text"
-                required
-                value={formData.title}
-                onChange={(e) => setFormData({...formData, title: e.target.value})}
-                placeholder="Örn: Yeni Yıl İndirimleri Başladı!"
-                className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mesaj İçeriği</label>
-              <textarea
-                required
-                value={formData.message}
-                onChange={(e) => setFormData({...formData, message: e.target.value})}
-                placeholder="Kullanıcılara gösterilecek mesajı buraya yazın..."
-                className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                rows={5}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-700">
-            <button
-              type="submit"
-              disabled={sending || (!formData.sendPush && !formData.sendEmail)}
-              className="px-6 py-3 rounded-xl bg-brand-green text-white font-medium hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {sending ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Gönderiliyor...
-                </>
-              ) : (
-                <>
-                  <Send className="w-5 h-5" />
-                  Bildirimi Gönder
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-      
-      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-6 flex items-start gap-4">
-        <AlertCircle className="w-6 h-6 text-blue-600 shrink-0 mt-0.5" />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h4 className="font-bold text-blue-900 dark:text-blue-400">E-posta ve Push Bildirimleri</h4>
-          <p className="text-sm text-blue-800 dark:text-blue-300 mt-1">
-            Uygulama İçi (Push) seçeneği ile kullanıcıların hesaplarına doğrudan kampanya veya haber uyarısı gönderilir ve zil ikonu üzerinden görebilirler. E-posta seçeneği ile (varsa) tanımlı mail adreslerine bilgilendirme e-postası dağıtılır.
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Bildirim Merkezi</h2>
+          <p className="mt-1 max-w-3xl text-sm text-gray-500 dark:text-gray-400">Uygulama içi bildirim gerçek Supabase kayıtlarına yazılır. Kayıtlı cihazlarda push açıksa ve kullanıcı ilgili bildirim türüne izin verdiyse push kuyruğu otomatik oluşturulur.</p>
         </div>
-      </div>
+        <button type="button" onClick={() => void loadUsers()} disabled={loadingUsers} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 py-2 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+          <RefreshCw className={`mr-2 inline h-4 w-4 ${loadingUsers ? 'animate-spin' : ''}`} aria-hidden="true" /> Kullanıcıları yenile
+        </button>
+      </header>
+
+      {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
+
+      <form onSubmit={submit} className="space-y-6">
+        <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-labelledby="notification-audience-title">
+          <div className="flex items-start justify-between gap-3">
+            <div><h3 id="notification-audience-title" className="font-bold text-gray-900 dark:text-white">Hedef kitle</h3><p className="mt-1 text-xs text-gray-500">Yalnızca aktif hesaplar hedeflenir.</p></div>
+            <div className="rounded-xl bg-gray-100 px-3 py-2 text-sm font-bold text-gray-900 dark:bg-gray-700 dark:text-white" aria-live="polite">{countLoading ? 'Hesaplanıyor' : `${audienceCount.toLocaleString('tr-TR')} alıcı`}</div>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            {targetCard('all', 'Tüm aktif kullanıcılar', <Users className="h-5 w-5" aria-hidden="true" />, 'Aktif müşteri ve satıcı hesapları')}
+            {targetCard('producer', 'Aktif satıcılar', <Store className="h-5 w-5" aria-hidden="true" />, 'Aktif üretici profiline sahip kullanıcılar')}
+            {targetCard('specific', 'Belirli kullanıcı', <User className="h-5 w-5" aria-hidden="true" />, 'Tek bir aktif hesaba gönder')}
+          </div>
+
+          {form.scope === 'specific' && <div className="mt-4 space-y-3">
+            <label className="relative block"><span className="sr-only">Kullanıcı ara</span><Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" aria-hidden="true" /><input type="search" value={userSearch} onChange={event => setUserSearch(event.target.value)} placeholder="İsim veya e-posta ara..." className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
+            <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Kullanıcı</span><select required value={form.userId} onChange={event => setForm(current => ({ ...current, userId: event.target.value }))} className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="">Kullanıcı seçin</option>{filteredUsers.map(user => <option key={user.id} value={user.id}>{user.name} - {user.email}</option>)}</select></label>
+          </div>}
+        </section>
+
+        <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-labelledby="notification-content-title">
+          <h3 id="notification-content-title" className="font-bold text-gray-900 dark:text-white">Bildirim içeriği</h3>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Tür</span><select value={form.type} onChange={event => setForm(current => ({ ...current, type: event.target.value as PlatformNotificationType }))} className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="system">Sistem</option><option value="campaign">Kampanya</option><option value="producer">Satıcı</option><option value="order">Sipariş</option><option value="payment">Ödeme</option><option value="shipment">Kargo</option><option value="return">İade</option></select></label>
+            <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Uygulama içi bağlantı (isteğe bağlı)</span><input maxLength={2048} value={form.actionUrl} onChange={event => setForm(current => ({ ...current, actionUrl: event.target.value }))} placeholder="/?tab=account veya güvenli HTTPS bağlantısı" className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
+            <label className="sm:col-span-2"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Başlık</span><input required minLength={2} maxLength={160} value={form.title} onChange={event => setForm(current => ({ ...current, title: event.target.value }))} className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
+            <label className="sm:col-span-2"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Mesaj</span><textarea required minLength={2} maxLength={5000} rows={6} value={form.message} onChange={event => setForm(current => ({ ...current, message: event.target.value }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-100">
+          <div className="flex items-start gap-3"><Info className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" /><div><strong>E-posta gönderimi bu ekranda taklit edilmiyor.</strong><p className="mt-1">Gerçek bir e-posta sağlayıcısı ve teslimat denetimi bağlanana kadar yalnızca güvenli uygulama içi bildirim ve tercih uyumlu push akışı kullanılır.</p></div></div>
+        </section>
+
+        <button type="submit" disabled={sending || countLoading || audienceCount < 1 || form.title.trim().length < 2 || form.message.trim().length < 2} className="min-h-12 w-full rounded-xl bg-brand-green px-6 font-bold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto">
+          {sending ? <span className="flex items-center justify-center gap-2"><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Gönderiliyor</span> : <span className="flex items-center justify-center gap-2"><Send className="h-5 w-5" aria-hidden="true" /> {audienceCount.toLocaleString('tr-TR')} kullanıcıya bildirimi oluştur</span>}
+        </button>
+      </form>
+
+      {toast && <div role="status" className="fixed bottom-4 right-4 z-[70] flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-white shadow-2xl"><Check className="h-5 w-5 text-green-400" aria-hidden="true" /> {toast}</div>}
     </div>
   );
 }
