@@ -1,4 +1,4 @@
-name: Verify Structured Product Safety Content
+name: Final Verify Structured Product Safety Content
 
 on:
   push:
@@ -32,7 +32,7 @@ jobs:
       - name: Integrate product detail safety panel
         run: node migration-tools/integrate-product-safety-detail.mjs
 
-      - name: Validate structured safety contracts
+      - name: Validate structured safety contracts and migration persistence
         shell: bash
         run: |
           set -euo pipefail
@@ -42,6 +42,14 @@ jobs:
           grep -q "ProductSafetyPanel" src/features/catalog/ProductDetailScreen.tsx
           grep -q "getProductSafety(reference,'tr')" src/features/catalog/ProductDetailScreen.tsx
           grep -q "safetyContent?.safety" src/features/catalog/ProductDetailScreen.tsx
+          test -f supabase/migrations/20260816160543_archive_and_harden_public_product_safety_v1.sql
+          test -f supabase/migrations/20260816161038_initialize_structured_product_safety_content_v2.sql
+          test -f supabase/migrations/20260816161122_fix_structured_product_safety_classification_v2.sql
+          test -f supabase/migrations/20260816161255_enrich_animal_honey_produce_safety_v2.sql
+          test -f supabase/migrations/20260816161325_enrich_pantry_beverage_nonfood_safety_v2.sql
+          test -f supabase/migrations/20260816161342_add_public_product_safety_content_api_v1.sql
+          test -f supabase/migrations/20260816161413_polish_structured_product_safety_copy_v2.sql
+          test -f supabase/migrations/20260816162315_classify_dried_persimmon_product_safety_v2.sql
 
       - name: Parse changed TypeScript modules
         shell: bash
@@ -83,7 +91,7 @@ jobs:
           chmod +x gradlew
           ./gradlew :app:assembleDebug --no-daemon
 
-      - name: Commit verified integration
+      - name: Commit verified final state
         shell: bash
         run: |
           set -euo pipefail
