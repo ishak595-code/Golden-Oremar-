@@ -9,7 +9,8 @@ source=source.replace(/onAddToCart=\{async \(item\) => \{\s*await addToCart\(\{ 
 
 source=source.replace(/(<PublicProducerScreen[\s\S]*?onLoginRequired=\{[\s\S]*?\}\}\n)(\s*onOpenProduct=)/g,(match,prefix,next)=>{
  if(prefix.includes('onOpenConversation='))return match;
- return `${prefix}          onOpenConversation={(conversationId) => { setAccountView(\`messages:${conversationId}\`); navigateToTab('account'); }}\n${next}`;
+ const route="          onOpenConversation={(conversationId) => { setAccountView(`messages:${conversationId}`); navigateToTab('account'); }}\n";
+ return prefix+route+next;
 });
 
 const blocks=source.match(/<PublicProducerScreen[\s\S]*?\/>/g)||[];
