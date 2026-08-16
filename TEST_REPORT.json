@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-16T22:44:00+00:00",
+  "generatedAt": "2026-08-16T23:05:00+00:00",
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "liveMigrationCount": 122,
-  "latestMigration": "20260816224048_harden_product_shipping_weight_input",
+  "liveMigrationCount": 125,
+  "latestMigration": "20260816230040_replace_storefront_demo_assets_with_live_catalog_assets",
   "securityAdvisorLints": 0,
   "performanceBlockingLints": 0,
   "edgeFunctions": {
@@ -12,17 +12,19 @@
   },
   "validation": {
     "typescriptScope": "shipped-application-source",
-    "typescriptSyntaxErrors": 0,
-    "productionWebBuild": "PASS",
+    "typescriptSyntaxErrorsAtLastExecutedQualityGate": 0,
+    "productionWebBuildAtLastExecutedQualityGate": "PASS",
     "releaseArchitectureAudit": "PASS",
     "firebaseRuntimeResidue": "PASS_NONE_FOUND",
     "legacyStaticCatalogRuntime": "PASS_RETIRED",
     "catalogReadinessQualityGate": "PASS",
     "supabaseSecurityAdvisor": "PASS_ZERO_LINTS",
+    "storefrontDemoAssetAudit": "PASS_ZERO_UNSPLASH_PICSUM_PLACEHOLDER_LOREM",
     "mobileBrandAssets": "PASS_VALIDATED_PNG",
-    "androidReleaseBundle": "LAST_GREEN_AWAITING_LATEST_HEAD_RECHECK",
-    "iosSimulatorCompile": "LAST_GREEN_AWAITING_LATEST_HEAD_RECHECK",
-    "mobileQualityGate": "RUNNING_LATEST_HEAD"
+    "androidReleaseBundleBaseline": "PASS",
+    "iosSimulatorCompileBaseline": "PASS",
+    "latestMobileQualityGate": "EXTERNAL_BLOCKED_GITHUB_BILLING_OR_SPENDING_LIMIT",
+    "latestLazySplitAndBundleBudgetExternalCi": "PENDING_UNTIL_GITHUB_RUNNERS_START"
   },
   "truthfulnessChecks": {
     "adminFakeMetricsRetired": true,
@@ -34,7 +36,11 @@
     "customerProductSafetyDynamic": true,
     "catalogIntegrityMetricsDynamic": true,
     "sellerShippingWeightValidatedClientAndServer": true,
-    "internationalReadinessDoesNotInventShippingWeight": true
+    "internationalReadinessDoesNotInventShippingWeight": true,
+    "nativePushDoesNotInventProviderCredentials": true,
+    "storefrontHeroImagesUseLocalCatalogAssets": true,
+    "legacyRecipeHeroImagesUseLocalCatalogAssets": true,
+    "legacyRecipesAlignedToLiveCatalogProducts": true
   },
   "liveCatalogAudit": {
     "publishedActiveProducts": 42,
@@ -47,6 +53,16 @@
     "publishedMissingActivePricedVariant": 0,
     "publishedTrackedWithoutInventory": 0,
     "activeVariantsMissingShippingWeightForPerishableProducts": 14,
-    "note": "Missing real shipping weights are surfaced to seller and admin instead of being fabricated."
+    "brandSettingsDemoAssetMatches": 0,
+    "publishedContentDemoAssetMatches": 0,
+    "note": "Missing real shipping weights remain visible for correction and are never fabricated."
+  },
+  "externalBlockers": {
+    "githubActions": "Jobs currently do not start because the GitHub account reports failed recent payments or a spending limit that must be increased.",
+    "liveSalesIdentity": "Legal business and support contact identity are not configured in brand settings.",
+    "paymentProvider": "Production merchant/provider credentials are not configured; checkout correctly remains manual-confirmation based.",
+    "nativePushProviders": "Client and backend registration path are prepared, but production FCM/APNs configuration is intentionally absent.",
+    "oauthProviders": "Production Google/Facebook provider configuration remains external.",
+    "mobileSigning": "Store signing and release credentials remain external."
   }
 }
