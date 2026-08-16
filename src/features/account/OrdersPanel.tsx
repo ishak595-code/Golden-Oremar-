@@ -4,6 +4,7 @@ import{cancelOrder,getOrderDetail,listOrders}from'./api';
 import{EmptyState,ErrorState,LoadingState,Money,Panel}from'./ui';
 import ReturnRequestDialog from'./ReturnRequestDialog';
 import ReturnDetailDialog from'./ReturnDetailDialog';
+import{useDialogA11y}from'./useDialogA11y';
 
 const statusText:Record<string,string>={pending_payment:'Ödeme bekleniyor',confirmed:'Onaylandı',preparing:'Hazırlanıyor',partially_shipped:'Kısmen gönderildi',shipped:'Kargoda',delivered:'Teslim edildi',completed:'Tamamlandı',cancelled:'İptal edildi'};
 const returnStatusText:Record<string,string>={requested:'Talep alındı',under_review:'İnceleniyor',approved:'Onaylandı',in_transit:'İade kargoda',received:'İade teslim alındı',rejected:'Reddedildi',refunded:'Geri ödeme yapıldı',closed:'Kapandı'};
@@ -11,6 +12,7 @@ const paymentText:Record<string,string>={pending:'Bekliyor',authorized:'Yetkilen
 
 export default function OrdersPanel(){
  const[page,setPage]=useState<any>(null);const[detail,setDetail]=useState<any>(null);const[error,setError]=useState('');const[loading,setLoading]=useState(true);const[returnOrderId,setReturnOrderId]=useState<string|null>(null);const[returnDetailId,setReturnDetailId]=useState<string|null>(null);
+ const orderDialogRef=useDialogA11y(()=>setDetail(null),Boolean(detail));
  async function load(){try{setLoading(true);setError('');setPage(await listOrders());}catch(e:any){setError(e?.message||'Siparişler yüklenemedi.');}finally{setLoading(false);}}
  useEffect(()=>{void load();},[]);
  async function open(id:string){try{setError('');setDetail(await getOrderDetail(id));}catch(e:any){setError(e?.message||'Sipariş detayı yüklenemedi.');}}
@@ -22,7 +24,7 @@ export default function OrdersPanel(){
   {error?<ErrorState message={error} onRetry={load}/>:null}
   {!page?.items?.length?<EmptyState title="Henüz sipariş yok" body="Sipariş verdiğinizde tüm durum geçmişi burada görünecek."/>:<div className="space-y-3">{page.items.map((o:any)=><button key={o.id} onClick={()=>void open(o.id)} className="min-h-14 w-full rounded-xl border border-gray-200 p-4 text-left dark:border-gray-700"><div className="flex justify-between gap-3"><div><div className="font-bold">{o.orderNumber}{o.gift?<span className="text-xs text-brand-gold"> • Hediye</span>:null}</div><div className="mt-1 text-sm text-gray-500">{statusText[o.status]||o.status} • {o.itemCount} ürün</div>{o.trackingNumber?<div className="mt-1 text-xs text-gray-500">Takip: {o.trackingNumber}</div>:null}</div><div className="font-bold"><Money minor={o.totalMinor} currency={o.currency}/></div></div></button>)}</div>}
 
-  {detail?<div role="dialog" aria-modal="true" aria-label="Sipariş detayı" className="fixed inset-0 z-50 overflow-y-auto bg-black/60 p-4"><div className="mx-auto mt-6 max-w-2xl rounded-2xl bg-white p-5 dark:bg-gray-900">
+  {detail?<div role="dialog" aria-modal="true" aria-label="Sipariş detayı" className="fixed inset-0 z-50 overflow-y-auto bg-black/60 p-4"><div ref={orderDialogRef} tabIndex={-1} className="mx-auto mt-6 max-w-2xl rounded-2xl bg-white p-5 outline-none dark:bg-gray-900">
    <div className="flex items-start justify-between gap-3"><div><h3 className="text-xl font-bold">{detail.orderNumber}</h3><p className="text-sm text-gray-500">{statusText[detail.status]||detail.status}</p><p className="mt-1 text-xs text-gray-500">Ödeme: {paymentText[detail.paymentStatus]||detail.paymentStatus}</p></div><button onClick={()=>setDetail(null)} aria-label="Sipariş detayını kapat" className="min-h-11 rounded-lg border px-4">Kapat</button></div>
 
    <section className="mt-5" aria-labelledby="order-items-title"><h4 id="order-items-title" className="font-bold">Ürünler</h4><div className="mt-2 space-y-3">{detail.items?.map((i:any)=><div key={i.id} className="rounded-xl border p-3"><div className="font-semibold">{i.productName}</div><div className="text-sm text-gray-500">{i.variantName||'Standart'} • {i.quantity} adet</div><div className="mt-1 font-bold"><Money minor={i.lineTotalMinor} currency={detail.currency}/></div></div>)}</div></section>
