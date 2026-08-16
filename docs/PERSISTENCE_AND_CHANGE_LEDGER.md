@@ -27,14 +27,24 @@ Aşağıdakiler Supabase'te tutulur:
 
 Kaynak kod veya build dosyaları veritabanına kopyalanmaz. Canlı müşteri/KYC verileri de GitHub'a konmaz. Bu ayrım güvenlik ve veri minimizasyonu için zorunludur.
 
-## Tamamlanan ve kalıcı hale getirilen son frontend/native paketleri
+## Tamamlanan ve kalıcı hale getirilen frontend/native paketleri
 - Golden Oremar Android/iOS native kimliği: `com.goldenoremar.app`.
 - Java 21 + Android API 36 build hattı.
 - Capacitor native back davranışı ve safe-area/status-bar senkronu.
 - Native e-posta doğrulama / şifre recovery deep link akışı.
-- Server-backed bildirim unread rozeti.
+- Provider-config kontrollü Google/Facebook OAuth temeli.
+- Server-backed bildirim unread rozeti ve sipariş/mesaj deep-linkleri.
 - Public metadata/PWA güven ve zoom erişilebilirlik sertleştirmesi.
 - İstemci bundle'ına gereksiz gizli Gemini anahtarı enjekte edilmesinin kaldırılması.
+- Route-level lazy loading ve kalıcı Mobile Quality Gate.
+- Canonical canlı ürün kartı; ürün detayı, arama, üretici profili ve kategori ekranlarında aynı stok/puan/üretici güven modelinin kullanılması.
+- Dinamik ana vitrin: server kategori sırası, gerçek featured/satılabilir spotlight seçimi ve fail-safe üretici trust metrikleri.
+- Mobil üst kabuk: 44px sınıfı dokunma hedefleri, açık accessible names, focus-visible ve gerçek sepet/bildirim sayıları.
+- Mobil alt gezinme: `nav` landmark, `aria-current`, safe-area ve okunabilir 11px etiketler.
+- Hesap alt görünüm focus yönetimi ve ortak panel heading semantiği.
+- Adres ekle/düzenle için shared accessible-dialog davranışı; adres silmede destructive confirmation; duplicate-action guards ve canlı durum geri bildirimi.
+- Yayınlanmış SSS/Yardım içerik entegrasyonu; olmayan Terms metni uydurulmaz.
+- Yapılandırılmış ürün güvenliği / sağlık uyarıları ve kaynak modeli.
 
 ## Backend migration kaydı
 Production Supabase projesi: `golden-oremar` (`rmfcziawxjgcnxexbrvw`).
@@ -55,6 +65,8 @@ Migration history Supabase'in migration tablosunda tutulmaktadır. Önemli son m
 - atomic return evidence
 - public producer inventory truth
 - secure producer order fulfillment
+- structured public product safety
+- public FAQ/help content
 
 ## Değişiklik kuralı
 1. Mevcut tamamlanmış modül yeniden yazılmaz.
@@ -64,6 +76,8 @@ Migration history Supabase'in migration tablosunda tutulmaktadır. Önemli son m
 5. DDL gerekiyorsa `apply_migration` ile Supabase migration history'ye yazılır.
 6. Hassas iş verisi asla GitHub'a kopyalanmaz.
 7. Harici sağlayıcı credential'ları source code'a yazılmaz.
+8. Daha güçlü canonical bileşen mevcutsa daha zayıf paralel UI korunmaz; iş mantığı kopyalanmadan canonical yol yeniden kullanılır.
+9. Kullanıcı-facing trust/organic/health/verification bilgisi yalnız server-backed doğrulanmış kaynaktan gösterilir; fallback ile güven rozeti üretilmez.
 
 ## Harici konfigürasyon notu
 Google/Facebook OAuth, ödeme sağlayıcısı, kargo sağlayıcısı ve store signing gibi dış credential gerektiren özellikler; kod hazır olsa bile ilgili sağlayıcı gerçekten yapılandırılmadan "aktif" kabul edilmez.
