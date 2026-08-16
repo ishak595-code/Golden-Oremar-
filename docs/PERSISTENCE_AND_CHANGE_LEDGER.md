@@ -56,6 +56,10 @@ Kaynak kod veya build dosyaları veritabanına kopyalanmaz. Canlı müşteri/KYC
 - Takip edilen üretici kartlarında konum veya doğrulama fallback ile uydurulmaz; yalnız backend alanları gösterilir.
 - Hediye ve ödeme geçmişi raw durum kodlarını bilinen durumlar için müşteri diline çevirir, bilinmeyen backend değerlerini kaybetmeden güvenli biçimde insan-okunur sunar.
 - Ödeme ekranı gerçek sağlayıcı bağlanmadan kayıtlı kart kasası veya sahte ödeme yöntemi simüle etmez.
+- Sepet satır miktar/sil mutasyonları satır bazlı busy guard ve live status kullanır; paralel tekrar tetikleme engellenir.
+- Tüm sepeti temizleme tek dokunuşla çalışmaz; canonical accessible confirmation dialog üzerinden açık onay ister.
+- Checkout submit kilidi son server preview doğrulamasından önce devreye girer ve aynı müşteri tıklamasının paralel preview/order yarışını engeller; server idempotency ana güvenlik otoritesi olarak korunur.
+- Cart error alert odak alır; coupon/shipping/submit/destructive kontrollerde explicit button/focus semantiği korunur.
 - Yayınlanmış SSS/Yardım içerik entegrasyonu; olmayan Terms metni uydurulmaz.
 - Yapılandırılmış ürün güvenliği / sağlık uyarıları ve kaynak modeli.
 
@@ -97,6 +101,7 @@ Migration history Supabase'in migration tablosunda tutulmaktadır. Önemli son m
 13. Modal focus/scroll/Escape/focus-return davranışı paralel implementasyonlarla çoğaltılmaz; canonical shared dialog hook yeniden kullanılır.
 14. Geri alınabilir list-row mutasyonlarında tüm ekranı kilitlemek yerine ilgili satır busy olur; hata temizlenir, sonuç duyurulur ve server gerçeğiyle yeniden senkronlanır.
 15. Ham backend durum kodu customer UI'da doğrudan bırakılmaz; bilinen değerler okunabilir etikete çevrilir, bilinmeyen değerler kaybolmadan güvenli fallback ile gösterilir.
+16. Checkout UI kendi client busy kilidini kullanır ama fiyat/stok/kargo/kupon/idempotency otoritesi daima server tarafında kalır; client doğrulaması güvenlik sınırı sayılmaz.
 
 ## Harici konfigürasyon notu
 Google/Facebook OAuth, ödeme sağlayıcısı, kargo sağlayıcısı ve store signing gibi dış credential gerektiren özellikler; kod hazır olsa bile ilgili sağlayıcı gerçekten yapılandırılmadan "aktif" kabul edilmez.
