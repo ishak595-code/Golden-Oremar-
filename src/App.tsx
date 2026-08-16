@@ -37,6 +37,7 @@ import CatalogProductCard from './features/catalog/CatalogProductCard';
 import CatalogSearchResults from './features/catalog/CatalogSearchResults';
 import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';
 import AuthScreen from './features/auth/AuthScreen';
+import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';
 import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';
 import CartCheckoutFlow from './features/cart/CartCheckoutFlow';
 import GiftOrderFlow from './features/gifts/GiftOrderFlow';
@@ -118,15 +119,26 @@ function AppContent() {
   }, [currentTab]);
 
   const [accountView, setAccountView] = useState<string>('menu');
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [adminSession, setAdminSession] = useState<{ checked: boolean; isAdmin: boolean; roles: string[] }>({ checked: false, isAdmin: false, roles: [] });
+  const isAdminLoggedIn = adminSession.checked && adminSession.isAdmin;
 
   useEffect(() => {
-    if (currentUser?.role === 'admin' || currentUser?.role === 'super_admin') {
-      setIsAdminLoggedIn(true);
-    } else {
-      setIsAdminLoggedIn(false);
+    let active = true;
+    if (!currentUser?.id) {
+      setAdminSession({ checked: true, isAdmin: false, roles: [] });
+      return () => { active = false; };
     }
-  }, [currentUser]);
+    setAdminSession(previous => ({ ...previous, checked: false }));
+    getAdminSessionStatus()
+      .then(status => {
+        if (active) setAdminSession({ checked: true, isAdmin: status.is_admin === true, roles: status.roles });
+      })
+      .catch(error => {
+        console.error('Supabase admin session verification failed', error);
+        if (active) setAdminSession({ checked: true, isAdmin: false, roles: [] });
+      });
+    return () => { active = false; };
+  }, [currentUser?.id]);
 
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [selectedVendor, setSelectedVendor] = useState<any>(null);
@@ -322,6 +334,14 @@ function AppContent() {
   };
 
   const navigateToTab = (tab: Tab) => {
+    if (tab === 'admin' && !isAdminLoggedIn) {
+      showToast(adminSession.checked ? 'Bu alan için doğrulanmış yönetici yetkisi gerekiyor.' : 'Yönetici yetkisi doğrulanıyor.');
+      if (currentTab !== 'account') {
+        setTabHistory(prev => [...prev, 'account']);
+        setCurrentTab('account');
+      }
+      return;
+    }
     if (tab !== currentTab) {
       setTabHistory(prev => [...prev, tab]);
       setCurrentTab(tab);
@@ -480,6 +500,14 @@ function AppContent() {
     setToast({ message, visible: true });
     setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
   }, []);
+
+  useEffect(() => {
+    if (currentTab === 'admin' && adminSession.checked && !adminSession.isAdmin) {
+      setCurrentTab('account');
+      setAccountView('home');
+      showToast('Bu alan için doğrulanmış yönetici yetkisi gerekiyor.');
+    }
+  }, [currentTab, adminSession.checked, adminSession.isAdmin, showToast]);
 
   const applyServerCartSnapshot = (snapshot: any) => {
     const nextItems = (snapshot?.items || []).map((item: any) => ({
@@ -897,13 +925,13 @@ function AppContent() {
   };
 
   return (
-      currentTab === 'admin' ? (
+      currentTab === 'admin' && isAdminLoggedIn ? (
         <AdminPage 
           onBack={goBack}
           onLogout={async () => { 
-            await fetch('/api/auth/logout', { method: 'POST' });
+            await signOutCurrentSession();
             setCurrentUser(null);
-            setIsAdminLoggedIn(false); 
+            setAdminSession({ checked: true, isAdmin: false, roles: [] }); 
             navigateToTab('home'); 
           }} 
         />

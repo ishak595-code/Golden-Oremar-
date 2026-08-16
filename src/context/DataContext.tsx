@@ -3,7 +3,7 @@ import { PRODUCTS, CATEGORIES, EVENTS, HEALTH_GUIDES, STATIC_CONTENT, HERO_CATEG
 import { RECIPES, HEALTH_ARTICLES, PRODUCT_HEALTH_INFO } from '../data/healthData';
 import { auth, db } from '../firebase';
 import { supabase } from '../lib/supabase';
-import { buildCurrentUserFromSession } from '../features/auth/api';
+import { buildCurrentUserFromSession, getAdminSessionStatus } from '../features/auth/api';
 import { collection, doc, onSnapshot, query, where, getDocs, setDoc, updateDoc, deleteDoc, addDoc, serverTimestamp, orderBy } from 'firebase/firestore';
 
 enum OperationType {
@@ -294,6 +294,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [isPrivilegedAdminSession, setIsPrivilegedAdminSession] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -339,6 +340,21 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    if (!currentUser?.id) {
+      setIsPrivilegedAdminSession(false);
+      return () => { active = false; };
+    }
+    getAdminSessionStatus()
+      .then(status => { if (active) setIsPrivilegedAdminSession(status.is_admin === true); })
+      .catch(error => {
+        console.error('Supabase privileged admin verification failed', error);
+        if (active) setIsPrivilegedAdminSession(false);
+      });
+    return () => { active = false; };
+  }, [currentUser?.id]);
+
   const isFirstLoadProducts = useRef(true);
   const isFirstLoadOrders = useRef(true);
 
@@ -347,7 +363,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     isFirstLoadProducts.current = true;
     isFirstLoadOrders.current = true;
-    const legacyAdminContentMode = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
+    const legacyAdminContentMode = isPrivilegedAdminSession;
 
     // Listen to Products
     let unsubProducts = () => {};
@@ -357,7 +373,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setHealthArticles(HEALTH_ARTICLES);
       const prods: Product[] = [];
       
-      if (!isFirstLoadProducts.current && currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'vendor')) {
+      if (!isFirstLoadProducts.current && currentUser && (isPrivilegedAdminSession || currentUser.role === 'vendor')) {
         snapshot.docChanges().forEach((change) => {
           if (change.type === 'modified') {
             const data = change.doc.data();
@@ -451,7 +467,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // Auto seed requires admin role, we won't run it here natively anymore 
       // Users can use "Veritabanını Sıfırla" in Admin menu instead.
-      if (prods.length > 0 && (currentUser?.role === 'admin' || currentUser?.role === 'super_admin')) {
+      if (prods.length > 0 && (isPrivilegedAdminSession)) {
         const hasAddedV9 = localStorage.getItem('hasAddedMissingProducts_V9');
         if (!hasAddedV9) {
            localStorage.setItem('hasAddedMissingProducts_V9', 'true');
@@ -519,7 +535,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubOrders = onSnapshot(q, (snapshot) => {
         const ords: Order[] = [];
         
-        if (!isFirstLoadOrders.current && currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin' || currentUser.role === 'vendor')) {
+        if (!isFirstLoadOrders.current && currentUser && (isPrivilegedAdminSession || currentUser.role === 'vendor')) {
           snapshot.docChanges().forEach((change) => {
             if (change.type === 'added') {
               const data = change.doc.data();
@@ -556,7 +572,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let unsubUsers = () => {};
     let unsubVendorApps = () => {};
     if (currentUser) {
-      if (currentUser.role === 'admin' || currentUser.role === 'super_admin') {
+      if (isPrivilegedAdminSession) {
         unsubUsers = onSnapshot(collection(db, 'users'), (snapshot) => {
           const usrs: User[] = [];
           snapshot.forEach(doc => {
@@ -782,12 +798,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       unsubContactInfo();
       unsubSettings();
     };
-  }, [isAuthReady, currentUser]);
+  }, [isAuthReady, currentUser, isPrivilegedAdminSession]);
 
   // Actions
   const addProduct = async (product: Omit<Product, 'id'>) => {
     try {
-      const isApproved = currentUser?.role === 'admin' || currentUser?.role === 'super_admin';
+      const isApproved = isPrivilegedAdminSession;
       await addDoc(collection(db, 'products'), {
         ...product,
         title: product.name,
@@ -841,7 +857,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
 
           // Notify admins if we have permission to fetch them
-          if (currentUser && (currentUser.role === 'admin' || currentUser.role === 'super_admin')) {
+          if (currentUser && isPrivilegedAdminSession) {
             try {
               const adminQuery = query(collection(db, 'users'), where('role', 'in', ['admin', 'super_admin']));
               const adminDocs = await getDocs(adminQuery);
