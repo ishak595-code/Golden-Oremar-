@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, PackageSearch, ShoppingCart, Star } from 'lucide-react';
-import { publicCatalogUrl, searchCatalog, type CatalogItem, type CatalogSearchResponse } from './api';
+import { ArrowLeft, PackageSearch } from 'lucide-react';
+import { getProducerFollowMetrics, publicCatalogUrl, searchCatalog, type CatalogItem, type CatalogSearchResponse, type ProducerFollowMetric } from './api';
+import CatalogProductCard from './CatalogProductCard';
 
 const PAGE_SIZE = 20;
 
@@ -10,7 +11,7 @@ type Props = {
   producerId?: string | null;
   onBack: () => void;
   onOpenProduct: (slug: string) => void;
-  onAddToCart: (item: CatalogItem) => Promise<void> | void;
+  onAddToCart: (item: CatalogItem, quantity: number) => Promise<void> | void;
 };
 
 export default function CatalogSearchResults({
@@ -24,6 +25,7 @@ export default function CatalogSearchResults({
   const [sort, setSort] = useState<'relevance' | 'newest' | 'price_asc' | 'price_desc' | 'rating'>('relevance');
   const [inStock, setInStock] = useState(false);
   const [result, setResult] = useState<CatalogSearchResponse | null>(null);
+  const [producerMetrics, setProducerMetrics] = useState<Record<string, ProducerFollowMetric>>({});
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -44,6 +46,14 @@ export default function CatalogSearchResults({
         offset: nextOffset,
       });
       if (requestId.current !== current) return;
+
+      const metrics = await getProducerFollowMetrics(next.items.map(item => item.producer.id)).catch(metricsError => {
+        console.warn('Producer metrics unavailable for catalog search.', metricsError);
+        return [];
+      });
+      if (requestId.current !== current) return;
+      const nextMetrics = Object.fromEntries(metrics.map(metric => [metric.producerId, metric]));
+      setProducerMetrics(previous => append ? { ...previous, ...nextMetrics } : nextMetrics);
       setOffset(nextOffset);
       setResult(previous => append && previous
         ? { ...next, items: [...previous.items, ...next.items], offset: 0, limit: previous.items.length + next.items.length }
@@ -64,7 +74,7 @@ export default function CatalogSearchResults({
     <section className="mx-auto max-w-7xl px-4 py-6 sm:py-8" aria-labelledby="catalog-results-title">
       <div className="mb-5 flex items-center gap-3">
         <button onClick={onBack} aria-label="Arama sonuçlarından geri dön" className="min-h-11 min-w-11 rounded-xl border p-2">
-          <ArrowLeft className="mx-auto h-5 w-5" />
+          <ArrowLeft aria-hidden="true" className="mx-auto h-5 w-5" />
         </button>
         <div className="min-w-0">
           <h1 id="catalog-results-title" className="truncate text-2xl font-bold text-brand-green dark:text-brand-gold">
@@ -104,55 +114,51 @@ export default function CatalogSearchResults({
 
       {!loading && !error && items.length === 0 ? (
         <div className="rounded-2xl border border-dashed p-10 text-center">
-          <PackageSearch className="mx-auto h-10 w-10 text-gray-300" />
+          <PackageSearch aria-hidden="true" className="mx-auto h-10 w-10 text-gray-300" />
           <h2 className="mt-3 font-bold">Sonuç bulunamadı</h2>
           <p className="mt-1 text-sm text-gray-500">Yazımı değiştirerek veya stok filtresini kapatarak tekrar deneyin.</p>
         </div>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {items.map(item => (
-          <article key={item.id} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-            <button onClick={() => onOpenProduct(item.slug)} className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
-              <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-800">
-                {item.imagePath ? <img src={publicCatalogUrl(item.imagePath)} alt={item.name} className="h-full w-full object-cover" /> : null}
-              </div>
-              <div className="p-4">
-                <div className="text-xs font-semibold text-brand-gold">{item.category.name}</div>
-                <h2 className="mt-1 line-clamp-2 text-lg font-bold text-brand-text">{item.name}</h2>
-                <p className="mt-1 text-sm text-gray-500">{item.producer.name}{item.origin ? ` • ${item.origin}` : ''}</p>
-                {item.reviewCount > 0 ? (
-                  <div className="mt-2 flex items-center gap-1 text-sm text-gray-600">
-                    <Star className="h-4 w-4 fill-brand-gold text-brand-gold" />
-                    <span>{Number(item.averageRating).toFixed(1)} ({item.reviewCount})</span>
-                  </div>
-                ) : null}
-                <div className="mt-3 flex items-end justify-between gap-3">
-                  <div>
-                    <div className="text-lg font-bold text-brand-green dark:text-brand-gold">
-                      {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: item.currency }).format(item.variant.priceMinor / 100)}
-                    </div>
-                    <div className="text-xs text-gray-500">{item.variant.name}</div>
-                  </div>
-                  {item.stockMode === 'tracked' || item.stockMode === 'seasonal' ? (
-                    <span className={`text-xs font-semibold ${Number(item.availableQuantity || 0) > 0 ? 'text-green-700' : 'text-red-700'}`}>
-                      {Number(item.availableQuantity || 0) > 0 ? 'Stokta' : 'Tükendi'}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            </button>
-            <div className="px-4 pb-4">
-              <button
-                onClick={() => onAddToCart(item)}
-                disabled={(item.stockMode === 'tracked' || item.stockMode === 'seasonal') && Number(item.availableQuantity || 0) <= 0}
-                className="min-h-11 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ShoppingCart className="mr-2 inline h-4 w-4" /> Sepete Ekle
-              </button>
-            </div>
-          </article>
-        ))}
+        {items.map(item => {
+          const metric = producerMetrics[item.producer.id];
+          const origin = item.origin || [item.producer.village, item.producer.district, item.producer.province].filter(Boolean).join(', ') || null;
+          const cardProduct = {
+            id: item.id,
+            legacyId: item.legacyId ?? null,
+            slug: item.slug,
+            name: item.name,
+            description: item.shortDescription || '',
+            shortDescription: item.shortDescription || '',
+            category: item.category.name,
+            price: Number(item.variant.priceMinor || 0) / 100,
+            originalPrice: item.variant.compareAtPriceMinor ? Number(item.variant.compareAtPriceMinor) / 100 : null,
+            currency: item.currency,
+            image: publicCatalogUrl(item.imagePath),
+            origin,
+            unit: item.unitLabel || item.variant.name,
+            rating: Number(item.averageRating || 0),
+            reviewCount: Number(item.reviewCount || 0),
+            stock: item.availableQuantity ?? null,
+            stockMode: item.stockMode,
+            is_featured: !!item.featured,
+            preOrder: item.stockMode === 'preorder',
+            variantId: item.variant.id,
+            variantName: item.variant.name,
+            vendor_id: item.producer.id,
+            producerName: item.producer.name,
+            producerFollowerCount: metric?.followerCount ?? null,
+            producerVerified: metric?.verified ?? true,
+            producerOriginVerified: metric?.originVerified ?? false,
+          };
+          return <CatalogProductCard
+            key={item.id}
+            product={cardProduct}
+            onClick={() => onOpenProduct(item.slug)}
+            onAddToCart={(_, quantity) => onAddToCart(item, quantity)}
+          />;
+        })}
       </div>
 
       {loading ? <div role="status" className="py-6 text-center text-gray-500">Yükleniyor…</div> : null}

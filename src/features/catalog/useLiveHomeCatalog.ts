@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getPublicHomeCatalog, listPublicCategories, publicCatalogUrl } from './api';
+import { getProducerFollowMetrics, getPublicHomeCatalog, listPublicCategories, publicCatalogUrl } from './api';
 
 export type LegacyHomeProduct = {
   id: string;
@@ -29,6 +29,9 @@ export type LegacyHomeProduct = {
   variantName: string;
   vendor_id: string;
   producerName: string;
+  producerFollowerCount: number;
+  producerVerified: boolean;
+  producerOriginVerified: boolean;
 };
 
 export type LegacyHomeCategory = {
@@ -59,35 +62,50 @@ export function useLiveHomeCatalog() {
         ]);
         if (!active) return;
 
-        setProducts((catalog.items || []).map((item: any) => ({
-          id: item.id,
-          legacyId: item.legacyId ?? null,
-          slug: item.slug,
-          name: item.name,
-          description: item.shortDescription || '',
-          shortDescription: item.shortDescription || '',
-          category: item.category.name,
-          categorySlug: item.category.slug,
-          price: Number(item.variant.priceMinor || 0) / 100,
-          originalPrice: item.variant.compareAtPriceMinor ? Number(item.variant.compareAtPriceMinor) / 100 : null,
-          currency: String(item.currency || 'TRY').toUpperCase(),
-          image: publicCatalogUrl(item.imagePath),
-          origin: item.origin || null,
-          unit: item.unitLabel || item.variant.name,
-          tags: [],
-          rating: Number(item.averageRating || 0),
-          reviewCount: Number(item.reviewCount || 0),
-          stock: item.availableQuantity ?? null,
-          stockMode: item.stockMode,
-          is_approved: true as const,
-          is_featured: !!item.featured,
-          homeSection: item.homeSection || (item.featured ? 'featured' : 'regular'),
-          preOrder: item.stockMode === 'preorder',
-          variantId: item.variant.id,
-          variantName: item.variant.name,
-          vendor_id: item.producer.id,
-          producerName: item.producer.name,
-        })));
+        const catalogItems = Array.isArray(catalog?.items) ? catalog.items : [];
+        const producerIds = [...new Set(catalogItems.map((item: any) => String(item?.producer?.id || '')).filter(Boolean))];
+        const metrics = await getProducerFollowMetrics(producerIds).catch(error => {
+          console.warn('Producer metrics hydration failed; catalog remains usable.', error);
+          return [];
+        });
+        if (!active) return;
+        const metricByProducer = new Map(metrics.map(metric => [metric.producerId, metric]));
+
+        setProducts(catalogItems.map((item: any) => {
+          const producerMetric = metricByProducer.get(String(item.producer.id));
+          return {
+            id: item.id,
+            legacyId: item.legacyId ?? null,
+            slug: item.slug,
+            name: item.name,
+            description: item.shortDescription || '',
+            shortDescription: item.shortDescription || '',
+            category: item.category.name,
+            categorySlug: item.category.slug,
+            price: Number(item.variant.priceMinor || 0) / 100,
+            originalPrice: item.variant.compareAtPriceMinor ? Number(item.variant.compareAtPriceMinor) / 100 : null,
+            currency: String(item.currency || 'TRY').toUpperCase(),
+            image: publicCatalogUrl(item.imagePath),
+            origin: item.origin || null,
+            unit: item.unitLabel || item.variant.name,
+            tags: [],
+            rating: Number(item.averageRating || 0),
+            reviewCount: Number(item.reviewCount || 0),
+            stock: item.availableQuantity ?? null,
+            stockMode: item.stockMode,
+            is_approved: true as const,
+            is_featured: !!item.featured,
+            homeSection: item.homeSection || (item.featured ? 'featured' : 'regular'),
+            preOrder: item.stockMode === 'preorder',
+            variantId: item.variant.id,
+            variantName: item.variant.name,
+            vendor_id: item.producer.id,
+            producerName: item.producer.name,
+            producerFollowerCount: producerMetric?.followerCount ?? 0,
+            producerVerified: producerMetric?.verified ?? true,
+            producerOriginVerified: producerMetric?.originVerified ?? false,
+          };
+        }));
 
         setCategories((categoryRows || []).map(category => ({
           id: category.slug,
