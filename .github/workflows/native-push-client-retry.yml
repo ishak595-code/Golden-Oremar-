@@ -1,0 +1,80 @@
+name: Native Push Client Retry
+
+on:
+  push:
+    branches: [agent/admin-supabase-retire-node]
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: agent/admin-supabase-retire-node
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Replay integration with TypeScript corrections
+        shell: bash
+        run: |
+          python3 -m pip install --quiet pyyaml
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess, yaml
+
+          workflow = yaml.safe_load(Path('.github/workflows/native-push-client-once.yml').read_text())
+          steps = workflow['jobs']['integrate']['steps']
+          wanted = {
+              'Install official Capacitor push plugin',
+              'Add native push bridge and account registration',
+              'Wire native push into settings, app navigation and native projects',
+              'Synchronize native plugin projects',
+          }
+          for step in steps:
+              if step.get('name') not in wanted:
+                  continue
+              script = step['run']
+              script = script.replace(
+                  "import { Capacitor } from '@capacitor/core';\nimport { PushNotifications, type ActionPerformed, type PluginListenerHandle, type Token } from '@capacitor/push-notifications';",
+                  "import { Capacitor, type PluginListenerHandle } from '@capacitor/core';\nimport { PushNotifications, type ActionPerformed, type Token } from '@capacitor/push-notifications';"
+              )
+              script = script.replace(
+                  'return () => subscribers.delete(listener);',
+                  'return () => { subscribers.delete(listener); };'
+              )
+              subprocess.run(['bash', '-euo', 'pipefail', '-c', script], check=True)
+          PY
+      - name: Run release quality gate
+        run: npm run quality
+      - name: Verify native push integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '"@capacitor/push-notifications": "8.1.2"' package.json
+          grep -q 'VITE_NATIVE_PUSH_ENABLED=false' .env.example
+          grep -q 'capacitorDidRegisterForRemoteNotifications' ios/App/App/AppDelegate.swift
+          grep -q 'register_push_token_v1' src/features/account/api.ts
+          grep -q 'unregister_push_device_v1' src/features/account/api.ts
+          grep -q 'PushNotifications.register' src/features/notifications/nativePush.ts
+          grep -q "type PluginListenerHandle } from '@capacitor/core'" src/features/notifications/nativePush.ts
+          test ! -f android/app/google-services.json
+          if git grep -nE '(APNS_KEY|FCM_SERVICE_ACCOUNT|BEGIN PRIVATE KEY)' -- ':!package-lock.json'; then
+            echo 'Push integration must not commit provider credentials.' >&2
+            exit 1
+          fi
+      - name: Commit verified integration and remove one-shot workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/native-push-client-once.yml .github/workflows/native-push-client-retry.yml
+          git add -A
+          git commit -m "Prepare real native push registration without fake provider credentials [native-push-client-applied]"
+          git push origin HEAD:agent/admin-supabase-retire-node
