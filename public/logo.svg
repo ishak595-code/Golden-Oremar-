@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <radialGradient id="cherryGrad" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#FF4B4B"/>
+      <stop offset="70%" stop-color="#B71C1C"/>
+      <stop offset="100%" stop-color="#5D0000"/>
+    </radialGradient>
+    <radialGradient id="cherryGrad2" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#FF4B4B"/>
+      <stop offset="70%" stop-color="#B71C1C"/>
+      <stop offset="100%" stop-color="#5D0000"/>
+    </radialGradient>
+  </defs>
+  <!-- Stems -->
+  <path d="M50 30 Q 45 45, 35 55" fill="none" stroke="#8BC34A" stroke-width="4" stroke-linecap="round"/>
+  <path d="M50 30 Q 55 45, 65 55" fill="none" stroke="#8BC34A" stroke-width="4" stroke-linecap="round"/>
+  
+  <!-- Leaf -->
+  <path d="M50 30 Q 30 20, 40 10 Q 60 20, 50 30" fill="#8BC34A"/>
+  
+  <!-- Cherries -->
+  <circle cx="32" cy="62" r="18" fill="url(#cherryGrad)"/>
+  <circle cx="68" cy="62" r="18" fill="url(#cherryGrad2)"/>
+  
+  <!-- Highlights -->
+  <ellipse cx="25" cy="55" rx="4" ry="8" fill="#FFFFFF" opacity="0.8" transform="rotate(-30 25 55)"/>
+  <ellipse cx="61" cy="55" rx="4" ry="8" fill="#FFFFFF" opacity="0.8" transform="rotate(-30 61 55)"/>
+</svg>

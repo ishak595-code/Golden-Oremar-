@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-08-16T05:08:58.246816+00:00",
+  "packageMode": "single-cumulative",
+  "supabaseProject": "rmfcziawxjgcnxexbrvw",
+  "liveMigrationCount": 90,
+  "latestMigration": "20260816050443_minimize_public_storefront_readiness_v1",
+  "securityAdvisorLints": 0,
+  "edgeFunctions": {
+    "contact-submit": {
+      "status": "ACTIVE",
+      "version": 1
+    },
+    "event-reservation": {
+      "status": "ACTIVE",
+      "version": 2
+    }
+  },
+  "validation": {
+    "typescriptTsxFilesParserChecked": 44,
+    "typescriptSyntaxErrors": 0,
+    "integrationScriptSyntax": "PASS",
+    "generatedForbiddenMarkers": "PASS",
+    "criticalCumulativeFiles": "PASS"
+  },
+  "truthfulnessChecks": {
+    "upcomingEvents": 0,
+    "pastEvents": 5,
+    "structuredHakkariYuksekovaVillageSuggestions": 0,
+    "placeholderContentImagesRemoved": 34
+  }
+}

@@ -1,0 +1,346 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "vendor", "admin", "super_admin"],
+          "description": "The user's role"
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's full name"
+        },
+        "phone": {
+          "type": "string",
+          "description": "The user's phone number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the user was created"
+        }
+      },
+      "required": ["email", "role", "createdAt"]
+    },
+    "Vendor": {
+      "title": "Vendor",
+      "description": "A vendor profile",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who owns this vendor profile"
+        },
+        "storeName": {
+          "type": "string",
+          "description": "The name of the store"
+        },
+        "tcNo": {
+          "type": "string",
+          "description": "The vendor's TC identity number"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "The vendor's full name"
+        },
+        "city": {
+          "type": "string",
+          "description": "The vendor's city"
+        },
+        "district": {
+          "type": "string",
+          "description": "The vendor's district"
+        },
+        "phone": {
+          "type": "string",
+          "description": "The vendor's phone number"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The vendor's email address"
+        },
+        "documentUrl": {
+          "type": "string",
+          "description": "URL to the vendor's verification document"
+        },
+        "is_verified": {
+          "type": "boolean",
+          "description": "Whether the vendor is verified by an admin"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "active", "rejected"],
+          "description": "The vendor's status"
+        },
+        "balance": {
+          "type": "number",
+          "description": "The vendor's available balance"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the vendor profile was created"
+        }
+      },
+      "required": ["userId", "storeName", "tcNo", "fullName", "city", "district", "phone", "email", "is_verified", "status", "balance", "createdAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A product category",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the category"
+        },
+        "description": {
+          "type": "string",
+          "description": "The description of the category"
+        },
+        "image": {
+          "type": "string",
+          "description": "The image URL of the category"
+        },
+        "icon": {
+          "type": "string",
+          "description": "The icon name for the category"
+        },
+        "targetCategory": {
+          "type": "string",
+          "description": "The target category name for filtering"
+        },
+        "is_active": {
+          "type": "boolean",
+          "description": "Whether the category is active"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the category was created"
+        }
+      },
+      "required": ["name", "is_active", "createdAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "A product listed by a vendor",
+      "type": "object",
+      "properties": {
+        "vendorId": {
+          "type": "string",
+          "description": "The ID of the vendor who listed the product"
+        },
+        "title": {
+          "type": "string",
+          "description": "The product title"
+        },
+        "description": {
+          "type": "string",
+          "description": "The product description"
+        },
+        "price": {
+          "type": "number",
+          "description": "The product price"
+        },
+        "stock": {
+          "type": "number",
+          "description": "The available stock"
+        },
+        "categoryId": {
+          "type": "string",
+          "description": "The ID of the category"
+        },
+        "image": {
+          "type": "string",
+          "description": "URL to the product image"
+        },
+        "is_approved": {
+          "type": "boolean",
+          "description": "Whether the product is approved by an admin"
+        },
+        "is_active": {
+          "type": "boolean",
+          "description": "Whether the product is active"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the product was created"
+        }
+      },
+      "required": ["vendorId", "title", "price", "stock", "is_approved", "is_active", "createdAt"]
+    },
+    "Cart": {
+      "title": "Cart",
+      "description": "A user's shopping cart",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "number"
+              }
+            },
+            "required": ["productId", "quantity"]
+          },
+          "description": "The items in the cart"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the cart was last updated"
+        }
+      },
+      "required": ["userId", "items", "updatedAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "An order placed by a user",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who placed the order"
+        },
+        "vendorId": {
+          "type": "string",
+          "description": "The ID of the vendor fulfilling the order"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "productId": {
+                "type": "string"
+              },
+              "quantity": {
+                "type": "number"
+              },
+              "price": {
+                "type": "number"
+              }
+            },
+            "required": ["productId", "quantity", "price"]
+          },
+          "description": "The items in the order"
+        },
+        "totalPrice": {
+          "type": "number",
+          "description": "The total price of the order"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "payment_pending_escrow", "shipped", "delivered", "completed"],
+          "description": "The status of the order"
+        },
+        "shippingAddress": {
+          "type": "object",
+          "description": "The shipping address for the order"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the order was placed"
+        }
+      },
+      "required": ["userId", "vendorId", "items", "totalPrice", "status", "createdAt"]
+    },
+    "Address": {
+      "title": "Address",
+      "description": "A user's address",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user"
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the address (e.g., Home, Work)"
+        },
+        "city": {
+          "type": "string",
+          "description": "The city"
+        },
+        "district": {
+          "type": "string",
+          "description": "The district"
+        },
+        "address": {
+          "type": "string",
+          "description": "The full address"
+        },
+        "is_default": {
+          "type": "boolean",
+          "description": "Whether this is the default address"
+        }
+      },
+      "required": ["userId", "title", "city", "district", "address", "is_default"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores user profiles"
+    },
+    "/vendors/{vendorId}": {
+      "schema": {
+        "$ref": "#/entities/Vendor"
+      },
+      "description": "Stores vendor profiles"
+    },
+    "/products/{productId}": {
+      "schema": {
+        "$ref": "#/entities/Product"
+      },
+      "description": "Stores products"
+    },
+    "/carts/{userId}": {
+      "schema": {
+        "$ref": "#/entities/Cart"
+      },
+      "description": "Stores user shopping carts"
+    },
+    "/orders/{orderId}": {
+      "schema": {
+        "$ref": "#/entities/Order"
+      },
+      "description": "Stores orders"
+    },
+    "/addresses/{addressId}": {
+      "schema": {
+        "$ref": "#/entities/Address"
+      },
+      "description": "Stores user addresses"
+    },
+    "/categories/{categoryId}": {
+      "schema": {
+        "$ref": "#/entities/Category"
+      },
+      "description": "Stores product categories"
+    }
+  }
+}

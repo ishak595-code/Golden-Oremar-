@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+@theme {
+  --font-serif: "Cormorant Garamond", serif;
+  --font-sans: "Outfit", sans-serif;
+  
+  --color-gray-50: #F4F7F5;
+  --color-gray-100: #E5EBE7;
+  --color-gray-200: #D5DDD8;
+  --color-gray-300: #B8C9C0;
+  --color-gray-400: #95A89E;
+  --color-gray-500: #72877D;
+  --color-gray-600: #546B60;
+  --color-gray-700: #3A4D44;
+  --color-gray-800: #24332D;
+  --color-gray-900: #121C18;
+  
+  --color-brand-gold: var(--brand-gold);
+  --color-brand-green: var(--brand-green);
+  --color-brand-earth: var(--brand-earth);
+  
+  --color-brand-main: var(--bg-main);
+  --color-brand-card: var(--bg-card);
+  --color-brand-text: var(--text-main);
+  --color-brand-muted: var(--text-muted);
+  --color-brand-border: var(--border-main);
+}
+
+:root {
+  /* Default Theme (Prestigious Vibrant Dark Green) */
+  --bg-main: #0B2519; /* Deep Emerald/Forest Green but slightly richer */
+  --bg-card: #113322; /* Slightly lighter green for cards */
+  --text-main: #FAFAF8; /* Very light ivory/warm tint, very stark */
+  --text-muted: #B4C9BE;
+  --text-muted-darker: #8DA89A;
+  --border-main: #1D4B35;
+  --border-light: #2A6446;
+  
+  --brand-gold: #E5C158; /* Brighter, more vibrant elegant gold */
+  --brand-green: #145A32; /* Richer, more saturated deep emerald */
+  --brand-earth: #A05A2C; /* Rich Earth/Copper */
+}
+
+:root[data-theme="dark"] {
+  /* Dark Theme (Very Dark Green-Black) */
+  --bg-main: #060F0C; /* Very Dark, rich green-black, more obsidian */
+  --bg-card: #0A1C16;
+  --text-main: #F4F7F5;
+  --text-muted: #A1B8AD;
+  --text-muted-darker: #7E948A;
+  --border-main: #153A2A;
+  --border-light: #204E38;
+  
+  --brand-gold: #EDC967; /* Even brighter gold for dark mode pop */
+  --brand-green: #27AE60; /* Vibrant emerald for dark mode */
+  --brand-earth: #C36A31;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+h1, h2, h3, h4, h5, h6, .font-serif {
+  font-family: var(--font-serif);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--brand-gold);
+  border-radius: 6px;
+}
+
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 20px);
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

@@ -1,0 +1,41 @@
+{
+  "packageMode": "single-cumulative",
+  "supabaseProject": "rmfcziawxjgcnxexbrvw",
+  "appliedMigrationCount": 90,
+  "latestMigration": "20260816050443_minimize_public_storefront_readiness_v1",
+  "securityAdvisorLints": 0,
+  "edgeFunctions": {
+    "contact-submit": { "status": "ACTIVE", "version": 1 },
+    "event-reservation": { "status": "ACTIVE", "version": 2 }
+  },
+  "completedFrontendBlocks": [
+    "account-center",
+    "gift-order-flow",
+    "server-cart-checkout",
+    "supabase-auth-session",
+    "server-catalog-search",
+    "public-product-detail",
+    "public-producer-profile",
+    "category-directory",
+    "live-home-catalog",
+    "server-product-favorites",
+    "live-catalog-filter-options",
+    "no-fake-voice-search",
+    "public-contact",
+    "public-events",
+    "authenticated-event-linking",
+    "account-newsletter",
+    "public-health-content",
+    "customer-content-favorites",
+    "public-storefront-config",
+    "public-about-and-help-content",
+    "migrated-firestore-customer-listener-retirement",
+    "producer-onboarding-v4-ui",
+    "producer-product-management",
+    "producer-profile-edit",
+    "producer-location-change-request",
+    "verified-purchase-review-center"
+  ],
+  "integrationEntryPoint": "frontend/integration/apply-all-current.mjs",
+  "nextBlock": "producer-traceability-and-finance-ui-then-remaining-legacy-cleanup-before-admin"
+}

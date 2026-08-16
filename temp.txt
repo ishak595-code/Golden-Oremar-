@@ -1,0 +1,184 @@
+561-          <button onClick={() => navigateToTab('home')} className="flex items-center gap-2 md:gap-3 group shrink-0" aria-label="Ana Sayfaya Git">
+562:            <div className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center overflow-hidden rounded-xl shadow-md group-hover:scale-105 transition-transform bg-white/50 backdrop-blur-sm p-1">
+563-              <img src={settings.logoUrl || '/logo.svg'} alt="Golden Oremar Logo" className="w-full h-full object-contain drop-shadow-sm" />
+--
+598-              {isSearchFocused && (
+599:                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 max-h-[70vh] overflow-y-auto">
+600-                  {!searchQuery ? (
+--
+1210-    <div 
+1211:      className="group bg-white dark:bg-gray-900 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-800 hover:shadow-2xl hover:border-brand-gold/30 transition-all duration-300 relative flex flex-col h-full cursor-pointer active:scale-[0.98]"
+1212-      onClick={onClick}
+--
+1253-          onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
+1254:          className={`absolute top-5 left-5 w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center shadow-md transition-all z-30 ${isFavorite ? 'bg-brand-gold text-white' : 'bg-white/80 text-gray-600 hover:bg-white hover:text-brand-green'}`}
+1255-          title="Favorilere Ekle"
+--
+1262-      {/* Content Area */}
+1263:      <div className="p-5 flex flex-col flex-grow relative bg-white dark:bg-gray-900 z-30">
+1264-        <div className="text-xs font-bold tracking-widest text-brand-gold uppercase mb-2">{product.category}</div>
+--
+1353-  return (
+1354:    <div className="min-h-screen bg-white dark:bg-gray-900 animate-in fade-in slide-in-from-bottom-4 pb-24">
+1355-      {/* Premium Sticky Header */}
+1356:      <div className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-100 dark:border-gray-800 transition-all">
+1357-        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+--
+1447-          {/* Sticky Footer Action Buttons */}
+1448:          <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-gray-900 border-t border-gray-100 dark:border-gray-800 p-4 z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+1449-            <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-3">
+--
+1495-                {product.features?.map((f: string, i: number) => (
+1496:                  <li key={i} className="flex items-start gap-2 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-900 p-3 rounded-lg border border-gray-100 dark:border-gray-800 shadow-sm">
+1497-                    <CheckCircle className="w-5 h-5 text-brand-green shrink-0 mt-0.5" /> 
+--
+1594-          </div>
+1595:          <button onClick={onClose} className="hover:bg-white/20 p-2 rounded-full transition-colors" aria-label="Kapat"><X className="w-5 h-5" /></button>
+1596-        </div>
+--
+1945-                onClick={handleGoogleLogin}
+1946:                className="w-full bg-white dark:bg-gray-800 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 py-3.5 rounded-xl font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-2"
+1947-              >
+--
+1980-                onClick={handleAppleLogin}
+1981:                className="w-full bg-black text-white dark:bg-white dark:text-black py-3.5 rounded-xl font-bold hover:bg-gray-900 dark:hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+1982-              >
+--
+2074-                  placeholder="İade nedeni..."
+2075:                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-brand-text outline-none focus:ring-2 focus:ring-brand-gold/50 min-h-[100px]"
+2076-                />
+--
+2415-                  <button 
+2416:                    className="absolute top-4 right-4 z-20 p-2 bg-white/10 hover:bg-red-500/80 rounded-full text-white transition-colors backdrop-blur-sm opacity-0 group-hover:opacity-100"
+2417-                    aria-label="Kartı Sil"
+--
+2504-              >
+2505:                <div className={`w-4 h-4 bg-white rounded-full transition-transform ${theme === 'dark' ? 'translate-x-6' : ''}`}></div>
+2506-              </button>
+--
+2705-                onClick={() => setHealthTab('recipes')}
+2706:                className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${healthTab === 'recipes' ? 'bg-white dark:bg-gray-700 text-brand-green dark:text-brand-gold shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+2707-              >
+--
+2711-                onClick={() => setHealthTab('health')}
+2712:                className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${healthTab === 'health' ? 'bg-white dark:bg-gray-700 text-brand-green dark:text-brand-gold shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+2713-              >
+--
+2717-                onClick={() => setHealthTab('productHealth')}
+2718:                className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${healthTab === 'productHealth' ? 'bg-white dark:bg-gray-700 text-brand-green dark:text-brand-gold shadow-sm' : 'text-gray-600 dark:text-gray-400'}`}
+2719-              >
+--
+2748-                            onClick={() => toggleFavoriteRecipe(recipe)}
+2749:                            className="p-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-full shadow-lg hover:scale-110 transition-transform"
+2750-                            aria-label={favoriteRecipes.includes(recipe.id) ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}
+--
+2755-                            onClick={() => handleShareArticle(recipe)}
+2756:                            className="p-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-full shadow-lg hover:scale-110 transition-transform"
+2757-                            aria-label="Tarifi Paylaş"
+--
+2796-                          onClick={() => toggleFavoriteBlog(post)}
+2797:                          className="p-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-full shadow-lg hover:scale-110 transition-transform"
+2798-                        >
+--
+2802-                          onClick={() => handleShareArticle(post)}
+2803:                          className="p-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-full shadow-lg hover:scale-110 transition-transform"
+2804-                        >
+--
+2881-                    <div className="absolute top-4 left-4">
+2882:                      <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm p-2 rounded-xl flex flex-col items-center justify-center min-w-[60px] shadow-lg">
+2883-                        <span className="text-[10px] font-bold uppercase text-brand-gold">{isNaN(new Date(event.date).getTime()) ? '' : new Date(event.date).toLocaleString('tr-TR', { month: 'short' })}</span>
+--
+2889-                        onClick={() => toggleFavoriteEvent(event)}
+2890:                        className="p-2.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-full shadow-lg hover:scale-110 transition-transform"
+2891-                        aria-label={favoriteEvents.includes(event.id) ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}
+--
+2896-                        onClick={() => handleShareArticle(event)}
+2897:                        className="p-2.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-full shadow-lg hover:scale-110 transition-transform"
+2898-                        aria-label="Etkinliği Paylaş"
+--
+3150-          >
+3151:            <div className="w-10 h-10 rounded-full bg-white dark:bg-red-900/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+3152-              <LogOut className="w-5 h-5" />
+--
+3218-                    disabled={(item.quantity || 1) <= 1}
+3219:                    className="p-1 hover:bg-white dark:hover:bg-gray-700 rounded-md disabled:opacity-30 transition-colors"
+3220-                    aria-label="Azalt"
+--
+3226-                    onClick={() => onUpdateQuantity(item.id, 1)}
+3227:                    className="p-1 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
+3228-                    aria-label="Artır"
+--
+3281-            onClick={() => setActiveTab('products')}
+3282:            className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'products' ? 'bg-white dark:bg-gray-700 text-brand-green dark:text-brand-gold shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
+3283-          >
+--
+3287-            onClick={() => setActiveTab('recipes')}
+3288:            className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'recipes' ? 'bg-white dark:bg-gray-700 text-brand-green dark:text-brand-gold shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
+3289-          >
+--
+3293-            onClick={() => setActiveTab('blogs')}
+3294:            className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'blogs' ? 'bg-white dark:bg-gray-700 text-brand-green dark:text-brand-gold shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
+3295-          >
+--
+3299-            onClick={() => setActiveTab('productHealth')}
+3300:            className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'productHealth' ? 'bg-white dark:bg-gray-700 text-brand-green dark:text-brand-gold shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
+3301-          >
+--
+3305-            onClick={() => setActiveTab('events')}
+3306:            className={`flex-1 sm:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-colors whitespace-nowrap ${activeTab === 'events' ? 'bg-white dark:bg-gray-700 text-brand-green dark:text-brand-gold shadow-sm' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
+3307-          >
+--
+3347-            {favRecipes.map(recipe => (
+3348:              <div key={recipe.id} className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm relative group hover:shadow-md transition-shadow">
+3349-                <div className="absolute top-4 right-4 flex gap-2">
+--
+3398-            {favBlogs.map(article => (
+3399:              <div key={article.id} className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm relative group hover:shadow-md transition-shadow">
+3400-                <div className="absolute top-4 right-4 flex gap-2">
+--
+3449-            {favProductHealth.map(info => (
+3450:              <div key={info.productId} className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm relative group hover:shadow-md transition-shadow">
+3451-                <div className="absolute top-4 right-4 flex gap-2">
+--
+3499-            {favEvents.map(event => (
+3500:              <div key={event.id} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden group hover:shadow-md transition-shadow">
+3501-                <div className="relative h-48 overflow-hidden">
+--
+3503-                  <div className="absolute top-3 right-3 flex flex-col gap-2">
+3504:                    <button onClick={() => onToggleFavoriteEvent(event)} className="p-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-full shadow-lg">
+3505-                      <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+3506-                    </button>
+3507:                    <button onClick={() => onShareArticle(event)} className="p-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-full shadow-lg">
+3508-                      <Share2 className="w-4 h-4 text-gray-500" />
+--
+3590-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+3591:          <div className="bg-white dark:bg-gray-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+3592-            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+--
+3652-                onClick={() => onShare(guide)}
+3653:                className="p-2 bg-white/80 backdrop-blur-sm dark:bg-gray-800/80 rounded-full shadow-sm hover:bg-white dark:hover:bg-gray-700 transition-colors"
+3654-                aria-label="Paylaş"
+--
+3659-                onClick={() => onToggleFavoriteBlog(guide)}
+3660:                className="p-2 bg-white/80 backdrop-blur-sm dark:bg-gray-800/80 rounded-full shadow-sm hover:bg-white dark:hover:bg-gray-700 transition-colors"
+3661-                aria-label={favoriteBlogs.includes(guide.id) ? "Favorilerden çıkar" : "Favorilere ekle"}
+--
+3793-        <div className="lg:w-1/4 shrink-0">
+3794:          <div className="sticky top-24 bg-white dark:bg-gray-800 rounded-3xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
+3795-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+--
+3806-                </span>
+3807:                <span className={`text-xs px-2 py-1 rounded-full ${!selectedCat ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
+3808-                  {products.length}
+--
+3824-                    </span>
+3825:                    <span className={`text-xs px-2 py-1 rounded-full ${selectedCat === cat.name ? 'bg-white/20 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-500'}`}>
+3826-                      {count}
+--
+3837-          {/* Top Bar */}
+3838:          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+3839-            <div className="text-gray-500 font-medium">
+--
+3858-          {filtered.length === 0 ? (
+3859:            <div className="text-center py-24 bg-white dark:bg-gray-800 rounded-3xl border border-dashed border-gray-300 dark:border-gray-700 shadow-sm">
+3860-              <Search className="w-16 h-16 text-gray-300 mx-auto mb-6" />

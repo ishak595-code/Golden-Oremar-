@@ -1,0 +1,40 @@
+
+import React from 'react';
+
+export function Panel({ title, children, description }: { title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 sm:p-6">
+      <h2 className="text-xl font-bold text-brand-green dark:text-brand-gold">{title}</h2>
+      {description ? <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{description}</p> : null}
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+export function LoadingState({ label = 'Yükleniyor' }: { label?: string }) {
+  return <div role="status" aria-live="polite" className="py-8 text-center text-gray-500">{label}…</div>;
+}
+
+export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+      <p>{message}</p>
+      {onRetry ? <button onClick={onRetry} className="mt-3 min-h-11 rounded-lg border border-red-300 px-4 font-semibold">Tekrar dene</button> : null}
+    </div>
+  );
+}
+
+export function EmptyState({ title, body, action }: { title: string; body: string; action?: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 p-7 text-center">
+      <h3 className="font-bold">{title}</h3>
+      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{body}</p>
+      {action ? <div className="mt-4">{action}</div> : null}
+    </div>
+  );
+}
+
+export function Money({ minor, currency = 'TRY' }: { minor: number; currency?: string }) {
+  const value = Number(minor || 0) / 100;
+  return <>{new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(value)}</>;
+}
