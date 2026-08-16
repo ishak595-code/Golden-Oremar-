@@ -1,0 +1,70 @@
+name: Verify Settings Async Reliability
+
+on:
+  push:
+    branches: [agent/settings-async-reliability]
+    paths:
+      - '.github/workflows/verify-settings-async-reliability.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Validate settings behavior contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'prefsBusy' src/features/account/SettingsPanel.tsx
+          grep -q 'prefsMessage' src/features/account/SettingsPanel.tsx
+          grep -q 'passwordError' src/features/account/SettingsPanel.tsx
+          grep -q 'newsletterError' src/features/account/SettingsPanel.tsx
+          grep -q 'sessionBusy' src/features/account/SettingsPanel.tsx
+          grep -q 'sessionError' src/features/account/SettingsPanel.tsx
+          grep -q 'closureBusy' src/features/account/SettingsPanel.tsx
+          grep -q 'role="alertdialog"' src/features/account/SettingsPanel.tsx
+          grep -q 'useAccessibleDialog<HTMLDivElement>' src/features/account/SettingsPanel.tsx
+          grep -q "runSession('others')" src/features/account/SettingsPanel.tsx
+          grep -q 'aria-invalid={passwordMismatch||undefined}' src/features/account/SettingsPanel.tsx
+          ! grep -q 'const\[prefs,setPrefs\]=useState<any>(null);const\[error,setError\]' src/features/account/SettingsPanel.tsx
+          ! grep -q 'onClick={()=>signOutCurrentDevice()}' src/features/account/SettingsPanel.tsx
+          ! grep -q 'onClick={closeAccount}' src/features/account/SettingsPanel.tsx
+      - name: Parse SettingsPanel
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import ts from 'typescript';
+          const file='src/features/account/SettingsPanel.tsx';
+          const result=ts.transpileModule(fs.readFileSync(file,'utf8'),{
+            fileName:file,reportDiagnostics:true,
+            compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX},
+          });
+          const errors=(result.diagnostics||[]).filter(d=>d.category===ts.DiagnosticCategory.Error);
+          if(errors.length){for(const d of errors)console.error(ts.flattenDiagnosticMessageText(d.messageText,'\n'));process.exit(1)}
+          console.log('SettingsPanel parse clean');
+          NODE
+      - name: Production web build
+        run: npm run build
+      - name: Clean verifier from source branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/verify-settings-async-reliability.yml
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git commit -m 'Verify account settings reliability package'
+          git push origin HEAD:agent/settings-async-reliability
