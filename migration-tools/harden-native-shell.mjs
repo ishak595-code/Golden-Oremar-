@@ -14,9 +14,12 @@ function replaceExact(file, from, to, expectedCount = 1) {
   write(file, text);
 }
 
-// Android canonical identity.
+// Android canonical identity and Capacitor 8-compatible Java/Kotlin toolchain.
 replaceExact('android/app/build.gradle', 'namespace = "com.market.app"', `namespace = "${APP_ID}"`);
 replaceExact('android/app/build.gradle', 'applicationId "com.market.app"', `applicationId "${APP_ID}"`);
+replaceExact('android/app/build.gradle', 'sourceCompatibility JavaVersion.VERSION_17', 'sourceCompatibility JavaVersion.VERSION_21');
+replaceExact('android/app/build.gradle', 'targetCompatibility JavaVersion.VERSION_17', 'targetCompatibility JavaVersion.VERSION_21');
+replaceExact('android/app/build.gradle', "jvmTarget = '17'", "jvmTarget = '21'");
 replaceExact('android/app/src/main/res/values/strings.xml', '<string name="app_name">E-Ticaret</string>', `<string name="app_name">${APP_NAME}</string>`);
 replaceExact('android/app/src/main/res/values/strings.xml', '<string name="title_activity_main">E-Ticaret</string>', `<string name="title_activity_main">${APP_NAME}</string>`);
 replaceExact('android/app/src/main/res/values/strings.xml', '<string name="package_name">com.market.app</string>', `<string name="package_name">${APP_ID}</string>`);
@@ -58,7 +61,7 @@ const oldThemeEffect = `  useEffect(() => {\n    document.documentElement.setAtt
 const newThemeEffect = `  useEffect(() => {\n    document.documentElement.setAttribute('data-theme', settings.theme);\n    void syncNativeAppearance(settings.theme).catch(error => {\n      console.warn('Native appearance sync failed', error);\n    });\n  }, [settings.theme]);`;
 replaceExact('src/App.tsx', oldThemeEffect, newThemeEffect);
 
-// Guard against partial identity migration in source configuration.
+// Guard against partial identity/toolchain migration in source configuration.
 const identityFiles = [
   'capacitor.config.ts',
   'android/app/build.gradle',
@@ -72,6 +75,13 @@ for (const file of identityFiles) {
   const text = read(file);
   if (text.includes('com.market.app')) throw new Error(`${file}: legacy package id survived`);
   if (text.includes('E-Ticaret')) throw new Error(`${file}: legacy display name survived`);
+}
+const androidGradle = read('android/app/build.gradle');
+if (androidGradle.includes('JavaVersion.VERSION_17') || androidGradle.includes("jvmTarget = '17'")) {
+  throw new Error('android/app/build.gradle: legacy Java/Kotlin 17 target survived');
+}
+if (!androidGradle.includes('JavaVersion.VERSION_21') || !androidGradle.includes("jvmTarget = '21'")) {
+  throw new Error('android/app/build.gradle: Java/Kotlin 21 target missing');
 }
 if (fs.existsSync(oldActivity)) throw new Error('Legacy MainActivity path survived');
 
