@@ -94,7 +94,7 @@ export async function adminListReturns(): Promise<AdminReturnRow[]> {
     requested_quantity: Number(row.requested_quantity || 0),
     requested_refund_minor: Number(row.requested_refund_minor || 0),
     succeeded_refund_minor: Number(row.succeeded_refund_minor || 0),
-  })) : [];
+  }));
 }
 
 export async function adminGetReturnDetail(returnId: string): Promise<AdminReturnDetail> {
