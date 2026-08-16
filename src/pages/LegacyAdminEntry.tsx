@@ -1,5 +1,4 @@
 import React from 'react';
-import { DataProvider } from '../context/DataContext';
 import { AdminPage } from './AdminPage';
 
 type LegacyAdminEntryProps = {
@@ -8,10 +7,6 @@ type LegacyAdminEntryProps = {
   onBack?: () => void;
 };
 
-export default function LegacyAdminEntry({ currentUser, onLogout, onBack }: LegacyAdminEntryProps) {
-  return (
-    <DataProvider initialCurrentUser={currentUser}>
-      <AdminPage onLogout={onLogout} onBack={onBack} />
-    </DataProvider>
-  );
+export default function LegacyAdminEntry({ onLogout, onBack }: LegacyAdminEntryProps) {
+  return <AdminPage onLogout={onLogout} onBack={onBack} />;
 }
