@@ -34,8 +34,12 @@
     "producer-product-management",
     "producer-profile-edit",
     "producer-location-change-request",
-    "verified-purchase-review-center"
+    "verified-purchase-review-center",
+    "admin-campaigns-supabase-rpc",
+    "admin-finance-supabase-rpc",
+    "admin-review-moderation-supabase-rpc",
+    "legacy-node-sqlite-runtime-retired"
   ],
   "integrationEntryPoint": "frontend/integration/apply-all-current.mjs",
-  "nextBlock": "producer-traceability-and-finance-ui-then-remaining-legacy-cleanup-before-admin"
+  "nextBlock": "remaining-admin-firestore-datacontext-migration-then-bundle-performance-and-mobile-release-audit"
 }
