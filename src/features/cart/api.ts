@@ -48,6 +48,15 @@ export type CheckoutPreview = {
   previewOnly: true;
 };
 
+export type CheckoutPaymentReadiness = {
+  mode: 'manual_confirmation' | 'provider_checkout' | string;
+  liveCardPaymentsEnabled: boolean;
+  provider: string | null;
+  requiresProviderConfiguration: boolean;
+  paymentVerificationRequired: boolean;
+  storesProviderSecretsClientSide: boolean;
+};
+
 function unwrap<T>(data: T | null, error: any): T {
   if (error) throw error;
   return data as T;
@@ -146,9 +155,29 @@ export async function startShippingQuoteSupport(input: {
   return unwrap<any>(data, error);
 }
 
+export async function getCheckoutPaymentReadiness(): Promise<CheckoutPaymentReadiness> {
+  const { data, error } = await supabase.rpc('get_checkout_payment_readiness_v1');
+  const readiness = unwrap<CheckoutPaymentReadiness | null>(data, error);
+  if (!readiness) {
+    return {
+      mode: 'manual_confirmation',
+      liveCardPaymentsEnabled: false,
+      provider: null,
+      requiresProviderConfiguration: true,
+      paymentVerificationRequired: true,
+      storesProviderSecretsClientSide: false,
+    };
+  }
+  return readiness;
+}
+
 export async function getCheckoutAccountOverview() {
-  const { data, error } = await supabase.rpc('get_my_account_overview_v1');
-  return unwrap<any>(data, error);
+  const [{ data, error }, paymentReadiness] = await Promise.all([
+    supabase.rpc('get_my_account_overview_v1'),
+    getCheckoutPaymentReadiness(),
+  ]);
+  const overview = unwrap<any>(data, error) || {};
+  return { ...overview, paymentReadiness };
 }
 
 export async function resolveDefaultVariant(productReference: string) {
