@@ -29,7 +29,8 @@ jobs:
       - name: Capture direct dependency contract
         run: cp package.json /tmp/package-before.json
       - name: Apply npm audit fixes without force
-        run: npm audit fix
+        run: |
+          npm audit fix || true
       - name: Reject direct major-version drift
         run: |
           node --input-type=module <<'NODE'
@@ -57,11 +58,11 @@ jobs:
           const v=report.metadata?.vulnerabilities||{};
           console.log('AFTER_NONBREAKING_AUDIT='+JSON.stringify(v));
           const critical=Number(v.critical||0), high=Number(v.high||0), total=Number(v.total||0);
-          if(critical>=3 || high>=8 || total>=20)throw new Error(`Nonbreaking audit fix did not improve baseline enough: critical=${critical} high=${high} total=${total}`);
+          if(critical!==0 || high!==0 || total>4)throw new Error(`Expected zero critical/high and <=4 total, got critical=${critical} high=${high} total=${total}`);
           NODE
       - name: Print resolved security-sensitive versions
         run: |
-          npm ls vite firebase express @capacitor/cli tar protobufjs @grpc/grpc-js path-to-regexp postcss ws --all || true
+          npm ls vite firebase express @capacitor/cli tar protobufjs @grpc/grpc-js path-to-regexp postcss ws esbuild uuid xcode --all || true
       - name: Production web build
         run: npm run build
       - name: Synchronize Android project
