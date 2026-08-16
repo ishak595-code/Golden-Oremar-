@@ -7,12 +7,15 @@ This file is intentionally concise. Detailed sequencing lives in `MOBILE_PRODUCT
 ## Current phase
 Mobile-first customer experience hardening before admin-panel finalization.
 
-## Current active package
-1. Align Capacitor 8 dependencies with latest stable 8.x.
-2. Preserve Android API 36 / Java 21 / minSdk 24 modern baseline.
-3. Keep iOS deployment target 15.0.
-4. Add real, provider-gated Google/Facebook OAuth using native external browser + existing deep-link callback.
-5. Do not expose social-auth buttons until provider configuration is explicitly enabled.
+## Completed platform/auth package
+- Stable Capacitor 8.5 core/platform baseline with locked official plugin versions.
+- Android API 36, minSdk 24, Java 21, Kotlin 2.2.20, Gradle 8.14.3 and AGP 8.13.0.
+- iOS deployment target 15.0 with Capacitor 8.5 UIScene lifecycle and preserved auth deep-link routing.
+- Provider-gated Google/Facebook OAuth remains integrated through the existing Supabase/deep-link session flow; buttons remain disabled unless explicitly enabled.
+- A permanent mobile CI gate is maintained separately under `.github/workflows/mobile-quality.yml`.
 
-## Next package
+## Current active package
 Dynamic product-card/store metrics: review summary, verified producer, follower count, stock/variant truth and follow state.
+
+## Release gates still required on Apple hardware
+A real Xcode archive/build and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
