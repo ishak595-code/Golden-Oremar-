@@ -1,0 +1,59 @@
+name: Cleanup Legacy App Dead Code
+
+on:
+  push:
+    branches: [agent/legacy-dead-code-cleanup]
+    paths:
+      - '.github/workflows/cleanup-legacy-app-dead-code.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Remove AST-confirmed dead App code
+        run: node migration-tools/cleanup-legacy-app-dead-code.mjs src/App.tsx
+      - name: Remove unreferenced legacy onboarding file when safe
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! grep -R --exclude='VendorOnboarding.tsx' --exclude-dir=node_modules --exclude-dir=.git -q 'VendorOnboarding' src; then
+            rm -f src/pages/VendorOnboarding.tsx
+          fi
+      - name: Verify legacy path removal
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -q "function ProductDetail(" src/App.tsx
+          ! grep -q "function ContactPage(" src/App.tsx
+          ! grep -q "function VendorStorePage(" src/App.tsx
+          ! grep -q "from 'firebase/firestore'" src/App.tsx
+          ! grep -q "./pages/VendorOnboarding" src/App.tsx
+      - name: Production build
+        run: npm run build
+      - name: Commit verified cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/cleanup-legacy-app-dead-code.yml
+          rm -f .github/workflows/audit-legacy-app-dead-code.yml
+          rm -f migration-tools/cleanup-legacy-app-dead-code.mjs
+          rm -f migration-tools/audit-app-dead-code.mjs
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'Remove unreachable legacy App code'
+          git push origin HEAD:agent/legacy-dead-code-cleanup
