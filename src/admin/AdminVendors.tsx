@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BadgeCheck, Check, CircleDollarSign, Eye, Loader2, MapPin, Package, RefreshCw, Search, ShieldCheck, ShoppingBag, Store, Users, X, XCircle } from 'lucide-react';
+import { BadgeCheck, Check, CheckCircle, CircleDollarSign, Eye, Loader2, MapPin, Package, RefreshCw, Search, ShieldCheck, ShoppingBag, Store, Users, X, XCircle } from 'lucide-react';
 import {
   adminListProducers,
   adminSetProducerCommission,

@@ -88,7 +88,7 @@ export function AdminReturns() {
     open: rows.filter(row => ['requested', 'under_review'].includes(row.status)).length,
     approved: rows.filter(row => ['approved', 'in_transit'].includes(row.status)).length,
     received: rows.filter(row => row.status === 'received').length,
-    refundedMinor: rows.reduce((sum, row) => sum + row.succeeded_refund_minor, 0),
+    refunded: rows.filter(row => row.succeeded_refund_minor > 0).length,
   }), [rows]);
 
   const openDetail = async (row: AdminReturnRow) => {
@@ -164,7 +164,7 @@ export function AdminReturns() {
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">İnceleme kuyruğu</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{counts.open}</div></div>
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Onaylı / kargoda</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{counts.approved}</div></div>
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Teslim alınan</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{counts.received}</div></div>
-        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Başarılı geri ödeme</div><div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{returnMoney(counts.refundedMinor, 'TRY')}</div><div className="mt-1 text-[11px] text-gray-500">Özet kartı TRY kayıtlarını temel alır, detayda gerçek para birimi gösterilir.</div></div>
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Başarılı geri ödeme kaydı</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{counts.refunded}</div><div className="mt-1 text-[11px] text-gray-500">Para birimleri birbirine karıştırılmadan yalnızca başarılı kayıt sayısı gösterilir.</div></div>
       </div>
 
       {error && !action && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
