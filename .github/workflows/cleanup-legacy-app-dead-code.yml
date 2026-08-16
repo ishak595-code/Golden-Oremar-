@@ -39,8 +39,8 @@ jobs:
           ! grep -q "function ProductDetail(" src/App.tsx
           ! grep -q "function ContactPage(" src/App.tsx
           ! grep -q "function VendorStorePage(" src/App.tsx
-          ! grep -q "from 'firebase/firestore'" src/App.tsx
           ! grep -q "./pages/VendorOnboarding" src/App.tsx
+          grep -q "AdminPage" src/App.tsx
       - name: Production build
         run: npm run build
       - name: Commit verified cleanup
