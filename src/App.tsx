@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { AdminPage } from './pages/AdminPage';import AccountCenter from './features/account/AccountCenter';import ProducerApplicationFlow from './features/producer-onboarding/ProducerApplicationFlow';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import PublicInfoScreen from './features/storefront/PublicInfoScreen';import PublicHealthScreen from './features/content/PublicHealthScreen';import PublicEventsScreen from './features/engagement/PublicEventsScreen';import PublicContactScreen from './features/engagement/PublicContactScreen';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CategoryDirectoryScreen from './features/catalog/CategoryDirectoryScreen';import PublicProducerScreen from './features/catalog/PublicProducerScreen';import ProductDetailScreen from './features/catalog/ProductDetailScreen';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchResults from './features/catalog/CatalogSearchResults';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import AuthScreen from './features/auth/AuthScreen';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import CartCheckoutFlow from './features/cart/CartCheckoutFlow';import GiftOrderFlow from './features/gifts/GiftOrderFlow';import { query } from 'firebase/firestore';
 
 // --- Types ---
-type Tab = 'home' | 'categories' | 'favorites' | 'cart' | 'account' | 'product-detail' | 'search-results' | 'producer-profile' | 'events' | 'health' | 'contact' | 'about' | 'admin' | 'vendor-store';
+type Tab = 'home' | 'categories' | 'cart' | 'account' | 'product-detail' | 'search-results' | 'producer-profile' | 'events' | 'health' | 'contact' | 'about' | 'admin';
+const SUPPORTED_TABS = new Set<Tab>(['home','categories','cart','account','product-detail','search-results','producer-profile','events','health','contact','about','admin']);
+const isSupportedTab = (value: string | null): value is Tab => !!value && SUPPORTED_TABS.has(value as Tab);
 type AccountTab = 'profile' | 'addresses' | 'payments' | 'notifications' | 'settings' | 'feedback';
 
 // --- Main App Component ---
@@ -12,22 +14,15 @@ function AppContent() {
 
   // URL Routing & SEO Sync (Added by System Architect)
   useEffect(() => {
-    const handlePopState = () => {
+    const applyUrlTab = () => {
       const params = new URLSearchParams(window.location.search);
-      const tabFromUrl = params.get('tab');
-      if (tabFromUrl && tabFromUrl !== currentTab) {
-         setCurrentTab(tabFromUrl);
-      }
+      const rawTab = params.get('tab');
+      const nextTab: Tab = isSupportedTab(rawTab) ? rawTab : 'home';
+      setCurrentTab(previous => previous === nextTab ? previous : nextTab);
     };
-    window.addEventListener('popstate', handlePopState);
-    
-    // Initial check
-    const params = new URLSearchParams(window.location.search);
-    const tabFromUrl = params.get('tab');
-    if (tabFromUrl && tabFromUrl !== currentTab) {
-       setCurrentTab(tabFromUrl);
-    }
-    return () => window.removeEventListener('popstate', handlePopState);
+    window.addEventListener('popstate', applyUrlTab);
+    applyUrlTab();
+    return () => window.removeEventListener('popstate', applyUrlTab);
   }, []);
 
   useEffect(() => {
@@ -44,7 +39,6 @@ function AppContent() {
         'cart': 'Sepetim | Golden Oremar',
         'profile': 'Hesabım | Golden Oremar',
         'admin': 'Yönetim | Golden Oremar',
-        'vendor-store': 'Mağaza | Golden Oremar',
       };
             document.title = tabTitles[currentTab] || 'Golden Oremar | VIP Organik Ekosistem';
       
@@ -98,7 +92,6 @@ function AppContent() {
   }, [currentUser?.id]);
 
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [selectedVendor, setSelectedVendor] = useState<any>(null);
   const [cart, setCart] = useState<any[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
 
@@ -785,30 +778,6 @@ function AppContent() {
           onOrderCreated={() => {
             setCart([]);
             setAccountView('orders');
-          }}
-        />
-      );
-    }
-
-    if (currentTab === 'vendor-store' && selectedVendor) {
-      const producerReference = selectedVendor?.slug || String(selectedVendor?.id || '');
-      if (!producerReference) {
-        return <div role="alert" className="mx-auto max-w-5xl p-6">Üretici referansı bulunamadı.</div>;
-      }
-      return (
-        <PublicProducerScreen
-          reference={producerReference}
-          authenticated={!!currentUser}
-          onBack={goBack}
-          onLoginRequired={() => { showToast('Bu işlem için hesabınıza giriş yapın.'); navigateToTab('account'); }}
-          onOpenConversation={(conversationId) => { setAccountView(`messages:${conversationId}`); navigateToTab('account'); }}
-          onOpenProduct={(slug) => {
-            setSelectedProduct(null);
-            setSelectedProductReference(slug);
-            navigateToTab('product-detail');
-          }}
-          onAddToCart={async (item, quantity) => {
-            await addToCart({ id: item.id, slug: item.slug, name: item.name, variantId: item.variantId }, quantity);
           }}
         />
       );
