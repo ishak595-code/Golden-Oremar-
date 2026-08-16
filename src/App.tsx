@@ -882,8 +882,8 @@ function AppContent() {
             setSelectedProductReference(slug);
             navigateToTab('product-detail');
           }}
-          onAddToCart={async (item) => {
-            await addToCart({ id: item.id, slug: item.slug, name: item.name, variantId: item.variant?.id }, 1);
+          onAddToCart={async (item, quantity) => {
+            await addToCart({ id: item.id, slug: item.slug, name: item.name, variantId: item.variant?.id }, quantity);
           }}
         />
       );
