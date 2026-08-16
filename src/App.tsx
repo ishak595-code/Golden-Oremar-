@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { syncNativeAppearance } from './native';import { query } from 'firebase/firestore';
+import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { useAccessibleDialog } from './features/accessibility/useAccessibleDialog';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { syncNativeAppearance } from './native';import { query } from 'firebase/firestore';
 
 
 const AdminPage = React.lazy(() => import('./pages/AdminPage').then(module => ({ default: module.AdminPage })));
@@ -156,6 +156,9 @@ function AppContent() {
   const [isListening, setIsListening] = useState(false);
   const [speechText, setSpeechText] = useState('');
   const [voiceError, setVoiceError] = useState('');
+  const voiceDialogRef = useAccessibleDialog<HTMLDivElement>(isListening, () => setIsListening(false));
+  const filterDialogRef = useAccessibleDialog<HTMLDivElement>(isFilterPanelOpen, () => setIsFilterPanelOpen(false));
+  const sortDialogRef = useAccessibleDialog<HTMLDivElement>(isSortPanelOpen, () => setIsSortPanelOpen(false));
 
   const processVoiceCommand = async (text: string) => {
     const rawText = text.toLowerCase().trim();
@@ -1239,18 +1242,20 @@ function AppContent() {
 
       {/* Voice Search (Microphone Popup) Bottom Sheet */}
       {isListening && (
-        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
-          {/* Overlay closer */}
-          <div className="absolute inset-0" onClick={() => setIsListening(false)} />
+        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in motion-reduce:animate-none">
+          {/* Pointer convenience; explicit close button and Escape cover keyboard/screen-reader use. */}
+          <div aria-hidden="true" className="absolute inset-0" onClick={() => setIsListening(false)} />
           
-          <div className="relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 shadow-[0_-8px_32px_rgba(0,0,0,0.5)] p-6 pb-12 flex flex-col items-center gap-6 animate-slide-up select-none z-10 transition-all duration-300">
+          <div ref={voiceDialogRef} role="dialog" aria-modal="true" aria-labelledby="voice-search-title" aria-describedby="voice-search-description" tabIndex={-1} className="relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 shadow-[0_-8px_32px_rgba(0,0,0,0.5)] p-6 pb-12 flex flex-col items-center gap-6 animate-slide-up motion-reduce:animate-none select-none z-10 transition-all duration-300">
             {/* Minimal drag handle */}
-            <div className="w-12 h-1 bg-gray-700 rounded-full" />
+            <div aria-hidden="true" className="w-12 h-1 bg-gray-700 rounded-full" />
             
             {/* Header action closer */}
             <button 
+              type="button"
               onClick={() => setIsListening(false)}
-              className="absolute top-5 right-5 p-1 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors"
+              aria-label="Sesli aramayı kapat"
+              className="absolute top-4 right-4 min-h-11 min-w-11 p-2 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors flex items-center justify-center"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1258,27 +1263,27 @@ function AppContent() {
             {/* Scale/pulse ringing silver & gold effect */}
             <div className="relative w-28 h-28 flex items-center justify-center">
               {/* Outer pulsing ring 1 */}
-              <div className="absolute inset-0 rounded-full border border-brand-gold/25 animate-ping duration-1500 opacity-75" />
+              <div aria-hidden="true" className="absolute inset-0 rounded-full border border-brand-gold/25 animate-ping motion-reduce:animate-none duration-1500 opacity-75" />
               {/* Outer pulsing ring 2 */}
-              <div className="absolute -inset-4 rounded-full border border-gray-400/20 animate-ping duration-2000 opacity-50" />
+              <div aria-hidden="true" className="absolute -inset-4 rounded-full border border-gray-400/20 animate-ping motion-reduce:animate-none duration-2000 opacity-50" />
               
               {/* Glow background */}
-              <div className="absolute inset-2 bg-gradient-to-br from-brand-gold/10 to-transparent blur-xl rounded-full" />
+              <div aria-hidden="true" className="absolute inset-2 bg-gradient-to-br from-brand-gold/10 to-transparent blur-xl rounded-full" />
               
               {/* Main Microphone Button */}
               <div className="relative w-20 h-20 rounded-full bg-gradient-to-tr from-[#16191E] to-[#20252e] flex items-center justify-center border border-brand-gold/40 shadow-[0_0_20px_rgba(212,175,55,0.15)]">
-                <Mic className="w-8 h-8 text-brand-gold animate-pulse" />
+                <Mic aria-hidden="true" className="w-8 h-8 text-brand-gold animate-pulse motion-reduce:animate-none" />
               </div>
             </div>
 
             {/* Text description */}
             <div className="text-center space-y-2 w-full px-4">
-              <h3 className="text-base font-bold text-white tracking-wide">Sizi dinliyoruz...</h3>
-              <p className="text-sm font-semibold text-[#CBD5E0] min-h-[3rem] px-4 py-2 bg-gray-900/40 rounded-xl border border-gray-850/50 break-words leading-relaxed max-h-32 overflow-y-auto font-mono">
+              <h3 id="voice-search-title" className="text-base font-bold text-white tracking-wide">Sizi dinliyoruz...</h3>
+              <p id="voice-search-description" aria-live="polite" aria-atomic="true" className="text-sm font-semibold text-[#CBD5E0] min-h-[3rem] px-4 py-2 bg-gray-900/40 rounded-xl border border-gray-850/50 break-words leading-relaxed max-h-32 overflow-y-auto font-mono">
                 {speechText || "Aramak istediğiniz ürünün adını söyleyin..."}
               </p>
               {voiceError && (
-                <p className="text-xs text-red-500 font-medium animate-pulse">{voiceError}</p>
+                <p role="alert" className="text-xs text-red-500 font-medium animate-pulse motion-reduce:animate-none">{voiceError}</p>
               )}
             </div>
             
@@ -1292,23 +1297,25 @@ function AppContent() {
 
       {/* Advanced Filter Sheet */}
       {isFilterPanelOpen && (
-        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="absolute inset-0" onClick={() => setIsFilterPanelOpen(false)} />
+        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in motion-reduce:animate-none">
+          <div aria-hidden="true" className="absolute inset-0" onClick={() => setIsFilterPanelOpen(false)} />
           
-          <div className="relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 p-6 pb-12 flex flex-col gap-6 animate-slide-up z-10 text-white">
-            <div className="w-12 h-1 bg-gray-700 mx-auto rounded-full" />
+          <div ref={filterDialogRef} role="dialog" aria-modal="true" aria-labelledby="filter-sheet-title" aria-describedby="filter-sheet-description" tabIndex={-1} className="relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 p-6 pb-12 flex flex-col gap-6 animate-slide-up motion-reduce:animate-none z-10 text-white">
+            <div aria-hidden="true" className="w-12 h-1 bg-gray-700 mx-auto rounded-full" />
             <button 
+              type="button"
               onClick={() => setIsFilterPanelOpen(false)}
-              className="absolute top-5 right-5 p-1 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors"
+              aria-label="Filtreleri kapat"
+              className="absolute top-4 right-4 min-h-11 min-w-11 p-2 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors flex items-center justify-center"
             >
               <X className="w-4 h-4" />
             </button>
             
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-brand-gold" /> Gelişmiş Filtreleme
+              <h3 id="filter-sheet-title" className="text-base font-bold text-white flex items-center gap-2">
+                <SlidersHorizontal aria-hidden="true" className="w-4 h-4 text-brand-gold" /> Gelişmiş Filtreleme
               </h3>
-              <p className="text-xs text-gray-400">Kategori, köken ve fiyatla sonuçları daraltın.</p>
+              <p id="filter-sheet-description" className="text-xs text-gray-400">Kategori, köken ve fiyatla sonuçları daraltın.</p>
             </div>
 
             <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-1">
@@ -1318,7 +1325,8 @@ function AppContent() {
                 <div className="flex flex-wrap gap-2">
                   <button 
                     onClick={() => setActiveFilter(null)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${!activeFilter ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-800 bg-gray-900/50 text-gray-400 hover:text-white'}`}
+                    aria-pressed={!activeFilter}
+                    className={`min-h-11 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${!activeFilter ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-800 bg-gray-900/50 text-gray-400 hover:text-white'}`}
                   >
                     Tüm Kategoriler
                   </button>
@@ -1326,7 +1334,8 @@ function AppContent() {
                     <button 
                       key={cat.id}
                       onClick={() => setActiveFilter(cat.name)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${activeFilter === cat.name ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-800 bg-gray-900/50 text-gray-400 hover:text-white'}`}
+                      aria-pressed={activeFilter === cat.name}
+                      className={`min-h-11 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${activeFilter === cat.name ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-800 bg-gray-900/50 text-gray-400 hover:text-white'}`}
                     >
                       {cat.name}
                     </button>
@@ -1344,7 +1353,8 @@ function AppContent() {
                       <button 
                         key={origin}
                         onClick={() => setActiveOrigin(originKey)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${activeOrigin === originKey ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-800 bg-gray-900/50 text-gray-400 hover:text-white'}`}
+                        aria-pressed={activeOrigin === originKey}
+                        className={`min-h-11 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${activeOrigin === originKey ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-800 bg-gray-900/50 text-gray-400 hover:text-white'}`}
                       >
                         {origin}
                       </button>
@@ -1366,7 +1376,8 @@ function AppContent() {
                     <button 
                       key={range.value}
                       onClick={() => setPriceRange(range.value)}
-                      className={`py-2 rounded-xl text-xs font-semibold border transition-all ${priceRange === range.value ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-800 bg-gray-900/50 text-gray-400 hover:text-white'}`}
+                      aria-pressed={priceRange === range.value}
+                      className={`min-h-11 py-2 rounded-xl text-xs font-semibold border transition-all ${priceRange === range.value ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-800 bg-gray-900/50 text-gray-400 hover:text-white'}`}
                     >
                       {range.label}
                     </button>
@@ -1383,13 +1394,13 @@ function AppContent() {
                   setPriceRange('all');
                   setIsFilterPanelOpen(false);
                 }}
-                className="flex-1 py-3 rounded-xl border border-gray-800 text-xs text-center font-bold text-gray-400 hover:text-white transition-all bg-gray-900/30"
+                className="flex-1 min-h-11 py-3 rounded-xl border border-gray-800 text-xs text-center font-bold text-gray-400 hover:text-white transition-all bg-gray-900/30"
               >
                 Sıfırla
               </button>
               <button 
                 onClick={() => setIsFilterPanelOpen(false)}
-                className="flex-1 py-3 rounded-xl bg-brand-gold hover:bg-brand-gold/90 text-xs text-center font-bold text-black transition-all"
+                className="flex-1 min-h-11 py-3 rounded-xl bg-brand-gold hover:bg-brand-gold/90 text-xs text-center font-bold text-black transition-all"
               >
                 Uygula
               </button>
@@ -1400,29 +1411,31 @@ function AppContent() {
 
       {/* Smart Sorting Sheet */}
       {isSortPanelOpen && (
-        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="absolute inset-0" onClick={() => setIsSortPanelOpen(false)} />
+        <div className="fixed inset-0 z-[110] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in motion-reduce:animate-none">
+          <div aria-hidden="true" className="absolute inset-0" onClick={() => setIsSortPanelOpen(false)} />
           
-          <div className="relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 p-6 pb-12 flex flex-col gap-6 animate-slide-up z-10 text-white">
-            <div className="w-12 h-1 bg-gray-700 mx-auto rounded-full" />
+          <div ref={sortDialogRef} role="dialog" aria-modal="true" aria-labelledby="sort-sheet-title" aria-describedby="sort-sheet-description" tabIndex={-1} className="relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 p-6 pb-12 flex flex-col gap-6 animate-slide-up motion-reduce:animate-none z-10 text-white">
+            <div aria-hidden="true" className="w-12 h-1 bg-gray-700 mx-auto rounded-full" />
             <button 
+              type="button"
               onClick={() => setIsSortPanelOpen(false)}
-              className="absolute top-5 right-5 p-1 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors"
+              aria-label="Sıralamayı kapat"
+              className="absolute top-4 right-4 min-h-11 min-w-11 p-2 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors flex items-center justify-center"
             >
               <X className="w-4 h-4" />
             </button>
             
             <div className="space-y-1">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <ArrowDownUp className="w-4 h-4 text-brand-gold" /> Akıllı Sıralama
+              <h3 id="sort-sheet-title" className="text-base font-bold text-white flex items-center gap-2">
+                <ArrowDownUp aria-hidden="true" className="w-4 h-4 text-brand-gold" /> Sıralama
               </h3>
-              <p className="text-xs text-gray-400">Ürünleri dilediğiniz öncelikte sıralayın.</p>
+              <p id="sort-sheet-description" className="text-xs text-gray-400">Ürünleri seçtiğiniz kritere göre sıralayın.</p>
             </div>
 
             <div className="flex flex-col gap-2">
               {[
-                { label: 'Önerilen Sürüm', value: 'featured' },
-                { label: 'En Popüler / En Çok Oy Alanlar', value: 'rating' },
+                { label: 'Önerilen', value: 'featured' },
+                { label: 'En Yüksek Puan', value: 'rating' },
                 { label: 'Fiyat: Düşükten Yükseğe', value: 'price-asc' },
                 { label: 'Fiyat: Yüksekten Düşüğe', value: 'price-desc' }
               ].map((opt) => (
@@ -1432,10 +1445,11 @@ function AppContent() {
                     setSortOption(opt.value);
                     setIsSortPanelOpen(false);
                   }}
-                  className={`w-full text-left px-4 py-3.5 rounded-xl border text-sm font-semibold flex items-center justify-between transition-all ${sortOption === opt.value ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-800/80 bg-gray-900/50 text-gray-400 hover:text-white'}`}
+                  aria-pressed={sortOption === opt.value}
+                  className={`min-h-11 w-full text-left px-4 py-3.5 rounded-xl border text-sm font-semibold flex items-center justify-between transition-all ${sortOption === opt.value ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-800/80 bg-gray-900/50 text-gray-400 hover:text-white'}`}
                 >
                   <span>{opt.label}</span>
-                  {sortOption === opt.value && <div className="w-2 h-2 rounded-full bg-brand-gold shadow-[0_0_8px_rgba(212,175,55,1)]" />}
+                  {sortOption === opt.value && <div aria-hidden="true" className="w-2 h-2 rounded-full bg-brand-gold shadow-[0_0_8px_rgba(212,175,55,1)]" />}
                 </button>
               ))}
             </div>
@@ -1445,8 +1459,8 @@ function AppContent() {
 
       {/* Toast */}
       {toast.visible && (
-        <div className="fixed left-1/2 -translate-x-1/2 bg-brand-green text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-[100] animate-in fade-in zoom-in duration-300 pointer-events-none" style={{ top: 'calc(4rem + env(safe-area-inset-top))' }}>
-          <CheckCircle className="w-5 h-5 text-brand-gold" />
+        <div role="status" aria-live="polite" aria-atomic="true" className="fixed left-1/2 -translate-x-1/2 bg-brand-green text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-[100] animate-in motion-reduce:animate-none fade-in zoom-in duration-300 pointer-events-none" style={{ top: 'calc(4rem + env(safe-area-inset-top))' }}>
+          <CheckCircle aria-hidden="true" className="w-5 h-5 text-brand-gold" />
           <span className="font-medium">{toast.message}</span>
         </div>
       )}
