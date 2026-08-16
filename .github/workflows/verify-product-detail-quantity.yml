@@ -1,0 +1,134 @@
+name: Verify Product Detail Quantity
+
+on:
+  push:
+    branches: [agent/product-detail-quantity-stepper]
+    paths:
+      - '.github/workflows/verify-product-detail-quantity.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Replace only the remaining product-detail number input
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('src/features/catalog/ProductDetailScreen.tsx')
+          s=p.read_text()
+          old_import="import{ArrowLeft,CheckCircle2,Copy,ExternalLink,Gift,Heart,MapPin,PackageCheck,QrCode,ShoppingCart,Star,Store,Truck}from'lucide-react';"
+          new_import="import{ArrowLeft,CheckCircle2,Copy,ExternalLink,Gift,Heart,MapPin,Minus,PackageCheck,Plus,QrCode,ShoppingCart,Star,Store,Truck}from'lucide-react';"
+          if s.count(old_import)!=1: raise SystemExit(f'Unexpected icon import count: {s.count(old_import)}')
+          s=s.replace(old_import,new_import)
+
+          old='''    <label className="mt-4 block"><span className="text-sm font-semibold">Adet</span><input type="number" min="1" max={maxQuantity} disabled={soldOut} value={quantity} onChange={event=>setQuantity(Math.max(1,Math.min(maxQuantity,Number(event.target.value)||1)))} className="mt-1 min-h-11 w-28 rounded-xl border bg-transparent px-3"/><span className="ml-2 text-xs text-gray-500">Maksimum {maxQuantity}</span></label>'''
+          new='''    <div className="mt-4" role="group" aria-labelledby="product-quantity-label"><span id="product-quantity-label" className="text-sm font-semibold">Adet</span><div className="mt-2 flex flex-wrap items-center gap-3"><div className="inline-flex items-center rounded-xl border bg-white dark:bg-gray-900" aria-label={`${detail.name} adet seçimi`}><button type="button" onClick={()=>setQuantity(current=>Math.max(1,current-1))} disabled={soldOut||busy||quantity<=1} aria-label={`${detail.name} miktarını azalt`} className="grid min-h-11 min-w-11 place-items-center rounded-l-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold disabled:cursor-not-allowed disabled:opacity-40"><Minus aria-hidden="true" className="h-4 w-4"/></button><output aria-live="polite" aria-atomic="true" aria-label={`${quantity} adet`} className="min-w-12 px-2 text-center font-bold tabular-nums">{quantity}</output><button type="button" onClick={()=>setQuantity(current=>Math.min(maxQuantity,current+1))} disabled={soldOut||busy||quantity>=maxQuantity} aria-label={`${detail.name} miktarını artır`} className="grid min-h-11 min-w-11 place-items-center rounded-r-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold disabled:cursor-not-allowed disabled:opacity-40"><Plus aria-hidden="true" className="h-4 w-4"/></button></div><span className="text-xs text-gray-500">En fazla {maxQuantity} adet</span></div></div>'''
+          if s.count(old)!=1: raise SystemExit(f'Unexpected product-detail quantity control count: {s.count(old)}')
+          s=s.replace(old,new)
+          p.write_text(s)
+          PY
+
+      - name: Validate targeted interaction contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'miktarını azalt' src/features/catalog/ProductDetailScreen.tsx
+          grep -q 'miktarını artır' src/features/catalog/ProductDetailScreen.tsx
+          grep -q 'aria-live="polite"' src/features/catalog/ProductDetailScreen.tsx
+          grep -q 'quantity>=maxQuantity' src/features/catalog/ProductDetailScreen.tsx
+          grep -q 'quantity<=1' src/features/catalog/ProductDetailScreen.tsx
+          if grep -q '<input type="number" min="1" max={maxQuantity}' src/features/catalog/ProductDetailScreen.tsx; then
+            echo 'Legacy product-detail quantity number input remains.' >&2
+            exit 1
+          fi
+          git diff --name-only | grep -qx 'src/features/catalog/ProductDetailScreen.tsx'
+
+      - name: Production build
+        run: npm run build
+
+      - name: Synchronize native projects
+        run: npx cap sync android && npx cap sync ios
+
+      - name: Ensure native sync introduced no unrelated source changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          unexpected=$(git diff --name-only | grep -v '^src/features/catalog/ProductDetailScreen.tsx$' || true)
+          if [ -n "$unexpected" ]; then
+            echo "Unexpected tracked changes after native sync:" >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
+
+      - name: Compile Android debug app
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Persist next project state
+        shell: bash
+        run: |
+          cat > docs/IMPLEMENTATION_STATUS.md <<'MD'
+          # Golden Oremar Implementation Status
+
+          Last updated: 2026-08-16
+
+          This file is intentionally concise. Detailed sequencing lives in `MOBILE_PRODUCT_ROADMAP.md`; persistence rules live in `PERSISTENCE_AND_CHANGE_LEDGER.md`.
+
+          ## Current phase
+          Mobile-first customer experience hardening before admin-panel finalization.
+
+          ## Completed platform/auth package
+          - Stable Capacitor 8.5 core/platform baseline with locked official plugin versions.
+          - Android API 36, minSdk 24, Java 21, Kotlin 2.2.20, Gradle 8.14.3 and AGP 8.13.0.
+          - iOS deployment target 15.0 with Capacitor 8.5 UIScene lifecycle and preserved auth deep-link routing.
+          - Provider-gated Google/Facebook OAuth remains integrated through the existing Supabase/deep-link session flow; social buttons remain disabled unless explicitly enabled.
+          - Permanent mobile CI quality gate checks locked native baseline, production build, Capacitor Android/iOS sync reproducibility and Android debug compilation.
+
+          ## Completed dynamic product and producer trust metrics
+          - Server-backed review rating/count and stock/variant truth are surfaced on customer product surfaces.
+          - Producer verification, origin verification and follower metrics are shown from server-backed data.
+          - Producer profile follow/follow-state uses the same server truth.
+
+          ## Completed quantity and add-to-cart interaction package
+          - Product cards, catalog search, producer products and cart already use stock-aware quantity handling and were preserved.
+          - Product detail now uses accessible 44px minimum +/- controls, polite quantity announcements and server-derived stock boundaries instead of the remaining raw number field.
+          - Add-to-cart continues using the selected server variant and selected quantity; no client-side price or stock authority was introduced.
+
+          ## Current active package
+          Structured product content enrichment: description, origin, usage/storage and health/nutrition information using published/server-backed fields, with source/warning handling and no invented health claims.
+
+          ## Release gates still required on Apple hardware
+          A real Xcode archive/build, signing check and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
+          MD
+
+      - name: Commit verified customer interaction only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add src/features/catalog/ProductDetailScreen.tsx docs/IMPLEMENTATION_STATUS.md
+          git diff --cached --stat
+          git commit -m 'Complete product detail quantity interaction'
+          git push origin HEAD:agent/product-detail-quantity-stepper
