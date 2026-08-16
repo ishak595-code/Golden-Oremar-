@@ -10,6 +10,7 @@ function normalizeUnreadCount(value: unknown) {
 
 export function useUnreadNotificationCount(authenticated: boolean) {
   const [unreadCount, setUnreadCountState] = useState(0);
+  const [hydrated, setHydrated] = useState(!authenticated);
 
   const setUnreadCount = useCallback((value: number) => {
     setUnreadCountState(normalizeUnreadCount(value));
@@ -18,15 +19,18 @@ export function useUnreadNotificationCount(authenticated: boolean) {
   const refresh = useCallback(async () => {
     if (!authenticated) {
       setUnreadCountState(0);
+      setHydrated(true);
       return 0;
     }
     const data = await listNotifications(1);
     const next = normalizeUnreadCount(data?.unreadCount);
     setUnreadCountState(next);
+    setHydrated(true);
     return next;
   }, [authenticated]);
 
   useEffect(() => {
+    setHydrated(!authenticated);
     if (!authenticated) {
       setUnreadCountState(0);
       return;
@@ -40,6 +44,7 @@ export function useUnreadNotificationCount(authenticated: boolean) {
         if (!disposed) await refresh();
       } catch (error) {
         console.warn('Unread notification count could not be refreshed', error);
+        if (!disposed) setHydrated(true);
       }
     };
 
@@ -64,5 +69,5 @@ export function useUnreadNotificationCount(authenticated: boolean) {
     };
   }, [authenticated, refresh]);
 
-  return { unreadCount, setUnreadCount, refreshUnreadCount: refresh };
+  return { unreadCount, setUnreadCount, refreshUnreadCount: refresh, hydrated };
 }
