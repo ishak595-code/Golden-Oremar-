@@ -66,11 +66,13 @@ replaceExact(
   'replace legacy home section helpers',
 );
 
-replaceExact(
-  `<option value="rating">En Çok Değerlendirilen</option>`,
-  `<option value="rating">En Yüksek Puan</option>`,
-  'rating label',
-);
+{
+  const from = `<option value="rating">En Çok Değerlendirilen</option>`;
+  const to = `<option value="rating">En Yüksek Puan</option>`;
+  const count = text.split(from).length - 1;
+  if (count !== 2) throw new Error(`rating labels: expected exactly 2 matches, found ${count}`);
+  text = text.split(from).join(to);
+}
 
 replaceExact(
   `className="bg-gray-50 dark:bg-gray-800 border-none rounded-lg px-3 py-1 text-sm font-medium outline-none cursor-pointer text-brand-text"`,
