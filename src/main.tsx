@@ -4,10 +4,12 @@ import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary';
 import './index.css';
 import { initNativeFeatures } from './native';
-import { applyThemeToDocument, resolveInitialTheme } from './features/appearance/theme';
+import { applyPaletteToDocument, applyThemeToDocument, resolveInitialPalette, resolveInitialTheme } from './features/appearance/theme';
 
 const initialTheme = resolveInitialTheme();
+const initialPalette = resolveInitialPalette();
 applyThemeToDocument(initialTheme);
+applyPaletteToDocument(initialPalette);
 
 // Initialize native specific behavior (StatusBar, Splash, etc.) with the same first-paint theme.
 void initNativeFeatures(initialTheme);
