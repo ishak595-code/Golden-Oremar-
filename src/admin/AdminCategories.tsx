@@ -131,4 +131,4 @@ export function AdminCategories({ setActiveTab }: { setActiveTab?: (tab: string)
 }
 
 function Metric({label,value}:{label:string;value:number}){return <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">{label}</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{value.toLocaleString('tr-TR')}</div></div>}
-function Field({label,children}:{label:string;children:React.ReactElement}){return <label className="block"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>{React.cloneElement(children,{className:'category-field'})}</label>}
+function Field({label,children}:{label:string;children:React.ReactElement<{className?:string}>}){return <label className="block"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>{React.cloneElement(children,{className:'category-field'})}</label>}

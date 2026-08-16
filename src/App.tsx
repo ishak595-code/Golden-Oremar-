@@ -1448,7 +1448,6 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
   const setSortOption = 'setSortOption' in props ? props.setSortOption : setLocalSortOption;
 
   const filteredProducts = [...products].filter(p => {
-    if (p.is_approved === false) return false;
     const matchesSearch = p.name?.toLowerCase().includes(searchQuery?.toLowerCase()) || 
                           p.category?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
                           p.tags.some((t: string) => t?.toLowerCase().includes(searchQuery?.toLowerCase()));
@@ -1576,9 +1575,9 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
               <div className="mb-16 space-y-16">
                 {homeSections.filter(s => s.active !== false).map((section, idx) => {
                   const displayProducts = section.id === 'offers'
-                    ? (products.filter(p => p.homeSection === 'offers' && p.is_approved !== false).length > 0
-                      ? products.filter(p => p.homeSection === 'offers' && p.is_approved !== false)
-                      : products.filter(p => p.originalPrice && p.is_approved !== false)).slice(0, 4)
+                    ? (products.filter(p => p.homeSection === 'offers').length > 0
+                      ? products.filter(p => p.homeSection === 'offers')
+                      : products.filter(p => p.originalPrice)).slice(0, 4)
                     : getProductsForSection(section.id);
 
                   if (displayProducts.length === 0 && section.id !== 'pre_order') return null;

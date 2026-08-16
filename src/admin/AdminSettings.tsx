@@ -160,5 +160,5 @@ export function AdminSettings({ setActiveTab: _setActiveTab }: { setActiveTab?: 
   </div>;
 }
 
-function Field({label,children}:{label:string;children:React.ReactElement;key?:React.Key}){return <label className="block"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>{React.cloneElement(children,{className:'settings-field'})}</label>}
+function Field({label,children}:{label:string;children:React.ReactElement<{className?:string}>;key?:React.Key}){return <label className="block"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>{React.cloneElement(children,{className:'settings-field'})}</label>}
 function TabButton({active,onClick,icon,children}:{active:boolean;onClick:()=>void;icon:React.ReactNode;children:React.ReactNode}){return <button type="button" onClick={onClick} className={`flex min-h-11 items-center gap-2 whitespace-nowrap border-b-2 px-4 font-semibold ${active?'border-brand-green text-brand-green':'border-transparent text-gray-500'}`}>{icon}{children}</button>}

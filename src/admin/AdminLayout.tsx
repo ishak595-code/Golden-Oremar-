@@ -33,7 +33,7 @@ interface AdminLayoutProps {
   onBack?: () => void;
 }
 
-type MenuItem = { id: string; label: string; icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }> };
+type MenuItem = { id: string; label: string; icon: React.ComponentType<{ className?: string; 'aria-hidden'?: React.AriaAttributes['aria-hidden'] }> };
 type MenuGroup = { title: string; items: MenuItem[] };
 
 const adminMenuGroups: MenuGroup[] = [
