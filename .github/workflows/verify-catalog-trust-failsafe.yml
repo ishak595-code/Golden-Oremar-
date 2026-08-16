@@ -1,0 +1,40 @@
+name: Verify Catalog Trust Failsafe
+
+on:
+  push:
+    branches:
+      - agent/catalog-trust-failsafe
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/catalog-trust-failsafe
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Apply guarded trust patch
+        run: node .github/scripts/apply-catalog-trust-failsafe.mjs
+      - name: Validate fail-closed contract
+        run: |
+          grep -q "producerVerified: metric?.verified ?? false" src/features/catalog/CatalogSearchResults.tsx
+          ! grep -q "producerVerified: metric?.verified ?? true" src/features/catalog/CatalogSearchResults.tsx
+      - name: Production build
+        run: npm run build
+      - name: Commit verified trust fix
+        run: |
+          rm -f .github/scripts/apply-catalog-trust-failsafe.mjs .github/workflows/verify-catalog-trust-failsafe.yml
+          git config user.name "Golden Oremar Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Fail closed when producer verification metrics are unavailable [skip ci]"
+          git push origin HEAD:agent/catalog-trust-failsafe
