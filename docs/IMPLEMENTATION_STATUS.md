@@ -67,9 +67,13 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Followed-producer cards never invent a country/location fallback and only display producer/origin verification when the corresponding server-backed flag is true.
 - Gift history and payment history clear stale errors on retry, show premium responsive cards and translate known order/payment status codes into customer-readable labels while preserving unknown server values safely.
 - Payment history remains truthful: only verified backend payment activity is shown; no saved-card vault or fake payment method is simulated before a real provider is integrated.
+- Cart quantity/remove mutations now use per-row busy guards and live status feedback instead of allowing parallel repeated row mutations.
+- Whole-cart clearing requires an accessible destructive confirmation dialog; ordinary single-item removal remains quick because it is recoverable by re-adding the item.
+- Checkout submission is locked from the final preview verification onward, preventing double-submit races while preserving server-side idempotency as the ultimate duplicate-order authority.
+- Cart errors move keyboard/screen-reader focus to the alert; destructive/coupon/shipping/submit controls use explicit button semantics and visible focus.
 
 ## Current active package
-Remaining public/customer surfaces outside the completed account core: audit Cart/Checkout, Auth, Events, Contact and Health screens for premium responsive presentation, loading/error/empty-state consistency, focus behavior and duplicate-action protection without changing their completed secure backend contracts.
+Public customer content surfaces: audit Events, Contact and Health for premium responsive presentation, field validation, async busy/error/status consistency and focus behavior. Auth is already sufficiently hardened and will not be rewritten without a newly demonstrated gap.
 
 ## Release gates still required on Apple hardware
 A real Xcode archive/build, signing check and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
