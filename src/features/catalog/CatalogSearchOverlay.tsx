@@ -70,6 +70,8 @@ export default function CatalogSearchOverlay({
 
   return (
     <div
+      id="catalog-search-suggestions"
+      data-catalog-search-overlay="true"
       className="absolute left-4 right-4 z-[100] mx-auto mt-2 max-h-[70vh] max-w-7xl overflow-y-auto rounded-2xl border border-brand-gold/20 bg-white shadow-2xl dark:bg-gray-900"
       role="region"
       aria-label="Arama önerileri"
@@ -77,7 +79,7 @@ export default function CatalogSearchOverlay({
       {!query.trim() ? (
         <div className="p-5 text-sm text-gray-600 dark:text-gray-300">
           <div className="flex items-start gap-3">
-            <Search className="mt-0.5 h-5 w-5 shrink-0 text-brand-gold" />
+            <Search aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-brand-gold" />
             <div>
               <div className="font-bold text-brand-text">Ürün, üretici veya kategori arayın</div>
               <p className="mt-1 text-gray-500">Öneriler Golden Oremar'ın canlı kataloğundan gelir.</p>
@@ -86,7 +88,7 @@ export default function CatalogSearchOverlay({
         </div>
       ) : (
         <div className="p-3">
-          <div className="sr-only" aria-live="polite">
+          <div className="sr-only" aria-live="polite" aria-atomic="true">
             {loading ? 'Aranıyor' : error ? error : `${items.length} öneri bulundu`}
           </div>
 
@@ -98,29 +100,28 @@ export default function CatalogSearchOverlay({
           ) : null}
 
           {items.length > 0 ? (
-            <div role="listbox" aria-label="Arama önerileri" className="space-y-1">
+            <ul aria-label="Arama önerileri" className="space-y-1">
               {items.map(item => {
                 const Icon = iconFor(item.kind);
                 const typeLabel = item.kind === 'product' ? 'Ürün' : item.kind === 'producer' ? 'Üretici' : 'Kategori';
                 return (
-                  <button
-                    key={`${item.kind}:${item.id}`}
-                    type="button"
-                    role="option"
-                    aria-selected="false"
-                    onMouseDown={event => event.preventDefault()}
-                    onClick={() => choose(item)}
-                    className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-brand-text transition-colors hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
-                  >
-                    <Icon className="h-5 w-5 shrink-0 text-brand-gold" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{item.label}</span>
-                      <span className="block text-xs text-gray-500">{typeLabel}</span>
-                    </span>
-                  </button>
+                  <li key={`${item.kind}:${item.id}`}>
+                    <button
+                      type="button"
+                      onMouseDown={event => event.preventDefault()}
+                      onClick={() => choose(item)}
+                      className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-brand-text transition-colors hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+                    >
+                      <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-gold" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold">{item.label}</span>
+                        <span className="block text-xs text-gray-500">{typeLabel}</span>
+                      </span>
+                    </button>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           ) : null}
 
           <button
