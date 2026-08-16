@@ -1,10 +1,11 @@
 {
-  "generatedAt": "2026-08-16T05:08:58.246816+00:00",
+  "generatedAt": "2026-08-16T21:32:00+00:00",
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "liveMigrationCount": 90,
-  "latestMigration": "20260816050443_minimize_public_storefront_readiness_v1",
+  "liveMigrationCount": 120,
+  "latestMigration": "20260816211940_add_remaining_foreign_key_indexes_v2",
   "securityAdvisorLints": 0,
+  "performanceBlockingLints": 0,
   "edgeFunctions": {
     "contact-submit": {
       "status": "ACTIVE",
@@ -16,16 +17,20 @@
     }
   },
   "validation": {
-    "typescriptTsxFilesParserChecked": 44,
+    "typescriptScope": "shipped-application-source",
     "typescriptSyntaxErrors": 0,
-    "integrationScriptSyntax": "PASS",
-    "generatedForbiddenMarkers": "PASS",
-    "criticalCumulativeFiles": "PASS"
+    "productionWebBuild": "PASS",
+    "firebaseRuntimeResidue": "PASS_NONE_FOUND",
+    "mobileBrandAssets": "REGENERATED_FROM_SOURCE_SVG",
+    "androidReleaseBundle": "PENDING_RECHECK_AFTER_ASSET_REGENERATION",
+    "iosSimulatorCompile": "PENDING_RECHECK_AFTER_ASSET_REGENERATION",
+    "mobileQualityGate": "RUNNING"
   },
   "truthfulnessChecks": {
-    "upcomingEvents": 0,
-    "pastEvents": 5,
-    "structuredHakkariYuksekovaVillageSuggestions": 0,
-    "placeholderContentImagesRemoved": 34
+    "adminFakeMetricsRetired": true,
+    "firebaseDataContextRetired": true,
+    "legacyNodeSqliteRuntimeRetired": true,
+    "productProducerMetricsDynamic": true,
+    "customerProductSafetyDynamic": true
   }
 }
