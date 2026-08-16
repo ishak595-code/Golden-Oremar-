@@ -46,6 +46,8 @@ Kaynak kod veya build dosyaları veritabanına kopyalanmaz. Canlı müşteri/KYC
 - Kişisel görünüm tercihi cihazda `golden-oremar:appearance-theme:v1` anahtarıyla tutulur; müşteri tema seçimi legacy global Firestore ayarına yazılmaz.
 - İlk render öncesi kaydedilmiş tema veya OS color-scheme uygulanır ve native status bar aynı tema ile senkronlanır.
 - Aydınlık tema gerçek açık yüzey/koyu metin tokenlarına taşınmıştır; temel light kart üzerindeki ana metin/yeşil/altın/muted metin kontrastları otomatik kontrol edilir.
+- Hesap Ayarları async işlemleri işlem türüne göre ayrı error/status/busy durumları kullanır; şifre, bülten, bildirim, oturum ve hesap-kapatma hataları yanlış panelde gösterilmez.
+- Bildirim kaydı ve diğer Ayarlar mutasyonları çift tetiklenmeye karşı busy guard kullanır; hesap kapatma backend isteğinden önce accessible confirmation alertdialog üzerinden açık onay alır.
 - Yayınlanmış SSS/Yardım içerik entegrasyonu; olmayan Terms metni uydurulmaz.
 - Yapılandırılmış ürün güvenliği / sağlık uyarıları ve kaynak modeli.
 
@@ -82,6 +84,7 @@ Migration history Supabase'in migration tablosunda tutulmaktadır. Önemli son m
 8. Daha güçlü canonical bileşen mevcutsa daha zayıf paralel UI korunmaz; iş mantığı kopyalanmadan canonical yol yeniden kullanılır.
 9. Kullanıcı-facing trust/organic/health/verification bilgisi yalnız server-backed doğrulanmış kaynaktan gösterilir; fallback ile güven rozeti üretilmez.
 10. Cihaza/kişiye özel görünüm tercihi global admin/site ayarına yazılmaz; kullanıcı cihaz tercihi ile yönetim ayarı ayrı tutulur.
+11. Kullanıcı tetiklediği async mutasyonlarda buton busy iken tekrar çalışmaz; hata ve başarı geri bildirimi işlemin gerçekleştiği panelde gösterilir.
 
 ## Harici konfigürasyon notu
 Google/Facebook OAuth, ödeme sağlayıcısı, kargo sağlayıcısı ve store signing gibi dış credential gerektiren özellikler; kod hazır olsa bile ilgili sağlayıcı gerçekten yapılandırılmadan "aktif" kabul edilmez.
