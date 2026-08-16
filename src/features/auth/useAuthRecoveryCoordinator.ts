@@ -18,6 +18,7 @@ export function useAuthRecoveryCoordinator() {
     setCallbackHandled(false);
   }, []);
 
+  const acknowledgeCallback = useCallback(() => setCallbackHandled(false), []);
   const clearError = useCallback(() => setError(''), []);
 
   useEffect(() => {
@@ -85,6 +86,7 @@ export function useAuthRecoveryCoordinator() {
     callbackHandled,
     error,
     clearError,
+    acknowledgeCallback,
     finishRecovery,
   };
 }
