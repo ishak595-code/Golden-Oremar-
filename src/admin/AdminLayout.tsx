@@ -1,9 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, ShoppingBag, Users, FileText, Settings, 
-  LogOut, Menu, X, Bell, Search, Package, Calendar, BarChart3,
-  MessageSquare, ArrowLeft, RefreshCw, Tags, Store, TrendingUp, Star, Megaphone, DollarSign, CheckSquare
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft,
+  Bell,
+  Calendar,
+  CheckSquare,
+  DollarSign,
+  FileText,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Package,
+  RefreshCw,
+  RotateCcw,
+  Settings,
+  ShoppingBag,
+  Star,
+  Store,
+  Tags,
+  TrendingUp,
+  Users,
+  X,
+  Megaphone,
 } from 'lucide-react';
+import { useCustomerSession } from '../features/auth/useCustomerSession';
+import { getPublicStorefrontConfig } from '../features/storefront/api';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -13,269 +33,142 @@ interface AdminLayoutProps {
   onBack?: () => void;
 }
 
-import { useData } from '../context/DataContext';
+type MenuItem = { id: string; label: string; icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }> };
+type MenuGroup = { title: string; items: MenuItem[] };
+
+const adminMenuGroups: MenuGroup[] = [
+  { title: 'Genel', items: [{ id: 'dashboard', label: 'Panel', icon: LayoutDashboard }] },
+  {
+    title: 'E-Ticaret',
+    items: [
+      { id: 'products', label: 'Ürün Yönetimi', icon: ShoppingBag },
+      { id: 'product-approvals', label: 'Ürün Onayları', icon: CheckSquare },
+      { id: 'categories', label: 'Kategoriler', icon: Tags },
+      { id: 'orders', label: 'Siparişler', icon: Package },
+      { id: 'returns', label: 'İadeler', icon: RotateCcw },
+      { id: 'stock', label: 'Stok Gözetimi', icon: TrendingUp },
+      { id: 'vendors', label: 'Satıcılar', icon: Store },
+      { id: 'vendor-applications', label: 'Satıcı Başvuruları', icon: FileText },
+      { id: 'users', label: 'Kullanıcılar', icon: Users },
+      { id: 'reviews', label: 'Yorumlar', icon: Star },
+    ],
+  },
+  {
+    title: 'Pazarlama ve Finans',
+    items: [
+      { id: 'campaigns', label: 'Kampanyalar', icon: Megaphone },
+      { id: 'finance', label: 'Finans Raporları', icon: DollarSign },
+      { id: 'notifications', label: 'Bildirim Merkezi', icon: Bell },
+    ],
+  },
+  {
+    title: 'İçerik ve Sistem',
+    items: [
+      { id: 'content', label: 'İçerik Kütüphanesi', icon: FileText },
+      { id: 'events', label: 'Etkinlikler', icon: Calendar },
+      { id: 'settings', label: 'Ayarlar', icon: Settings },
+    ],
+  },
+];
+
+const vendorMenuGroups: MenuGroup[] = [
+  { title: 'Genel', items: [{ id: 'dashboard', label: 'Panel', icon: LayoutDashboard }] },
+  {
+    title: 'Mağaza Yönetimi',
+    items: [
+      { id: 'profile', label: 'Mağaza Profili', icon: Store },
+      { id: 'products', label: 'Ürünlerim', icon: ShoppingBag },
+      { id: 'orders', label: 'Siparişlerim', icon: Package },
+      { id: 'stock', label: 'Stok ve Parti Yönetimi', icon: TrendingUp },
+      { id: 'finance', label: 'Finans ve Hakediş', icon: DollarSign },
+    ],
+  },
+];
 
 export function AdminLayout({ children, activeTab, setActiveTab, onLogout, onBack }: AdminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const { settings, currentUser } = useData();
+  const [brandName, setBrandName] = useState('Golden Oremar');
+  const [brandLoading, setBrandLoading] = useState(true);
+  const { currentUser } = useCustomerSession();
 
-  const userRole = currentUser?.role || 'user';
-  const userName = currentUser?.name || 'Kullanıcı';
+  const roles = useMemo(() => Array.isArray(currentUser?.roles) ? currentUser.roles.map(String) : [], [currentUser?.roles]);
+  const isAdmin = roles.includes('admin') || roles.includes('super_admin');
+  const isVendor = !isAdmin && (roles.includes('producer') || currentUser?.role === 'vendor');
+  const menuGroups = isVendor ? vendorMenuGroups : adminMenuGroups;
+  const userName = String((currentUser as any)?.name || (currentUser as any)?.display_name || (currentUser as any)?.email || (isVendor ? 'Satıcı' : 'Yönetici'));
 
-  const adminMenuGroups = [
-    {
-      title: 'Genel',
-      items: [
-        { id: 'dashboard', label: 'Panel', icon: LayoutDashboard },
-      ]
-    },
-    {
-      title: 'E-Ticaret',
-      items: [
-        { id: 'products', label: 'Ürün Yönetimi', icon: ShoppingBag },
-        { id: 'product-approvals', label: 'Satıcı Ürün Onayları', icon: CheckSquare },
-        { id: 'categories', label: 'Kategoriler', icon: Tags },
-        { id: 'orders', label: 'Siparişler', icon: Package },
-        { id: 'stock', label: 'Stok Yönetimi', icon: TrendingUp },
-        { id: 'vendors', label: 'Satıcılar', icon: Store },
-        { id: 'vendor-applications', label: 'Satıcı Başvuruları', icon: FileText },
-        { id: 'users', label: 'Kullanıcılar', icon: Users },
-        { id: 'reviews', label: 'Yorumlar', icon: Star },
-      ]
-    },
-    {
-      title: 'Pazarlama & Finans',
-      items: [
-        { id: 'campaigns', label: 'Kampanyalar', icon: Megaphone },
-        { id: 'finance', label: 'Finans Raporları', icon: DollarSign },
-        { id: 'notifications', label: 'Bildirimler', icon: Bell },
-      ]
-    },
-    {
-      title: 'İçerik & Sistem',
-      items: [
-        { id: 'content', label: 'İçerik Yönetimi', icon: FileText },
-        { id: 'events', label: 'Etkinlikler', icon: Calendar },
-        { id: 'settings', label: 'Ayarlar', icon: Settings },
-      ]
-    }
-  ];
+  const activeItem = useMemo(() => menuGroups.flatMap(group => group.items).find(item => item.id === activeTab), [menuGroups, activeTab]);
 
-  const vendorMenuGroups = [
-    {
-      title: 'Genel',
-      items: [
-        { id: 'dashboard', label: 'Panel', icon: LayoutDashboard },
-      ]
-    },
-    {
-      title: 'Mağaza Yönetimi',
-      items: [
-        { id: 'profile', label: 'Mağaza Profili', icon: Store },
-        { id: 'products', label: 'Ürünlerim', icon: ShoppingBag },
-        { id: 'orders', label: 'Siparişlerim', icon: Package },
-        { id: 'stock', label: 'Stok Durumu', icon: TrendingUp },
-        { id: 'finance', label: 'Finans / Gelir-Gider', icon: DollarSign },
-      ]
-    }
-  ];
+  useEffect(() => {
+    let cancelled = false;
+    const loadBrand = async () => {
+      try {
+        const config = await getPublicStorefrontConfig('tr');
+        const name = String(config?.brand?.name || '').trim();
+        if (!cancelled && name) setBrandName(name);
+      } catch {
+        if (!cancelled) setBrandName('Golden Oremar');
+      } finally {
+        if (!cancelled) setBrandLoading(false);
+      }
+    };
+    void loadBrand();
+    return () => { cancelled = true; };
+  }, []);
 
-  const menuGroups = userRole === 'vendor' ? vendorMenuGroups : adminMenuGroups;
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [activeTab]);
 
-  if (activeTab !== 'dashboard') {
-    const activeItem = menuGroups.flatMap(g => g.items).find(i => i.id === activeTab);
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col font-sans text-gray-800 dark:text-gray-200">
-        <header className="h-16 bg-white dark:bg-gray-800 shadow-sm flex items-center px-4 lg:px-8 shrink-0 z-30 border-b border-gray-200 dark:border-gray-700">
-          <button 
-            onClick={() => setActiveTab('dashboard')}
-            className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors font-semibold"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="hidden sm:inline">Paneline Dön</span>
-          </button>
-          <div className="flex-1 text-center">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-              {activeItem?.label || 'Uygulama'}
-            </h2>
-          </div>
-          <div className="w-32"></div> {/* Spacer for centering */}
-        </header>
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900/50">
-          <div className="max-w-7xl mx-auto h-full">
-            {children}
-          </div>
-        </main>
-      </div>
-    );
-  }
+  const navigate = (tab: string) => {
+    setActiveTab(tab);
+    setIsSidebarOpen(false);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex font-sans text-gray-800 dark:text-gray-200">
-      {/* Sidebar (Drawer) */}
-      <aside 
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:shadow-none ${
-          isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } flex flex-col border-r border-gray-200 dark:border-gray-700`}
-        aria-label="Yönetici Menüsü"
+    <div className="min-h-screen bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">
+      {isSidebarOpen && <button type="button" className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setIsSidebarOpen(false)} aria-label="Yönetim menüsünü kapat" />}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-200 bg-white shadow-2xl transition-transform duration-200 dark:border-gray-700 dark:bg-gray-800 lg:translate-x-0 lg:shadow-none ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        aria-label={isVendor ? 'Satıcı menüsü' : 'Yönetici menüsü'}
       >
-        {/* Logo */}
-        <div className="h-20 flex items-center justify-between px-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-3">
-            {settings.logoUrl ? (
-              <img src={settings.logoUrl} alt={settings.siteName} className="h-8 object-contain" />
-            ) : (
-              <div className="w-8 h-8 bg-brand-gold rounded-full flex items-center justify-center text-white font-serif font-bold">
-                {settings.siteName.charAt(0)}
-              </div>
-            )}
-            <h1 className="text-xl font-bold text-brand-green dark:text-brand-gold font-serif">{settings.siteName} {userRole === 'vendor' ? 'Satıcı' : 'Admin'}</h1>
-          </div>
-          <button 
-            onClick={() => setIsSidebarOpen(false)} 
-            className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg lg:hidden"
-            aria-label="Menüyü Kapat"
-          >
-            <X className="w-5 h-5" />
+        <div className="flex min-h-20 items-center justify-between gap-3 border-b border-gray-200 px-5 dark:border-gray-700">
+          <button type="button" onClick={() => navigate('dashboard')} className="min-w-0 text-left" aria-label={`${brandName} panel ana sayfası`}>
+            <div className="truncate text-xl font-black text-brand-green dark:text-brand-gold">{brandLoading ? 'Golden Oremar' : brandName}</div>
+            <div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-gray-400">{isVendor ? 'Satıcı Paneli' : 'Yönetim Paneli'}</div>
           </button>
+          <button type="button" onClick={() => setIsSidebarOpen(false)} className="min-h-11 min-w-11 rounded-xl p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 lg:hidden" aria-label="Menüyü kapat"><X className="mx-auto h-5 w-5" aria-hidden="true" /></button>
         </div>
 
-        {/* Menu */}
-        <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-8" aria-label="Ana Navigasyon">
-          {menuGroups.map((group, idx) => (
-            <div key={idx} role="group" aria-labelledby={`menu-group-${idx}`}>
-              <h3 
-                id={`menu-group-${idx}`}
-                className="px-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3"
-              >
-                {group.title}
-              </h3>
-              <div className="space-y-1">
-                {group.items.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveTab(item.id);
-                      setIsSidebarOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-200 ${
-                      activeTab === item.id
-                        ? 'bg-brand-green text-white shadow-md font-bold'
-                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 font-medium'
-                    }`}
-                    aria-current={activeTab === item.id ? 'page' : undefined}
-                    aria-label={`${item.label} Sayfasına Git`}
-                  >
-                    <item.icon className={`w-5 h-5 ${activeTab === item.id ? 'text-white' : 'text-gray-400'}`} aria-hidden="true" />
-                    <span>{item.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+        <nav className="flex-1 space-y-7 overflow-y-auto px-4 py-5" aria-label="Panel navigasyonu">
+          {menuGroups.map(group => <div key={group.title}><h2 className="px-3 text-xs font-bold uppercase tracking-wider text-gray-400">{group.title}</h2><div className="mt-2 space-y-1">{group.items.map(item => {
+            const Icon = item.icon;
+            const active = activeTab === item.id;
+            return <button key={item.id} type="button" onClick={() => navigate(item.id)} aria-current={active ? 'page' : undefined} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left font-semibold transition ${active ? 'bg-brand-green text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}`}><Icon className="h-5 w-5 shrink-0" aria-hidden="true" /><span>{item.label}</span></button>;
+          })}</div></div>)}
         </nav>
 
-        {/* User Profile & Logout */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 space-y-2">
-          {onBack && (
-            <button 
-              onClick={onBack}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors font-bold"
-              aria-label="Ana Sayfaya Dön"
-            >
-              <ArrowLeft className="w-5 h-5" aria-hidden="true" />
-              <span>Ana Sayfaya Dön</span>
-            </button>
-          )}
-          <button 
-            onClick={() => {
-              localStorage.removeItem('token');
-              localStorage.removeItem('user');
-              onLogout();
-            }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors font-bold"
-            aria-label="Çıkış Yap"
-          >
-            <LogOut className="w-5 h-5" aria-hidden="true" />
-            <span>Çıkış Yap</span>
-          </button>
+        <div className="space-y-2 border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+          <div className="rounded-xl bg-white p-3 dark:bg-gray-900/60"><div className="truncate text-sm font-bold text-gray-900 dark:text-white">{userName}</div><div className="mt-1 text-xs text-gray-500">{isVendor ? 'Doğrulanmış üretici oturumu' : isAdmin ? 'Yönetici oturumu' : 'Yetkili oturum'}</div></div>
+          {onBack && <button type="button" onClick={onBack} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 font-semibold text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"><ArrowLeft className="h-5 w-5" aria-hidden="true" /> Ana uygulamaya dön</button>}
+          <button type="button" onClick={onLogout} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-50 px-4 font-semibold text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300"><LogOut className="h-5 w-5" aria-hidden="true" /> Güvenli çıkış</button>
         </div>
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden h-screen">
-        {/* Header */}
-        <header className="h-20 bg-white dark:bg-gray-800 shadow-sm flex items-center justify-between px-6 lg:px-8 shrink-0 z-30">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 transition-colors lg:hidden"
-              aria-label="Menüyü Aç"
-              aria-expanded={isSidebarOpen}
-            >
-              <Menu className="w-6 h-6" aria-hidden="true" />
-            </button>
-            <h2 className="text-xl font-bold text-gray-800 dark:text-white hidden sm:block">
-              {menuGroups.flatMap(g => g.items).find(i => i.id === activeTab)?.label || 'Panel'}
-            </h2>
-          </div>
-
-          <div className="flex-1 max-w-xl mx-8 hidden md:block">
-            <div className="relative group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-brand-green transition-colors" aria-hidden="true" />
-              <input 
-                type="text" 
-                placeholder="Sipariş, ürün veya müşteri ara... (Ctrl+K)" 
-                className="w-full pl-12 pr-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-brand-green/20 focus:border-brand-green/50 outline-none transition-all text-sm"
-                aria-label="Global Arama"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 sm:gap-5">
-            <button 
-              className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 relative text-gray-600 dark:text-gray-300 transition-colors"
-              aria-label="Bildirimler"
-            >
-              <Bell className="w-5 h-5" aria-hidden="true" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-gray-800"></span>
-            </button>
-            
-            <div className="h-8 w-px bg-gray-200 dark:bg-gray-700 hidden sm:block" aria-hidden="true"></div>
-            
-            <div 
-              className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
-              role="button"
-              tabIndex={0}
-              aria-label={`Kullanıcı Profili: ${userName}`}
-            >
-              <div className="w-10 h-10 rounded-full bg-brand-gold flex items-center justify-center text-white font-bold shadow-md" aria-hidden="true">
-                {userName.charAt(0).toUpperCase()}
-              </div>
-              <div className="hidden sm:block text-right">
-                <div className="font-bold text-sm text-gray-900 dark:text-white leading-tight">{userName}</div>
-                <div className="text-xs text-gray-500">{userRole === 'vendor' ? 'Satıcı' : 'Yönetici'}</div>
-              </div>
-            </div>
-          </div>
+      <div className="min-h-screen lg:pl-72">
+        <header className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-gray-200 bg-white/95 px-4 backdrop-blur dark:border-gray-700 dark:bg-gray-800/95 sm:px-6 lg:px-8">
+          <button type="button" onClick={() => setIsSidebarOpen(true)} className="min-h-11 min-w-11 rounded-xl p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 lg:hidden" aria-label="Yönetim menüsünü aç" aria-expanded={isSidebarOpen}><Menu className="mx-auto h-6 w-6" aria-hidden="true" /></button>
+          {activeTab !== 'dashboard' && <button type="button" onClick={() => navigate('dashboard')} className="min-h-11 min-w-11 rounded-xl p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" aria-label="Panele dön"><ArrowLeft className="mx-auto h-5 w-5" aria-hidden="true" /></button>}
+          <div className="min-w-0 flex-1"><div className="truncate text-lg font-bold text-gray-900 dark:text-white">{activeItem?.label || 'Panel'}</div><div className="hidden text-xs text-gray-500 sm:block">{isVendor ? 'Mağazanızın canlı operasyonları' : 'Golden Oremar canlı yönetim operasyonları'}</div></div>
+          {isAdmin && <button type="button" onClick={() => navigate('notifications')} className="min-h-11 min-w-11 rounded-xl p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" aria-label="Bildirim merkezini aç"><Bell className="mx-auto h-5 w-5" aria-hidden="true" /></button>}
+          <button type="button" onClick={() => window.location.reload()} className="min-h-11 min-w-11 rounded-xl p-2 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700" aria-label="Uygulama görünümünü yenile"><RefreshCw className="mx-auto h-5 w-5" aria-hidden="true" /></button>
         </header>
 
-        {/* Content Area */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-gray-50 dark:bg-gray-900/50" role="main">
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
+        <main className="p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto max-w-7xl">{children}</div>
         </main>
       </div>
-
-      {/* Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-          aria-hidden="true"
-        ></div>
-      )}
     </div>
   );
 }
