@@ -808,6 +808,7 @@ function AppContent() {
               const conversationId = metadata?.conversationId || url.split('/messages/')[1]?.split(/[?#/]/)[0] || '';
               setAccountView(conversationId ? `messages:${conversationId}` : 'messages');
             }
+            else if (metadata?.orderId) setAccountView(`orders:${metadata.orderId}`);
             else if (url?.includes('producer')) setAccountView('seller');
             else if (url?.includes('order')) setAccountView('orders');
           }}

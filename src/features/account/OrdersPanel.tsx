@@ -10,11 +10,12 @@ const statusText:Record<string,string>={pending_payment:'Ödeme bekleniyor',conf
 const returnStatusText:Record<string,string>={requested:'Talep alındı',under_review:'İnceleniyor',approved:'Onaylandı',in_transit:'İade kargoda',received:'İade teslim alındı',rejected:'Reddedildi',refunded:'Geri ödeme yapıldı',closed:'Kapandı'};
 const paymentText:Record<string,string>={pending:'Bekliyor',authorized:'Yetkilendirildi',captured:'Ödendi',partially_refunded:'Kısmi geri ödeme',refunded:'Geri ödendi',failed:'Başarısız'};
 
-export default function OrdersPanel(){
+export default function OrdersPanel({initialOrderId}:{initialOrderId?:string|null}){
  const[page,setPage]=useState<any>(null);const[detail,setDetail]=useState<any>(null);const[error,setError]=useState('');const[loading,setLoading]=useState(true);const[returnOrderId,setReturnOrderId]=useState<string|null>(null);const[returnDetailId,setReturnDetailId]=useState<string|null>(null);
  const orderDialogRef=useDialogA11y(()=>setDetail(null),Boolean(detail));
  async function load(){try{setLoading(true);setError('');setPage(await listOrders());}catch(e:any){setError(e?.message||'Siparişler yüklenemedi.');}finally{setLoading(false);}}
  useEffect(()=>{void load();},[]);
+ useEffect(()=>{if(initialOrderId)void open(initialOrderId);},[initialOrderId]);
  async function open(id:string){try{setError('');setDetail(await getOrderDetail(id));}catch(e:any){setError(e?.message||'Sipariş detayı yüklenemedi.');}}
  async function refreshDetail(id:string){try{setDetail(await getOrderDetail(id));await load();}catch(e:any){setError(e?.message||'Sipariş detayı yenilenemedi.');}}
  async function cancel(id:string){try{await cancelOrder(id);setDetail(null);await load();}catch(e:any){setError(e?.message||'Sipariş iptal edilemedi.');}}

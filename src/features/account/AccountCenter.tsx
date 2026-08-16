@@ -41,7 +41,7 @@ export default function AccountCenter({
 }:{
  requestedView?:string; theme?:string; onThemeChange?:(theme:'light'|'dark')=>void; onOpenProduct?:(slug:string)=>void; onOpenProducer?:(slug:string)=>void; onStartGift?:()=>void; onOpenMessages?:()=>void; onOpenNotificationAction?:(url:string,metadata:any)=>void; onOpenContact?:()=>void; onOpenHealth?:()=>void; onOpenEvents?:()=>void; onOpenAdmin?:()=>void; onOpenSellerApplication?:()=>void; onOpenSellerProductManager?:()=>void; onBack?:()=>void;
 }){
- const[overview,setOverview]=useState<AccountOverview|null>(null);const[view,setView]=useState<AccountView>('home');const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[messageConversationId,setMessageConversationId]=useState('');
+ const[overview,setOverview]=useState<AccountOverview|null>(null);const[view,setView]=useState<AccountView>('home');const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[messageConversationId,setMessageConversationId]=useState('');const[orderDetailId,setOrderDetailId]=useState('');
  async function refresh(){try{setLoading(true);setError('');setOverview(await getAccountOverview());}catch(e:any){setError(e?.message||'Hesap bilgileri yüklenemedi.');}finally{setLoading(false);}}
  useEffect(()=>{void refresh();},[]);
  useEffect(()=>{
@@ -52,6 +52,8 @@ export default function AccountCenter({
    support:'support'
   };
   if(!requestedView)return;
+  if(requestedView.startsWith('orders:')){setOrderDetailId(requestedView.slice('orders:'.length));setView('orders');return;}
+  if(requestedView==='orders'){setOrderDetailId('');setView('orders');return;}
   if(requestedView.startsWith('messages:')){setMessageConversationId(requestedView.slice('messages:'.length));setView('messages');return;}
   if(requestedView==='messages'){setMessageConversationId('');setView('messages');return;}
   if(requestedView==='contact'){onOpenContact?.();return;}
@@ -63,7 +65,7 @@ export default function AccountCenter({
 
  const body=()=>{
   if(view==='profile')return<ProfilePanel overview={overview} onChanged={refresh}/>;
-  if(view==='orders')return<OrdersPanel/>;
+  if(view==='orders')return<OrdersPanel initialOrderId={orderDetailId||null}/>;
   if(view==='reviews')return<ReviewsPanel userId={overview.profile.id} onOpenProduct={onOpenProduct}/>;
   if(view==='addresses')return<AddressesPanel addresses={overview.addresses} onChanged={refresh}/>;
   if(view==='favorites')return<FavoritesPanel onOpenProduct={onOpenProduct}/>;
@@ -129,7 +131,7 @@ export default function AccountCenter({
      <div className="min-w-0 flex-1"><div className="font-bold">Yönetim Paneli</div><div className="text-sm text-gray-500">Golden Oremar yönetimi</div></div><ChevronRight className="h-5 w-5 text-gray-400"/></div>
     </button>
    ):null}
-   {menu.map(([key,label,Icon,description])=><button key={key} onClick={()=>{if(key==='contact'){onOpenContact?.();return;} setView(key as AccountView);}} className="min-h-16 w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 text-left">
+   {menu.map(([key,label,Icon,description])=><button key={key} onClick={()=>{if(key==='contact'){onOpenContact?.();return;} if(key==='orders')setOrderDetailId(''); setView(key as AccountView);}} className="min-h-16 w-full rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4 text-left">
      <div className="flex items-center gap-3"><div className="rounded-xl bg-brand-green/10 p-2 text-brand-green"><Icon className="h-5 w-5"/></div>
      <div className="min-w-0 flex-1"><div className="font-bold">{label}</div><div className="text-sm text-gray-500">{description}</div></div><ChevronRight className="h-5 w-5 text-gray-400"/></div>
    </button>)}
