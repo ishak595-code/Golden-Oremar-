@@ -1,0 +1,103 @@
+name: Catalog Readiness UI Retry
+
+on:
+  push:
+    branches: [agent/admin-supabase-retire-node]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[catalog-readiness-applied]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: agent/admin-supabase-retire-node
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Patch catalog readiness surfaces
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          admin_path = Path('src/admin/AdminProducts.tsx')
+          text = admin_path.read_text()
+
+          pattern = r"(    lowStock: products\.filter\(product => \['tracked', 'seasonal'\]\.includes\(product\.stock_mode\) && product\.available_quantity <= 5\)\.length,\n)(  \}\), \[products\]\);)"
+          text, n = re.subn(pattern, r"\1    catalogIssues: products.filter(product => product.catalog_issue_count > 0).length,\n    missingWeight: products.filter(product => product.missing_weight_variant_count > 0).length,\n\2", text, count=1)
+          if n != 1: raise SystemExit('AdminProducts counts insertion failed')
+
+          old_class = 'className="grid grid-cols-2 gap-3 lg:grid-cols-4"'
+          if old_class not in text: raise SystemExit('Summary grid marker missing')
+          text = text.replace(old_class, 'className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-6"', 1)
+
+          low_stock = '<div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Düşük stok</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{counts.lowStock}</div></div>'
+          if low_stock not in text: raise SystemExit('Low stock card missing')
+          text = text.replace(low_stock, low_stock + '<div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Veri kontrolü gereken</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{counts.catalogIssues}</div></div><div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Kargo ağırlığı eksik</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{counts.missingWeight}</div></div>', 1)
+
+          mobile = '{product.producer_origin_verified && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">Menşe doğrulandı</span>}</div><dl'
+          if mobile not in text: raise SystemExit('Mobile badge marker missing')
+          text = text.replace(mobile, '{product.producer_origin_verified && <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">Menşe doğrulandı</span>}{product.catalog_issue_count > 0 && <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{product.catalog_issue_count} veri kontrolü</span>}{!product.shipping_weight_ready && <span className="rounded-full bg-orange-100 px-2.5 py-1 text-xs font-semibold text-orange-900 dark:bg-orange-950/40 dark:text-orange-200">Kargo ağırlığı eksik</span>}</div><dl', 1)
+
+          desktop = "{product.producer_origin_verified ? 'Menşe doğrulandı' : 'Menşe doğrulanmadı'}</div></div></td>"
+          if desktop not in text: raise SystemExit('Desktop trust marker missing')
+          text = text.replace(desktop, "{product.producer_origin_verified ? 'Menşe doğrulandı' : 'Menşe doğrulanmadı'}</div><div className={product.shipping_weight_ready ? 'text-emerald-700 dark:text-emerald-300' : 'text-orange-700 dark:text-orange-300'}>{product.shipping_weight_ready ? 'Kargo ağırlığı hazır' : `${product.missing_weight_variant_count} varyantta ağırlık eksik`}</div><div className={product.catalog_issue_count === 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>{product.catalog_issue_count === 0 ? 'Veri bütünlüğü temiz' : `${product.catalog_issue_count} veri kontrolü`}</div></div></td>", 1)
+
+          logistics = '<div><dt className="text-xs text-gray-500">Ürün niteliği</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.is_perishable ? \'Bozulabilir ürün\' : \'Bozulabilir işaretli değil\'}{selected.requires_cold_chain ? \' · Soğuk zincir gerekir\' : \'\'}{selected.shelf_life_days ? ` · ${selected.shelf_life_days} gün raf ömrü` : \'\'}</dd></div>'
+          if logistics not in text: raise SystemExit('Logistics marker missing')
+          text = text.replace(logistics, logistics + '<div><dt className="text-xs text-gray-500">Aktif varyant</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.active_variant_count}</dd></div><div><dt className="text-xs text-gray-500">Kargo ağırlığı</dt><dd className={`mt-1 font-semibold ${selected.shipping_weight_ready ? \'text-emerald-700 dark:text-emerald-300\' : \'text-orange-700 dark:text-orange-300\'}`}>{selected.shipping_weight_ready ? \'Hazır\' : `${selected.missing_weight_variant_count} aktif varyantta eksik`}</dd></div><div><dt className="text-xs text-gray-500">İhracat hazırlığı</dt><dd className={`mt-1 font-semibold ${selected.export_ready ? \'text-emerald-700 dark:text-emerald-300\' : \'text-gray-700 dark:text-gray-200\'}`}>{selected.export_ready ? \'Uygun\' : selected.export_status === \'eligible\' ? \'Eksik alanlar tamamlanmalı\' : \'Henüz ihracata açılmadı\'}</dd></div>', 1)
+
+          trust = '<p className="mt-3 text-xs text-gray-500">Yayın onayı verildiğinde backend ayrıca aktif fiyatlı varyant, birincil ürün görseli, içerik yeterliliği ve doğrulanmış aktif üretici koşullarını yeniden denetler.</p>'
+          if trust not in text: raise SystemExit('Trust marker missing')
+          readiness = trust + '<div className="mt-3 grid gap-2 sm:grid-cols-2"><div className={`rounded-xl p-3 text-sm ${selected.primary_image_count === 1 ? \'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100\' : \'bg-red-50 text-red-900 dark:bg-red-950/30 dark:text-red-100\'}`}>Birincil görsel: {selected.primary_image_count === 1 ? \'hazır\' : `${selected.primary_image_count} adet, tam 1 olmalı`}</div><div className={`rounded-xl p-3 text-sm ${selected.shipping_weight_ready ? \'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100\' : \'bg-orange-50 text-orange-900 dark:bg-orange-950/30 dark:text-orange-100\'}`}>Kargo ağırlığı: {selected.shipping_weight_ready ? \'hazır\' : `${selected.missing_weight_variant_count} varyant eksik`}</div><div className={`rounded-xl p-3 text-sm ${selected.shelf_life_ready ? \'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100\' : \'bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-100\'}`}>Raf ömrü: {selected.shelf_life_ready ? \'uygun\' : \'bozulabilir ürün için eksik\'}</div><div className={`rounded-xl p-3 text-sm ${selected.catalog_issue_count === 0 ? \'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100\' : \'bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-100\'}`}>Veri bütünlüğü: {selected.catalog_issue_count === 0 ? \'temiz\' : `${selected.catalog_issue_count} kontrol gerekiyor`}</div></div><p className="mt-3 text-xs text-gray-500">Eksik kargo ağırlığı yurt içi yayını otomatik olarak durdurmaz. Ancak gerçek ağırlık girilmeden uluslararası otomatik kargo ve ihracat hazırlığı tamamlanmış sayılmaz.</p>'
+          text = text.replace(trust, readiness, 1)
+          admin_path.write_text(text)
+
+          seller_path = Path('src/features/producer-products/ProducerProductManager.tsx')
+          seller = seller_path.read_text()
+          validation = "if(!editing.preOrder&&Number(editing.stock)<0){setError('Stok negatif olamaz.');return;}"
+          if validation not in seller: raise SystemExit('Seller validation marker missing')
+          seller = seller.replace(validation, validation + "if(editing.weight&&(Number(editing.weight)<=0||Number(editing.weight)>10000)){setError('Kargo ağırlığı 0 ile 10.000 kg arasında gerçek bir değer olmalıdır.');return;}", 1)
+          if 'Field label="Ağırlık (kg)"' not in seller: raise SystemExit('Seller weight label missing')
+          seller = seller.replace('Field label="Ağırlık (kg)"', 'Field label="Kargo ağırlığı (kg)"', 1)
+          description = '</div><Field label="Ürün açıklaması">'
+          if description not in seller: raise SystemExit('Seller description marker missing')
+          seller = seller.replace(description, '</div>{!editing.weight?<div className="rounded-xl border border-orange-200 bg-orange-50 p-3 text-sm text-orange-900 dark:border-orange-900/50 dark:bg-orange-950/30 dark:text-orange-200">Kargo ağırlığı henüz girilmedi. Gerçek ağırlık doğrulanmadan ürün uluslararası otomatik kargoya hazır sayılmaz.</div>:<div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200">Kargo ağırlığı girildi. Admin incelemesinde ürünün diğer lojistik ve güven alanlarıyla birlikte doğrulanır.</div>}<Field label="Ürün açıklaması">', 1)
+          catch = "setError(e?.message||'Ürün kaydedilemedi.');"
+          if catch not in seller: raise SystemExit('Seller catch marker missing')
+          seller = seller.replace(catch, "setError(String(e?.message||'').includes('shipping_weight')?'Kargo ağırlığı geçersiz. Gerçek kilogram değerini girin.':(e?.message||'Ürün kaydedilemedi.'));", 1)
+          list_weight = "{variant?.weightGrams?` • ${variant.weightGrams} g`:''}</div><div className=\"mt-4 flex gap-2\">"
+          if list_weight not in seller: raise SystemExit('Seller list marker missing')
+          seller = seller.replace(list_weight, "{variant?.weightGrams?` • ${variant.weightGrams} g`:''}</div>{!variant?.weightGrams?<div className=\"mt-2 rounded-lg bg-orange-50 p-2 text-xs text-orange-900 dark:bg-orange-950/30 dark:text-orange-200\">Kargo ağırlığı eksik. Uluslararası otomatik gönderim için gerçek ağırlığı girin.</div>:null}<div className=\"mt-4 flex gap-2\">", 1)
+          seller_path.write_text(seller)
+
+          audit_path = Path('scripts/release-audit.mjs')
+          audit = audit_path.read_text()
+          if "  'metadata.json',\n" not in audit:
+              marker = "  'temp.txt',\n"
+              if marker not in audit: raise SystemExit('Release audit marker missing')
+              audit = audit.replace(marker, marker + "  'metadata.json',\n", 1)
+              audit_path.write_text(audit)
+          metadata = Path('metadata.json')
+          if metadata.exists(): metadata.unlink()
+          PY
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run release quality gate
+        run: npm run quality
+      - name: Commit verified changes
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/catalog-readiness-ui-retry.yml
+          git add -A
+          git commit -m "Surface live catalog readiness and seller shipping integrity [catalog-readiness-applied]"
+          git push origin HEAD:agent/admin-supabase-retire-node
