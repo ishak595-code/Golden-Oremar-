@@ -18,9 +18,8 @@ export default defineConfig(() => ({
         enabled: true,
       },
       workbox: {
-        // The legacy admin/Firebase bundle is deliberately lazy. Ordinary customers must not
-        // download ~1 MB of back-office code in the service-worker install precache.
-        // Admin remains available online through the existing dynamic import when authorized.
+        // The back-office bundle is deliberately lazy. Ordinary customers should not
+        // download administration code during service-worker installation.
         globIgnores: ['**/LegacyAdminEntry-*.js'],
       },
       manifest: {
