@@ -1,0 +1,37 @@
+name: Audit Startup Performance
+
+on:
+  push:
+    branches: [agent/startup-performance-audit]
+    paths:
+      - '.github/workflows/audit-startup-performance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Build with module audit
+        run: npx vite build --config migration-tools/vite.performance-audit.config.ts
+      - name: Summarize initial entry cost
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync('bundle-audit.json','utf8'));
+          const entry=r.chunks.find(c=>c.isEntry);
+          if(!entry)throw new Error('No entry chunk');
+          console.log('ENTRY_CHUNK',JSON.stringify({fileName:entry.fileName,codeBytes:entry.codeBytes,moduleCount:entry.modules.length,dynamicImports:entry.dynamicImports}));
+          const suspects=entry.modules.filter(m=>/firebase|AdminPage|admin\/|AccountCenter|producer-|recharts|lucide|DataContext|App\.tsx|supabase/i.test(m.id)).slice(0,100);
+          console.log('ENTRY_SUSPECTS');
+          for(const s of suspects)console.log(JSON.stringify(s));
+          NODE
