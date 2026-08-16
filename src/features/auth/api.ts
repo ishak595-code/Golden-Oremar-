@@ -12,6 +12,11 @@ export type CustomerSessionStatus = {
   roles: string[];
 };
 
+export type AdminSessionStatus = {
+  is_admin: boolean;
+  roles: string[];
+};
+
 export function getConfiguredAuthRedirectUrl(): string | undefined {
   const configured = String(import.meta.env.VITE_AUTH_REDIRECT_URL || '').trim();
   if (configured) return configured;
@@ -67,6 +72,21 @@ export async function getCustomerSessionStatus(): Promise<CustomerSessionStatus 
   const { data, error } = await supabase.rpc('customer_session_status');
   if (error) throw error;
   return (data || null) as CustomerSessionStatus | null;
+}
+
+export async function getAdminSessionStatus(): Promise<AdminSessionStatus> {
+  const { data, error } = await supabase.rpc('admin_session_status');
+  if (error) throw error;
+  const raw = (data || {}) as Partial<AdminSessionStatus>;
+  return {
+    is_admin: raw.is_admin === true,
+    roles: Array.isArray(raw.roles) ? raw.roles.map(String) : [],
+  };
+}
+
+export async function signOutCurrentSession() {
+  const { error } = await supabase.auth.signOut({ scope: 'local' });
+  if (error) throw error;
 }
 
 export function roleForLegacyCompatibility(roles: string[]) {
