@@ -125,6 +125,14 @@ export async function adminGetProducerApplicationSensitive(applicationId: string
   return unwrap<SensitiveProducerApplication>(data, error);
 }
 
+export async function adminSetProducerDocumentStatus(documentId: string, status: 'pending' | 'verified' | 'rejected') {
+  const { data, error } = await supabase.rpc('admin_set_producer_document_status', {
+    p_document_id: documentId,
+    p_status: status,
+  });
+  return unwrap<boolean>(data, error);
+}
+
 export async function adminReviewProducerApplication(input: {
   applicationId: string;
   status: 'under_review' | 'needs_information' | 'approved' | 'rejected';
@@ -155,6 +163,8 @@ export function producerApplicationErrorMessage(error: unknown, fallback = 'Sat�
     ['producer_application_not_found', 'Başvuru artık bulunamadı. Listeyi yenileyin.'],
     ['producer_application_already_final', 'Bu başvuru daha önce kesin sonuca bağlanmış.'],
     ['producer_application_not_ready', 'Başvuru onaylanmaya hazır durumda değil.'],
+    ['producer_document_not_found', 'Belge artık bulunamadı. Listeyi yenileyin.'],
+    ['invalid_producer_document_status', 'Belge doğrulama durumu geçersiz.'],
     ['required_producer_document_not_verified', 'Zorunlu kimlik veya işletme belgesi henüz doğrulanmamış.'],
     ['producer_email_not_verified', 'Başvuru sahibinin e-posta adresi doğrulanmadan onay verilemez.'],
     ['producer_phone_not_verified', 'Başvuru sahibinin telefonu doğrulanmadan onay verilemez.'],
