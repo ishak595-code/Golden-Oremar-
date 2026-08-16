@@ -38,4 +38,18 @@ function replaceOnce(source, from, to, label) {
   fs.writeFileSync(path,source);
 }
 
-console.log('Customer shell detached from legacy Firebase DataProvider.');
+{
+  const path='src/ErrorBoundary.tsx';
+  let source=fs.readFileSync(path,'utf8');
+  source=replaceOnce(source,"import { collection, addDoc, serverTimestamp } from 'firebase/firestore';\nimport { db } from './firebase';\n",'', 'Remove ErrorBoundary Firebase imports');
+  const start=source.indexOf('  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {');
+  const end=source.indexOf('\n  public render() {',start);
+  if(start<0||end<0)throw new Error('ErrorBoundary componentDidCatch boundaries not found');
+  const replacement=`  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {\n    // Keep crash reporting local until a dedicated, consent-aware telemetry backend is configured.\n    // Importing the legacy Firebase logger here previously pulled the entire Firebase SDK into every customer startup.\n    console.error('Uncaught application error:', error, errorInfo);\n  }\n`;
+  source=source.slice(0,start)+replacement+source.slice(end);
+  source=source.replace('        <div className="min-h-screen flex items-center justify-center bg-[#0a1911] text-white p-4">','        <div role="alert" className="min-h-screen flex items-center justify-center bg-[#0a1911] text-white p-4">');
+  source=source.replace('className="bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white transition-colors px-4 py-2 rounded-lg font-medium w-full text-sm"','className="min-h-11 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-colors px-4 py-2 rounded-lg font-medium w-full text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"');
+  fs.writeFileSync(path,source);
+}
+
+console.log('Customer shell detached from legacy Firebase DataProvider and crash logger.');
