@@ -6,7 +6,7 @@
 @theme {
   --font-serif: "Cormorant Garamond", serif;
   --font-sans: "Outfit", sans-serif;
-  
+
   --color-gray-50: #F4F7F5;
   --color-gray-100: #E5EBE7;
   --color-gray-200: #D5DDD8;
@@ -17,11 +17,11 @@
   --color-gray-700: #35483F;
   --color-gray-800: #24332D;
   --color-gray-900: #121C18;
-  
+
   --color-brand-gold: var(--brand-gold);
   --color-brand-green: var(--brand-green);
   --color-brand-earth: var(--brand-earth);
-  
+
   --color-brand-main: var(--bg-main);
   --color-brand-card: var(--bg-card);
   --color-brand-text: var(--text-main);
@@ -30,7 +30,6 @@
 }
 
 :root {
-  /* Light theme: premium ivory surface with high-contrast forest typography. */
   color-scheme: light;
   --bg-main: #F4F7F5;
   --bg-card: #FFFFFF;
@@ -44,13 +43,9 @@
   --brand-earth: #7A431F;
 }
 
-:root[data-theme="light"] {
-  color-scheme: light;
-}
-
+:root[data-theme="light"] { color-scheme: light; }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  /* Dark theme: deep Oremar forest green with warm premium gold. */
   --bg-main: #060F0C;
   --bg-card: #0A1C16;
   --text-main: #F4F7F5;
@@ -61,6 +56,62 @@
   --brand-gold: #EDC967;
   --brand-green: #27AE60;
   --brand-earth: #C36A31;
+}
+
+/* Premium personal palettes. Theme controls brightness; palette controls brand character. */
+:root[data-palette="emerald"][data-theme="light"] {
+  --bg-main: #F3F7F4; --bg-card: #FFFFFF; --text-main: #12281C; --text-muted: #496556;
+  --text-muted-darker: #304C3D; --border-main: #D2DED7; --border-light: #E6ECE8;
+  --brand-green: #11643A; --brand-gold: #8B6912; --brand-earth: #78502D;
+}
+:root[data-palette="emerald"][data-theme="dark"] {
+  --bg-main: #06100C; --bg-card: #0A1D15; --text-main: #F4F8F5; --text-muted: #A5BEB1;
+  --text-muted-darker: #80998C; --border-main: #17402D; --border-light: #22553B;
+  --brand-green: #2CBF6C; --brand-gold: #E8C765; --brand-earth: #C07B45;
+}
+
+:root[data-palette="ruby"][data-theme="light"] {
+  --bg-main: #FBF7F3; --bg-card: #FFFDFC; --text-main: #32171F; --text-muted: #72515A;
+  --text-muted-darker: #583A43; --border-main: #E6D7DA; --border-light: #F0E7E8;
+  --brand-green: #8E1738; --brand-gold: #967018; --brand-earth: #70442D;
+}
+:root[data-palette="ruby"][data-theme="dark"] {
+  --bg-main: #13080C; --bg-card: #1E0D13; --text-main: #FFF5F7; --text-muted: #D2AAB4;
+  --text-muted-darker: #B98492; --border-main: #4A1A29; --border-light: #612136;
+  --brand-green: #D34D72; --brand-gold: #E2C162; --brand-earth: #D28758;
+}
+
+:root[data-palette="obsidian"][data-theme="light"] {
+  --bg-main: #F2F0EA; --bg-card: #FCFBF8; --text-main: #1B1D1C; --text-muted: #5E625F;
+  --text-muted-darker: #444844; --border-main: #D8D3C8; --border-light: #E9E5DC;
+  --brand-green: #252A27; --brand-gold: #8D6815; --brand-earth: #6E4C36;
+}
+:root[data-palette="obsidian"][data-theme="dark"] {
+  --bg-main: #070807; --bg-card: #111311; --text-main: #F4F1E8; --text-muted: #B8B5AA;
+  --text-muted-darker: #969287; --border-main: #30352F; --border-light: #41483F;
+  --brand-green: #C59B32; --brand-gold: #F0D27B; --brand-earth: #C88750;
+}
+
+:root[data-palette="pearl"][data-theme="light"] {
+  --bg-main: #F8F6EF; --bg-card: #FFFFFF; --text-main: #1B2B24; --text-muted: #596A62;
+  --text-muted-darker: #405249; --border-main: #DDE2DD; --border-light: #ECEFEA;
+  --brand-green: #174A35; --brand-gold: #8B6528; --brand-earth: #7A5941;
+}
+:root[data-palette="pearl"][data-theme="dark"] {
+  --bg-main: #09110E; --bg-card: #101B17; --text-main: #FAF8F0; --text-muted: #B7C2BB;
+  --text-muted-darker: #919F97; --border-main: #294137; --border-light: #365348;
+  --brand-green: #66B78D; --brand-gold: #D7B36D; --brand-earth: #C79772;
+}
+
+:root[data-palette="sapphire"][data-theme="light"] {
+  --bg-main: #F2F6F9; --bg-card: #FFFFFF; --text-main: #142638; --text-muted: #52697A;
+  --text-muted-darker: #3C5264; --border-main: #D4E0E8; --border-light: #E5EDF2;
+  --brand-green: #175779; --brand-gold: #906A18; --brand-earth: #76523D;
+}
+:root[data-palette="sapphire"][data-theme="dark"] {
+  --bg-main: #07131D; --bg-card: #0C2030; --text-main: #F0F7FB; --text-muted: #A8C2D1;
+  --text-muted-darker: #82A4B8; --border-main: #17394C; --border-light: #20506B;
+  --brand-green: #3C98C5; --brand-gold: #E0BC66; --brand-earth: #C38158;
 }
 
 body {
@@ -76,34 +127,15 @@ body {
   touch-action: manipulation;
 }
 
-h1, h2, h3, h4, h5, h6, .font-serif {
-  font-family: var(--font-serif);
-}
+h1, h2, h3, h4, h5, h6, .font-serif { font-family: var(--font-serif); }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--brand-gold);
-  border-radius: 6px;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--brand-gold); border-radius: 6px; }
 
-.pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 20px);
-}
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-.hide-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-/* Accessibility: respect the user’s reduced-motion preference. */
 @media (prefers-reduced-motion: reduce) {
   html:focus-within { scroll-behavior: auto; }
   *, *::before, *::after {
