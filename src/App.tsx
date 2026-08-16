@@ -280,6 +280,11 @@ function AppContent() {
   };
 
   const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const handleSearchBlur = (event: React.FocusEvent<HTMLInputElement>) => {
+    const next = event.relatedTarget;
+    if (next instanceof HTMLElement && next.closest('[data-catalog-search-overlay="true"]')) return;
+    setIsSearchFocused(false);
+  };
   const [toast, setToast] = useState<{message: string, visible: boolean}>({ message: '', visible: false });
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [giftProduct, setGiftProduct] = useState<any>(null);
@@ -978,19 +983,27 @@ function AppContent() {
             <div className="flex-1 min-w-0 relative">
               {/* Sol İç Kenar: Büyüteç İkonu (fixed, left: 16px, color: #A0AEC0) */}
               <div className="absolute inset-y-0 left-[16px] flex items-center pointer-events-none z-10">
-                <Search className="h-[18px] w-[18px] text-[#A0AEC0] transition-colors" />
+                <Search aria-hidden="true" className="h-[18px] w-[18px] text-[#A0AEC0] transition-colors" />
               </div>
 
               <input
                 id="mobile-search-input"
-                type="text"
+                  type="text"
+                  aria-label="Katalogda ara"
+                  aria-controls="catalog-search-suggestions"
+                  aria-expanded={isSearchFocused}
                 className="block w-full pl-[46px] pr-[46px] py-[14px] bg-gray-100 hover:bg-gray-200/40 dark:bg-[#16191E] dark:hover:bg-[#1d2127] border border-transparent rounded-xl text-xs text-brand-text placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-brand-gold/45 focus:bg-white dark:focus:bg-[#16191E] transition-all font-medium h-11"
                 placeholder="Ürün, üretici veya köy ara..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setIsSearchFocused(true)}
-                onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                onBlur={handleSearchBlur}
                 onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setIsSearchFocused(false);
+                    return;
+                  }
                   if (event.key === 'Enter' && searchQuery.trim()) {
                     event.preventDefault();
                     setSearchCategorySlug(null);
@@ -1006,7 +1019,7 @@ function AppContent() {
                 {searchQuery ? (
                   <button 
                     onClick={() => setSearchQuery('')} 
-                    className="p-1 text-[#A0AEC0] hover:text-brand-gold transition-colors focus:outline-none"
+                    className="min-h-11 min-w-11 p-2 flex items-center justify-center text-[#A0AEC0] hover:text-brand-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-lg"
                     aria-label="Aramayı Temizle"
                   >
                     <X className="w-[18px] h-[18px]" />
@@ -1014,7 +1027,7 @@ function AppContent() {
                 ) : (
                   <button 
                     onClick={triggerVoiceSearch} 
-                    className="p-1 text-[#A0AEC0] hover:text-brand-gold transition-all active:scale-90 focus:outline-none"
+                    className="min-h-11 min-w-11 p-2 flex items-center justify-center text-[#A0AEC0] hover:text-brand-gold transition-all active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-lg"
                     aria-label="Sesli Arama"
                   >
                     <Mic className="w-[18px] h-[18px]" />
@@ -1027,7 +1040,7 @@ function AppContent() {
             <div className="flex items-center gap-1 shrink-0">
               <button 
                 onClick={() => { navigateToTab('account'); setAccountView('notifications'); }} 
-                className="relative p-2 text-gray-500 dark:text-gray-440 hover:text-brand-gold hover:bg-gray-100/70 dark:hover:bg-gray-800 rounded-full transition-all focus:outline-none group"
+                className="relative min-h-11 min-w-11 p-2 flex items-center justify-center text-gray-500 dark:text-gray-440 hover:text-brand-gold hover:bg-gray-100/70 dark:hover:bg-gray-800 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold group"
                 aria-label={unreadCount > 0 ? `Bildirimler, ${unreadCount} okunmamış` : 'Bildirimler'}
               >
                 <Bell className="w-[1.3rem] h-[1.3rem] group-hover:scale-105 transition-transform" />
@@ -1039,12 +1052,12 @@ function AppContent() {
               </button>
               <button 
                 onClick={() => navigateToTab('cart')} 
-                className="relative p-2 text-gray-500 dark:text-gray-440 hover:text-brand-gold hover:bg-gray-100/70 dark:hover:bg-gray-800 rounded-full transition-all focus:outline-none group"
+                className="relative min-h-11 min-w-11 p-2 flex items-center justify-center text-gray-500 dark:text-gray-440 hover:text-brand-gold hover:bg-gray-100/70 dark:hover:bg-gray-800 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold group"
                 aria-label="Sepetim"
               >
                 <ShoppingCart className="w-[1.3rem] h-[1.3rem] group-hover:scale-105 transition-transform" />
                 {cart.length > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-brand-gold text-white text-[8px] font-black flex items-center justify-center rounded-full shadow-md ring-1.5 ring-white dark:ring-gray-950 animate-bounce duration-1000">
+                  <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-brand-gold text-white text-[8px] font-black flex items-center justify-center rounded-full shadow-md ring-1.5 ring-white dark:ring-gray-950 animate-bounce duration-1000">
                     {cart.length}
                   </span>
                 )}
@@ -1070,19 +1083,27 @@ function AppContent() {
               <div className="relative group/search">
                 {/* Sol İç Kenar: Büyüteç İkonu (fixed, left: 16px, color: #A0AEC0) */}
                 <div className="absolute inset-y-0 left-[16px] flex items-center pointer-events-none z-10">
-                  <Search className="h-5 w-5 text-[#A0AEC0] transition-colors" />
+                  <Search aria-hidden="true" className="h-5 w-5 text-[#A0AEC0] transition-colors" />
                 </div>
 
                 <input
                   id="unified-search-input"
                   type="text"
+                  aria-label="Katalogda ara"
+                  aria-controls="catalog-search-suggestions"
+                  aria-expanded={isSearchFocused}
                   className="block w-full pl-[48px] pr-[48px] py-[14px] bg-gray-100 hover:bg-gray-200/40 dark:bg-[#16191E] dark:hover:bg-[#1d2127] border border-transparent rounded-xl text-sm text-brand-text placeholder-[#A0AEC0] focus:outline-none focus:ring-2 focus:ring-brand-gold/45 focus:bg-white dark:focus:bg-[#16191E] transition-all shadow-inner focus:shadow-md font-medium h-[46px]"
                   placeholder="Ürün, üretici veya köy ara: Karakovan Balı, Köy Tereyağı, Işkın..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setIsSearchFocused(true)}
-                  onBlur={() => setTimeout(() => setIsSearchFocused(false), 200)}
+                  onBlur={handleSearchBlur}
                 onKeyDown={(event) => {
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setIsSearchFocused(false);
+                    return;
+                  }
                   if (event.key === 'Enter' && searchQuery.trim()) {
                     event.preventDefault();
                     setSearchCategorySlug(null);
@@ -1098,7 +1119,7 @@ function AppContent() {
                   {searchQuery ? (
                     <button 
                       onClick={() => setSearchQuery('')} 
-                      className="p-1 text-[#A0AEC0] hover:text-brand-gold transition-colors focus:outline-none" 
+                      className="min-h-11 min-w-11 p-2 flex items-center justify-center text-[#A0AEC0] hover:text-brand-gold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-lg" 
                       aria-label="Aramayı Temizle"
                     >
                       <X className="w-5 h-5" />
@@ -1106,7 +1127,7 @@ function AppContent() {
                   ) : (
                     <button 
                       onClick={triggerVoiceSearch} 
-                      className="p-1 text-[#A0AEC0] hover:text-brand-gold transition-all active:scale-90 focus:outline-none" 
+                      className="min-h-11 min-w-11 p-2 flex items-center justify-center text-[#A0AEC0] hover:text-brand-gold transition-all active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold rounded-lg" 
                       aria-label="Sesli Arama"
                     >
                       <Mic className="w-5 h-5" />
@@ -1120,7 +1141,7 @@ function AppContent() {
             <div className="flex items-center gap-3 shrink-0">
               <button 
                 onClick={() => { navigateToTab('account'); setAccountView('notifications'); }} 
-                className="relative p-3 text-gray-500 dark:text-gray-450 hover:text-brand-gold hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-all group focus:outline-none"
+                className="relative min-h-11 min-w-11 p-3 flex items-center justify-center text-gray-500 dark:text-gray-450 hover:text-brand-gold hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
                 aria-label={unreadCount > 0 ? `Bildirimler, ${unreadCount} okunmamış` : 'Bildirimler'}
               >
                 <Bell className="w-[1.45rem] h-[1.45rem] group-hover:scale-105 transition-transform" />
@@ -1132,12 +1153,12 @@ function AppContent() {
               </button>
               <button 
                 onClick={() => navigateToTab('cart')} 
-                className="relative p-3 text-gray-500 dark:text-gray-450 hover:text-brand-gold hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-all group focus:outline-none"
+                className="relative min-h-11 min-w-11 p-3 flex items-center justify-center text-gray-500 dark:text-gray-450 hover:text-brand-gold hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
                 aria-label="Sepetim"
               >
                 <ShoppingCart className="w-[1.45rem] h-[1.45rem] group-hover:scale-105 transition-transform" />
                 {cart.length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 bg-brand-gold text-white text-[9px] font-black flex items-center justify-center rounded-full shadow-md ring-2 ring-white dark:ring-gray-900 shadow-sm">
+                  <span aria-hidden="true" className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 bg-brand-gold text-white text-[9px] font-black flex items-center justify-center rounded-full shadow-md ring-2 ring-white dark:ring-gray-900 shadow-sm">
                     {cart.length}
                   </span>
                 )}
@@ -1151,18 +1172,20 @@ function AppContent() {
               {/* Sol Buton: Filtrele */}
               <button
                 onClick={() => setIsFilterPanelOpen(true)}
-                className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-gray-50 hover:bg-gray-100 dark:bg-[#16191E] dark:hover:bg-[#1c2026] text-xs font-semibold text-brand-text border border-gray-150 dark:border-gray-800 rounded-xl transition-all shadow-sm active:scale-98"
+                aria-haspopup="dialog"
+                className="flex-1 min-h-11 flex items-center justify-center gap-2 py-2 px-3 bg-gray-50 hover:bg-gray-100 dark:bg-[#16191E] dark:hover:bg-[#1c2026] text-xs font-semibold text-brand-text border border-gray-150 dark:border-gray-800 rounded-xl transition-all shadow-sm active:scale-98"
               >
-                <SlidersHorizontal className="w-4 h-4 text-brand-gold" />
+                <SlidersHorizontal aria-hidden="true" className="w-4 h-4 text-brand-gold" />
                 <span>{(activeFilter || activeOrigin || priceRange !== 'all') ? 'Filtreli' : 'Filtrele'}</span>
               </button>
 
               {/* Sağ Buton: Sırala: Önerilen */}
               <button
                 onClick={() => setIsSortPanelOpen(true)}
-                className="flex-1 flex items-center justify-center gap-2 py-2 px-3 bg-gray-50 hover:bg-gray-100 dark:bg-[#16191E] dark:hover:bg-[#1c2026] text-xs font-semibold text-brand-text border border-gray-150 dark:border-gray-800 rounded-xl transition-all shadow-sm active:scale-98"
+                aria-haspopup="dialog"
+                className="flex-1 min-h-11 flex items-center justify-center gap-2 py-2 px-3 bg-gray-50 hover:bg-gray-100 dark:bg-[#16191E] dark:hover:bg-[#1c2026] text-xs font-semibold text-brand-text border border-gray-150 dark:border-gray-800 rounded-xl transition-all shadow-sm active:scale-98"
               >
-                <ArrowDownUp className="w-4 h-4 text-brand-gold" />
+                <ArrowDownUp aria-hidden="true" className="w-4 h-4 text-brand-gold" />
                 <span>Sırala: {
                   sortOption === 'price-asc' ? 'En Düşük Fiyat' :
                   sortOption === 'price-desc' ? 'En Yüksek Fiyat' :
@@ -1176,6 +1199,7 @@ function AppContent() {
           <CatalogSearchOverlay
             query={searchQuery}
             open={isSearchFocused}
+            onRequestClose={() => setIsSearchFocused(false)}
             onQueryChange={setSearchQuery}
             onProduct={(slug) => {
               setSelectedProduct(null);
