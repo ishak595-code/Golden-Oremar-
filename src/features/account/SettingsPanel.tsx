@@ -2,6 +2,8 @@ import React,{useEffect,useState}from'react';
 import{cancelAccountClosure,changeMyPassword,getMyNewsletterStatus,getNotificationPreferences,requestAccountClosure,signOutAllDevices,signOutCurrentDevice,signOutOtherDevices,subscribeNewsletter,unsubscribeMyNewsletter,updateNotificationPreferences}from'./api';
 import{ErrorState,Panel}from'./ui';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
+import PremiumPreferencesPanel from'./PremiumPreferencesPanel';
+import type{AppTheme}from'../appearance/theme';
 
 const keys=[
  ['orderPush','Sipariş durumları'],['paymentPush','Ödeme durumları'],['shipmentPush','Kargo ve teslimat'],
@@ -11,7 +13,7 @@ const keys=[
 
 type SessionAction='current'|'others'|'all'|null;
 
-export default function SettingsPanel({closure,onChanged,profile,theme='light',onThemeChange}:{closure:any;onChanged:()=>Promise<void>|void;profile?:any;theme?:string;onThemeChange?:(theme:'light'|'dark')=>void}){
+export default function SettingsPanel({closure,onChanged,profile,theme='light',onThemeChange}:{closure:any;onChanged:()=>Promise<void>|void;profile?:any;theme?:AppTheme;onThemeChange?:(theme:AppTheme)=>void}){
  const[prefs,setPrefs]=useState<any>(null);const[prefsLoading,setPrefsLoading]=useState(true);const[prefsBusy,setPrefsBusy]=useState(false);const[prefsError,setPrefsError]=useState('');const[prefsMessage,setPrefsMessage]=useState('');
  const[currentPassword,setCurrentPassword]=useState('');const[newPassword,setNewPassword]=useState('');const[confirmPassword,setConfirmPassword]=useState('');const[passwordBusy,setPasswordBusy]=useState(false);const[passwordError,setPasswordError]=useState('');const[passwordMessage,setPasswordMessage]=useState('');
  const[newsletter,setNewsletter]=useState<any>(null);const[newsletterLoading,setNewsletterLoading]=useState(true);const[newsletterBusy,setNewsletterBusy]=useState(false);const[newsletterError,setNewsletterError]=useState('');const[newsletterMessage,setNewsletterMessage]=useState('');
@@ -85,12 +87,7 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
  }
 
  return<div className="space-y-5">
-  <Panel title="Görünüm" description="Bu cihazda uygulamanın aydınlık veya karanlık görünümünü seçin.">
-    <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Görünüm seçimi">
-      <button type="button" role="radio" aria-checked={theme==='light'} onClick={()=>onThemeChange?.('light')} className={`min-h-12 rounded-xl border px-4 font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${theme==='light'?'border-brand-gold bg-brand-gold/10 text-brand-gold':'border-gray-200 dark:border-gray-700'}`}>Aydınlık</button>
-      <button type="button" role="radio" aria-checked={theme==='dark'} onClick={()=>onThemeChange?.('dark')} className={`min-h-12 rounded-xl border px-4 font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${theme==='dark'?'border-brand-gold bg-brand-gold/10 text-brand-gold':'border-gray-200 dark:border-gray-700'}`}>Karanlık</button>
-    </div>
-  </Panel>
+  <PremiumPreferencesPanel theme={theme} onThemeChange={onThemeChange}/>
 
   <Panel title="Şifre Değiştir" description="Parola tabanlı hesaplarda mevcut şifre yeniden doğrulanır; şifre düz metin olarak saklanmaz.">
     {passwordError?<ErrorState message={passwordError}/>:null}

@@ -1,19 +1,76 @@
-export type AppTheme = 'light' | 'dark';
+export type AppTheme = 'light' | 'dark' | 'emerald' | 'ruby' | 'champagne';
 
-const STORAGE_KEY = 'golden-oremar:appearance-theme:v1';
+export type AppThemeOption = {
+  id: AppTheme;
+  label: string;
+  description: string;
+  surface: string;
+  accent: string;
+  text: string;
+};
 
-function isTheme(value: unknown): value is AppTheme {
-  return value === 'light' || value === 'dark';
+export const APP_THEME_OPTIONS: AppThemeOption[] = [
+  {
+    id: 'emerald',
+    label: 'Zümrüt Oremar',
+    description: 'Kırık fildişi yüzeylerde derin zümrüt vurgular ve seçkin altın detaylar.',
+    surface: '#F4F7F2',
+    accent: '#087A55',
+    text: '#12362A',
+  },
+  {
+    id: 'ruby',
+    label: 'Yakut Prestige',
+    description: 'İnci tonlu zeminde yakut kırmızısı vurgu ve sıcak şampanya detayları.',
+    surface: '#FBF6F6',
+    accent: '#8F1D3B',
+    text: '#3B1722',
+  },
+  {
+    id: 'dark',
+    label: 'Obsidyen Gece',
+    description: 'Derin obsidyen ve orman tonlarında, altın dokunuşlu yüksek kontrast.',
+    surface: '#060F0C',
+    accent: '#27AE60',
+    text: '#F4F7F5',
+  },
+  {
+    id: 'light',
+    label: 'İnci Beyazı',
+    description: 'Temiz inci beyazı yüzey, koyu orman yazıları ve sakin premium kontrast.',
+    surface: '#FFFFFF',
+    accent: '#145A32',
+    text: '#14261C',
+  },
+  {
+    id: 'champagne',
+    label: 'Şampanya Altın',
+    description: 'Sıcak krem yüzeylerde bronz-şampanya vurgular ve rafine koyu metin.',
+    surface: '#FBF6E9',
+    accent: '#9A7118',
+    text: '#332A18',
+  },
+];
+
+const STORAGE_KEY = 'golden-oremar:appearance-theme:v2';
+const LEGACY_STORAGE_KEY = 'golden-oremar:appearance-theme:v1';
+
+export function isTheme(value: unknown): value is AppTheme {
+  return value === 'light' || value === 'dark' || value === 'emerald' || value === 'ruby' || value === 'champagne';
 }
 
-export function getStoredTheme(): AppTheme | null {
+function readStored(key: string): AppTheme | null {
   if (typeof window === 'undefined') return null;
   try {
-    const value = window.localStorage.getItem(STORAGE_KEY);
+    const value = window.localStorage.getItem(key);
     return isTheme(value) ? value : null;
   } catch {
     return null;
   }
+}
+
+export function getStoredTheme(): AppTheme | null {
+  return readStored(STORAGE_KEY) || readStored(LEGACY_STORAGE_KEY);
 }
 
 export function getSystemTheme(): AppTheme {
@@ -25,16 +82,21 @@ export function resolveInitialTheme(): AppTheme {
   return getStoredTheme() || getSystemTheme();
 }
 
+export function isDarkTheme(theme: AppTheme) {
+  return theme === 'dark';
+}
+
 export function applyThemeToDocument(theme: AppTheme) {
   if (typeof document === 'undefined') return;
   document.documentElement.setAttribute('data-theme', theme);
-  document.documentElement.style.colorScheme = theme;
+  document.documentElement.style.colorScheme = isDarkTheme(theme) ? 'dark' : 'light';
 }
 
 export function persistTheme(theme: AppTheme) {
   if (typeof window === 'undefined') return;
   try {
     window.localStorage.setItem(STORAGE_KEY, theme);
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
     // Storage may be unavailable in hardened/private environments.
   }
