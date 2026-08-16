@@ -52,9 +52,10 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Shared account panels use explicit `aria-labelledby` / `aria-describedby` relationships.
 - Address add/edit uses the shared accessible-dialog focus trap, Escape handling, scroll lock and focus restoration.
 - Address deletion requires a separate accessible destructive confirmation; save/delete operations block duplicate actions and report completion state.
-- Customer appearance is now a personal device preference rather than the legacy global Firestore `settings/general` theme value.
-- Initial appearance is resolved before first render from the saved device preference or OS color scheme and is synchronized with the native status bar.
-- Light mode now has a real ivory/white surface system with dark forest text and AA-checked green/gold/muted text contrast; dark mode retains the premium forest palette.
+- Customer appearance is a personal device preference rather than the legacy global Firestore `settings/general` theme value.
+- Initial brightness and premium palette are resolved before first render and the native status bar stays synchronized with brightness.
+- Aydınlık/Karanlık brightness is independent from five personal premium palettes: Oremar Zümrüt, Yakut & Fildişi, Obsidyen Altın, İnci Beyazı and Dağ Safiri.
+- Premium palette tokens change primary accent, gold companion, text, card, border and background character together instead of recoloring one decorative icon.
 - Account Settings isolates password/newsletter/notification/session/account-closure errors and success messages inside the relevant panel instead of sharing one misplaced error state.
 - Notification preferences, newsletter, password, session and closure actions have explicit busy guards and duplicate-action protection.
 - Password confirmation exposes mismatch validation to assistive technology and enforces the existing 8-72 character client boundary before backend verification.
@@ -76,6 +77,10 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Public contact form validates client fields, reports focused errors, blocks duplicate submit and preserves the existing secure edge submission/honeypot backend.
 - Health & Recipes uses per-content favorite busy/status handling and canonical accessible detail/loading dialogs. Dismissed detail loads are request-id guarded so stale async results cannot reopen content.
 - Public Health keeps backend-sanitized HTML/product-safety truth unchanged and does not introduce new health or treatment claims.
+- Five procedural premium notification signatures are available: Yağmur Damlası, Dağ Horozu, Kuş Korosu, Dere & Rüzgâr and Yayla Çanı; no external copyrighted audio asset is required.
+- Yağmur Damlası is the first-install default and every sound can be previewed from Settings with real radio semantics and screen-reader status feedback.
+- Initial unread-notification hydration establishes a silent baseline; the selected sound is only attempted after hydration when the unread count genuinely increases, so opening the app does not chime for old unread items.
+- Notification sound choice is a personal device preference; system silent/notification settings remain authoritative.
 
 ## Current active package
 Performance and resilience finalization: audit image delivery, network/offline failure handling, request concurrency/cancellation, cache/revalidation opportunities and remaining first-load bundle hotspots without rebuilding completed customer features. After that, run the final customer accessibility/release audit; admin remains last.
