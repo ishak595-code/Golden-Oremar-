@@ -1,0 +1,106 @@
+name: Refresh Stable Capacitor Baseline
+
+on:
+  push:
+    branches: [agent/capacitor-8-stable-quality]
+    paths:
+      - 'package.json'
+      - '.github/workflows/mobile-quality.yml'
+      - '.github/workflows/refresh-capacitor-stable.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install and refresh lockfile
+        run: npm install --no-audit --no-fund
+
+      - name: Verify resolved Capacitor versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('fs');
+          const lock = JSON.parse(fs.readFileSync('package-lock.json','utf8'));
+          const expected = {
+            '@capacitor/core': '8.5.0',
+            '@capacitor/android': '8.5.0',
+            '@capacitor/ios': '8.5.0',
+            '@capacitor/cli': '8.5.0',
+            '@capacitor/app': '8.1.1',
+            '@capacitor/haptics': '8.0.2',
+            '@capacitor/keyboard': '8.0.5',
+            '@capacitor/network': '8.0.1',
+            '@capacitor/splash-screen': '8.0.2',
+            '@capacitor/status-bar': '8.0.3',
+          };
+          for (const [name, version] of Object.entries(expected)) {
+            const actual = lock.packages?.[`node_modules/${name}`]?.version;
+            if (actual !== version) throw new Error(`${name}: expected ${version}, got ${actual}`);
+          }
+          console.log('Stable Capacitor versions locked.');
+          NODE
+
+      - name: Production web build
+        run: npm run build
+
+      - name: Synchronize native projects
+        run: |
+          npx cap sync android
+          npx cap sync ios
+
+      - name: Verify platform baseline after sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'minSdkVersion = 24' android/variables.gradle
+          grep -q 'compileSdkVersion = 36' android/variables.gradle
+          grep -q 'targetSdkVersion = 36' android/variables.gradle
+          grep -q 'JavaVersion.VERSION_21' android/app/build.gradle
+          grep -q "jvmTarget = '21'" android/app/build.gradle
+          grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;' ios/App/App.xcodeproj/project.pbxproj
+          grep -q 'applicationId "com.goldenoremar.app"' android/app/build.gradle
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.goldenoremar.app;' ios/App/App.xcodeproj/project.pbxproj
+
+      - name: Compile Android debug app
+        working-directory: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Commit reproducible stable baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/refresh-capacitor-stable.yml
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'No generated changes to commit.'
+            exit 0
+          fi
+          git diff --cached --stat
+          git commit -m 'Lock and verify stable Capacitor 8 baseline'
+          git push origin HEAD:agent/capacitor-8-stable-quality
