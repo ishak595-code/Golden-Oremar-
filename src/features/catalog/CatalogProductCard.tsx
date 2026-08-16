@@ -5,11 +5,11 @@ type Props={
  product:any;
  onClick:()=>void;
  onAddToCart:(product:any,quantity:number)=>Promise<void>|void;
- onToggleFavorite?:()=>Promise<void>|void;
+ onToggleFavorite?:(product:any)=>Promise<void>|void;
  isFavorite?:boolean;
- onShare?:()=>Promise<void>|void;
- onGift?:()=>Promise<void>|void;
- onLike?:()=>Promise<void>|void;
+ onShare?:(product:any)=>Promise<void>|void;
+ onGift?:(product:any)=>Promise<void>|void;
+ onLike?:(product:any)=>Promise<void>|void;
  isLiked?:boolean;
 };
 
@@ -40,8 +40,8 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
    </button>
    {badges.length?<div className="pointer-events-none absolute left-3 top-3 flex max-w-[75%] flex-wrap gap-2">{badges.map(badge=><span key={badge.key} className={`rounded-full px-3 py-1 text-xs font-bold ${badge.className}`}>{badge.label}</span>)}</div>:null}
    <div className="absolute right-3 top-3 flex gap-2">
-    {onToggleFavorite?<button type="button" onClick={event=>{event.stopPropagation();void onToggleFavorite();}} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} aria-pressed={isFavorite} className="grid min-h-11 min-w-11 place-items-center rounded-full bg-white/95 shadow-sm dark:bg-gray-900/95"><Heart className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-gray-700 dark:text-gray-200'}`}/></button>:null}
-    {onShare?<button type="button" onClick={event=>{event.stopPropagation();void onShare();}} aria-label="Ürünü paylaş" className="grid min-h-11 min-w-11 place-items-center rounded-full bg-white/95 shadow-sm dark:bg-gray-900/95"><Share2 className="h-5 w-5"/></button>:null}
+    {onToggleFavorite?<button type="button" onClick={event=>{event.stopPropagation();void onToggleFavorite(product);}} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} aria-pressed={isFavorite} className="grid min-h-11 min-w-11 place-items-center rounded-full bg-white/95 shadow-sm dark:bg-gray-900/95"><Heart className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-gray-700 dark:text-gray-200'}`}/></button>:null}
+    {onShare?<button type="button" onClick={event=>{event.stopPropagation();void onShare(product);}} aria-label="Ürünü paylaş" className="grid min-h-11 min-w-11 place-items-center rounded-full bg-white/95 shadow-sm dark:bg-gray-900/95"><Share2 className="h-5 w-5"/></button>:null}
    </div>
   </div>
 
@@ -61,8 +61,8 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
 
    <div className="mt-4 grid grid-cols-[1fr_auto_auto] gap-2">
     <button type="button" onClick={()=>void add()} disabled={soldOut||busy} className="min-h-12 rounded-xl bg-brand-green px-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{preorder?<Calendar className="mr-2 inline h-4 w-4"/>:<ShoppingCart className="mr-2 inline h-4 w-4"/>}{busy?'Ekleniyor…':soldOut?'Tükendi':preorder?'Ön Siparişe Ekle':'Sepete Ekle'}</button>
-    {onGift?<button type="button" onClick={()=>void onGift()} aria-label="Hediye et" className="grid min-h-12 min-w-12 place-items-center rounded-xl border"><Gift className="h-5 w-5 text-brand-gold"/></button>:null}
-    {onLike?<button type="button" onClick={()=>void onLike()} aria-label={isLiked?'Beğeniyi kaldır':'Ürünü beğen'} aria-pressed={isLiked} className="grid min-h-12 min-w-12 place-items-center rounded-xl border"><ThumbsUp className={`h-5 w-5 ${isLiked?'fill-brand-gold text-brand-gold':''}`}/></button>:null}
+    {onGift?<button type="button" onClick={()=>void onGift(product)} aria-label="Hediye et" className="grid min-h-12 min-w-12 place-items-center rounded-xl border"><Gift className="h-5 w-5 text-brand-gold"/></button>:null}
+    {onLike?<button type="button" onClick={()=>void onLike(product)} aria-label={isLiked?'Beğeniyi kaldır':'Ürünü beğen'} aria-pressed={isLiked} className="grid min-h-12 min-w-12 place-items-center rounded-xl border"><ThumbsUp className={`h-5 w-5 ${isLiked?'fill-brand-gold text-brand-gold':''}`}/></button>:null}
    </div>
   </div>
  </article>;
