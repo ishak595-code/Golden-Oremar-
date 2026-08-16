@@ -1,0 +1,65 @@
+name: Audit Dependency Security
+
+on:
+  push:
+    branches:
+      - agent/dependency-security-audit
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/dependency-security-audit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Generate npm audit report
+        run: npm audit --json > /tmp/audit.json || true
+      - name: Summarize vulnerable packages
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const report=JSON.parse(fs.readFileSync('/tmp/audit.json','utf8'));
+          console.log('AUDIT_METADATA='+JSON.stringify(report.metadata?.vulnerabilities||{}));
+          const rows=Object.entries(report.vulnerabilities||{}).map(([name,v])=>({name,severity:v.severity,isDirect:v.isDirect,range:v.range,fix:v.fixAvailable,via:v.via}));
+          const order={critical:0,high:1,moderate:2,low:3,info:4};
+          rows.sort((a,b)=>(order[a.severity]??9)-(order[b.severity]??9)||Number(b.isDirect)-Number(a.isDirect)||a.name.localeCompare(b.name));
+          for(const row of rows){
+            const via=(row.via||[]).map(item=>typeof item==='string'?item:`${item.name}:${item.title}`).join(' | ');
+            console.log(`VULN\t${row.severity}\tdirect=${row.isDirect}\t${row.name}\trange=${row.range}\tfix=${JSON.stringify(row.fix)}\tvia=${via}`);
+          }
+          NODE
+      - name: Show dependency ancestry for critical and high packages
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const report=JSON.parse(fs.readFileSync('/tmp/audit.json','utf8'));
+          const names=Object.entries(report.vulnerabilities||{}).filter(([,v])=>['critical','high'].includes(v.severity)).map(([name])=>name);
+          for(const name of names){
+            console.log(`--- npm ls ${name} ---`);
+            try{console.log(execFileSync('npm',['ls',name,'--all'],{encoding:'utf8'}));}
+            catch(error){console.log(error.stdout?.toString()||error.message);}
+          }
+          NODE
+      - name: Inventory direct dependency source usage
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {execFileSync} from 'node:child_process';
+          const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+          for(const name of Object.keys(pkg.dependencies||{})){
+            let output='';
+            try{output=execFileSync('git',['grep','-n','--',name,'--','*.ts','*.tsx','*.js','*.mjs'],{encoding:'utf8'});}catch(error){output=error.stdout?.toString()||'';}
+            const lines=output.trim()?output.trim().split('\n').filter(line=>!line.includes('package.json')&&!line.includes('package-lock.json')):[];
+            console.log(`DIRECT_USAGE\t${name}\t${lines.length}\t${lines.slice(0,8).join(' || ')}`);
+          }
+          NODE
