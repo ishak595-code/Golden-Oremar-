@@ -12,7 +12,7 @@ set public_config = jsonb_set(
   ),
   true
 )
-where slug = 'default';
+where slug = 'golden-oremar';
 
 create or replace function public.get_checkout_payment_readiness_v1()
 returns jsonb
@@ -30,7 +30,7 @@ as $$
     'storesProviderSecretsClientSide', false
   )
   from public.brand_settings bs
-  where bs.slug = 'default'
+  where bs.slug = 'golden-oremar'
   limit 1;
 $$;
 
