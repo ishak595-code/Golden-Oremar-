@@ -7,6 +7,14 @@ export type CatalogSuggestion = {
   value: string;
 };
 
+export type ProducerFollowMetric = {
+  producerId: string;
+  followerCount: number;
+  following: boolean;
+  verified: boolean;
+  originVerified: boolean;
+};
+
 export type CatalogItem = {
   id: string;
   legacyId?: string | null;
@@ -115,10 +123,26 @@ export function publicCatalogUrl(path?: string | null) {
 }
 
 export async function getPublicProducerProfile(reference: string) {
-  const { data, error } = await supabase.rpc('get_public_producer_profile_v1', {
+  const { data, error } = await supabase.rpc('get_public_producer_profile_v2', {
     p_reference: reference,
   });
   return unwrap<any>(data, error);
+}
+
+export async function getProducerFollowMetrics(producerIds: string[]): Promise<ProducerFollowMetric[]> {
+  const unique = [...new Set(producerIds.map(String).filter(Boolean))].slice(0, 100);
+  if (!unique.length) return [];
+  const { data, error } = await supabase.rpc('get_public_producer_follow_metrics_v1', {
+    p_producer_ids: unique,
+  });
+  const rows = unwrap<any[]>(data, error);
+  return (Array.isArray(rows) ? rows : []).map(row => ({
+    producerId: String(row.producerId),
+    followerCount: Math.max(0, Number(row.followerCount || 0)),
+    following: row.following === true,
+    verified: row.verified === true,
+    originVerified: row.originVerified === true,
+  }));
 }
 
 export async function toggleProducerFollow(producerId: string) {
