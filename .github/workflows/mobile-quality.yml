@@ -65,11 +65,21 @@ jobs:
           grep -q 'minSdkVersion = 24' android/variables.gradle
           grep -q 'compileSdkVersion = 36' android/variables.gradle
           grep -q 'targetSdkVersion = 36' android/variables.gradle
+          grep -q "com.android.tools.build:gradle:8.13.0" android/build.gradle
+          grep -q "kotlin-gradle-plugin:2.2.20" android/build.gradle
+          grep -q 'gradle-8.14.3-all.zip' android/gradle/wrapper/gradle-wrapper.properties
           grep -q 'JavaVersion.VERSION_21' android/app/build.gradle
           grep -q "jvmTarget = '21'" android/app/build.gradle
+          grep -q 'kotlin-stdlib:2.2.20' android/app/build.gradle
+          grep -q 'density' android/app/src/main/AndroidManifest.xml
           grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;' ios/App/App.xcodeproj/project.pbxproj
           grep -q 'applicationId "com.goldenoremar.app"' android/app/build.gradle
           grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.goldenoremar.app;' ios/App/App.xcodeproj/project.pbxproj
+          grep -q 'SceneDelegate.swift' ios/App/App.xcodeproj/project.pbxproj
+          grep -q 'UIApplicationSceneManifest' ios/App/App/Info.plist
+          grep -q 'UISceneDelegateClassName' ios/App/App/Info.plist
+          grep -q 'SceneDelegateProxy.shared.scene' ios/App/App/SceneDelegate.swift
+          grep -q 'configurationForConnecting' ios/App/App/AppDelegate.swift
 
       - name: Production web build
         run: npm run build
