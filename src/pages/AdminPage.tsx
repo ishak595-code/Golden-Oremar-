@@ -28,8 +28,8 @@ export function AdminPage({ onLogout, onBack }: AdminPageProps) {
   const [activeTab, setActiveTab] = useState('dashboard');
   const { currentUser } = useData();
 
-  const userEmail = currentUser?.email?.toLowerCase() || '';
-  const isAuthenticated = currentUser && (['admin', 'super_admin', 'vendor'].includes(currentUser.role) || userEmail === 'ramcofero.yt@gmail.com' || userEmail === 'goldenoremar@gmail.com');
+  const roles = Array.isArray(currentUser?.roles) ? currentUser.roles.map(String) : [];
+  const isAuthenticated = Boolean(currentUser && (roles.includes('admin') || roles.includes('super_admin')));
 
   if (!isAuthenticated) {
     return (

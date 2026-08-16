@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { useAccessibleDialog } from './features/accessibility/useAccessibleDialog';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { useDeviceTheme } from './features/appearance/useDeviceTheme';import { useConnectivity } from './features/resilience/useConnectivity';import { query } from 'firebase/firestore';
+import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { useCustomerSession } from './features/auth/useCustomerSession';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { useAccessibleDialog } from './features/accessibility/useAccessibleDialog';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { useDeviceTheme } from './features/appearance/useDeviceTheme';import { useConnectivity } from './features/resilience/useConnectivity';
 
 
-const AdminPage = React.lazy(() => import('./pages/AdminPage').then(module => ({ default: module.AdminPage })));
+const AdminPage = React.lazy(() => import('./pages/LegacyAdminEntry'));
 const AccountCenter = React.lazy(() => import('./features/account/AccountCenter'));
 const ProducerApplicationFlow = React.lazy(() => import('./features/producer-onboarding/ProducerApplicationFlow'));
 const PublicInfoScreen = React.lazy(() => import('./features/storefront/PublicInfoScreen'));
@@ -29,7 +29,7 @@ type AccountTab = 'profile' | 'addresses' | 'payments' | 'notifications' | 'sett
 
 // --- Main App Component ---
 function AppContent() {
-  const { settings, addNotification, currentUser, setCurrentUser, products, recipes, productHealthInfo, blogPosts, staticContent, contactInfo, events, seedDatabase, heroCategories, homeSections } = useData();
+  const { currentUser, setCurrentUser, authReady } = useCustomerSession();
   const { theme: appearanceTheme, setTheme: setAppearanceTheme } = useDeviceTheme();
   const [currentTab, setCurrentTab] = useState<Tab>('home');
   const [tabHistory, setTabHistory] = useState<Tab[]>(['home']);
@@ -731,6 +731,7 @@ function AppContent() {
         );
       }
 
+      if (!authReady) return <RouteLoading label="Hesabınız doğrulanıyor" />;
       if (!currentUser) {
         return <AuthScreen title="Golden Oremar Hesabı" onAuthenticated={() => setAccountView('menu')} />;
       }
@@ -775,6 +776,7 @@ function AppContent() {
     }
 
     if (currentTab === 'cart') {
+      if (!authReady) return <RouteLoading label="Sepet oturumunuz doğrulanıyor" />;
       if (!currentUser) {
         return <AuthScreen title="Sepetinizi kullanmak için hesabınıza giriş yapın." description="Sepetiniz, stok rezervasyonunuz ve siparişiniz hesabınıza güvenli şekilde bağlanır." />;
       }
@@ -862,7 +864,8 @@ function AppContent() {
   return (
       currentTab === 'admin' && isAdminLoggedIn ? (
         <React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor" />}>
-          <AdminPage 
+          <AdminPage
+            currentUser={currentUser}
             onBack={goBack}
             onLogout={async () => { 
               await signOutCurrentSession();
@@ -889,7 +892,7 @@ function AppContent() {
               aria-label="Ana sayfaya git"
             >
               <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-gray-100 bg-white p-1 shadow-[0_2px_8px_rgba(0,0,0,0.06)] transition-all group-hover:scale-105 group-active:scale-95 dark:border-gray-700 dark:bg-gray-800">
-                <img src={settings.logoUrl || '/logo.svg'} alt="" aria-hidden="true" className="h-full w-full object-contain" />
+                <img src="/logo.svg" alt="" aria-hidden="true" className="h-full w-full object-contain" />
               </div>
             </button>
 
@@ -984,7 +987,7 @@ function AppContent() {
               aria-label="Ana sayfaya git"
             >
               <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-gray-100 bg-white p-1.5 shadow-[0_3px_10px_rgba(0,0,0,0.05)] transition-all group-hover:scale-105 group-active:scale-95 dark:border-gray-700 dark:bg-gray-800">
-                <img src={settings.logoUrl || '/logo.svg'} alt="" aria-hidden="true" className="h-full w-full object-contain" />
+                <img src="/logo.svg" alt="" aria-hidden="true" className="h-full w-full object-contain" />
               </div>
             </button>
 
@@ -1396,11 +1399,7 @@ function AppContent() {
 }
 
 export default function App() {
-  return (
-    <DataProvider>
-      <AppContent />
-    </DataProvider>
-  );
+  return <AppContent />;
 }
 
 function BottomNavButton({ icon: Icon, label, active, onClick, badge = 0, accessibilityLabel }: any) {

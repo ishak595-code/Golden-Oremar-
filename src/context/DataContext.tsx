@@ -261,7 +261,7 @@ interface DataContextType {
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const DataProvider: React.FC<{ children: React.ReactNode; initialCurrentUser?: any }> = ({ children, initialCurrentUser = null }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -292,8 +292,8 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logoUrl: '',
     maintenanceMode: false,
   });
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(initialCurrentUser);
+  const [isAuthReady, setIsAuthReady] = useState(Boolean(initialCurrentUser));
   const [isPrivilegedAdminSession, setIsPrivilegedAdminSession] = useState(false);
 
   useEffect(() => {
