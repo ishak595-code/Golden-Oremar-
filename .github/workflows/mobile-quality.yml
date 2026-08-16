@@ -1,0 +1,99 @@
+name: Mobile Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: mobile-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify supported mobile baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const pkg = require('./package.json');
+          const expected = {
+            '@capacitor/core': '8.5.0',
+            '@capacitor/android': '8.5.0',
+            '@capacitor/ios': '8.5.0',
+            '@capacitor/app': '8.1.1',
+            '@capacitor/haptics': '8.0.2',
+            '@capacitor/keyboard': '8.0.5',
+            '@capacitor/network': '8.0.1',
+            '@capacitor/splash-screen': '8.0.2',
+            '@capacitor/status-bar': '8.0.3',
+          };
+          for (const [name, version] of Object.entries(expected)) {
+            if (pkg.dependencies?.[name] !== version) {
+              throw new Error(`${name} must be pinned to ${version}; found ${pkg.dependencies?.[name]}`);
+            }
+          }
+          if (pkg.devDependencies?.['@capacitor/cli'] !== '8.5.0') {
+            throw new Error('@capacitor/cli must be pinned to 8.5.0');
+          }
+          NODE
+          grep -q 'minSdkVersion = 24' android/variables.gradle
+          grep -q 'compileSdkVersion = 36' android/variables.gradle
+          grep -q 'targetSdkVersion = 36' android/variables.gradle
+          grep -q 'JavaVersion.VERSION_21' android/app/build.gradle
+          grep -q "jvmTarget = '21'" android/app/build.gradle
+          grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;' ios/App/App.xcodeproj/project.pbxproj
+          grep -q 'applicationId "com.goldenoremar.app"' android/app/build.gradle
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.goldenoremar.app;' ios/App/App.xcodeproj/project.pbxproj
+
+      - name: Production web build
+        run: npm run build
+
+      - name: Synchronize Android and iOS
+        run: |
+          npx cap sync android
+          npx cap sync ios
+
+      - name: Ensure native projects are committed and reproducible
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet; then
+            echo 'Capacitor sync changed tracked files. Commit generated native changes before merging.' >&2
+            git diff --stat
+            git diff
+            exit 1
+          fi
+
+      - name: Compile Android debug app
+        working-directory: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
