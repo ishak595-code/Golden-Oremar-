@@ -1,0 +1,51 @@
+name: Verify Producer Order Fulfillment
+
+on:
+  push:
+    branches: [agent/producer-order-fulfillment]
+    paths:
+      - '.github/workflows/verify-producer-order-fulfillment.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Verify producer operations sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f src/features/producer-orders/ProducerOrdersPanel.tsx
+          grep -q "producer_create_shipment_v1" src/features/producer-orders/api.ts
+          grep -q "producer_mark_order_items_processing_v1" src/features/producer-orders/api.ts
+          grep -q "ProducerOrdersPanel" src/features/account/SellerPanel.tsx
+          grep -q "ProducerTraceabilityPanel" src/features/account/SellerPanel.tsx
+          grep -q "ProducerFinancePanel" src/features/account/SellerPanel.tsx
+          grep -q "Sipariş operasyonunu aç" src/features/account/SellerPanel.tsx
+          test -f backend/live-migrations/20260816125511_add_secure_producer_order_fulfillment_v1.sql
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Production build
+        run: npm run build
+      - name: Commit verified state
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/verify-producer-order-fulfillment.yml
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Verify producer order fulfillment'
+          git push origin HEAD:agent/producer-order-fulfillment
