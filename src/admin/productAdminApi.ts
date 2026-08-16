@@ -32,9 +32,17 @@ export type AdminProduct = {
   created_at: string;
   updated_at: string;
   variant_count: number;
+  active_variant_count: number;
+  missing_weight_variant_count: number;
+  primary_image_count: number;
   available_quantity: number;
   review_count: number;
   rating_average: number;
+  shipping_weight_ready: boolean;
+  origin_code_ready: boolean;
+  shelf_life_ready: boolean;
+  export_ready: boolean;
+  catalog_issue_count: number;
 };
 
 function unwrap<T>(data: T | null, error: any): T {
@@ -65,9 +73,17 @@ export async function adminListProducts(): Promise<AdminProduct[]> {
     requires_cold_chain: row.requires_cold_chain === true,
     is_perishable: row.is_perishable === true,
     variant_count: Number(row.variant_count || 0),
+    active_variant_count: Number(row.active_variant_count || 0),
+    missing_weight_variant_count: Number(row.missing_weight_variant_count || 0),
+    primary_image_count: Number(row.primary_image_count || 0),
     available_quantity: Number(row.available_quantity || 0),
     review_count: Number(row.review_count || 0),
     rating_average: Number(row.rating_average || 0),
+    shipping_weight_ready: row.shipping_weight_ready === true,
+    origin_code_ready: row.origin_code_ready === true,
+    shelf_life_ready: row.shelf_life_ready === true,
+    export_ready: row.export_ready === true,
+    catalog_issue_count: Number(row.catalog_issue_count || 0),
   }));
 }
 
