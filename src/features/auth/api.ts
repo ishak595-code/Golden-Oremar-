@@ -1,5 +1,8 @@
+import { Capacitor } from '@capacitor/core';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
+
+export const NATIVE_AUTH_CALLBACK_URL = 'com.goldenoremar.app://auth/callback';
 
 export type CustomerSessionStatus = {
   is_authenticated: boolean;
@@ -17,13 +20,89 @@ export type AdminSessionStatus = {
   roles: string[];
 };
 
+function authCallbackParams(url: string) {
+  const parsed = new URL(url);
+  const params = new URLSearchParams(parsed.search);
+  const hash = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+  hash.forEach((value, key) => {
+    if (!params.has(key)) params.set(key, value);
+  });
+  return { parsed, params };
+}
+
+export function isNativeAuthCallbackUrl(url: string) {
+  try {
+    const { parsed } = authCallbackParams(url);
+    return parsed.protocol === 'com.goldenoremar.app:' && parsed.hostname === 'auth' && parsed.pathname === '/callback';
+  } catch {
+    return false;
+  }
+}
+
+export function isPasswordRecoveryCallbackUrl(url: string) {
+  try {
+    return authCallbackParams(url).params.get('type') === 'recovery';
+  } catch {
+    return false;
+  }
+}
+
 export function getConfiguredAuthRedirectUrl(): string | undefined {
   const configured = String(import.meta.env.VITE_AUTH_REDIRECT_URL || '').trim();
+  if (Capacitor.isNativePlatform()) {
+    return configured === NATIVE_AUTH_CALLBACK_URL ? configured : undefined;
+  }
   if (configured) return configured;
   if (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null') {
     return `${window.location.origin}/?tab=account`;
   }
   return undefined;
+}
+
+export function clearBrowserAuthCallbackArtifacts() {
+  if (Capacitor.isNativePlatform() || typeof window === 'undefined') return;
+  try {
+    const url = new URL(window.location.href);
+    ['code', 'error', 'error_code', 'error_description', 'type'].forEach(key => url.searchParams.delete(key));
+    url.hash = '';
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`);
+  } catch {
+    // URL cleanup is best-effort and must never break a valid authenticated session.
+  }
+}
+
+export async function consumeNativeAuthCallbackUrl(url: string): Promise<{
+  handled: boolean;
+  recovery: boolean;
+  session: Session | null;
+}> {
+  if (!isNativeAuthCallbackUrl(url)) return { handled: false, recovery: false, session: null };
+
+  const { params } = authCallbackParams(url);
+  const errorDescription = params.get('error_description') || params.get('error');
+  if (errorDescription) throw new Error(decodeURIComponent(errorDescription.replace(/\+/g, ' ')));
+
+  const recovery = params.get('type') === 'recovery';
+  const code = params.get('code');
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+
+  if (code) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw error;
+    return { handled: true, recovery, session: data.session };
+  }
+
+  if (accessToken && refreshToken) {
+    const { data, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    });
+    if (error) throw error;
+    return { handled: true, recovery, session: data.session };
+  }
+
+  throw new Error('Kimlik doğrulama bağlantısında geçerli oturum bilgisi bulunamadı.');
 }
 
 export async function signInWithEmail(email: string, password: string) {
@@ -61,9 +140,18 @@ export async function signUpWithEmail(input: {
 
 export async function requestPasswordReset(email: string) {
   const redirect = getConfiguredAuthRedirectUrl();
+  if (Capacitor.isNativePlatform() && !redirect) {
+    throw new Error('native_auth_redirect_not_configured');
+  }
   const { data, error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
     ...(redirect ? { redirectTo: redirect } : {}),
   });
+  if (error) throw error;
+  return data;
+}
+
+export async function updatePassword(password: string) {
+  const { data, error } = await supabase.auth.updateUser({ password });
   if (error) throw error;
   return data;
 }
