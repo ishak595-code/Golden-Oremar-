@@ -14,18 +14,25 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Provider-gated Google/Facebook OAuth remains integrated through the existing Supabase/deep-link session flow; social buttons remain disabled unless explicitly enabled.
 - Permanent mobile CI quality gate checks locked native baseline, production build, Capacitor Android/iOS sync reproducibility and Android debug compilation.
 
-## Completed dynamic product and producer trust metrics
+## Completed dynamic product/customer trust packages
 - Server-backed review rating/count and stock/variant truth are surfaced on customer product surfaces.
 - Producer verification, origin verification and follower metrics are shown from server-backed data.
 - Producer profile follow/follow-state uses the same server truth.
+- Product cards, catalog search, producer products, cart and product detail use stock-aware quantity handling and accessible quantity controls.
 
-## Completed quantity and add-to-cart interaction package
-- Product cards, catalog search, producer products and cart already use stock-aware quantity handling and were preserved.
-- Product detail now uses accessible 44px minimum +/- controls, polite quantity announcements and server-derived stock boundaries instead of the remaining raw number field.
-- Add-to-cart continues using the selected server variant and selected quantity; no client-side price or stock authority was introduced.
+## Completed structured product safety package
+- Existing published `product_health` content is reused; no new health copy is invented.
+- All 42 published products have linked published safety content.
+- The existing `get_public_product_safety_v1` RPC remains the single public product-safety source.
+- Its public response is hardened to preparation/usage, storage, allergen/label guidance, warnings and HTTPS sources.
+- Internal `claimPolicy` and `verificationNeeded` workflow metadata is no longer exposed by the public safety response.
+- If a requested translation does not exist, the real Turkish publication is returned as a fallback and its returned locale remains explicit.
+- Product detail renders the structured safety information in accessible sections and explicitly avoids treatment claims.
+- Supabase security advisor reports no security lints after the safety API hardening.
+- Live migration history is mirrored into the repository, including the superseded guidance migration and the following hardening migration, so schema replay remains consistent.
 
 ## Current active package
-Structured product content enrichment: description, origin, usage/storage and health/nutrition information using published/server-backed fields, with source/warning handling and no invented health claims.
+Published FAQ/help integration and remaining customer self-service guidance. Reuse the existing content library, account help RPC and messaging support flow rather than creating duplicate static pages.
 
 ## Release gates still required on Apple hardware
 A real Xcode archive/build, signing check and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
