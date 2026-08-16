@@ -1,4 +1,4 @@
-package com.market.app
+package com.goldenoremar.app
 
 import com.getcapacitor.BridgeActivity
 
