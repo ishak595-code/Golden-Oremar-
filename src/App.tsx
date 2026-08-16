@@ -1525,7 +1525,7 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
   const sortOption = 'sortOption' in props ? props.sortOption : localSortOption;
   const setSortOption = 'setSortOption' in props ? props.setSortOption : setLocalSortOption;
 
-  const filteredProducts = [...products].reverse().filter(p => {
+  const filteredProducts = [...products].filter(p => {
     if (p.is_approved === false) return false;
     const matchesSearch = p.name?.toLowerCase().includes(searchQuery?.toLowerCase()) || 
                           p.category?.toLowerCase().includes(searchQuery?.toLowerCase()) ||
@@ -1547,7 +1547,7 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
     if (sortOption === 'price-asc') return a.price - b.price;
     if (sortOption === 'price-desc') return b.price - a.price;
     if (sortOption === 'rating') return b.rating - a.rating;
-    return 0; // featured (default order, which is now reversed from data.ts)
+    return 0; // featured keeps the server-provided catalog order
   });
 
   const handleHeroClick = (targetCategory: string) => {
@@ -1555,19 +1555,14 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
     // Scroll to products
     const productsSection = document.getElementById('products');
     if (productsSection) {
-      productsSection.scrollIntoView({ behavior: 'smooth' });
+      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+      productsSection.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
     }
     showToast(`Kategori seçildi: ${targetCategory}`);
   };
 
-  const featuredProductNames: string[] = [];
-  const naturalProductNames: string[] = [];
-  const seasonalProductNames: string[] = [];
-  const bestSellerProductNames: string[] = [];
-  const newArrivalProductNames: string[] = [];
-
-  const getProductsByNames = (_names: string[], _fallbackCategory: string, homeSectionKey: string) => {
-    let matched = homeSectionKey === 'featured'
+  const getProductsForSection = (homeSectionKey: string) => {
+    const matched = homeSectionKey === 'featured'
       ? products.filter((product: any) => product.is_featured || product.homeSection === 'featured')
       : homeSectionKey === 'pre_order'
         ? products.filter((product: any) => product.preOrder)
@@ -1576,6 +1571,13 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
     matched.forEach((item: any) => unique.set(String(item.id), item));
     return Array.from(unique.values()).slice(0, 12);
   };
+
+  const categoriesWithProducts = liveCategories.filter((category: any) => Number(category.productCount || 0) > 0);
+  const quickCategories = (categoriesWithProducts.length ? categoriesWithProducts : liveCategories).slice(0, 4);
+  const isSellableForSpotlight = (product: any) => product?.stockMode === 'preorder' || product?.stock == null || Number(product.stock) > 0;
+  const spotlightProduct = products.find((product: any) => product.is_featured && isSellableForSpotlight(product))
+    || products.find((product: any) => isSellableForSpotlight(product))
+    || null;
 
   return (
     <>
@@ -1594,12 +1596,12 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
             <select 
               value={sortOption} 
               onChange={(e) => setSortOption(e.target.value)}
-              className="bg-gray-50 dark:bg-gray-800 border-none rounded-lg px-3 py-1 text-sm font-medium outline-none cursor-pointer text-brand-text"
+              className="min-h-11 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-sm font-medium outline-none cursor-pointer text-brand-text focus-visible:ring-2 focus-visible:ring-brand-gold"
             >
               <option value="featured">Önerilen</option>
               <option value="price-asc">En Düşük Fiyat</option>
               <option value="price-desc">En Yüksek Fiyat</option>
-              <option value="rating">En Çok Değerlendirilen</option>
+              <option value="rating">En Yüksek Puan</option>
             </select>
           </div>
         </div>
@@ -1612,7 +1614,7 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
             <>
               {/* Quick Categories (Prestigious UI with Avatars) */}
               <div className="flex gap-4 overflow-x-auto pb-4 pt-2 hide-scrollbar snap-x mb-8" aria-label="Hızlı Kategoriler" role="region">
-                {liveCategories.filter((c: any) => ['bal-sifa', 'sut-sarkuteri', 'et-balik', 'meyve-sebze'].includes(c.id)).map((category: any) => {
+                {quickCategories.map((category: any) => {
                   const Icon = { Fish, Droplet, Cherry, Box, Mountain, Gem, Sun }[category.icon as any] || Star;
                   
                   // Find up to 3 products belonging to this category for the avatars
@@ -1651,17 +1653,11 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
               {/* New Sections: Products of the Week & Seasonal */}
               <div className="mb-16 space-y-16">
                 {homeSections.filter(s => s.active !== false).map((section, idx) => {
-                  let activeProductNames: string[] = [];
-                  let fallbackCat = '';
-                  if (section.id === 'featured') { activeProductNames = featuredProductNames; fallbackCat = 'Bal'; }
-                  else if (section.id === 'natural') { activeProductNames = naturalProductNames; fallbackCat = 'Süt'; }
-                  else if (section.id === 'seasonal') { activeProductNames = seasonalProductNames; fallbackCat = 'Dağ'; }
-                  else if (section.id === 'best_sellers') { activeProductNames = bestSellerProductNames; fallbackCat = 'Süt'; }
-                  else if (section.id === 'new_arrivals') { activeProductNames = newArrivalProductNames; fallbackCat = 'Kiler'; }
-                  
-                  const displayProducts = section.id === 'offers' 
-                    ? (products.filter(p => p.homeSection === 'offers' && p.is_approved !== false).length > 0 ? products.filter(p => p.homeSection === 'offers' && p.is_approved !== false) : products.filter(p => p.originalPrice && p.is_approved !== false)).slice(0, 4)
-                    : getProductsByNames(activeProductNames, fallbackCat, section.id);
+                  const displayProducts = section.id === 'offers'
+                    ? (products.filter(p => p.homeSection === 'offers' && p.is_approved !== false).length > 0
+                      ? products.filter(p => p.homeSection === 'offers' && p.is_approved !== false)
+                      : products.filter(p => p.originalPrice && p.is_approved !== false)).slice(0, 4)
+                    : getProductsForSection(section.id);
 
                   if (displayProducts.length === 0 && section.id !== 'pre_order') return null;
 
@@ -1678,20 +1674,17 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
                               </p>
                             </div>
                             <div className="w-full lg:w-1/2 xl:w-1/3">
-                              {(() => {
-                                const suggestedProduct = products.find(p => p.name.includes("Fahrettin'in Sütten Kesilmiş Oğlağı")) || products[0];
-                                return suggestedProduct ? (
-                                  <CatalogProductCard 
-                                    product={suggestedProduct} 
-                                    onClick={() => onProductClick(suggestedProduct)}
-                                    onAddToCart={onAddToCart}
-                                    onToggleFavorite={() => onToggleFavorite(suggestedProduct)}
-                                    isFavorite={favorites.includes(String(suggestedProduct.legacyId || suggestedProduct.id))}
-                                    onShare={() => onShare(suggestedProduct)}
-                                    onGift={() => onGift(suggestedProduct)}
-                                  />
-                                ) : null;
-                              })()}
+                              {spotlightProduct ? (
+                                <CatalogProductCard
+                                  product={spotlightProduct}
+                                  onClick={() => onProductClick(spotlightProduct)}
+                                  onAddToCart={onAddToCart}
+                                  onToggleFavorite={() => onToggleFavorite(spotlightProduct)}
+                                  isFavorite={favorites.includes(String(spotlightProduct.legacyId || spotlightProduct.id))}
+                                  onShare={() => onShare(spotlightProduct)}
+                                  onGift={() => onGift(spotlightProduct)}
+                                />
+                              ) : null}
                             </div>
                           </div>
                         </div>
@@ -1869,7 +1862,7 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
               <option value="featured">Önerilen</option>
               <option value="price-asc">En Düşük Fiyat</option>
               <option value="price-desc">En Yüksek Fiyat</option>
-              <option value="rating">En Çok Değerlendirilen</option>
+              <option value="rating">En Yüksek Puan</option>
             </select>
           </div>
         </div>

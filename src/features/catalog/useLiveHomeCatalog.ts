@@ -29,7 +29,7 @@ export type LegacyHomeProduct = {
   variantName: string;
   vendor_id: string;
   producerName: string;
-  producerFollowerCount: number;
+  producerFollowerCount: number | null;
   producerVerified: boolean;
   producerOriginVerified: boolean;
 };
@@ -42,6 +42,7 @@ export type LegacyHomeCategory = {
   icon?: string | null;
   image?: string;
   productCount: number;
+  sortOrder: number;
 };
 
 export function useLiveHomeCatalog() {
@@ -65,11 +66,11 @@ export function useLiveHomeCatalog() {
         const catalogItems = Array.isArray(catalog?.items) ? catalog.items : [];
         const producerIds = [...new Set(catalogItems.map((item: any) => String(item?.producer?.id || '')).filter(Boolean))];
         const metrics = await getProducerFollowMetrics(producerIds).catch(error => {
-          console.warn('Producer metrics hydration failed; catalog remains usable.', error);
+          console.warn('Producer metrics hydration failed; catalog remains usable without trust badges.', error);
           return [];
         });
         if (!active) return;
-        const metricByProducer = new Map(metrics.map(metric => [metric.producerId, metric]));
+        const metricByProducer = new Map(metrics.map(metric => [metric.producerId, metric] as const));
 
         setProducts(catalogItems.map((item: any) => {
           const producerMetric = metricByProducer.get(String(item.producer.id));
@@ -101,21 +102,24 @@ export function useLiveHomeCatalog() {
             variantName: item.variant.name,
             vendor_id: item.producer.id,
             producerName: item.producer.name,
-            producerFollowerCount: producerMetric?.followerCount ?? 0,
-            producerVerified: producerMetric?.verified ?? true,
-            producerOriginVerified: producerMetric?.originVerified ?? false,
+            producerFollowerCount: producerMetric ? producerMetric.followerCount : null,
+            producerVerified: producerMetric?.verified === true,
+            producerOriginVerified: producerMetric?.originVerified === true,
           };
         }));
 
-        setCategories((categoryRows || []).map(category => ({
-          id: category.slug,
-          databaseId: category.id,
-          name: category.name,
-          description: category.description || '',
-          icon: category.icon || null,
-          image: publicCatalogUrl(category.imagePath),
-          productCount: Number(category.productCount || 0),
-        })));
+        setCategories((categoryRows || [])
+          .map(category => ({
+            id: category.slug,
+            databaseId: category.id,
+            name: category.name,
+            description: category.description || '',
+            icon: category.icon || null,
+            image: publicCatalogUrl(category.imagePath),
+            productCount: Number(category.productCount || 0),
+            sortOrder: Number(category.sortOrder || 0),
+          }))
+          .sort((a, b) => a.sortOrder - b.sortOrder || b.productCount - a.productCount || a.name.localeCompare(b.name, 'tr')));
       } catch (err: any) {
         if (active) {
           setProducts([]);
