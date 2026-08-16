@@ -149,7 +149,7 @@ export default function CatalogSearchResults({
             vendor_id: item.producer.id,
             producerName: item.producer.name,
             producerFollowerCount: metric?.followerCount ?? null,
-            producerVerified: metric?.verified ?? true,
+            producerVerified: metric?.verified ?? false,
             producerOriginVerified: metric?.originVerified ?? false,
           };
           return <CatalogProductCard
