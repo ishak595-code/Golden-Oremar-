@@ -1,4 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { AdminPage } from './pages/AdminPage';import AccountCenter from './features/account/AccountCenter';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import ProducerApplicationFlow from './features/producer-onboarding/ProducerApplicationFlow';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import PublicInfoScreen from './features/storefront/PublicInfoScreen';import PublicHealthScreen from './features/content/PublicHealthScreen';import PublicEventsScreen from './features/engagement/PublicEventsScreen';import PublicContactScreen from './features/engagement/PublicContactScreen';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CategoryDirectoryScreen from './features/catalog/CategoryDirectoryScreen';import PublicProducerScreen from './features/catalog/PublicProducerScreen';import ProductDetailScreen from './features/catalog/ProductDetailScreen';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchResults from './features/catalog/CatalogSearchResults';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import AuthScreen from './features/auth/AuthScreen';import PasswordRecoveryScreen from './features/auth/PasswordRecoveryScreen';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import CartCheckoutFlow from './features/cart/CartCheckoutFlow';import GiftOrderFlow from './features/gifts/GiftOrderFlow';import { syncNativeAppearance } from './native';import { query } from 'firebase/firestore';
+import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { syncNativeAppearance } from './native';import { query } from 'firebase/firestore';
+
+
+const AdminPage = React.lazy(() => import('./pages/AdminPage').then(module => ({ default: module.AdminPage })));
+const AccountCenter = React.lazy(() => import('./features/account/AccountCenter'));
+const ProducerApplicationFlow = React.lazy(() => import('./features/producer-onboarding/ProducerApplicationFlow'));
+const PublicInfoScreen = React.lazy(() => import('./features/storefront/PublicInfoScreen'));
+const PublicHealthScreen = React.lazy(() => import('./features/content/PublicHealthScreen'));
+const PublicEventsScreen = React.lazy(() => import('./features/engagement/PublicEventsScreen'));
+const PublicContactScreen = React.lazy(() => import('./features/engagement/PublicContactScreen'));
+const CategoryDirectoryScreen = React.lazy(() => import('./features/catalog/CategoryDirectoryScreen'));
+const PublicProducerScreen = React.lazy(() => import('./features/catalog/PublicProducerScreen'));
+const ProductDetailScreen = React.lazy(() => import('./features/catalog/ProductDetailScreen'));
+const CatalogSearchResults = React.lazy(() => import('./features/catalog/CatalogSearchResults'));
+const AuthScreen = React.lazy(() => import('./features/auth/AuthScreen'));
+const PasswordRecoveryScreen = React.lazy(() => import('./features/auth/PasswordRecoveryScreen'));
+const CartCheckoutFlow = React.lazy(() => import('./features/cart/CartCheckoutFlow'));
+const GiftOrderFlow = React.lazy(() => import('./features/gifts/GiftOrderFlow'));
+
+function RouteLoading({ label = 'Ekran yükleniyor' }: { label?: string }) {
+  return <div role="status" aria-live="polite" className="mx-auto flex min-h-32 max-w-7xl items-center justify-center p-6 text-sm font-semibold text-gray-500">{label}</div>;
+}
 
 // --- Types ---
 type Tab = 'home' | 'categories' | 'cart' | 'account' | 'product-detail' | 'search-results' | 'producer-profile' | 'events' | 'health' | 'contact' | 'about' | 'admin';
@@ -920,15 +941,17 @@ function AppContent() {
 
   return (
       currentTab === 'admin' && isAdminLoggedIn ? (
-        <AdminPage 
-          onBack={goBack}
-          onLogout={async () => { 
-            await signOutCurrentSession();
-            setCurrentUser(null);
-            setAdminSession({ checked: true, isAdmin: false, roles: [] }); 
-            navigateToTab('home'); 
-          }} 
-        />
+        <React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor" />}>
+          <AdminPage 
+            onBack={goBack}
+            onLogout={async () => { 
+              await signOutCurrentSession();
+              setCurrentUser(null);
+              setAdminSession({ checked: true, isAdmin: false, roles: [] }); 
+              navigateToTab('home'); 
+            }} 
+          />
+        </React.Suspense>
       ) : (
         <div className="min-h-screen bg-brand-main text-brand-text font-sans pb-28 md:pb-0">
           {/* Header */}
@@ -1182,7 +1205,9 @@ function AppContent() {
 
       {/* Main Content */}
       <main>
-        {renderContent()}
+        <React.Suspense fallback={<RouteLoading />}>
+          {renderContent()}
+        </React.Suspense>
       </main>
 
       {/* Bottom Navigation (Mobile) */}
@@ -1198,16 +1223,18 @@ function AppContent() {
 
       {/* Real Gift Order Flow */}
       {showGiftModal && giftProduct && (
-        <GiftOrderFlow
-          productReference={giftProduct.slug || String(giftProduct.id)}
-          onClose={() => setShowGiftModal(false)}
-          onCreated={() => {
-            showToast('Hediye siparişiniz oluşturuldu ve ödeme doğrulaması bekliyor.');
-            setShowGiftModal(false);
-            navigateToTab('account');
-            setAccountView('gifts');
-          }}
-        />
+        <React.Suspense fallback={<RouteLoading label="Hediye sipariş ekranı yükleniyor" />}>
+          <GiftOrderFlow
+            productReference={giftProduct.slug || String(giftProduct.id)}
+            onClose={() => setShowGiftModal(false)}
+            onCreated={() => {
+              showToast('Hediye siparişiniz oluşturuldu ve ödeme doğrulaması bekliyor.');
+              setShowGiftModal(false);
+              navigateToTab('account');
+              setAccountView('gifts');
+            }}
+          />
+        </React.Suspense>
       )}
 
       {/* Voice Search (Microphone Popup) Bottom Sheet */}
