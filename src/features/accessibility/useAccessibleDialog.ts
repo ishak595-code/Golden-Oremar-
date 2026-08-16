@@ -39,8 +39,12 @@ export function useAccessibleDialog<T extends HTMLElement>(open: boolean, onClos
       }
       if (event.key !== 'Tab') return;
 
-      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR))
-        .filter(element => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true');
+      const focusable = Array.from(dialog.querySelectorAll(FOCUSABLE_SELECTOR)).filter(
+        (element): element is HTMLElement =>
+          element instanceof HTMLElement &&
+          !element.hasAttribute('disabled') &&
+          element.getAttribute('aria-hidden') !== 'true',
+      );
       if (!focusable.length) {
         event.preventDefault();
         dialog.focus({ preventScroll: true });
