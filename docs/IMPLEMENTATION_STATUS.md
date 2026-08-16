@@ -55,11 +55,11 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Customer appearance is now a personal device preference rather than the legacy global Firestore `settings/general` theme value.
 - Initial appearance is resolved before first render from the saved device preference or OS color scheme and is synchronized with the native status bar.
 - Light mode now has a real ivory/white surface system with dark forest text and AA-checked green/gold/muted text contrast; dark mode retains the premium forest palette.
-- Account Settings now isolates password/newsletter/notification/session/account-closure errors and success messages inside the relevant panel instead of sharing one misplaced error state.
+- Account Settings isolates password/newsletter/notification/session/account-closure errors and success messages inside the relevant panel instead of sharing one misplaced error state.
 - Notification preferences, newsletter, password, session and closure actions have explicit busy guards and duplicate-action protection.
 - Password confirmation exposes mismatch validation to assistive technology and enforces the existing 8-72 character client boundary before backend verification.
-- Account closure now uses an accessible confirmation alert dialog before the existing secure backend request; active closure cancellation has its own busy/error/status feedback.
-- Account order/return dialogs now reuse the canonical shared accessible-dialog engine instead of maintaining a second focus-trap implementation.
+- Account closure uses an accessible confirmation alert dialog before the existing secure backend request; active closure cancellation has its own busy/error/status feedback.
+- Account order/return dialogs reuse the canonical shared accessible-dialog engine instead of maintaining a second focus-trap implementation.
 - Avatar removal and pending-payment order cancellation require explicit accessible destructive confirmation before existing secure backend mutations run.
 - Order detail suppresses its parent focus trap while a nested return/cancellation dialog is open, preventing competing modal focus loops.
 - Return request/detail loading states remain true modal overlays with Escape/focus-return/body-scroll behavior instead of exposing the background screen during asynchronous loading.
@@ -67,13 +67,18 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Followed-producer cards never invent a country/location fallback and only display producer/origin verification when the corresponding server-backed flag is true.
 - Gift history and payment history clear stale errors on retry, show premium responsive cards and translate known order/payment status codes into customer-readable labels while preserving unknown server values safely.
 - Payment history remains truthful: only verified backend payment activity is shown; no saved-card vault or fake payment method is simulated before a real provider is integrated.
-- Cart quantity/remove mutations now use per-row busy guards and live status feedback instead of allowing parallel repeated row mutations.
+- Cart quantity/remove mutations use per-row busy guards and live status feedback instead of allowing parallel repeated row mutations.
 - Whole-cart clearing requires an accessible destructive confirmation dialog; ordinary single-item removal remains quick because it is recoverable by re-adding the item.
 - Checkout submission is locked from the final preview verification onward, preventing double-submit races while preserving server-side idempotency as the ultimate duplicate-order authority.
 - Cart errors move keyboard/screen-reader focus to the alert; destructive/coupon/shipping/submit controls use explicit button semantics and visible focus.
+- Event reservation uses the canonical accessible-dialog engine, prevents duplicate submissions, focuses reservation/load errors and keeps published capacity/waitlist truth unchanged.
+- Contact distinguishes a temporary published-config load failure from a genuine “no direct support channel published” state; the secure form remains available and never invents phone/e-mail details.
+- Public contact form validates client fields, reports focused errors, blocks duplicate submit and preserves the existing secure edge submission/honeypot backend.
+- Health & Recipes uses per-content favorite busy/status handling and canonical accessible detail/loading dialogs. Dismissed detail loads are request-id guarded so stale async results cannot reopen content.
+- Public Health keeps backend-sanitized HTML/product-safety truth unchanged and does not introduce new health or treatment claims.
 
 ## Current active package
-Public customer content surfaces: audit Events, Contact and Health for premium responsive presentation, field validation, async busy/error/status consistency and focus behavior. Auth is already sufficiently hardened and will not be rewritten without a newly demonstrated gap.
+Performance and resilience finalization: audit image delivery, network/offline failure handling, request concurrency/cancellation, cache/revalidation opportunities and remaining first-load bundle hotspots without rebuilding completed customer features. After that, run the final customer accessibility/release audit; admin remains last.
 
 ## Release gates still required on Apple hardware
 A real Xcode archive/build, signing check and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
