@@ -1,0 +1,52 @@
+name: Integrate Secure Admin Session Gate
+
+on:
+  push:
+    branches: [agent/secure-admin-session-gate]
+    paths:
+      - '.github/workflows/integrate-secure-admin-session-gate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Patch secure admin gating
+        run: node migration-tools/integration/apply-secure-admin-session-gate.mjs src/App.tsx src/context/DataContext.tsx
+      - name: Verify admin authorization boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q "getAdminSessionStatus" src/App.tsx
+          grep -q "currentTab === 'admin' && isAdminLoggedIn" src/App.tsx
+          grep -q "tab === 'admin' && !isAdminLoggedIn" src/App.tsx
+          grep -q "isPrivilegedAdminSession" src/context/DataContext.tsx
+          ! grep -q "currentUser.role === 'admin'" src/context/DataContext.tsx
+          ! grep -q "currentUser?.role === 'admin'" src/context/DataContext.tsx
+          ! grep -q "fetch('/api/auth/logout'" src/App.tsx
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Production build
+        run: npm run build
+      - name: Commit verified integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/integrate-secure-admin-session-gate.yml
+          rm -f migration-tools/integration/apply-secure-admin-session-gate.mjs
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'Secure admin session authorization boundary'
+          git push origin HEAD:agent/secure-admin-session-gate
