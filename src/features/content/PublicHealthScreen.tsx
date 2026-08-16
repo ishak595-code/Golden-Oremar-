@@ -32,6 +32,7 @@ export default function PublicHealthScreen({ onBack, authenticated, locale = 'tr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const errorRef = useRef<HTMLDivElement | null>(null);
+  const detailRequestId = useRef(0);
 
   async function load(type: ContentType, force = false) {
     if (items[type] && !force) return;
@@ -62,11 +63,23 @@ export default function PublicHealthScreen({ onBack, authenticated, locale = 'tr
 
   async function open(reference: string) {
     if (detailLoading) return;
+    const requestId = ++detailRequestId.current;
     try {
       setDetailLoading(true); setOpeningReference(reference); setError(''); setStatus('');
-      setDetail(await getPublicContentEntry(reference, locale));
-    } catch (err: any) { setError(err?.message || 'İçerik açılamadı.'); }
-    finally { setDetailLoading(false); setOpeningReference(''); }
+      const next = await getPublicContentEntry(reference, locale);
+      if (requestId !== detailRequestId.current) return;
+      setDetail(next);
+    } catch (err: any) {
+      if (requestId === detailRequestId.current) setError(err?.message || 'İçerik açılamadı.');
+    } finally {
+      if (requestId === detailRequestId.current) { setDetailLoading(false); setOpeningReference(''); }
+    }
+  }
+
+  function cancelDetailLoading() {
+    detailRequestId.current += 1;
+    setDetailLoading(false);
+    setOpeningReference('');
   }
 
   async function favorite(item: any) {
@@ -120,7 +133,7 @@ export default function PublicHealthScreen({ onBack, authenticated, locale = 'tr
         })}
       </section>
 
-      {detailLoading ? <ContentLoadingDialog onClose={() => { /* request cannot be aborted safely; loading dialog remains until settled */ }} /> : null}
+      {detailLoading ? <ContentLoadingDialog onClose={cancelDetailLoading} /> : null}
       {detail ? <ContentDialog detail={detail} onClose={() => setDetail(null)} onOpenProduct={onOpenProduct} /> : null}
     </main>
   );
