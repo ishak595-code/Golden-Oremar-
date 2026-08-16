@@ -72,7 +72,7 @@ export function useLiveHomeCatalog() {
         if (!active) return;
 
         const catalogItems = Array.isArray(catalog?.items) ? catalog.items : [];
-        const producerIds = [...new Set(catalogItems.map((item: any) => String(item?.producer?.id || '')).filter(Boolean))];
+        const producerIds: string[] = Array.from(new Set<string>(catalogItems.map((item: any) => String(item?.producer?.id || '')).filter((value: string) => Boolean(value))));
         const metrics = await getProducerFollowMetrics(producerIds).catch(error => {
           console.warn('Producer metrics hydration failed; catalog remains usable without trust badges.', error);
           return [];

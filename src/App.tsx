@@ -1754,7 +1754,7 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
                 <div>
                   <div className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-widest">Seçilen Kategori</div>
                   <div className="text-xl font-serif font-bold text-brand-green dark:text-brand-gold">
-                    {HERO_CATEGORIES.find(c => c.targetCategory === activeFilter)?.title || 'Kategori'}
+                    {heroCategories.find((c: any) => c.targetCategory === activeFilter)?.title || 'Kategori'}
                   </div>
                 </div>
               </div>

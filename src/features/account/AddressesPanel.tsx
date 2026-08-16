@@ -131,10 +131,10 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
                 const value = String((editing as any)[field.key] || '');
                 return (
                   <label key={field.key} className="block">
-                    <span className="text-sm font-semibold">{field.label}{field.required ? ' *' : ''}</span>
+                    <span className="text-sm font-semibold">{field.label}{'required' in field && field.required ? ' *' : ''}</span>
                     <input
                       value={value}
-                      required={field.required}
+                      required={'required' in field ? field.required : false}
                       autoComplete={field.autoComplete}
                       inputMode={'inputMode' in field ? field.inputMode as any : undefined}
                       maxLength={'maxLength' in field ? field.maxLength : undefined}

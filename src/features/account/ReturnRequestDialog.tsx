@@ -15,8 +15,8 @@ export default function ReturnRequestDialog({orderId,onClose,onSubmitted}:{order
  const dialogRef=useDialogA11y(onClose,!loading);const loadingDialogRef=useDialogA11y(onClose,loading);
  async function load(){try{setLoading(true);setError('');const data=await getOrderReturnOptions(orderId);setOptions(data);const next:Record<string,ItemState>={};(data?.items||[]).forEach((item:any)=>{next[item.orderItemId]={selected:false,quantity:Math.min(1,Number(item.remainingQuantity||0)),files:[]};});setItemState(next);}catch(e:any){setError(e?.message||'İade seçenekleri yüklenemedi.');}finally{setLoading(false);}}
  useEffect(()=>{void load();},[orderId]);
- const selectedItems=useMemo(()=>Object.entries(itemState).filter(([,v])=>v.selected),[itemState]);
- const totalFiles=useMemo(()=>Object.values(itemState).reduce((sum,v)=>sum+v.files.length,0),[itemState]);
+ const selectedItems=useMemo(()=>(Object.entries(itemState) as Array<[string,ItemState]>).filter(([,v])=>v.selected),[itemState]);
+ const totalFiles=useMemo(()=>(Object.values(itemState) as ItemState[]).reduce((sum,v)=>sum+v.files.length,0),[itemState]);
  function patchItem(id:string,patch:Partial<ItemState>){setItemState(current=>({...current,[id]:{...current[id],...patch}}));}
  function addFiles(id:string,files:FileList|null){if(!files)return;setError('');const current=itemState[id]?.files||[];const incoming=Array.from(files);for(const file of incoming){if(!allowedTypes.includes(file.type)){setError('Kanıt dosyası JPEG, PNG, WebP veya MP4 olmalıdır.');return;}if(file.size<=0||file.size>maxFileSize){setError('Her kanıt dosyası en fazla 15 MB olabilir.');return;}}if(current.length+incoming.length>5){setError('Bir ürün için en fazla 5 kanıt dosyası ekleyebilirsiniz.');return;}if(totalFiles+incoming.length>15){setError('Bir iade talebinde toplam en fazla 15 kanıt dosyası olabilir.');return;}patchItem(id,{files:[...current,...incoming]});}
  function removeFile(id:string,index:number){patchItem(id,{files:(itemState[id]?.files||[]).filter((_,i)=>i!==index)});}
