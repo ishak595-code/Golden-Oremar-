@@ -55,9 +55,13 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Customer appearance is now a personal device preference rather than the legacy global Firestore `settings/general` theme value.
 - Initial appearance is resolved before first render from the saved device preference or OS color scheme and is synchronized with the native status bar.
 - Light mode now has a real ivory/white surface system with dark forest text and AA-checked green/gold/muted text contrast; dark mode retains the premium forest palette.
+- Account Settings now isolates password/newsletter/notification/session/account-closure errors and success messages inside the relevant panel instead of sharing one misplaced error state.
+- Notification preferences, newsletter, password, session and closure actions have explicit busy guards and duplicate-action protection.
+- Password confirmation exposes mismatch validation to assistive technology and enforces the existing 8-72 character client boundary before backend verification.
+- Account closure now uses an accessible confirmation alert dialog before the existing secure backend request; active closure cancellation has its own busy/error/status feedback.
 
 ## Current active package
-Account settings and remaining account interactions: harden async saving/session/account-closure feedback, busy states, validation/error announcements and destructive-action clarity without changing the existing secure backend contracts.
+Remaining customer account interactions and shared modal reliability: audit profile/avatar, orders and other account actions for focus restoration, destructive-action confirmation, loading/error states and duplicate-action protection without rebuilding completed backend workflows.
 
 ## Release gates still required on Apple hardware
 A real Xcode archive/build, signing check and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
