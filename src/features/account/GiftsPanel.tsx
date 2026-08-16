@@ -1,21 +1,37 @@
-
 import React, { useEffect, useState } from 'react';
 import { listGiftOrders } from './api';
 import { EmptyState, ErrorState, LoadingState, Money, Panel } from './ui';
+import { formatAccountDate, orderStatusLabel } from './presentation';
 
 export default function GiftsPanel({ onStartGift }: { onStartGift?: () => void }) {
-  const [items,setItems]=useState<any[]>([]); const [loading,setLoading]=useState(true); const [error,setError]=useState('');
-  async function load(){try{setLoading(true);setItems(await listGiftOrders());}catch(e:any){setError(e?.message||'Hediyeler yüklenemedi.');}finally{setLoading(false);}}
+  const [items,setItems]=useState<any[]>([]);
+  const [loading,setLoading]=useState(true);
+  const [error,setError]=useState('');
+
+  async function load(){
+    try{
+      setLoading(true);
+      setError('');
+      setItems(await listGiftOrders());
+    }catch(e:any){setError(e?.message||'Hediye siparişleri yüklenemedi.');}
+    finally{setLoading(false);}
+  }
   useEffect(()=>{void load();},[]);
-  if(loading)return <LoadingState/>;
-  return <Panel title="Hediye Ettiklerim" description="Hediye olarak verdiğiniz gerçek siparişler burada görünür.">
-    {error?<ErrorState message={error} onRetry={load}/>:null}
+
+  if(loading)return <LoadingState label="Hediye siparişleri yükleniyor"/>;
+  return <Panel title="Hediye Ettiklerim" description="Hediye olarak verdiğiniz gerçek siparişleri, alıcı ve sipariş durumuyla birlikte izleyin.">
+    {error?<ErrorState message={error} onRetry={()=>void load()}/>:null}
     {!items.length?<EmptyState title="Henüz hediye siparişiniz yok" body="Ürün veya sepet ekranından Hediye Et seçeneğiyle başlayabilirsiniz."
-      action={<button onClick={onStartGift} className="min-h-11 rounded-xl bg-brand-gold px-4 font-bold text-white">Hediye seç</button>}/>:
-    <div className="space-y-3">{items.map(g=><article key={g.orderId} className="rounded-xl border p-4">
-      <div className="flex justify-between gap-3"><div><div className="font-bold">Alıcı: {g.recipientName}</div><div className="text-sm text-gray-500">{g.orderNumber} • {g.status}</div></div>
-      <div className="font-bold"><Money minor={g.totalMinor} currency={g.currency}/></div></div>
-      {g.message?<p className="mt-3 rounded-lg bg-gray-50 dark:bg-gray-800 p-3 text-sm italic">“{g.message}”</p>:null}
-    </article>)}</div>}
+      action={onStartGift?<button type="button" onClick={onStartGift} className="min-h-11 rounded-xl bg-brand-gold px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-green">Hediye seç</button>:undefined}/>:
+    <div className="space-y-3">{items.map(g=>{
+      const date=formatAccountDate(g.createdAt||g.placedAt||g.orderCreatedAt);
+      return <article key={g.orderId} className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0"><div className="font-bold">Alıcı: {g.recipientName}</div><div className="mt-1 text-sm text-gray-500">{g.orderNumber} • {orderStatusLabel(g.status)}</div>{date?<div className="mt-1 text-xs text-gray-500">{date}</div>:null}</div>
+          <div className="font-bold text-brand-green dark:text-brand-gold"><Money minor={g.totalMinor} currency={g.currency}/></div>
+        </div>
+        {g.message?<p className="mt-3 rounded-xl bg-gray-50 p-3 text-sm italic text-gray-700 dark:bg-gray-800 dark:text-gray-200">“{g.message}”</p>:null}
+      </article>;
+    })}</div>}
   </Panel>;
 }
