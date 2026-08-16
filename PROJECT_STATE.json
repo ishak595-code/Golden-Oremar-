@@ -1,8 +1,8 @@
 {
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "appliedMigrationCount": 125,
-  "latestMigration": "20260816230040_replace_storefront_demo_assets_with_live_catalog_assets",
+  "appliedMigrationCount": 126,
+  "latestMigration": "20260816231230_add_public_checkout_payment_readiness_v1",
   "securityAdvisorLints": 0,
   "performanceBlockingLints": 0,
   "edgeFunctions": {
@@ -69,6 +69,7 @@
     "recipe-live-catalog-alignment",
     "admin-section-lazy-splitting-implemented",
     "production-bundle-budget-implemented",
+    "checkout-payment-readiness-contract",
     "react19-types-aligned",
     "cross-platform-mobile-quality-gate-baseline-green"
   ],
@@ -81,5 +82,5 @@
     "production-fcm-apns-provider-configuration",
     "mobile-store-signing-and-release-credentials"
   ],
-  "nextBlock": "live-category-label-polish-payment-provider-readiness-push-dispatch-readiness-accessibility-performance-and-release-audit"
+  "nextBlock": "push-dispatch-readiness-accessibility-performance-and-release-audit"
 }
