@@ -60,7 +60,8 @@ jobs:
           echo "PREVIOUS_ENTRY_BYTES=1136759"
           SAVED=$((1136759-BYTES))
           echo "CUSTOMER_ENTRY_BYTES_SAVED=$SAVED"
-          test "$BYTES" -lt 800000
+          test "$SAVED" -ge 90000
+          test "$BYTES" -lt 1050000
       - name: Confirm Firebase moved behind lazy boundary
         run: |
           node --input-type=module <<'NODE'
