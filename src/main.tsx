@@ -4,9 +4,13 @@ import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary';
 import './index.css';
 import { initNativeFeatures } from './native';
+import { applyThemeToDocument, resolveInitialTheme } from './features/appearance/theme';
 
-// Initialize native specific behavior (StatusBar, Splash, etc.)
-initNativeFeatures();
+const initialTheme = resolveInitialTheme();
+applyThemeToDocument(initialTheme);
+
+// Initialize native specific behavior (StatusBar, Splash, etc.) with the same first-paint theme.
+void initNativeFeatures(initialTheme);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
