@@ -1,8 +1,8 @@
-
 import React,{useEffect,useState}from'react';
 import{FileText,Info,Shield,Undo2}from'lucide-react';
 import{getAccountHelpContent}from'./api';
 import{ErrorState,LoadingState,Panel}from'./ui';
+import FaqPanel from'./FaqPanel';
 
 type Key='about'|'returns'|'privacy'|'terms';
 const meta:Record<Key,{label:string;Icon:any}>={
@@ -14,7 +14,7 @@ const meta:Record<Key,{label:string;Icon:any}>={
 
 export default function SupportPanel({locale='tr',onOpenMessages}:{locale?:string;onOpenMessages?:()=>void}){
  const[data,setData]=useState<any>(null);const[selected,setSelected]=useState<Key|null>(null);const[loading,setLoading]=useState(true);const[error,setError]=useState('');
- async function load(){try{setLoading(true);setData(await getAccountHelpContent(locale));}catch(e:any){setError(e?.message||'Yardım içerikleri yüklenemedi.');}finally{setLoading(false);}}
+ async function load(){try{setLoading(true);setError('');setData(await getAccountHelpContent(locale));}catch(e:any){setError(e?.message||'Yardım içerikleri yüklenemedi.');}finally{setLoading(false);}}
  useEffect(()=>{void load();},[locale]);
  if(loading)return<LoadingState label="Yardım merkezi yükleniyor"/>;
  if(selected&&data?.[selected]){
@@ -27,19 +27,23 @@ export default function SupportPanel({locale='tr',onOpenMessages}:{locale?:strin
        : <div className="whitespace-pre-wrap leading-7">{item.markdown||'İçerik henüz yayınlanmadı.'}</div>}
    </Panel>;
  }
- return<Panel title="Yardım & Destek" description="Yayınlanmış bilgilendirme metinleri ve destek kanalına buradan ulaşabilirsiniz.">
+ return<Panel title="Yardım & Destek" description="Yayınlanmış bilgilendirme metinleri, sık sorulan sorular ve destek kanalına buradan ulaşabilirsiniz.">
    {error?<ErrorState message={error} onRetry={load}/>:null}
-   <div className="space-y-3">
-     {(Object.keys(meta) as Key[]).map(key=>{
-       const item=data?.[key]; if(!item)return null; const Icon=meta[key].Icon;
-       return<button key={key} onClick={()=>setSelected(key)} className="min-h-14 w-full rounded-xl border p-4 text-left">
-         <span className="flex items-center gap-3"><Icon className="h-5 w-5 text-brand-gold"/><span className="font-bold">{item.title||meta[key].label}</span></span>
-       </button>;
-     })}
-     {!data?.terms?<div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-       Kullanım Koşulları için doğrulanmış yayın kaydı henüz yok. Uydurma hukuk metni gösterilmiyor.
-     </div>:null}
-     {onOpenMessages?<button onClick={onOpenMessages} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white">Destek konuşmalarımı aç</button>:null}
+   <div className="space-y-4">
+     <FaqPanel locale={locale}/>
+     <section aria-labelledby="help-policies-title" className="space-y-3">
+       <h2 id="help-policies-title" className="text-lg font-bold">Politikalar & Bilgilendirme</h2>
+       {(Object.keys(meta) as Key[]).map(key=>{
+         const item=data?.[key]; if(!item)return null; const Icon=meta[key].Icon;
+         return<button key={key} onClick={()=>setSelected(key)} className="min-h-14 w-full rounded-xl border p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
+           <span className="flex items-center gap-3"><Icon aria-hidden="true" className="h-5 w-5 text-brand-gold"/><span className="font-bold">{item.title||meta[key].label}</span></span>
+         </button>;
+       })}
+       {!data?.terms?<div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+         Kullanım Koşulları için doğrulanmış yayın kaydı henüz yok. Uydurma hukuk metni gösterilmiyor.
+       </div>:null}
+     </section>
+     {onOpenMessages?<button onClick={onOpenMessages} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Destek konuşmalarımı aç</button>:null}
    </div>
  </Panel>;
 }
