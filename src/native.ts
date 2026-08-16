@@ -5,7 +5,8 @@ import { SplashScreen } from '@capacitor/splash-screen';
 export type NativeTheme = 'light' | 'dark';
 
 function resolveNativeTheme(theme?: string): NativeTheme {
-  if (theme === 'dark' || theme === 'light') return theme;
+  if (theme === 'dark') return 'dark';
+  if (theme === 'light' || theme === 'emerald' || theme === 'ruby' || theme === 'champagne') return 'light';
   if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches) return 'dark';
   return 'light';
 }
