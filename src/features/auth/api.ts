@@ -1,8 +1,11 @@
+import { Browser } from '@capacitor/browser';
 import { Capacitor } from '@capacitor/core';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 
 export const NATIVE_AUTH_CALLBACK_URL = 'com.goldenoremar.app://auth/callback';
+
+export type SocialAuthProvider = 'google' | 'facebook';
 
 export type CustomerSessionStatus = {
   is_authenticated: boolean;
@@ -19,6 +22,17 @@ export type AdminSessionStatus = {
   is_admin: boolean;
   roles: string[];
 };
+
+function envEnabled(value: unknown) {
+  return String(value || '').trim().toLowerCase() === 'true';
+}
+
+export function getSocialAuthAvailability() {
+  return {
+    google: envEnabled(import.meta.env.VITE_GOOGLE_AUTH_ENABLED),
+    facebook: envEnabled(import.meta.env.VITE_FACEBOOK_AUTH_ENABLED),
+  } satisfies Record<SocialAuthProvider, boolean>;
+}
 
 function authCallbackParams(url: string) {
   const parsed = new URL(url);
@@ -137,6 +151,39 @@ export async function signUpWithEmail(input: {
   });
   if (error) throw error;
   return data;
+}
+
+export async function startSocialAuth(provider: SocialAuthProvider) {
+  const available = getSocialAuthAvailability();
+  if (!available[provider]) throw new Error(`social_provider_not_configured:${provider}`);
+
+  const redirect = getConfiguredAuthRedirectUrl();
+  if (!redirect) throw new Error('social_auth_redirect_not_configured');
+
+  const native = Capacitor.isNativePlatform();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo: redirect,
+      skipBrowserRedirect: native,
+    },
+  });
+  if (error) throw error;
+
+  if (native) {
+    if (!data.url) throw new Error('social_auth_authorization_url_missing');
+    await Browser.open({ url: data.url, presentationStyle: 'popover' });
+  }
+  return data;
+}
+
+export async function closeNativeAuthBrowser() {
+  if (!Capacitor.isNativePlatform()) return;
+  try {
+    await Browser.close();
+  } catch {
+    // Some Android browser implementations close themselves when the deep link returns.
+  }
 }
 
 export async function requestPasswordReset(email: string) {
