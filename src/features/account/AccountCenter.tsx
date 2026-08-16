@@ -18,6 +18,8 @@ import ProducerProfilePanel from'./ProducerProfilePanel';
 import NotificationsPanel from'./NotificationsPanel';
 import MessagesPanel from'./MessagesPanel';
 import ReviewsPanel from'./ReviewsPanel';
+import type{AppTheme,PremiumPalette}from'../appearance/theme';
+import type{NotificationSoundId}from'../notifications/notificationSound';
 
 const menu=[
  ['profile','Profilimi Düzenle',UserRound,'Ad, telefon, dil ve izinler'],
@@ -36,9 +38,9 @@ const menu=[
 ] as const;
 
 export default function AccountCenter({
- requestedView,theme,onThemeChange,onOpenProduct,onOpenProducer,onStartGift,onOpenMessages,onOpenNotificationAction,onUnreadNotificationCountChange,onOpenContact,onOpenHealth,onOpenEvents,onOpenAdmin,onOpenSellerApplication,onOpenSellerProductManager,onBack
+ requestedView,theme,palette,notificationSound,onThemeChange,onPaletteChange,onNotificationSoundChange,onPreviewNotificationSound,onOpenProduct,onOpenProducer,onStartGift,onOpenMessages,onOpenNotificationAction,onUnreadNotificationCountChange,onOpenContact,onOpenHealth,onOpenEvents,onOpenAdmin,onOpenSellerApplication,onOpenSellerProductManager,onBack
 }:{
- requestedView?:string; theme?:string; onThemeChange?:(theme:'light'|'dark')=>void; onOpenProduct?:(slug:string)=>void; onOpenProducer?:(slug:string)=>void; onStartGift?:()=>void; onOpenMessages?:()=>void; onOpenNotificationAction?:(url:string,metadata:any)=>void; onUnreadNotificationCountChange?:(count:number)=>void; onOpenContact?:()=>void; onOpenHealth?:()=>void; onOpenEvents?:()=>void; onOpenAdmin?:()=>void; onOpenSellerApplication?:()=>void; onOpenSellerProductManager?:()=>void; onBack?:()=>void;
+ requestedView?:string; theme?:AppTheme; palette?:PremiumPalette; notificationSound?:NotificationSoundId; onThemeChange?:(theme:AppTheme)=>void; onPaletteChange?:(palette:PremiumPalette)=>void; onNotificationSoundChange?:(sound:NotificationSoundId)=>void; onPreviewNotificationSound?:(sound:NotificationSoundId)=>Promise<boolean>|boolean; onOpenProduct?:(slug:string)=>void; onOpenProducer?:(slug:string)=>void; onStartGift?:()=>void; onOpenMessages?:()=>void; onOpenNotificationAction?:(url:string,metadata:any)=>void; onUnreadNotificationCountChange?:(count:number)=>void; onOpenContact?:()=>void; onOpenHealth?:()=>void; onOpenEvents?:()=>void; onOpenAdmin?:()=>void; onOpenSellerApplication?:()=>void; onOpenSellerProductManager?:()=>void; onBack?:()=>void;
 }){
  const[overview,setOverview]=useState<AccountOverview|null>(null);const[view,setView]=useState<AccountView>('home');const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[messageConversationId,setMessageConversationId]=useState('');const[orderDetailId,setOrderDetailId]=useState('');
  const viewContentRef=useRef<HTMLDivElement|null>(null);const homeTitleRef=useRef<HTMLHeadingElement|null>(null);const previousViewRef=useRef<AccountView>('home');
@@ -105,7 +107,7 @@ export default function AccountCenter({
   if(view==='seller')return<SellerPanel producer={overview.producer} onOpenApplication={onOpenSellerApplication} onOpenProductManager={()=>{if(onOpenSellerProductManager)onOpenSellerProductManager();else setView('producer-products');}}/>;
   if(view==='producer-products')return<ProducerProductManager onBack={()=>setView('seller')}/>;
   if(view==='producer-profile-edit')return<ProducerProfilePanel onChanged={refresh}/>;
-  if(view==='settings')return<SettingsPanel closure={overview.account_closure} profile={overview.profile} onChanged={refresh} theme={theme} onThemeChange={onThemeChange}/>;
+  if(view==='settings')return<SettingsPanel closure={overview.account_closure} profile={overview.profile} onChanged={refresh} theme={theme} palette={palette} notificationSound={notificationSound} onThemeChange={onThemeChange} onPaletteChange={onPaletteChange} onNotificationSoundChange={onNotificationSoundChange} onPreviewNotificationSound={onPreviewNotificationSound}/>;
   return null;
  };
 

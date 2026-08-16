@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { useAccessibleDialog } from './features/accessibility/useAccessibleDialog';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { useDeviceTheme } from './features/appearance/useDeviceTheme';import { query } from 'firebase/firestore';
+import React, { useState, useEffect, useCallback, useRef } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { useAccessibleDialog } from './features/accessibility/useAccessibleDialog';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { useDeviceTheme } from './features/appearance/useDeviceTheme';import { useNotificationSound } from './features/notifications/useNotificationSound';import { query } from 'firebase/firestore';
 
 
 const AdminPage = React.lazy(() => import('./pages/AdminPage').then(module => ({ default: module.AdminPage })));
@@ -30,7 +30,7 @@ type AccountTab = 'profile' | 'addresses' | 'payments' | 'notifications' | 'sett
 // --- Main App Component ---
 function AppContent() {
   const { settings, addNotification, currentUser, setCurrentUser, products, recipes, productHealthInfo, blogPosts, staticContent, contactInfo, events, seedDatabase, heroCategories, homeSections } = useData();
-  const { theme: appearanceTheme, setTheme: setAppearanceTheme } = useDeviceTheme();
+  const { theme: appearanceTheme, setTheme: setAppearanceTheme, palette: appearancePalette, setPalette: setAppearancePalette } = useDeviceTheme();
   const [currentTab, setCurrentTab] = useState<Tab>('home');
   const [tabHistory, setTabHistory] = useState<Tab[]>(['home']);
 
@@ -93,7 +93,18 @@ function AppContent() {
 
   const [accountView, setAccountView] = useState<string>('menu');
   const authRecovery = useAuthRecoveryCoordinator();
-  const { unreadCount, setUnreadCount } = useUnreadNotificationCount(!!currentUser);
+  const { sound: notificationSound, setSound: setNotificationSound, previewSound: previewNotificationSound } = useNotificationSound();
+  const { unreadCount, setUnreadCount, hydrated: notificationsHydrated } = useUnreadNotificationCount(!!currentUser);
+  const unreadSoundBaselineRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!currentUser) { unreadSoundBaselineRef.current = null; return; }
+    if (!notificationsHydrated) return;
+    const previous = unreadSoundBaselineRef.current;
+    if (previous === null) { unreadSoundBaselineRef.current = unreadCount; return; }
+    if (unreadCount > previous) void previewNotificationSound();
+    unreadSoundBaselineRef.current = unreadCount;
+  }, [currentUser, notificationsHydrated, unreadCount, previewNotificationSound]);
 
   useEffect(() => {
     if (!authRecovery.callbackHandled) return;
@@ -819,7 +830,12 @@ function AppContent() {
         <AccountCenter
           requestedView={accountView}
           theme={appearanceTheme}
+          palette={appearancePalette}
+          notificationSound={notificationSound}
           onThemeChange={setAppearanceTheme}
+          onPaletteChange={setAppearancePalette}
+          onNotificationSoundChange={setNotificationSound}
+          onPreviewNotificationSound={previewNotificationSound}
           onBack={goBack}
           onOpenProduct={(slug) => {
             setSelectedProduct(null);
