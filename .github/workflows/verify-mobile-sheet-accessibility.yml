@@ -27,6 +27,39 @@ jobs:
           java-version: '21'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Make duplicate sheet selector deterministic
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path=Path('migration-tools/harden-mobile-sheets-a11y.mjs')
+          text=path.read_text()
+          anchor="""function replaceExact(from,to,expected=1){
+           const count=text.split(from).length-1;
+           if(count!==expected)throw new Error(`Expected ${expected}, found ${count}: ${from.slice(0,180)}`);
+           text=text.split(from).join(to);
+          }
+          """
+          addition=anchor+"""function replaceFirstExact(from,to,_expected=1){
+           const count=text.split(from).length-1;
+           if(count!==2)throw new Error(`Expected two shared sheet shells before first replacement, found ${count}`);
+           const index=text.indexOf(from);
+           text=text.slice(0,index)+to+text.slice(index+from.length);
+          }
+          """
+          if text.count(anchor)!=1:
+              raise SystemExit('replaceExact helper anchor changed')
+          text=text.replace(anchor,addition,1)
+          marker="""// Filter dialog shell.
+          replaceExact(
+           '          <div className=\"relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 p-6 pb-12 flex flex-col gap-6 animate-slide-up z-10 text-white\">',
+          """
+          replacement=marker.replace('replaceExact(', 'replaceFirstExact(', 1)
+          if text.count(marker)!=1:
+              raise SystemExit('filter shell marker changed')
+          text=text.replace(marker,replacement,1)
+          path.write_text(text)
+          PY
       - name: Apply sheet accessibility patch
         run: node migration-tools/harden-mobile-sheets-a11y.mjs
       - name: Type-check accessibility hook
