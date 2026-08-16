@@ -35,6 +35,8 @@ jobs:
           set -euo pipefail
           grep -q "detectSessionInUrl: !Capacitor.isNativePlatform()" src/lib/supabase.ts
           grep -q "NATIVE_AUTH_CALLBACK_URL = 'com.goldenoremar.app://auth/callback'" src/features/auth/api.ts
+          grep -q "VITE_NATIVE_AUTH_REDIRECT_URL" src/features/auth/api.ts
+          grep -q "nativeConfigured === NATIVE_AUTH_CALLBACK_URL" src/features/auth/api.ts
           grep -q "native_auth_redirect_not_configured" src/features/auth/api.ts
           grep -q "exchangeCodeForSession" src/features/auth/api.ts
           grep -q "setSession" src/features/auth/api.ts
@@ -44,7 +46,8 @@ jobs:
           grep -q "appUrlOpen" src/features/auth/useAuthRecoveryCoordinator.ts
           grep -q "PasswordRecoveryScreen" src/App.tsx
           grep -q "authRecovery.recoveryPending" src/App.tsx
-          grep -q "com.goldenoremar.app://auth/callback" .env.example
+          grep -q "VITE_AUTH_REDIRECT_URL=" .env.example
+          grep -q "VITE_NATIVE_AUTH_REDIRECT_URL=com.goldenoremar.app://auth/callback" .env.example
           grep -q 'android:scheme="com.goldenoremar.app"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:host="auth"' android/app/src/main/AndroidManifest.xml
           grep -q 'android:pathPrefix="/callback"' android/app/src/main/AndroidManifest.xml
