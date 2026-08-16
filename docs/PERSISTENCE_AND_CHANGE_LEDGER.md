@@ -52,6 +52,10 @@ Kaynak kod veya build dosyaları veritabanına kopyalanmaz. Canlı müşteri/KYC
 - Profil fotoğrafı kaldırma ve ödeme bekleyen siparişi iptal etme gibi destructive müşteri işlemleri backend mutasyonundan önce açık `alertdialog` onayı ister.
 - Sipariş ana dialogu nested iade/cancel dialogu açıkken kendi focus trap'ini durdurur; iki modal aynı anda klavye odağı için yarışmaz.
 - İade talebi ve iade detayı loading durumları gerçek modal overlay/focus trap/Escape/scroll lock sözleşmesini korur.
+- Favori ve takip bırakma gibi geri alınabilir satır mutasyonlarında gereksiz destructive confirmation eklenmez; per-row busy guard, hata/başarı duyurusu ve secure server refresh kullanılır.
+- Takip edilen üretici kartlarında konum veya doğrulama fallback ile uydurulmaz; yalnız backend alanları gösterilir.
+- Hediye ve ödeme geçmişi raw durum kodlarını bilinen durumlar için müşteri diline çevirir, bilinmeyen backend değerlerini kaybetmeden güvenli biçimde insan-okunur sunar.
+- Ödeme ekranı gerçek sağlayıcı bağlanmadan kayıtlı kart kasası veya sahte ödeme yöntemi simüle etmez.
 - Yayınlanmış SSS/Yardım içerik entegrasyonu; olmayan Terms metni uydurulmaz.
 - Yapılandırılmış ürün güvenliği / sağlık uyarıları ve kaynak modeli.
 
@@ -91,6 +95,8 @@ Migration history Supabase'in migration tablosunda tutulmaktadır. Önemli son m
 11. Kullanıcı tetiklediği async mutasyonlarda buton busy iken tekrar çalışmaz; hata ve başarı geri bildirimi işlemin gerçekleştiği panelde gösterilir.
 12. Geri alınması zor destructive müşteri mutasyonları tek dokunuşla yapılmaz; uygun accessible confirmation kullanılır.
 13. Modal focus/scroll/Escape/focus-return davranışı paralel implementasyonlarla çoğaltılmaz; canonical shared dialog hook yeniden kullanılır.
+14. Geri alınabilir list-row mutasyonlarında tüm ekranı kilitlemek yerine ilgili satır busy olur; hata temizlenir, sonuç duyurulur ve server gerçeğiyle yeniden senkronlanır.
+15. Ham backend durum kodu customer UI'da doğrudan bırakılmaz; bilinen değerler okunabilir etikete çevrilir, bilinmeyen değerler kaybolmadan güvenli fallback ile gösterilir.
 
 ## Harici konfigürasyon notu
 Google/Facebook OAuth, ödeme sağlayıcısı, kargo sağlayıcısı ve store signing gibi dış credential gerektiren özellikler; kod hazır olsa bile ilgili sağlayıcı gerçekten yapılandırılmadan "aktif" kabul edilmez.

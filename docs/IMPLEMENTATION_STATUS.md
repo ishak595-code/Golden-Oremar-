@@ -63,9 +63,13 @@ Mobile-first customer experience hardening before admin-panel finalization.
 - Avatar removal and pending-payment order cancellation require explicit accessible destructive confirmation before existing secure backend mutations run.
 - Order detail suppresses its parent focus trap while a nested return/cancellation dialog is open, preventing competing modal focus loops.
 - Return request/detail loading states remain true modal overlays with Escape/focus-return/body-scroll behavior instead of exposing the background screen during asynchronous loading.
+- Favorites and followed-producer rows use per-item async busy guards, local success/error announcements, silent server refresh and focus-visible actions instead of unhandled inline promises.
+- Followed-producer cards never invent a country/location fallback and only display producer/origin verification when the corresponding server-backed flag is true.
+- Gift history and payment history clear stale errors on retry, show premium responsive cards and translate known order/payment status codes into customer-readable labels while preserving unknown server values safely.
+- Payment history remains truthful: only verified backend payment activity is shown; no saved-card vault or fake payment method is simulated before a real provider is integrated.
 
 ## Current active package
-Favorites, followed producers, gifts and payment-history account surfaces: harden retry/error clearing, per-row async busy states, success announcements, focus-visible controls and duplicate-action protection while preserving their existing secure backend contracts.
+Remaining public/customer surfaces outside the completed account core: audit Cart/Checkout, Auth, Events, Contact and Health screens for premium responsive presentation, loading/error/empty-state consistency, focus behavior and duplicate-action protection without changing their completed secure backend contracts.
 
 ## Release gates still required on Apple hardware
 A real Xcode archive/build, signing check and VoiceOver/device pass are required before App Store release; Linux CI cannot substitute for an Apple toolchain build.
