@@ -1,399 +1,174 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, Store, Mail, Phone, MapPin, FileText, Check } from 'lucide-react';
-import { collection, query, where, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import React, { useEffect, useMemo, useState } from 'react';
+import { BadgeCheck, Check, CircleDollarSign, Eye, Loader2, MapPin, Package, RefreshCw, Search, ShieldCheck, ShoppingBag, Store, Users, X, XCircle } from 'lucide-react';
+import {
+  adminListProducers,
+  adminSetProducerCommission,
+  adminSetProducerOriginVerified,
+  adminSetProducerStatus,
+  basisPointsToPercent,
+  producerAdminErrorMessage,
+  type AdminProducer,
+} from './producerAdminApi';
+
+type ActionState =
+  | { type: 'commission'; producer: AdminProducer }
+  | { type: 'status'; producer: AdminProducer; status: 'active' | 'suspended' }
+  | { type: 'origin'; producer: AdminProducer; verified: boolean }
+  | null;
+
+function statusLabel(status: AdminProducer['status']) {
+  return status === 'active' ? 'Aktif' : 'Askıda';
+}
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return 'Bilinmiyor';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Bilinmiyor' : date.toLocaleDateString('tr-TR', { dateStyle: 'medium' });
+}
 
 export function AdminVendors({ setActiveTab }: { setActiveTab?: (tab: string) => void }) {
-  const [vendors, setVendors] = useState<any[]>([]);
+  const [producers, setProducers] = useState<AdminProducer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState('');
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, vendorId: string | null}>({ isOpen: false, vendorId: null });
-  const [selectedVendor, setSelectedVendor] = useState<any>(null);
-  const [editingVendor, setEditingVendor] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    storeName: '',
-    fullName: '',
-    email: '',
-    phone: '',
-    city: '',
-    district: '',
-    tcNo: '',
-    bank_info: '',
-    commission_rate: 10,
-    is_active: true
-  });
-
-  const [toast, setToast] = useState<{message: string, visible: boolean}>({ message: '', visible: false });
+  const [statusFilter, setStatusFilter] = useState<'all' | AdminProducer['status']>('all');
+  const [selected, setSelected] = useState<AdminProducer | null>(null);
+  const [action, setAction] = useState<ActionState>(null);
+  const [reason, setReason] = useState('');
+  const [commissionPercent, setCommissionPercent] = useState(10);
 
   const showToast = (message: string) => {
-    setToast({ message, visible: true });
-    setTimeout(() => setToast({ message: '', visible: false }), 3000);
+    setToast(message);
+    window.setTimeout(() => setToast(''), 3000);
+  };
+
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
+    setError('');
+    try {
+      const rows = await adminListProducers();
+      setProducers(rows);
+      setSelected(current => current ? rows.find(row => row.id === current.id) || null : null);
+    } catch (err) {
+      setError(producerAdminErrorMessage(err, 'Satıcılar yüklenemedi.'));
+    } finally {
+      if (!silent) setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchVendors();
+    void load();
   }, []);
 
-  const fetchVendors = async () => {
-    try {
-      const q = query(collection(db, 'vendors'), where('status', '==', 'active'));
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setVendors(data);
-    } catch (error) {
-      console.error('Error fetching vendors:', error);
-    } finally {
-      setLoading(false);
-    }
+  const filtered = useMemo(() => {
+    const q = searchTerm.trim().toLocaleLowerCase('tr-TR');
+    return producers.filter(producer => {
+      if (statusFilter !== 'all' && producer.status !== statusFilter) return false;
+      if (!q) return true;
+      return `${producer.display_name} ${producer.email} ${producer.phone || ''} ${producer.production_location || ''} ${producer.production_village || ''} ${producer.production_district || ''} ${producer.production_province || ''}`.toLocaleLowerCase('tr-TR').includes(q);
+    });
+  }, [producers, searchTerm, statusFilter]);
+
+  const totals = useMemo(() => ({
+    active: producers.filter(item => item.status === 'active').length,
+    verified: producers.filter(item => item.is_verified).length,
+    originVerified: producers.filter(item => item.origin_verified).length,
+    followers: producers.reduce((sum, item) => sum + item.follower_count, 0),
+  }), [producers]);
+
+  const openAction = (next: NonNullable<ActionState>) => {
+    setAction(next);
+    setReason('');
+    setError('');
+    if (next.type === 'commission') setCommissionPercent(basisPointsToPercent(next.producer.commission_basis_points));
   };
 
-  const handleDelete = async () => {
-    if (!confirmModal.vendorId) return;
+  const submitAction = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!action || busyId) return;
+    setBusyId(action.producer.id);
+    setError('');
     try {
-      await updateDoc(doc(db, 'vendors', confirmModal.vendorId), { status: 'deleted' });
-      fetchVendors();
-      setConfirmModal({ isOpen: false, vendorId: null });
-      showToast('Satıcı başarıyla silindi.');
-    } catch (error) {
-      console.error('Error deleting vendor:', error);
-      showToast('Silme işlemi sırasında bir hata oluştu.');
-    }
-  };
-
-  const handleOpenModal = (vendor = null) => {
-    if (vendor) {
-      setEditingVendor(vendor);
-      setFormData({
-        storeName: vendor.storeName || '',
-        fullName: vendor.fullName || '',
-        email: vendor.email || '',
-        phone: vendor.phone || '',
-        city: vendor.city || '',
-        district: vendor.district || '',
-        tcNo: vendor.tcNo || '',
-        bank_info: vendor.bank_info || '',
-        commission_rate: vendor.commission_rate || 10,
-        is_active: vendor.status === 'active'
-      });
-    } else {
-      setEditingVendor(null);
-      setFormData({
-        storeName: '',
-        fullName: '',
-        email: '',
-        phone: '',
-        city: '',
-        district: '',
-        tcNo: '',
-        bank_info: '',
-        commission_rate: 10,
-        is_active: true
-      });
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingVendor) {
-        await updateDoc(doc(db, 'vendors', editingVendor.id), formData);
+      if (action.type === 'commission') {
+        await adminSetProducerCommission(action.producer.id, commissionPercent);
+        showToast(`Platform komisyonu %${commissionPercent.toLocaleString('tr-TR')} olarak güncellendi.`);
+      } else if (action.type === 'status') {
+        await adminSetProducerStatus(action.producer.id, action.status, reason);
+        showToast(action.status === 'active' ? 'Satıcı yeniden etkinleştirildi.' : 'Satıcı askıya alındı.');
       } else {
-        const newDocRef = doc(collection(db, 'vendors'));
-        await setDoc(newDocRef, { ...formData, status: 'active' });
+        await adminSetProducerOriginVerified(action.producer.id, action.verified, reason);
+        showToast(action.verified ? 'Üretim menşei doğrulandı.' : 'Üretim menşei doğrulaması kaldırıldı.');
       }
-      fetchVendors();
-      setIsModalOpen(false);
-      showToast('Satıcı başarıyla kaydedildi.');
-    } catch (error) {
-      console.error('Error saving vendor:', error);
-      showToast('Bir hata oluştu.');
+      setAction(null);
+      await load(true);
+    } catch (err) {
+      setError(producerAdminErrorMessage(err));
+    } finally {
+      setBusyId('');
     }
   };
 
-  const filteredVendors = vendors.filter(v => 
-    (v.storeName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (v.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  if (loading) return <div className="p-8 text-center">Yükleniyor...</div>;
+  const actionTitle = action?.type === 'commission'
+    ? 'Platform komisyonunu güncelle'
+    : action?.type === 'status'
+      ? action.status === 'active' ? 'Satıcıyı yeniden etkinleştir' : 'Satıcıyı askıya al'
+      : action?.verified ? 'Üretim menşeini doğrula' : 'Menşe doğrulamasını kaldır';
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Satıcı Yönetimi</h2>
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => handleOpenModal()}
-            className="bg-brand-green text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-green-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Yeni Satıcı
-          </button>
+      <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Satıcı Yönetimi</h2>
+          <p className="mt-1 max-w-3xl text-sm text-gray-500 dark:text-gray-400">Aktif üreticiler gerçek Supabase profillerinden gelir. Kimlik doğrulaması, köy ve üretim menşei, komisyon, sipariş, ürün ve takipçi metrikleri ayrı güven katmanları olarak yönetilir.</p>
         </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button type="button" onClick={() => void load()} disabled={loading} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 py-2 text-gray-700 flex items-center justify-center gap-2 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> Yenile</button>
+          <button type="button" onClick={() => setActiveTab?.('vendor-applications')} className="min-h-11 rounded-xl bg-brand-green px-4 py-2 font-semibold text-white hover:bg-green-700"><Store className="mr-2 inline h-4 w-4" aria-hidden="true" /> Satıcı başvuruları</button>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Aktif mağaza</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{totals.active}</div></div>
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Kimliği doğrulanmış</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{totals.verified}</div></div>
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Menşei doğrulanmış</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{totals.originVerified}</div></div>
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">Toplam takipçi</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{totals.followers.toLocaleString('tr-TR')}</div></div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-          <div className="relative max-w-md">
-            <input
-              type="text"
-              placeholder="Mağaza adı veya e-posta ara..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-green outline-none"
-            />
-            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          </div>
-        </div>
+      {error && !action && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600 dark:text-gray-400">
-            <thead className="bg-gray-50 dark:bg-gray-900/50 text-xs uppercase font-semibold text-gray-500">
-              <tr>
-                <th className="px-6 py-4">Mağaza Bilgileri</th>
-                <th className="px-6 py-4">İletişim</th>
-                <th className="px-6 py-4">Konum / TC</th>
-                <th className="px-6 py-4">Durum</th>
-                <th className="px-6 py-4 text-right">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {filteredVendors.map((vendor) => (
-                <tr key={vendor.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
-                        <Store className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="font-bold text-gray-900 dark:text-white">{vendor.storeName}</div>
-                        <div className="text-xs text-gray-500 line-clamp-1">{vendor.district}, {vendor.city}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
-                        {vendor.fullName}
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-500 text-xs">
-                        <Mail className="w-3 h-3" /> {vendor.email}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-gray-900 dark:text-white">
-                        <MapPin className="w-3 h-3 text-gray-400" /> {vendor.city}
-                      </div>
-                      <div className="text-xs text-gray-500">TC: {vendor.tcNo || '-'}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      vendor.status === 'active' ? 'bg-green-100 text-green-700' : 
-                      vendor.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {vendor.status === 'active' ? 'Onaylı' : 
-                       vendor.status === 'pending' ? 'Onay Bekliyor' : 'Reddedildi'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button 
-                        onClick={() => handleOpenModal(vendor)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => setConfirmModal({ isOpen: true, vendorId: vendor.id })}
-                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:grid-cols-[minmax(0,1fr)_200px]">
+        <label className="relative"><span className="sr-only">Satıcı ara</span><Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" aria-hidden="true" /><input type="search" value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Mağaza, e-posta, telefon, köy veya il ara..." className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
+        <label><span className="sr-only">Satıcı durumu</span><select value={statusFilter} onChange={event => setStatusFilter(event.target.value as typeof statusFilter)} className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="all">Tüm durumlar</option><option value="active">Aktif</option><option value="suspended">Askıda</option></select></label>
       </div>
 
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-700 shrink-0">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                {editingVendor ? 'Satıcıyı Düzenle' : 'Yeni Satıcı Ekle'}
-              </h3>
-            </div>
-            <div className="p-6 overflow-y-auto flex-1">
-              <form id="vendorForm" onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mağaza Adı</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.storeName}
-                      onChange={(e) => setFormData({...formData, storeName: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Yetkili Kişi</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.fullName}
-                      onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">E-posta</label>
-                    <input
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefon</label>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">İl</label>
-                    <input
-                      type="text"
-                      value={formData.city}
-                      onChange={(e) => setFormData({...formData, city: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">İlçe</label>
-                    <input
-                      type="text"
-                      value={formData.district}
-                      onChange={(e) => setFormData({...formData, district: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">T.C. Kimlik / Vergi No</label>
-                    <input
-                      type="text"
-                      value={formData.tcNo}
-                      onChange={(e) => setFormData({...formData, tcNo: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Banka Bilgileri (IBAN)</label>
-                    <textarea
-                      value={formData.bank_info}
-                      onChange={(e) => setFormData({...formData, bank_info: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                      rows={2}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Komisyon Oranı (%)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      required
-                      value={formData.commission_rate}
-                      onChange={(e) => setFormData({...formData, commission_rate: Number(e.target.value)})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2 mt-4">
-                  <input
-                    type="checkbox"
-                    id="is_active"
-                    checked={formData.is_active}
-                    onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-                    className="w-4 h-4 text-brand-green rounded border-gray-300 focus:ring-brand-green"
-                  />
-                  <label htmlFor="is_active" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Aktif
-                  </label>
-                </div>
-              </form>
-            </div>
-            <div className="p-6 border-t border-gray-100 dark:border-gray-700 shrink-0 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
-              >
-                İptal
-              </button>
-              <button
-                type="submit"
-                form="vendorForm"
-                className="px-4 py-2 rounded-xl bg-brand-green text-white hover:bg-green-700 transition-colors"
-              >
-                Kaydet
-              </button>
-            </div>
-          </div>
+      {loading ? <div role="status" className="flex min-h-40 items-center justify-center gap-2 rounded-2xl border border-gray-100 bg-white text-gray-500 dark:border-gray-700 dark:bg-gray-800"><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Satıcılar yükleniyor...</div> : <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-label="Satıcı listesi">
+        <div className="divide-y divide-gray-100 dark:divide-gray-700 lg:hidden">
+          {filtered.map(producer => <article key={producer.id} className="p-4"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-green/10 text-brand-green"><Store className="h-5 w-5" aria-hidden="true" /></div><div className="min-w-0"><h3 className="truncate font-bold text-gray-900 dark:text-white">{producer.display_name}</h3><p className="truncate text-xs text-gray-500">{producer.production_location || 'Üretim yeri belirtilmemiş'}</p></div></div><button type="button" onClick={() => setSelected(producer)} className="min-h-11 min-w-11 rounded-xl p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30" aria-label={`${producer.display_name} satıcısını incele`}><Eye className="mx-auto h-5 w-5" aria-hidden="true" /></button></div><div className="mt-3 flex flex-wrap gap-2 text-xs"><span className={`rounded-full px-2.5 py-1 font-semibold ${producer.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200'}`}>{statusLabel(producer.status)}</span>{producer.is_verified && <span className="rounded-full bg-blue-100 px-2.5 py-1 font-semibold text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">Kimlik doğrulandı</span>}{producer.origin_verified && <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">Menşe doğrulandı</span>}</div><dl className="mt-4 grid grid-cols-4 gap-2 text-center"><div className="rounded-lg bg-gray-50 p-2 dark:bg-gray-900/60"><dt className="text-[11px] text-gray-500">Ürün</dt><dd className="font-bold text-gray-900 dark:text-white">{producer.product_count}</dd></div><div className="rounded-lg bg-gray-50 p-2 dark:bg-gray-900/60"><dt className="text-[11px] text-gray-500">Sipariş</dt><dd className="font-bold text-gray-900 dark:text-white">{producer.order_count}</dd></div><div className="rounded-lg bg-gray-50 p-2 dark:bg-gray-900/60"><dt className="text-[11px] text-gray-500">Takipçi</dt><dd className="font-bold text-gray-900 dark:text-white">{producer.follower_count}</dd></div><div className="rounded-lg bg-gray-50 p-2 dark:bg-gray-900/60"><dt className="text-[11px] text-gray-500">Komisyon</dt><dd className="font-bold text-gray-900 dark:text-white">%{basisPointsToPercent(producer.commission_basis_points).toLocaleString('tr-TR')}</dd></div></dl></article>)}
         </div>
-      )}
 
-      {/* Confirm Modal */}
-      {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center animate-fade-in">
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-8 h-8 text-red-600 dark:text-red-500" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Emin misiniz?</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
-              Bu satıcıyı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmModal({ isOpen: false, vendorId: null })}
-                className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              >
-                İptal
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
-              >
-                Evet, Sil
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        <div className="hidden overflow-x-auto lg:block"><table className="w-full text-left text-sm text-gray-600 dark:text-gray-300"><thead className="bg-gray-50 text-xs uppercase font-semibold text-gray-500 dark:bg-gray-900/50"><tr><th className="px-6 py-4">Mağaza</th><th className="px-6 py-4">Doğrulama</th><th className="px-6 py-4">Metrikler</th><th className="px-6 py-4">Komisyon</th><th className="px-6 py-4">Durum</th><th className="px-6 py-4 text-right">İşlem</th></tr></thead><tbody className="divide-y divide-gray-100 dark:divide-gray-700">{filtered.map(producer => <tr key={producer.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40"><td className="px-6 py-4"><div className="font-semibold text-gray-900 dark:text-white">{producer.display_name}</div><div className="mt-1 text-xs text-gray-500">{producer.email}</div><div className="mt-1 flex items-center gap-1 text-xs text-gray-500"><MapPin className="h-3.5 w-3.5" aria-hidden="true" /> {producer.production_location || 'Belirtilmemiş'}</div></td><td className="px-6 py-4"><div className="space-y-1 text-xs"><div className={producer.is_verified ? 'text-blue-700 dark:text-blue-300' : 'text-gray-500'}>{producer.is_verified ? 'Kimlik doğrulandı' : 'Kimlik doğrulanmadı'}</div><div className={producer.origin_verified ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-500'}>{producer.origin_verified ? 'Menşe doğrulandı' : 'Menşe doğrulanmadı'}</div></div></td><td className="px-6 py-4"><div className="grid grid-cols-3 gap-3 text-center text-xs"><div><div className="font-bold text-gray-900 dark:text-white">{producer.product_count}</div><div className="text-gray-500">ürün</div></div><div><div className="font-bold text-gray-900 dark:text-white">{producer.order_count}</div><div className="text-gray-500">sipariş</div></div><div><div className="font-bold text-gray-900 dark:text-white">{producer.follower_count}</div><div className="text-gray-500">takipçi</div></div></div></td><td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">%{basisPointsToPercent(producer.commission_basis_points).toLocaleString('tr-TR')}</td><td className="px-6 py-4"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${producer.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200' : 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200'}`}>{statusLabel(producer.status)}</span></td><td className="px-6 py-4 text-right"><button type="button" onClick={() => setSelected(producer)} className="min-h-11 min-w-11 rounded-lg p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30" aria-label={`${producer.display_name} satıcısını incele`}><Eye className="mx-auto h-4 w-4" aria-hidden="true" /></button></td></tr>)}</tbody></table></div>
+        {filtered.length === 0 && <div className="p-10 text-center text-gray-500">Filtrelerle eşleşen satıcı yok.</div>}
+      </section>}
 
-      {/* Toast Notification */}
-      {toast.visible && (
-        <div className="fixed bottom-4 right-4 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 animate-fade-in">
-          <Check className="w-5 h-5 text-green-400" />
-          <span className="font-medium">{toast.message}</span>
+      {selected && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget && !busyId) setSelected(null); }}><section role="dialog" aria-modal="true" aria-labelledby="producer-detail-title" className="max-h-[95dvh] w-full max-w-3xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl dark:bg-gray-800 sm:rounded-2xl sm:p-6"><div className="flex items-start justify-between gap-4"><div><h3 id="producer-detail-title" className="text-xl font-bold text-gray-900 dark:text-white">{selected.display_name}</h3><p className="mt-1 text-sm text-gray-500">{selected.email}{selected.phone ? ` · ${selected.phone}` : ''}</p></div><button type="button" onClick={() => setSelected(null)} className="min-h-11 min-w-11 rounded-xl p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700" aria-label="Satıcı detayını kapat"><X className="mx-auto h-5 w-5" aria-hidden="true" /></button></div>
+
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="flex items-center gap-2 text-xs text-gray-500"><Package className="h-4 w-4" aria-hidden="true" /> Ürün</div><div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{selected.product_count}</div></div><div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="flex items-center gap-2 text-xs text-gray-500"><ShoppingBag className="h-4 w-4" aria-hidden="true" /> Sipariş</div><div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{selected.order_count}</div></div><div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="flex items-center gap-2 text-xs text-gray-500"><Users className="h-4 w-4" aria-hidden="true" /> Takipçi</div><div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">{selected.follower_count}</div></div><div className="rounded-xl bg-gray-50 p-4 dark:bg-gray-900/60"><div className="flex items-center gap-2 text-xs text-gray-500"><CircleDollarSign className="h-4 w-4" aria-hidden="true" /> Komisyon</div><div className="mt-1 text-xl font-bold text-gray-900 dark:text-white">%{basisPointsToPercent(selected.commission_basis_points).toLocaleString('tr-TR')}</div></div></div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2"><section className="rounded-2xl border border-gray-100 p-4 dark:border-gray-700"><h4 className="font-bold text-gray-900 dark:text-white">Doğrulama ve durum</h4><div className="mt-4 space-y-3 text-sm"><div className="flex items-center justify-between gap-3"><span className="text-gray-500">Mağaza durumu</span><span className="font-semibold text-gray-900 dark:text-white">{statusLabel(selected.status)}</span></div><div className="flex items-center justify-between gap-3"><span className="text-gray-500">Kimlik doğrulama</span><span className={selected.is_verified ? 'font-semibold text-blue-700 dark:text-blue-300' : 'font-semibold text-red-700 dark:text-red-300'}>{selected.is_verified ? 'Doğrulandı' : 'Doğrulanmadı'}</span></div><div className="flex items-center justify-between gap-3"><span className="text-gray-500">Menşe doğrulama</span><span className={selected.origin_verified ? 'font-semibold text-emerald-700 dark:text-emerald-300' : 'font-semibold text-gray-700 dark:text-gray-200'}>{selected.origin_verified ? 'Doğrulandı' : 'Doğrulanmadı'}</span></div><div className="flex items-center justify-between gap-3"><span className="text-gray-500">Kimlik doğrulama tarihi</span><span className="text-right text-gray-900 dark:text-white">{formatDate(selected.verified_at)}</span></div><div className="flex items-center justify-between gap-3"><span className="text-gray-500">Yeniden doğrulama</span><span className="text-right text-gray-900 dark:text-white">{formatDate(selected.verification_due_at)}</span></div></div></section>
+
+          <section className="rounded-2xl border border-gray-100 p-4 dark:border-gray-700"><h4 className="font-bold text-gray-900 dark:text-white">Üretim menşei</h4><dl className="mt-4 space-y-3 text-sm"><div><dt className="text-xs text-gray-500">Tam konum</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.production_location || 'Belirtilmemiş'}</dd></div><div><dt className="text-xs text-gray-500">Köy</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.production_village || 'Belirtilmemiş'}{selected.production_village_is_custom ? ' · kullanıcı girişi' : ''}</dd></div><div><dt className="text-xs text-gray-500">İlçe / il / ülke</dt><dd className="mt-1 text-gray-900 dark:text-white">{[selected.production_district, selected.production_province, selected.production_country_code].filter(Boolean).join(' / ') || 'Belirtilmemiş'}</dd></div><div><dt className="text-xs text-gray-500">Menşe doğrulama temeli</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.origin_verification_basis || 'Henüz doğrulanmadı'}</dd></div></dl></section>
         </div>
-      )}
+
+        <section className="mt-4 rounded-2xl border border-gray-100 p-4 dark:border-gray-700"><h4 className="font-bold text-gray-900 dark:text-white">Mağaza açıklaması</h4><p className="mt-2 whitespace-pre-wrap text-sm text-gray-600 dark:text-gray-300">{selected.description || 'Açıklama girilmemiş.'}</p><div className="mt-3 text-xs text-gray-500">Mağaza oluşturma tarihi: {formatDate(selected.created_at)} · Puan: {selected.rating_average.toLocaleString('tr-TR', { maximumFractionDigits: 2 })} / 5 ({selected.rating_count} değerlendirme)</div></section>
+
+        <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><button type="button" onClick={() => openAction({ type: 'commission', producer: selected })} className="min-h-11 rounded-xl border border-gray-200 px-3 py-2 font-semibold text-gray-700 hover:border-brand-green hover:text-brand-green dark:border-gray-700 dark:text-gray-200">Komisyonu düzenle</button>{selected.status === 'active' ? <button type="button" onClick={() => openAction({ type: 'status', producer: selected, status: 'suspended' })} className="min-h-11 rounded-xl border border-red-200 px-3 py-2 font-semibold text-red-700 hover:bg-red-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30"><XCircle className="mr-1 inline h-4 w-4" aria-hidden="true" /> Askıya al</button> : <button type="button" onClick={() => openAction({ type: 'status', producer: selected, status: 'active' })} className="min-h-11 rounded-xl border border-green-200 px-3 py-2 font-semibold text-green-700 hover:bg-green-50 dark:border-green-900/50 dark:text-green-300 dark:hover:bg-green-950/30"><CheckCircle className="mr-1 inline h-4 w-4" aria-hidden="true" /> Etkinleştir</button>}{selected.origin_verified ? <button type="button" onClick={() => openAction({ type: 'origin', producer: selected, verified: false })} className="min-h-11 rounded-xl border border-orange-200 px-3 py-2 font-semibold text-orange-700 hover:bg-orange-50 dark:border-orange-900/50 dark:text-orange-300">Menşe onayını kaldır</button> : <button type="button" disabled={!selected.is_verified} onClick={() => openAction({ type: 'origin', producer: selected, verified: true })} className="min-h-11 rounded-xl border border-emerald-200 px-3 py-2 font-semibold text-emerald-700 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-emerald-900/50 dark:text-emerald-300"><BadgeCheck className="mr-1 inline h-4 w-4" aria-hidden="true" /> Menşei doğrula</button>}<button type="button" onClick={() => setActiveTab?.('vendor-applications')} className="min-h-11 rounded-xl bg-gray-900 px-3 py-2 font-semibold text-white hover:bg-black dark:bg-gray-600 dark:hover:bg-gray-500">Başvuru kaydı</button></div>
+      </section></div>}
+
+      {action && <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/65 p-0 sm:items-center sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget && !busyId) setAction(null); }}><section role="dialog" aria-modal="true" aria-labelledby="producer-action-title" className="w-full max-w-lg rounded-t-3xl bg-white p-5 shadow-2xl dark:bg-gray-800 sm:rounded-2xl"><div className="flex items-start justify-between gap-3"><div><h3 id="producer-action-title" className="text-lg font-bold text-gray-900 dark:text-white">{actionTitle}</h3><p className="mt-1 text-sm text-gray-500">{action.producer.display_name}</p></div><button type="button" onClick={() => setAction(null)} disabled={Boolean(busyId)} className="min-h-11 min-w-11 rounded-xl p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-50 dark:hover:bg-gray-700" aria-label="İşlem penceresini kapat"><X className="mx-auto h-5 w-5" aria-hidden="true" /></button></div>{error && <div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}<form onSubmit={submitAction} className="mt-4 space-y-4">{action.type === 'commission' ? <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Platform komisyonu (%)</span><input autoFocus type="number" min="0" max="30" step="0.01" value={commissionPercent} onChange={event => setCommissionPercent(Number(event.target.value))} className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /><span className="mt-1 block text-xs text-gray-500">Sunucuya basis point olarak kaydedilir. %10 = 1000.</span></label> : <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Yönetim gerekçesi</span><textarea autoFocus required={action.type === 'origin' || (action.type === 'status' && action.status === 'suspended')} minLength={action.type === 'origin' || (action.type === 'status' && action.status === 'suspended') ? 10 : undefined} maxLength={1000} rows={4} value={reason} onChange={event => setReason(event.target.value)} placeholder="Denetlenebilir karar gerekçesini yazın..." className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>}<div className="flex gap-3"><button type="button" disabled={Boolean(busyId)} onClick={() => setAction(null)} className="min-h-11 flex-1 rounded-xl px-4 text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700">İptal</button><button type="submit" disabled={Boolean(busyId)} className={`min-h-11 flex-1 rounded-xl px-4 font-semibold text-white disabled:opacity-50 ${action.type === 'status' && action.status === 'suspended' ? 'bg-red-700 hover:bg-red-800' : 'bg-brand-green hover:bg-green-700'}`}>{busyId ? <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> İşleniyor</span> : <span className="flex items-center justify-center gap-2"><ShieldCheck className="h-4 w-4" aria-hidden="true" /> Onayla</span>}</button></div></form></section></div>}
+
+      {toast && <div role="status" className="fixed bottom-4 right-4 z-[70] flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-white shadow-2xl"><Check className="h-5 w-5 text-green-400" aria-hidden="true" /> {toast}</div>}
     </div>
   );
 }
