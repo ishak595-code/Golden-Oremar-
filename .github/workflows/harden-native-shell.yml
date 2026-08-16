@@ -1,0 +1,82 @@
+name: Harden Native Shell
+
+on:
+  push:
+    branches: [agent/native-identity-shell-hardening]
+    paths:
+      - '.github/workflows/harden-native-shell.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Apply native shell hardening
+        run: node migration-tools/harden-native-shell.mjs
+      - name: Production web build
+        run: npm run build
+      - name: Regenerate Capacitor native web/config bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx cap copy android
+          npx cap copy ios
+      - name: Validate native identity and shell contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'namespace = "com.goldenoremar.app"' android/app/build.gradle
+          grep -q 'applicationId "com.goldenoremar.app"' android/app/build.gradle
+          test -f android/app/src/main/java/com/goldenoremar/app/MainActivity.kt
+          test ! -f android/app/src/main/java/com/market/app/MainActivity.kt
+          grep -q '^package com.goldenoremar.app$' android/app/src/main/java/com/goldenoremar/app/MainActivity.kt
+          grep -q '<string name="app_name">Golden Oremar</string>' android/app/src/main/res/values/strings.xml
+          grep -q '<string name="package_name">com.goldenoremar.app</string>' android/app/src/main/res/values/strings.xml
+          grep -q 'android:allowBackup="false"' android/app/src/main/AndroidManifest.xml
+          test "$(grep -c 'PRODUCT_BUNDLE_IDENTIFIER = com.goldenoremar.app;' ios/App/App.xcodeproj/project.pbxproj)" -eq 2
+          grep -q '<string>Golden Oremar</string>' ios/App/App/Info.plist
+          ! grep -R -q 'com.market.app' android/app/build.gradle android/app/src/main/java android/app/src/main/res ios/App/App/Info.plist ios/App/App.xcodeproj/project.pbxproj capacitor.config.ts
+          ! grep -R -q 'E-Ticaret' android/app/src/main/res ios/App/App/Info.plist
+          grep -q "syncNativeAppearance(settings.theme)" src/App.tsx
+          grep -q "if (isSearchFocused)" src/App.tsx
+          grep -q "if (showGiftModal)" src/App.tsx
+          grep -q "if (currentTab === 'account' && accountView !== 'menu')" src/App.tsx
+          ! grep -q 'CapApp.removeAllListeners' src/App.tsx
+          ! grep -q 'Network.removeAllListeners' src/App.tsx
+          grep -q 'env(safe-area-inset-top)' src/index.css
+          grep -q 'env(safe-area-inset-bottom)' src/index.css
+          python - <<'PY'
+          import plistlib
+          with open('ios/App/App/Info.plist','rb') as f:
+              plist=plistlib.load(f)
+          assert plist['CFBundleDisplayName']=='Golden Oremar'
+          print('iOS plist validated')
+          PY
+      - name: Compile Android debug app
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --no-daemon
+      - name: Commit verified native shell
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/audit-native-shell.yml
+          rm -f .github/workflows/harden-native-shell.yml
+          rm -f migration-tools/harden-native-shell.mjs
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'Unify native identity and harden mobile shell'
+          git push origin HEAD:agent/native-identity-shell-hardening
