@@ -40,7 +40,7 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
  return <article className="flex h-full flex-col overflow-hidden rounded-3xl border border-brand-gold/10 bg-brand-card shadow-sm transition-shadow hover:shadow-lg">
   <div className="relative aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-800">
    <button onClick={onClick} className="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold" aria-label={`${product?.name||'Ürün'} detayını aç`}>
-    {product?.image?<img src={product.image} alt={product?.name||'Ürün görseli'} loading="lazy" className="h-full w-full object-cover transition-transform duration-300 motion-safe:hover:scale-[1.03]"/>:<div className="grid h-full place-items-center text-sm text-gray-500">Görsel henüz eklenmedi</div>}
+    {product?.image?<img src={product.image} alt={product?.name||'Ürün görseli'} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 motion-safe:hover:scale-[1.03]"/>:<div className="grid h-full place-items-center text-sm text-gray-500">Görsel henüz eklenmedi</div>}
    </button>
    {badges.length?<div className="pointer-events-none absolute left-3 top-3 flex max-w-[75%] flex-wrap gap-2">{badges.map(badge=><span key={badge.key} className={`rounded-full px-3 py-1 text-xs font-bold ${badge.className}`}>{badge.label}</span>)}</div>:null}
    <div className="absolute right-3 top-3 flex gap-2">

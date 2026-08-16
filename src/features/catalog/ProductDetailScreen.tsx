@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useState}from'react';
+import React,{useEffect,useMemo,useRef,useState}from'react';
 import{ArrowLeft,CheckCircle2,Copy,ExternalLink,Gift,Heart,MapPin,Minus,PackageCheck,Plus,QrCode,ShoppingCart,Star,Store,Truck}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProductFavorite}from'./api';import ProductSafetyPanel from'../content/ProductSafetyPanel';import{getProductSafety}from'../content/productSafetyApi';
 import{setCartItem}from'../cart/api';
@@ -24,8 +24,25 @@ const exportText:Record<string,string>={
 
 export default function ProductDetailScreen({reference,authenticated,favoriteReferences=[],onFavoriteChanged,onBack,onLoginRequired,onCartChanged,onGift,onProducer}:Props){
  const[detail,setDetail]=useState<any>(null);const[safetyContent,setSafetyContent]=useState<any>(null);const[reviews,setReviews]=useState<any>(null);const[variantId,setVariantId]=useState('');const[quantity,setQuantity]=useState(1);const[selectedImagePath,setSelectedImagePath]=useState('');const[loading,setLoading]=useState(true);const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[status,setStatus]=useState('');const[favoriteOverride,setFavoriteOverride]=useState<boolean|null>(null);
- async function load(){try{setLoading(true);setError('');setStatus('');setFavoriteOverride(null);const product=await getProductDetail(reference);setDetail(product);const defaultVariant=product?.variants?.find((v:any)=>v.default&&v.available!==false)||product?.variants?.find((v:any)=>v.available!==false)||product?.variants?.[0];setVariantId(defaultVariant?.id||'');setQuantity(1);const firstImage=product?.images?.find((i:any)=>i.primary)||product?.images?.[0];setSelectedImagePath(firstImage?.path||'');if(product?.id){try{setReviews(await listProductReviews(product.id,20,0));}catch{setReviews(null);}}else setReviews(null);}catch(err:any){setError(err?.message||'Ürün bilgileri yüklenemedi.');}finally{setLoading(false);}}
- useEffect(()=>{void load();},[reference]);
+ const requestId=useRef(0);
+ async function load(){
+  const current=++requestId.current;
+  try{
+   setLoading(true);setError('');setStatus('');setFavoriteOverride(null);setDetail(null);setReviews(null);
+   const product=await getProductDetail(reference);
+   if(requestId.current!==current)return;
+   setDetail(product);
+   const defaultVariant=product?.variants?.find((v:any)=>v.default&&v.available!==false)||product?.variants?.find((v:any)=>v.available!==false)||product?.variants?.[0];
+   setVariantId(defaultVariant?.id||'');setQuantity(1);
+   const firstImage=product?.images?.find((i:any)=>i.primary)||product?.images?.[0];setSelectedImagePath(firstImage?.path||'');
+   if(product?.id){
+    try{const nextReviews=await listProductReviews(product.id,20,0);if(requestId.current===current)setReviews(nextReviews);}
+    catch{if(requestId.current===current)setReviews(null);}
+   }
+  }catch(err:any){if(requestId.current===current)setError(err?.message||'Ürün bilgileri yüklenemedi.');}
+  finally{if(requestId.current===current)setLoading(false);}
+ }
+ useEffect(()=>{void load();return()=>{requestId.current+=1;};},[reference]);
  useEffect(()=>{let active=true;setSafetyContent(null);getProductSafety(reference,'tr').then(data=>{if(active)setSafetyContent(data);}).catch(error=>{console.warn('Structured product safety content unavailable.',error);if(active)setSafetyContent(null);});return()=>{active=false;};},[reference]);
  const variant=useMemo(()=>detail?.variants?.find((item:any)=>item.id===variantId)||null,[detail,variantId]);
  const images=Array.isArray(detail?.images)?detail.images:[];const selectedImage=images.find((item:any)=>item.path===selectedImagePath)||images.find((item:any)=>item.primary)||images[0]||null;
@@ -44,8 +61,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
   {error?<div role="alert" className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>:null}{status?<div role="status" aria-live="polite" className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800">{status}</div>:null}
   <div className="grid gap-7 lg:grid-cols-2">
    <section aria-label="Ürün görselleri">
-    <div className="overflow-hidden rounded-3xl border bg-gray-100 dark:bg-gray-800">{selectedImage?.path?<img src={publicCatalogUrl(selectedImage.path)} alt={selectedImage.alt||detail.name} className="aspect-square h-full w-full object-cover"/>:<div className="grid aspect-square place-items-center text-gray-400">Görsel henüz eklenmedi</div>}</div>
-    {images.length>1?<div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">{images.slice(0,12).map((img:any,index:number)=><button key={`${img.path}:${index}`} onClick={()=>setSelectedImagePath(img.path)} aria-label={`${detail.name} görseli ${index+1} görüntüle`} aria-pressed={selectedImage?.path===img.path} className={`overflow-hidden rounded-xl border focus-visible:ring-2 focus-visible:ring-brand-gold ${selectedImage?.path===img.path?'border-brand-gold ring-2 ring-brand-gold/30':''}`}><img src={publicCatalogUrl(img.path)} alt={img.alt||`${detail.name} küçük görsel ${index+1}`} className="aspect-square h-full w-full object-cover"/></button>)}</div>:null}
+    <div className="overflow-hidden rounded-3xl border bg-gray-100 dark:bg-gray-800">{selectedImage?.path?<img src={publicCatalogUrl(selectedImage.path)} alt={selectedImage.alt||detail.name} loading="eager" decoding="async" fetchPriority="high" className="aspect-square h-full w-full object-cover"/>:<div className="grid aspect-square place-items-center text-gray-400">Görsel henüz eklenmedi</div>}</div>
+    {images.length>1?<div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6">{images.slice(0,12).map((img:any,index:number)=><button key={`${img.path}:${index}`} onClick={()=>setSelectedImagePath(img.path)} aria-label={`${detail.name} görseli ${index+1} görüntüle`} aria-pressed={selectedImage?.path===img.path} className={`overflow-hidden rounded-xl border focus-visible:ring-2 focus-visible:ring-brand-gold ${selectedImage?.path===img.path?'border-brand-gold ring-2 ring-brand-gold/30':''}`}><img src={publicCatalogUrl(img.path)} alt={img.alt||`${detail.name} küçük görsel ${index+1}`} loading="lazy" decoding="async" className="aspect-square h-full w-full object-cover"/></button>)}</div>:null}
    </section>
    <section>
     <div className="text-sm font-semibold text-brand-gold">{detail.category?.name}</div><h1 className="mt-1 text-3xl font-bold text-brand-green dark:text-brand-gold">{detail.name}</h1>{detail.shortDescription?<p className="mt-3 leading-7 text-gray-600 dark:text-gray-300">{detail.shortDescription}</p>:null}
