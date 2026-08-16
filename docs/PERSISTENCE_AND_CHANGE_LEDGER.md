@@ -43,6 +43,9 @@ Kaynak kod veya build dosyaları veritabanına kopyalanmaz. Canlı müşteri/KYC
 - Mobil alt gezinme: `nav` landmark, `aria-current`, safe-area ve okunabilir 11px etiketler.
 - Hesap alt görünüm focus yönetimi ve ortak panel heading semantiği.
 - Adres ekle/düzenle için shared accessible-dialog davranışı; adres silmede destructive confirmation; duplicate-action guards ve canlı durum geri bildirimi.
+- Kişisel görünüm tercihi cihazda `golden-oremar:appearance-theme:v1` anahtarıyla tutulur; müşteri tema seçimi legacy global Firestore ayarına yazılmaz.
+- İlk render öncesi kaydedilmiş tema veya OS color-scheme uygulanır ve native status bar aynı tema ile senkronlanır.
+- Aydınlık tema gerçek açık yüzey/koyu metin tokenlarına taşınmıştır; temel light kart üzerindeki ana metin/yeşil/altın/muted metin kontrastları otomatik kontrol edilir.
 - Yayınlanmış SSS/Yardım içerik entegrasyonu; olmayan Terms metni uydurulmaz.
 - Yapılandırılmış ürün güvenliği / sağlık uyarıları ve kaynak modeli.
 
@@ -78,6 +81,7 @@ Migration history Supabase'in migration tablosunda tutulmaktadır. Önemli son m
 7. Harici sağlayıcı credential'ları source code'a yazılmaz.
 8. Daha güçlü canonical bileşen mevcutsa daha zayıf paralel UI korunmaz; iş mantığı kopyalanmadan canonical yol yeniden kullanılır.
 9. Kullanıcı-facing trust/organic/health/verification bilgisi yalnız server-backed doğrulanmış kaynaktan gösterilir; fallback ile güven rozeti üretilmez.
+10. Cihaza/kişiye özel görünüm tercihi global admin/site ayarına yazılmaz; kullanıcı cihaz tercihi ile yönetim ayarı ayrı tutulur.
 
 ## Harici konfigürasyon notu
 Google/Facebook OAuth, ödeme sağlayıcısı, kargo sağlayıcısı ve store signing gibi dış credential gerektiren özellikler; kod hazır olsa bile ilgili sağlayıcı gerçekten yapılandırılmadan "aktif" kabul edilmez.

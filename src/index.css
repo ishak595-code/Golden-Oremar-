@@ -12,9 +12,9 @@
   --color-gray-200: #D5DDD8;
   --color-gray-300: #B8C9C0;
   --color-gray-400: #95A89E;
-  --color-gray-500: #72877D;
-  --color-gray-600: #546B60;
-  --color-gray-700: #3A4D44;
+  --color-gray-500: #667A70;
+  --color-gray-600: #4B6156;
+  --color-gray-700: #35483F;
   --color-gray-800: #24332D;
   --color-gray-900: #121C18;
   
@@ -30,32 +30,36 @@
 }
 
 :root {
-  /* Default Theme (Prestigious Vibrant Dark Green) */
-  --bg-main: #0B2519; /* Deep Emerald/Forest Green but slightly richer */
-  --bg-card: #113322; /* Slightly lighter green for cards */
-  --text-main: #FAFAF8; /* Very light ivory/warm tint, very stark */
-  --text-muted: #B4C9BE;
-  --text-muted-darker: #8DA89A;
-  --border-main: #1D4B35;
-  --border-light: #2A6446;
-  
-  --brand-gold: #E5C158; /* Brighter, more vibrant elegant gold */
-  --brand-green: #145A32; /* Richer, more saturated deep emerald */
-  --brand-earth: #A05A2C; /* Rich Earth/Copper */
+  /* Light theme: premium ivory surface with high-contrast forest typography. */
+  color-scheme: light;
+  --bg-main: #F4F7F5;
+  --bg-card: #FFFFFF;
+  --text-main: #14261C;
+  --text-muted: #4B6156;
+  --text-muted-darker: #35483F;
+  --border-main: #D5DDD8;
+  --border-light: #E5EBE7;
+  --brand-gold: #8A6810;
+  --brand-green: #145A32;
+  --brand-earth: #7A431F;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
 }
 
 :root[data-theme="dark"] {
-  /* Dark Theme (Very Dark Green-Black) */
-  --bg-main: #060F0C; /* Very Dark, rich green-black, more obsidian */
+  color-scheme: dark;
+  /* Dark theme: deep Oremar forest green with warm premium gold. */
+  --bg-main: #060F0C;
   --bg-card: #0A1C16;
   --text-main: #F4F7F5;
   --text-muted: #A1B8AD;
   --text-muted-darker: #7E948A;
   --border-main: #153A2A;
   --border-light: #204E38;
-  
-  --brand-gold: #EDC967; /* Even brighter gold for dark mode pop */
-  --brand-green: #27AE60; /* Vibrant emerald for dark mode */
+  --brand-gold: #EDC967;
+  --brand-green: #27AE60;
   --brand-earth: #C36A31;
 }
 
@@ -98,7 +102,6 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
-
 
 /* Accessibility: respect the user’s reduced-motion preference. */
 @media (prefers-reduced-motion: reduce) {

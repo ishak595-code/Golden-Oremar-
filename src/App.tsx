@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { useAccessibleDialog } from './features/accessibility/useAccessibleDialog';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { syncNativeAppearance } from './native';import { query } from 'firebase/firestore';
+import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import { useAccessibleDialog } from './features/accessibility/useAccessibleDialog';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import { useDeviceTheme } from './features/appearance/useDeviceTheme';import { query } from 'firebase/firestore';
 
 
 const AdminPage = React.lazy(() => import('./pages/AdminPage').then(module => ({ default: module.AdminPage })));
@@ -29,7 +29,8 @@ type AccountTab = 'profile' | 'addresses' | 'payments' | 'notifications' | 'sett
 
 // --- Main App Component ---
 function AppContent() {
-  const { settings, updateSettings, addNotification, currentUser, setCurrentUser, products, recipes, productHealthInfo, blogPosts, staticContent, contactInfo, events, seedDatabase, heroCategories, homeSections } = useData();
+  const { settings, addNotification, currentUser, setCurrentUser, products, recipes, productHealthInfo, blogPosts, staticContent, contactInfo, events, seedDatabase, heroCategories, homeSections } = useData();
+  const { theme: appearanceTheme, setTheme: setAppearanceTheme } = useDeviceTheme();
   const [currentTab, setCurrentTab] = useState<Tab>('home');
   const [tabHistory, setTabHistory] = useState<Tab[]>(['home']);
 
@@ -426,14 +427,6 @@ function AppContent() {
     }
   };
 
-  // Effects
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', settings.theme);
-    void syncNativeAppearance(settings.theme).catch(error => {
-      console.warn('Native appearance sync failed', error);
-    });
-  }, [settings.theme]);
-
   // Audio Helper
   const playNotificationSound = (soundType: string) => {
     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
@@ -825,8 +818,8 @@ function AppContent() {
       return (
         <AccountCenter
           requestedView={accountView}
-          theme={settings.theme}
-          onThemeChange={(nextTheme) => updateSettings({ theme: nextTheme })}
+          theme={appearanceTheme}
+          onThemeChange={setAppearanceTheme}
           onBack={goBack}
           onOpenProduct={(slug) => {
             setSelectedProduct(null);
