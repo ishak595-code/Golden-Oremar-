@@ -3,6 +3,7 @@ import { AdminLayout } from '../admin/AdminLayout';
 import { AdminDashboard } from '../admin/AdminDashboard';
 import { AdminProducts } from '../admin/AdminProducts';
 import { AdminOrders } from '../admin/AdminOrders';
+import { AdminReturns } from '../admin/AdminReturns';
 import { AdminUsers } from '../admin/AdminUsers';
 import { AdminContent } from '../admin/AdminContent';
 import { AdminSettings } from '../admin/AdminSettings';
@@ -86,6 +87,7 @@ export function AdminPage({ onLogout, onBack }: AdminPageProps) {
     if (activeTab === 'products') return <AdminProducts setActiveTab={setActiveTab} />;
     if (activeTab === 'product-approvals') return <AdminProducts setActiveTab={setActiveTab} initialView="pending" />;
     if (activeTab === 'orders') return <AdminOrders setActiveTab={setActiveTab} />;
+    if (activeTab === 'returns') return <AdminReturns />;
     if (activeTab === 'stock') return <AdminStock setActiveTab={setActiveTab} />;
     if (activeTab === 'finance') return <AdminFinance />;
 
