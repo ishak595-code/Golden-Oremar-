@@ -12,6 +12,7 @@ export type LegacyHomeProduct = {
   categorySlug: string;
   price: number;
   originalPrice?: number | null;
+  currency: string;
   image: string;
   origin?: string | null;
   unit?: string | null;
@@ -69,6 +70,7 @@ export function useLiveHomeCatalog() {
           categorySlug: item.category.slug,
           price: Number(item.variant.priceMinor || 0) / 100,
           originalPrice: item.variant.compareAtPriceMinor ? Number(item.variant.compareAtPriceMinor) / 100 : null,
+          currency: String(item.currency || 'TRY').toUpperCase(),
           image: publicCatalogUrl(item.imagePath),
           origin: item.origin || null,
           unit: item.unitLabel || item.variant.name,

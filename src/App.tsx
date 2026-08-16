@@ -33,6 +33,7 @@ import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as se
 import CategoryDirectoryScreen from './features/catalog/CategoryDirectoryScreen';
 import PublicProducerScreen from './features/catalog/PublicProducerScreen';
 import ProductDetailScreen from './features/catalog/ProductDetailScreen';
+import CatalogProductCard from './features/catalog/CatalogProductCard';
 import CatalogSearchResults from './features/catalog/CatalogSearchResults';
 import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';
 import AuthScreen from './features/auth/AuthScreen';
@@ -1621,12 +1622,12 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
                               {(() => {
                                 const suggestedProduct = products.find(p => p.name.includes("Fahrettin'in Sütten Kesilmiş Oğlağı")) || products[0];
                                 return suggestedProduct ? (
-                                  <ProductCard 
+                                  <CatalogProductCard 
                                     product={suggestedProduct} 
                                     onClick={() => onProductClick(suggestedProduct)}
-                                    onAddToCart={() => onAddToCart(suggestedProduct)}
+                                    onAddToCart={onAddToCart}
                                     onToggleFavorite={() => onToggleFavorite(suggestedProduct)}
-                                    isFavorite={favorites.includes(suggestedProduct.id)}
+                                    isFavorite={favorites.includes(String(suggestedProduct.legacyId || suggestedProduct.id))}
                                     onShare={() => onShare(suggestedProduct)}
                                     onGift={() => onGift(suggestedProduct)}
                                   />
@@ -1655,11 +1656,11 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
                           </div>
                           <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             {displayProducts.map(product => (
-                              <ProductCard 
+                              <CatalogProductCard 
                                 key={product.id} 
                                 product={product} 
                                 onClick={() => onProductClick(product)}
-                                onAddToCart={() => onAddToCart(product)}
+                                onAddToCart={onAddToCart}
                                 onToggleFavorite={() => onToggleFavorite(product)}
                                 isFavorite={favorites.includes(String(product.legacyId || product.id))}
                                 onShare={() => onShare(product)}
@@ -1677,11 +1678,11 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             {displayProducts.map(product => (
-                              <ProductCard 
+                              <CatalogProductCard 
                                 key={product.id} 
                                 product={product} 
                                 onClick={() => onProductClick(product)}
-                                onAddToCart={() => onAddToCart(product)}
+                                onAddToCart={onAddToCart}
                                 onToggleFavorite={() => onToggleFavorite(product)}
                                 isFavorite={favorites.includes(String(product.legacyId || product.id))}
                                 onShare={() => onShare(product)}
@@ -1699,11 +1700,11 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                             {products.filter(p => p.preOrder).slice(0, 4).map(product => (
-                              <ProductCard 
+                              <CatalogProductCard 
                                 key={product.id} 
                                 product={product} 
                                 onClick={() => onProductClick(product)}
-                                onAddToCart={() => onAddToCart(product)}
+                                onAddToCart={onAddToCart}
                                 onToggleFavorite={() => onToggleFavorite(product)}
                                 isFavorite={favorites.includes(String(product.legacyId || product.id))}
                                 onShare={() => onShare(product)}
@@ -1723,10 +1724,10 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
                             <div className="flex gap-6 overflow-x-auto pb-8 hide-scrollbar snap-x">
                               {displayProducts.map(product => (
                                 <div key={product.id} className="min-w-[280px] md:min-w-[320px] snap-center">
-                                  <ProductCard 
+                                  <CatalogProductCard 
                                     product={product} 
                                     onClick={() => onProductClick(product)}
-                                    onAddToCart={() => onAddToCart(product)}
+                                    onAddToCart={onAddToCart}
                                     onToggleFavorite={() => onToggleFavorite(product)}
                                     isFavorite={favorites.includes(String(product.legacyId || product.id))}
                                     onShare={() => onShare(product)}
@@ -1738,11 +1739,11 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
                           ) : (
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                               {displayProducts.slice(0,4).map(product => (
-                                <ProductCard 
+                                <CatalogProductCard 
                                   key={product.id} 
                                   product={product} 
                                   onClick={() => onProductClick(product)}
-                                  onAddToCart={() => onAddToCart(product)}
+                                  onAddToCart={onAddToCart}
                                   onToggleFavorite={() => onToggleFavorite(product)}
                                   isFavorite={favorites.includes(String(product.legacyId || product.id))}
                                   onShare={() => onShare(product)}
@@ -1823,11 +1824,11 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
             {filteredProducts.map(product => (
-              <ProductCard 
+              <CatalogProductCard 
                 key={product.id} 
                 product={product} 
                 onClick={() => onProductClick(product)}
-                onAddToCart={() => onAddToCart(product)}
+                onAddToCart={onAddToCart}
                 onToggleFavorite={() => onToggleFavorite(product)}
                 isFavorite={favorites.includes(String(product.legacyId || product.id))}
                 onShare={() => onShare(product)}
@@ -1841,119 +1842,6 @@ function HomeSection({ searchQuery, setSearchQuery, onProductClick, onAddToCart,
   );
 }
 
-function ProductCard({ product, onClick, onAddToCart, onToggleFavorite, isFavorite, onShare, onGift, onLike, isLiked }: any) {
-  const [quantity, setQuantity] = useState(1);
-  const hoverImage = product.gallery ? product.gallery[1] : product.image.replace('/seed/', '/seed/gallery1-');
-
-  // Determine badges
-  const badges = [];
-  if (product.rating > 4.8) badges.push({ text: "En Çok Satan", color: "bg-brand-green text-white" });
-  if (product.tags.includes("Yeni")) badges.push({ text: "Yeni Hasat", color: "bg-brand-gold text-white" });
-  if (product.stock < 20) badges.push({ text: "Sınırlı Üretim", color: "bg-red-500 text-white" });
-  if (badges.length === 0) badges.push({ text: "Doğal Üretim", color: "bg-brand-earth text-white" });
-
-  return (
-    <div 
-      className="group bg-brand-card rounded-3xl overflow-hidden border border-brand-gold/10 hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:border-brand-gold/30 transition-all duration-300 relative flex flex-col h-full cursor-pointer active:scale-[0.98]"
-      onClick={onClick}
-      role="link"
-      tabIndex={0}
-    >
-      {/* Image Area */}
-      <div className="relative aspect-[4/5] overflow-hidden bg-brand-main p-3">
-        <div className="w-full h-full rounded-2xl overflow-hidden relative border border-brand-gold/5">
-          <img 
-            src={product.image} 
-            alt={product.name} 
-            className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-            loading="lazy"
-          />
-          <img 
-            src={hoverImage} 
-            alt={`${product.name} alternate`} 
-            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700 opacity-0 group-hover:opacity-100 group-hover:scale-110"
-            loading="lazy"
-          />
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300"></div>
-          
-          {/* Overlay Link Indicator */}
-          <div className="absolute inset-0 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-            <div className="bg-brand-main text-brand-gold border border-brand-gold/30 px-6 py-3 rounded-full font-bold tracking-widest uppercase text-xs shadow-xl flex items-center gap-2 transform translate-y-4 group-hover:translate-y-0 transition-all duration-300">
-              <span>Ürünü İncele</span>
-              <ArrowRight className="w-4 h-4" />
-            </div>
-          </div>
-        </div>
-        
-        {/* Badges */}
-        <div className="absolute top-5 right-5 flex flex-col gap-2 z-20 items-end">
-          {badges.slice(0, 2).map((badge, idx) => (
-            <span key={idx} className={`${badge.color} text-[10px] font-bold px-3 py-1 rounded-full shadow-md tracking-wide uppercase`}>
-              {badge.text}
-            </span>
-          ))}
-        </div>
-
-        {/* Favorite Button */}
-        <button 
-          onClick={(e) => { e.stopPropagation(); onToggleFavorite(); }}
-          className={`absolute top-5 left-5 w-10 h-10 rounded-full backdrop-blur-md flex items-center justify-center shadow-sm transition-all z-30 ${isFavorite ? 'bg-brand-gold text-brand-main' : 'bg-brand-main/80 text-brand-muted hover:bg-brand-main hover:text-brand-gold'}`}
-          title="Favorilere Ekle"
-          aria-label={isFavorite ? "Favorilerden Çıkar" : "Favorilere Ekle"}
-        >
-          <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
-        </button>
-      </div>
-
-      {/* Content Area */}
-      <div className="p-5 flex flex-col flex-grow relative z-30">
-        <div className="text-[10px] font-bold tracking-widest text-brand-gold uppercase mb-2">{product.category}</div>
-        <h3 className="text-lg font-serif font-bold text-brand-text mb-2 line-clamp-2 leading-snug">{product.name}</h3>
-        
-        <div className="flex items-center gap-1 mb-4" aria-label={`${product.rating} yıldız, ${product.reviews} değerlendirme`}>
-          <div className="flex" aria-hidden="true">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} className={`w-3.5 h-3.5 ${i < Math.floor(product.rating ?? 5) ? 'fill-brand-gold text-brand-gold' : 'text-brand-border'}`} />
-            ))}
-          </div>
-          <span className="text-xs text-brand-muted ml-2 font-medium">({product.reviews !== undefined ? product.reviews : 0})</span>
-        </div>
-
-        <div className="flex flex-col mt-auto border-t border-brand-gold/10 pt-4 mb-5">
-          {product.pricePrefix && (
-            <span className="text-[10px] uppercase font-bold tracking-widest text-brand-gold/70 mb-1 block">
-              {product.pricePrefix}
-            </span>
-          )}
-          <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-bold font-serif text-brand-gold">{Number(product.price) || 0} ₺</span>
-            {product.unit && <span className="text-xs text-brand-muted font-medium">/ {product.unit}</span>}
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 mt-auto">
-          <button 
-            onClick={(e) => { e.stopPropagation(); onAddToCart(quantity); }}
-            className={`flex-1 ${product.preOrder ? 'bg-[#134e2c] border border-brand-green/30' : 'bg-brand-gold'} ${product.preOrder ? 'text-white hover:bg-brand-green' : 'text-brand-main hover:bg-brand-green hover:text-white'} py-3 rounded-xl font-bold text-[11px] tracking-widest uppercase transition-all shadow-md hover:shadow-lg active:scale-95 flex items-center justify-center gap-2`}
-            aria-label={product.preOrder ? "Hemen Ön Sipariş Ver" : "Sepete Ekle"}
-          >
-            {product.preOrder ? <Calendar className="w-4 h-4" /> : <ShoppingCart className="w-5 h-5" />}
-            {product.preOrder ? 'Hemen Ön Sipariş Ver' : 'Sepete Ekle'}
-          </button>
-          <button 
-            onClick={(e) => { e.stopPropagation(); onGift(); }}
-            className="w-12 h-[44px] flex-shrink-0 bg-brand-main/50 border border-brand-gold/30 text-brand-gold rounded-xl flex items-center justify-center hover:bg-brand-gold hover:text-brand-main transition-all active:scale-95 shadow-sm"
-            aria-label="Hediye Et"
-            title="Hediye Et"
-          >
-            <Gift className="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function ProductDetail({ product, onBack, onAddToCart, onToggleFavorite, isFavorite, onShare, onGift, onProductClick, favorites, onSelectVendor, onLike, isLiked, setCurrentTab }: any) {
   const { products, recipes, productHealthInfo } = useData();
@@ -2456,12 +2344,12 @@ function ProductDetail({ product, onBack, onAddToCart, onToggleFavorite, isFavor
         <div className="flex gap-6 overflow-x-auto pb-12 hide-scrollbar snap-x px-4 sm:px-0 -mx-4 sm:mx-0">
           {relatedProducts.map(p => (
             <div key={p.id} className="min-w-[280px] w-[280px] snap-center">
-              <ProductCard 
+              <CatalogProductCard 
                 product={p} 
                 onClick={() => onProductClick(p)}
-                onAddToCart={() => onAddToCart(p)}
+                onAddToCart={onAddToCart}
                 onToggleFavorite={() => onToggleFavorite(p)}
-                isFavorite={favorites.includes(p.id)}
+                isFavorite={favorites.includes(String(p.legacyId || p.id))}
                 onShare={onShare}
                 onGift={() => onGift(p)}
               />
@@ -2757,7 +2645,7 @@ function CartSection({ cart, onRemove, onUpdateQuantity, onCheckout, navigateToT
 function FavoritesSection({ favorites, favoriteRecipes, favoriteBlogs, favoriteProductHealth, favoriteEvents, onProductClick, onAddToCart, onToggleFavorite, onToggleFavoriteRecipe, onToggleFavoriteBlog, onToggleFavoriteProductHealth, onToggleFavoriteEvent, onShare, onShareArticle, onGift, onLike, likedItems }: any) {
   const { products, recipes, blogPosts, productHealthInfo, events } = useData();
   const [activeTab, setActiveTab] = useState<'products' | 'recipes' | 'blogs' | 'productHealth' | 'events'>('products');
-  const favProducts = products.filter(p => favorites.includes(p.id));
+  const favProducts = products.filter(p => favorites.includes(String(p.legacyId || p.id)));
   const favRecipes = recipes.filter(r => favoriteRecipes.includes(r.id));
   const favBlogs = blogPosts.filter(b => favoriteBlogs.includes(b.id));
   const favProductHealth = productHealthInfo.filter(p => favoriteProductHealth.includes(p.productId));
@@ -2814,11 +2702,11 @@ function FavoritesSection({ favorites, favoriteRecipes, favoriteBlogs, favoriteP
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
             {favProducts.map(p => (
-              <ProductCard 
+              <CatalogProductCard 
                 key={p.id} 
                 product={p} 
                 onClick={() => onProductClick(p)}
-                onAddToCart={() => onAddToCart(p)}
+                onAddToCart={onAddToCart}
                 onToggleFavorite={() => onToggleFavorite(p)}
                 isFavorite={true}
                 onShare={() => onShare(p)}
@@ -3534,7 +3422,7 @@ function VendorStorePage({ vendor, onBack, onProductClick, onAddToCart, onToggle
         <div className="flex gap-4 sm:gap-6 overflow-x-auto pb-8 hide-scrollbar snap-x -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {vendorProducts.map((product) => (
              <div key={product.id} className="min-w-[260px] w-[260px] sm:min-w-0 sm:w-auto snap-center">
-               <ProductCard 
+               <CatalogProductCard 
                  product={product} 
                  onClick={() => onProductClick(product)} 
                  onAddToCart={onAddToCart}
@@ -3726,13 +3614,13 @@ function CategoriesPage({ onProductClick, onAddToCart, onToggleFavorite, favorit
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
               {filtered.map(p => (
-                <ProductCard 
+                <CatalogProductCard 
                   key={p.id} 
                   product={p} 
                   onClick={() => onProductClick(p)}
-                  onAddToCart={() => onAddToCart(p)}
+                  onAddToCart={onAddToCart}
                   onToggleFavorite={() => onToggleFavorite(p)}
-                  isFavorite={favorites.includes(p.id)}
+                  isFavorite={favorites.includes(String(p.legacyId || p.id))}
                   onShare={() => onShare(p)}
                   onGift={() => onGift(p)}
                 />
