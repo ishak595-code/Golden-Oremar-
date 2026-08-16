@@ -48,6 +48,10 @@ Kaynak kod veya build dosyaları veritabanına kopyalanmaz. Canlı müşteri/KYC
 - Aydınlık tema gerçek açık yüzey/koyu metin tokenlarına taşınmıştır; temel light kart üzerindeki ana metin/yeşil/altın/muted metin kontrastları otomatik kontrol edilir.
 - Hesap Ayarları async işlemleri işlem türüne göre ayrı error/status/busy durumları kullanır; şifre, bülten, bildirim, oturum ve hesap-kapatma hataları yanlış panelde gösterilmez.
 - Bildirim kaydı ve diğer Ayarlar mutasyonları çift tetiklenmeye karşı busy guard kullanır; hesap kapatma backend isteğinden önce accessible confirmation alertdialog üzerinden açık onay alır.
+- Hesap içindeki modal davranışı tek canonical `useAccessibleDialog` motorundan gelir; account özel eski focus-trap yalnız compatibility wrapper olarak aynı hook'u çağırır.
+- Profil fotoğrafı kaldırma ve ödeme bekleyen siparişi iptal etme gibi destructive müşteri işlemleri backend mutasyonundan önce açık `alertdialog` onayı ister.
+- Sipariş ana dialogu nested iade/cancel dialogu açıkken kendi focus trap'ini durdurur; iki modal aynı anda klavye odağı için yarışmaz.
+- İade talebi ve iade detayı loading durumları gerçek modal overlay/focus trap/Escape/scroll lock sözleşmesini korur.
 - Yayınlanmış SSS/Yardım içerik entegrasyonu; olmayan Terms metni uydurulmaz.
 - Yapılandırılmış ürün güvenliği / sağlık uyarıları ve kaynak modeli.
 
@@ -85,6 +89,8 @@ Migration history Supabase'in migration tablosunda tutulmaktadır. Önemli son m
 9. Kullanıcı-facing trust/organic/health/verification bilgisi yalnız server-backed doğrulanmış kaynaktan gösterilir; fallback ile güven rozeti üretilmez.
 10. Cihaza/kişiye özel görünüm tercihi global admin/site ayarına yazılmaz; kullanıcı cihaz tercihi ile yönetim ayarı ayrı tutulur.
 11. Kullanıcı tetiklediği async mutasyonlarda buton busy iken tekrar çalışmaz; hata ve başarı geri bildirimi işlemin gerçekleştiği panelde gösterilir.
+12. Geri alınması zor destructive müşteri mutasyonları tek dokunuşla yapılmaz; uygun accessible confirmation kullanılır.
+13. Modal focus/scroll/Escape/focus-return davranışı paralel implementasyonlarla çoğaltılmaz; canonical shared dialog hook yeniden kullanılır.
 
 ## Harici konfigürasyon notu
 Google/Facebook OAuth, ödeme sağlayıcısı, kargo sağlayıcısı ve store signing gibi dış credential gerektiren özellikler; kod hazır olsa bile ilgili sağlayıcı gerçekten yapılandırılmadan "aktif" kabul edilmez.
