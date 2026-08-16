@@ -26,7 +26,7 @@ text=replaceOne(text,
  "  const [voiceError, setVoiceError] = useState('');\n  const voiceDialogRef = useAccessibleDialog<HTMLDivElement>(isListening, () => setIsListening(false));\n  const filterDialogRef = useAccessibleDialog<HTMLDivElement>(isFilterPanelOpen, () => setIsFilterPanelOpen(false));\n  const sortDialogRef = useAccessibleDialog<HTMLDivElement>(isSortPanelOpen, () => setIsSortPanelOpen(false));\n\n  const processVoiceCommand",
  'dialog hooks');
 
-transformSection('{isListening && (','      {/* Filter Bottom Sheet / Drawer */}','voice',section=>{
+transformSection('{isListening && (','{isFilterPanelOpen && (','voice',section=>{
  section=replaceOne(section,'animate-fade-in">','animate-fade-in motion-reduce:animate-none">','voice overlay motion');
  section=replaceOne(section,'          {/* Overlay closer */}\n          <div className="absolute inset-0" onClick={() => setIsListening(false)} />','          {/* Pointer convenience; explicit close button and Escape cover keyboard/screen-reader use. */}\n          <div aria-hidden="true" className="absolute inset-0" onClick={() => setIsListening(false)} />','voice overlay');
  section=replaceOne(section,'<div className="relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 shadow-[0_-8px_32px_rgba(0,0,0,0.5)] p-6 pb-12 flex flex-col items-center gap-6 animate-slide-up select-none z-10 transition-all duration-300">','<div ref={voiceDialogRef} role="dialog" aria-modal="true" aria-labelledby="voice-search-title" aria-describedby="voice-search-description" tabIndex={-1} className="relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 shadow-[0_-8px_32px_rgba(0,0,0,0.5)] p-6 pb-12 flex flex-col items-center gap-6 animate-slide-up motion-reduce:animate-none select-none z-10 transition-all duration-300">','voice dialog');
@@ -42,7 +42,7 @@ transformSection('{isListening && (','      {/* Filter Bottom Sheet / Drawer */}
  return section;
 });
 
-transformSection('{isFilterPanelOpen && (','      {/* Sort Bottom Sheet / Drawer */}','filter',section=>{
+transformSection('{isFilterPanelOpen && (','{isSortPanelOpen && (','filter',section=>{
  section=replaceOne(section,'animate-fade-in">','animate-fade-in motion-reduce:animate-none">','filter overlay motion');
  section=replaceOne(section,'<div className="absolute inset-0" onClick={() => setIsFilterPanelOpen(false)} />','<div aria-hidden="true" className="absolute inset-0" onClick={() => setIsFilterPanelOpen(false)} />','filter overlay');
  section=replaceOne(section,'<div className="relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 p-6 pb-12 flex flex-col gap-6 animate-slide-up z-10 text-white">','<div ref={filterDialogRef} role="dialog" aria-modal="true" aria-labelledby="filter-sheet-title" aria-describedby="filter-sheet-description" tabIndex={-1} className="relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 p-6 pb-12 flex flex-col gap-6 animate-slide-up motion-reduce:animate-none z-10 text-white">','filter dialog');
@@ -51,15 +51,15 @@ transformSection('{isFilterPanelOpen && (','      {/* Sort Bottom Sheet / Drawer
  section=replaceOne(section,'<h3 className="text-base font-bold text-white flex items-center gap-2">\n                <SlidersHorizontal className="w-4 h-4 text-brand-gold" /> Gelişmiş Filtreleme\n              </h3>','<h3 id="filter-sheet-title" className="text-base font-bold text-white flex items-center gap-2">\n                <SlidersHorizontal aria-hidden="true" className="w-4 h-4 text-brand-gold" /> Gelişmiş Filtreleme\n              </h3>','filter title');
  section=replaceOne(section,'<p className="text-xs text-gray-400">Kategori, köken ve fiyatla sonuçları daraltın.</p>','<p id="filter-sheet-description" className="text-xs text-gray-400">Kategori, köken ve fiyatla sonuçları daraltın.</p>','filter description');
  section=replaceOne(section,'className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${!activeFilter ?','aria-pressed={!activeFilter}\n                    className={`min-h-11 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${!activeFilter ?','filter all state');
- section=replaceOne(section,'onClick={() => setActiveFilter(cat.name)}\n                        className={`px-3 py-1.5 rounded-xl','onClick={() => setActiveFilter(cat.name)}\n                        aria-pressed={activeFilter === cat.name}\n                        className={`min-h-11 px-3 py-1.5 rounded-xl','filter category state');
- section=replaceOne(section,'onClick={() => setActiveOrigin(originKey)}\n                        className={`px-3 py-1.5 rounded-xl','onClick={() => setActiveOrigin(originKey)}\n                        aria-pressed={activeOrigin === originKey}\n                        className={`min-h-11 px-3 py-1.5 rounded-xl','filter origin state');
- section=replaceOne(section,'onClick={() => setPriceRange(range.value)}\n                      className={`py-2 rounded-xl','onClick={() => setPriceRange(range.value)}\n                      aria-pressed={priceRange === range.value}\n                      className={`min-h-11 py-2 rounded-xl','filter price state');
+ section=replaceOne(section,'className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${activeFilter === cat.name ?','aria-pressed={activeFilter === cat.name}\n                      className={`min-h-11 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${activeFilter === cat.name ?','filter category state');
+ section=replaceOne(section,'className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${activeOrigin === originKey ?','aria-pressed={activeOrigin === originKey}\n                        className={`min-h-11 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${activeOrigin === originKey ?','filter origin state');
+ section=replaceOne(section,'className={`py-2 rounded-xl text-xs font-semibold border transition-all ${priceRange === range.value ?','aria-pressed={priceRange === range.value}\n                      className={`min-h-11 py-2 rounded-xl text-xs font-semibold border transition-all ${priceRange === range.value ?','filter price state');
  section=replaceOne(section,'className="flex-1 py-3 rounded-xl border border-gray-800','className="flex-1 min-h-11 py-3 rounded-xl border border-gray-800','filter reset target');
  section=replaceOne(section,'className="flex-1 py-3 rounded-xl bg-brand-gold','className="flex-1 min-h-11 py-3 rounded-xl bg-brand-gold','filter apply target');
  return section;
 });
 
-transformSection('{isSortPanelOpen && (','      {/* Toast */}','sort',section=>{
+transformSection('{isSortPanelOpen && (','{toast.visible && (','sort',section=>{
  section=replaceOne(section,'animate-fade-in">','animate-fade-in motion-reduce:animate-none">','sort overlay motion');
  section=replaceOne(section,'<div className="absolute inset-0" onClick={() => setIsSortPanelOpen(false)} />','<div aria-hidden="true" className="absolute inset-0" onClick={() => setIsSortPanelOpen(false)} />','sort overlay');
  section=replaceOne(section,'<div className="relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 p-6 pb-12 flex flex-col gap-6 animate-slide-up z-10 text-white">','<div ref={sortDialogRef} role="dialog" aria-modal="true" aria-labelledby="sort-sheet-title" aria-describedby="sort-sheet-description" tabIndex={-1} className="relative w-full max-w-lg bg-[#111418] rounded-t-[24px] border-t border-gray-800 p-6 pb-12 flex flex-col gap-6 animate-slide-up motion-reduce:animate-none z-10 text-white">','sort dialog');
@@ -68,12 +68,12 @@ transformSection('{isSortPanelOpen && (','      {/* Toast */}','sort',section=>{
  section=replaceOne(section,'<h3 className="text-base font-bold text-white flex items-center gap-2">\n                <ArrowDownUp className="w-4 h-4 text-brand-gold" /> Akıllı Sıralama\n              </h3>','<h3 id="sort-sheet-title" className="text-base font-bold text-white flex items-center gap-2">\n                <ArrowDownUp aria-hidden="true" className="w-4 h-4 text-brand-gold" /> Sıralama\n              </h3>','sort title');
  section=replaceOne(section,'<p className="text-xs text-gray-400">Ürünleri dilediğiniz öncelikte sıralayın.</p>','<p id="sort-sheet-description" className="text-xs text-gray-400">Ürünleri seçtiğiniz kritere göre sıralayın.</p>','sort description');
  section=replaceOne(section,"{ label: 'Önerilen Sürüm', value: 'featured' },\n                { label: 'En Popüler / En Çok Oy Alanlar', value: 'rating' },","{ label: 'Önerilen', value: 'featured' },\n                { label: 'En Yüksek Puan', value: 'rating' },",'sort labels');
- section=replaceOne(section,'onClick={() => {\n                    setSortOption(opt.value);\n                    setIsSortPanelOpen(false);\n                  }}\n                  className={`w-full text-left px-4 py-3.5 rounded-xl','onClick={() => {\n                    setSortOption(opt.value);\n                    setIsSortPanelOpen(false);\n                  }}\n                  aria-pressed={sortOption === opt.value}\n                  className={`min-h-11 w-full text-left px-4 py-3.5 rounded-xl','sort state');
+ section=replaceOne(section,'className={`w-full text-left px-4 py-3.5 rounded-xl border text-sm font-semibold flex items-center justify-between transition-all ${sortOption === opt.value ?','aria-pressed={sortOption === opt.value}\n                  className={`min-h-11 w-full text-left px-4 py-3.5 rounded-xl border text-sm font-semibold flex items-center justify-between transition-all ${sortOption === opt.value ?','sort state');
  section=replaceOne(section,'{sortOption === opt.value && <div className="w-2 h-2 rounded-full bg-brand-gold shadow-[0_0_8px_rgba(212,175,55,1)]" />}','{sortOption === opt.value && <div aria-hidden="true" className="w-2 h-2 rounded-full bg-brand-gold shadow-[0_0_8px_rgba(212,175,55,1)]" />}','sort dot');
  return section;
 });
 
-transformSection('{toast.visible && (','      {/* Real Gift Order Flow */}','toast',section=>{
+transformSection('{toast.visible && (','function App()','toast',section=>{
  section=replaceOne(section,'<div className="fixed left-1/2 -translate-x-1/2 bg-brand-green text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-[100] animate-in fade-in zoom-in duration-300 pointer-events-none"','<div role="status" aria-live="polite" aria-atomic="true" className="fixed left-1/2 -translate-x-1/2 bg-brand-green text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 z-[100] animate-in motion-reduce:animate-none fade-in zoom-in duration-300 pointer-events-none"','toast live');
  section=replaceOne(section,'<CheckCircle className="w-5 h-5 text-brand-gold" />','<CheckCircle aria-hidden="true" className="w-5 h-5 text-brand-gold" />','toast icon');
  return section;
@@ -92,4 +92,4 @@ if(!css.includes(marker)){
  css += `\n\n${marker}\n@media (prefers-reduced-motion: reduce) {\n  html:focus-within { scroll-behavior: auto; }\n  *, *::before, *::after {\n    animation-duration: 0.01ms !important;\n    animation-iteration-count: 1 !important;\n    transition-duration: 0.01ms !important;\n    scroll-behavior: auto !important;\n  }\n}\n`;
 }
 fs.writeFileSync(cssFile,css);
-console.log('Section-scoped mobile sheet accessibility hardening applied.');
+console.log('Whitespace-independent mobile sheet accessibility hardening applied.');
