@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { AdminPage } from './pages/AdminPage';import AccountCenter from './features/account/AccountCenter';import ProducerApplicationFlow from './features/producer-onboarding/ProducerApplicationFlow';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import PublicInfoScreen from './features/storefront/PublicInfoScreen';import PublicHealthScreen from './features/content/PublicHealthScreen';import PublicEventsScreen from './features/engagement/PublicEventsScreen';import PublicContactScreen from './features/engagement/PublicContactScreen';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CategoryDirectoryScreen from './features/catalog/CategoryDirectoryScreen';import PublicProducerScreen from './features/catalog/PublicProducerScreen';import ProductDetailScreen from './features/catalog/ProductDetailScreen';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchResults from './features/catalog/CatalogSearchResults';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import AuthScreen from './features/auth/AuthScreen';import PasswordRecoveryScreen from './features/auth/PasswordRecoveryScreen';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import CartCheckoutFlow from './features/cart/CartCheckoutFlow';import GiftOrderFlow from './features/gifts/GiftOrderFlow';import { syncNativeAppearance } from './native';import { query } from 'firebase/firestore';
+import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { AdminPage } from './pages/AdminPage';import AccountCenter from './features/account/AccountCenter';import { useUnreadNotificationCount } from './features/account/useUnreadNotificationCount';import ProducerApplicationFlow from './features/producer-onboarding/ProducerApplicationFlow';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import PublicInfoScreen from './features/storefront/PublicInfoScreen';import PublicHealthScreen from './features/content/PublicHealthScreen';import PublicEventsScreen from './features/engagement/PublicEventsScreen';import PublicContactScreen from './features/engagement/PublicContactScreen';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CategoryDirectoryScreen from './features/catalog/CategoryDirectoryScreen';import PublicProducerScreen from './features/catalog/PublicProducerScreen';import ProductDetailScreen from './features/catalog/ProductDetailScreen';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchResults from './features/catalog/CatalogSearchResults';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import AuthScreen from './features/auth/AuthScreen';import PasswordRecoveryScreen from './features/auth/PasswordRecoveryScreen';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import CartCheckoutFlow from './features/cart/CartCheckoutFlow';import GiftOrderFlow from './features/gifts/GiftOrderFlow';import { syncNativeAppearance } from './native';import { query } from 'firebase/firestore';
 
 // --- Types ---
 type Tab = 'home' | 'categories' | 'cart' | 'account' | 'product-detail' | 'search-results' | 'producer-profile' | 'events' | 'health' | 'contact' | 'about' | 'admin';
@@ -8,7 +8,7 @@ type AccountTab = 'profile' | 'addresses' | 'payments' | 'notifications' | 'sett
 
 // --- Main App Component ---
 function AppContent() {
-  const { settings, updateSettings, notifications, markNotificationAsRead, addNotification, currentUser, setCurrentUser, products, recipes, productHealthInfo, blogPosts, staticContent, contactInfo, events, seedDatabase, heroCategories, homeSections } = useData();
+  const { settings, updateSettings, addNotification, currentUser, setCurrentUser, products, recipes, productHealthInfo, blogPosts, staticContent, contactInfo, events, seedDatabase, heroCategories, homeSections } = useData();
   const [currentTab, setCurrentTab] = useState<Tab>('home');
   const [tabHistory, setTabHistory] = useState<Tab[]>(['home']);
 
@@ -71,6 +71,7 @@ function AppContent() {
 
   const [accountView, setAccountView] = useState<string>('menu');
   const authRecovery = useAuthRecoveryCoordinator();
+  const { unreadCount, setUnreadCount } = useUnreadNotificationCount(!!currentUser);
 
   useEffect(() => {
     if (!authRecovery.callbackHandled) return;
@@ -258,7 +259,6 @@ function AppContent() {
   const [toast, setToast] = useState<{message: string, visible: boolean}>({ message: '', visible: false });
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [giftProduct, setGiftProduct] = useState<any>(null);
-  const [showNotifications, setShowNotifications] = useState(false);
   const [healthTab, setHealthTab] = useState<'recipes' | 'health' | 'productHealth'>('recipes');
   const [recipeCategory, setRecipeCategory] = useState<string | null>(null);
   const [selectedRecipe, setSelectedRecipe] = useState<any>(null);
@@ -344,10 +344,6 @@ function AppContent() {
         setShowGiftModal(false);
         return;
       }
-      if (showNotifications) {
-        setShowNotifications(false);
-        return;
-      }
       if (isFilterPanelOpen) {
         setIsFilterPanelOpen(false);
         return;
@@ -382,9 +378,8 @@ function AppContent() {
       if (appBackHandle) void appBackHandle.remove();
       if (networkHandle) void networkHandle.remove();
     };
-  }, [tabHistory, currentTab, accountView, isSearchFocused, showGiftModal, showNotifications, isFilterPanelOpen, isSortPanelOpen, authRecovery.recoveryPending]);
+  }, [tabHistory, currentTab, accountView, isSearchFocused, showGiftModal, isFilterPanelOpen, isSortPanelOpen, authRecovery.recoveryPending]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
 
   const getAccountViewTitle = (view: string) => {
     switch (view) {
@@ -824,6 +819,7 @@ function AppContent() {
           onOpenEvents={() => navigateToTab('events')}
           onOpenAdmin={() => navigateToTab('admin')}
           onOpenSellerApplication={() => setAccountView('vendor-apply')}
+          onUnreadNotificationCountChange={setUnreadCount}
           onOpenNotificationAction={(url, metadata) => {
             if (url?.includes('/messages/')) {
               const conversationId = metadata?.conversationId || url.split('/messages/')[1]?.split(/[?#/]/)[0] || '';
@@ -1006,11 +1002,11 @@ function AppContent() {
               <button 
                 onClick={() => { navigateToTab('account'); setAccountView('notifications'); }} 
                 className="relative p-2 text-gray-500 dark:text-gray-440 hover:text-brand-gold hover:bg-gray-100/70 dark:hover:bg-gray-800 rounded-full transition-all focus:outline-none group"
-                aria-label="Bildirimler"
+                aria-label={unreadCount > 0 ? `Bildirimler, ${unreadCount} okunmamış` : 'Bildirimler'}
               >
                 <Bell className="w-[1.3rem] h-[1.3rem] group-hover:scale-105 transition-transform" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[8px] font-black flex items-center justify-center rounded-full shadow-md ring-1.5 ring-white dark:ring-gray-950 animate-pulse">
+                  <span aria-hidden="true" className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 bg-red-500 text-white text-[8px] font-black flex items-center justify-center rounded-full shadow-md ring-1.5 ring-white dark:ring-gray-950 animate-pulse">
                     {unreadCount}
                   </span>
                 )}
@@ -1099,11 +1095,11 @@ function AppContent() {
               <button 
                 onClick={() => { navigateToTab('account'); setAccountView('notifications'); }} 
                 className="relative p-3 text-gray-500 dark:text-gray-450 hover:text-brand-gold hover:bg-gray-50 dark:hover:bg-gray-800 rounded-full transition-all group focus:outline-none"
-                aria-label="Bildirimler"
+                aria-label={unreadCount > 0 ? `Bildirimler, ${unreadCount} okunmamış` : 'Bildirimler'}
               >
                 <Bell className="w-[1.45rem] h-[1.45rem] group-hover:scale-105 transition-transform" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[9px] font-black flex items-center justify-center rounded-full shadow-md ring-2 ring-white dark:ring-gray-900 animate-pulse">
+                  <span aria-hidden="true" className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[9px] font-black flex items-center justify-center rounded-full shadow-md ring-2 ring-white dark:ring-gray-900 animate-pulse">
                     {unreadCount}
                   </span>
                 )}
