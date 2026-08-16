@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { AdminPage } from './pages/AdminPage';import AccountCenter from './features/account/AccountCenter';import ProducerApplicationFlow from './features/producer-onboarding/ProducerApplicationFlow';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import PublicInfoScreen from './features/storefront/PublicInfoScreen';import PublicHealthScreen from './features/content/PublicHealthScreen';import PublicEventsScreen from './features/engagement/PublicEventsScreen';import PublicContactScreen from './features/engagement/PublicContactScreen';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CategoryDirectoryScreen from './features/catalog/CategoryDirectoryScreen';import PublicProducerScreen from './features/catalog/PublicProducerScreen';import ProductDetailScreen from './features/catalog/ProductDetailScreen';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchResults from './features/catalog/CatalogSearchResults';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import AuthScreen from './features/auth/AuthScreen';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import CartCheckoutFlow from './features/cart/CartCheckoutFlow';import GiftOrderFlow from './features/gifts/GiftOrderFlow';import { syncNativeAppearance } from './native';import { query } from 'firebase/firestore';
+import React, { useState, useEffect, useCallback } from 'react';import { Capacitor } from '@capacitor/core';import { Haptics, ImpactStyle } from '@capacitor/haptics';import { App as CapApp } from '@capacitor/app';import { Network } from '@capacitor/network';import { X, Search, ShoppingCart, Heart, User, ChevronRight, Star, Bell, ArrowRight, Sun, Droplet, Gem, Flame, Home, Grid, Filter, Fish, Cherry, CheckCircle, Mic, SlidersHorizontal, ArrowDownUp, Box, Mountain, Calendar } from 'lucide-react';import { HERO_CATEGORIES } from './data';import { DataProvider, useData } from './context/DataContext';import { AdminPage } from './pages/AdminPage';import AccountCenter from './features/account/AccountCenter';import ProducerApplicationFlow from './features/producer-onboarding/ProducerApplicationFlow';import { usePublicStorefrontConfig } from './features/storefront/usePublicStorefrontConfig';import PublicInfoScreen from './features/storefront/PublicInfoScreen';import PublicHealthScreen from './features/content/PublicHealthScreen';import PublicEventsScreen from './features/engagement/PublicEventsScreen';import PublicContactScreen from './features/engagement/PublicContactScreen';import { useCatalogFilterOptions } from './features/catalog/useCatalogFilterOptions';import { useLiveHomeCatalog } from './features/catalog/useLiveHomeCatalog';import { listFavoriteReferences as serverFavoriteReferences, searchCatalog as serverCatalogSearch, toggleProductFavorite as serverToggleProductFavorite } from './features/catalog/api';import CategoryDirectoryScreen from './features/catalog/CategoryDirectoryScreen';import PublicProducerScreen from './features/catalog/PublicProducerScreen';import ProductDetailScreen from './features/catalog/ProductDetailScreen';import CatalogProductCard from './features/catalog/CatalogProductCard';import CatalogSearchResults from './features/catalog/CatalogSearchResults';import CatalogSearchOverlay from './features/catalog/CatalogSearchOverlay';import AuthScreen from './features/auth/AuthScreen';import PasswordRecoveryScreen from './features/auth/PasswordRecoveryScreen';import { useAuthRecoveryCoordinator } from './features/auth/useAuthRecoveryCoordinator';import { getAdminSessionStatus, signOutCurrentSession } from './features/auth/api';import { getCart as getServerCart, publicCatalogUrl as serverCatalogUrl, removeCartItem as removeServerCartItem, resolveDefaultVariant, setCartItem as setServerCartItem } from './features/cart/api';import CartCheckoutFlow from './features/cart/CartCheckoutFlow';import GiftOrderFlow from './features/gifts/GiftOrderFlow';import { syncNativeAppearance } from './native';import { query } from 'firebase/firestore';
 
 // --- Types ---
 type Tab = 'home' | 'categories' | 'cart' | 'account' | 'product-detail' | 'search-results' | 'producer-profile' | 'events' | 'health' | 'contact' | 'about' | 'admin';
@@ -70,6 +70,16 @@ function AppContent() {
   }, [currentTab]);
 
   const [accountView, setAccountView] = useState<string>('menu');
+  const authRecovery = useAuthRecoveryCoordinator();
+
+  useEffect(() => {
+    if (!authRecovery.callbackHandled) return;
+    setCurrentTab('account');
+    setAccountView('menu');
+    setTabHistory(previous => previous[previous.length - 1] === 'account' ? previous : [...previous, 'account']);
+    if (!authRecovery.recoveryPending) authRecovery.acknowledgeCallback();
+  }, [authRecovery.callbackHandled, authRecovery.recoveryPending, authRecovery.acknowledgeCallback]);
+
   const [adminSession, setAdminSession] = useState<{ checked: boolean; isAdmin: boolean; roles: string[] }>({ checked: false, isAdmin: false, roles: [] });
   const isAdminLoggedIn = adminSession.checked && adminSession.isAdmin;
 
@@ -323,6 +333,9 @@ function AppContent() {
     let networkHandle: { remove: () => Promise<void> } | undefined;
 
     void CapApp.addListener('backButton', () => {
+      if (authRecovery.recoveryPending) {
+        return;
+      }
       if (isSearchFocused) {
         setIsSearchFocused(false);
         return;
@@ -369,7 +382,7 @@ function AppContent() {
       if (appBackHandle) void appBackHandle.remove();
       if (networkHandle) void networkHandle.remove();
     };
-  }, [tabHistory, currentTab, accountView, isSearchFocused, showGiftModal, showNotifications, isFilterPanelOpen, isSortPanelOpen]);
+  }, [tabHistory, currentTab, accountView, isSearchFocused, showGiftModal, showNotifications, isFilterPanelOpen, isSortPanelOpen, authRecovery.recoveryPending]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -484,6 +497,12 @@ function AppContent() {
     setToast({ message, visible: true });
     setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
   }, []);
+
+  useEffect(() => {
+    if (!authRecovery.error) return;
+    showToast(authRecovery.error);
+    authRecovery.clearError();
+  }, [authRecovery.error, authRecovery.clearError, showToast]);
 
   useEffect(() => {
     if (currentTab === 'admin' && adminSession.checked && !adminSession.isAdmin) {
@@ -758,6 +777,24 @@ function AppContent() {
     }
 
     if (currentTab === 'account') {
+      if (authRecovery.recoveryPending) {
+        return (
+          <PasswordRecoveryScreen
+            onCompleted={() => {
+              authRecovery.finishRecovery();
+              setAccountView('menu');
+              showToast('Şifreniz güvenle güncellendi.');
+            }}
+            onCancelled={() => {
+              authRecovery.finishRecovery();
+              setCurrentUser(null);
+              setAccountView('menu');
+              showToast('Şifre sıfırlama işlemi iptal edildi.');
+            }}
+          />
+        );
+      }
+
       if (!currentUser) {
         return <AuthScreen title="Golden Oremar Hesabı" onAuthenticated={() => setAccountView('menu')} />;
       }
