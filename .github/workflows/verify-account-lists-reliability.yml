@@ -1,0 +1,69 @@
+name: Verify Account Lists Reliability
+
+on:
+  push:
+    branches: [agent/account-lists-reliability-premium]
+    paths:
+      - '.github/workflows/verify-account-lists-reliability.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Validate account list contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'busyId' src/features/account/FavoritesPanel.tsx
+          grep -q 'aria-busy={busy}' src/features/account/FavoritesPanel.tsx
+          grep -q 'await load(true)' src/features/account/FavoritesPanel.tsx
+          grep -q 'busyId' src/features/account/FollowedProducersPanel.tsx
+          grep -q 'producer.displayName' src/features/account/FollowedProducersPanel.tsx
+          ! grep -q "locationLabel || 'Türkiye'" src/features/account/FollowedProducersPanel.tsx
+          grep -q 'orderStatusLabel(g.status)' src/features/account/GiftsPanel.tsx
+          grep -q 'paymentStatusLabel(p.status)' src/features/account/PaymentsPanel.tsx
+          grep -q 'Sahte kayıtlı kart veya ödeme yöntemi oluşturulmaz' src/features/account/PaymentsPanel.tsx
+          grep -q "setError('')" src/features/account/GiftsPanel.tsx
+          grep -q "setError('')" src/features/account/PaymentsPanel.tsx
+      - name: Parse changed TypeScript modules
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import ts from 'typescript';
+          const files=[
+            'src/features/account/FavoritesPanel.tsx',
+            'src/features/account/FollowedProducersPanel.tsx',
+            'src/features/account/GiftsPanel.tsx',
+            'src/features/account/PaymentsPanel.tsx',
+            'src/features/account/presentation.ts',
+          ];
+          let failed=false;
+          for(const file of files){const result=ts.transpileModule(fs.readFileSync(file,'utf8'),{fileName:file,reportDiagnostics:true,compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX}});const errors=(result.diagnostics||[]).filter(d=>d.category===ts.DiagnosticCategory.Error);if(errors.length){failed=true;for(const d of errors)console.error(file,ts.flattenDiagnosticMessageText(d.messageText,'\n'));}else console.log(`${file}: parse clean`);}
+          if(failed)process.exit(1);
+          NODE
+      - name: Production web build
+        run: npm run build
+      - name: Clean verifier from source branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/verify-account-lists-reliability.yml
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git commit -m 'Verify account list reliability package'
+          git push origin HEAD:agent/account-lists-reliability-premium
