@@ -80,7 +80,7 @@ export async function consumeNativeAuthCallbackUrl(url: string): Promise<{
 
   const { params } = authCallbackParams(url);
   const errorDescription = params.get('error_description') || params.get('error');
-  if (errorDescription) throw new Error(decodeURIComponent(errorDescription.replace(/\+/g, ' ')));
+  if (errorDescription) throw new Error(errorDescription.replace(/\+/g, ' '));
 
   const recovery = params.get('type') === 'recovery';
   const code = params.get('code');
