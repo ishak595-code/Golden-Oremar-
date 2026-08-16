@@ -1,0 +1,100 @@
+name: Verify Startup Route Splitting
+
+on:
+  push:
+    branches: [agent/startup-route-splitting]
+    paths:
+      - '.github/workflows/verify-startup-route-splitting.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  verify:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Measure baseline bundle
+        env:
+          BUNDLE_REPORT_FILE: bundle-before.json
+        run: npx vite build --config migration-tools/vite.route-split-audit.config.ts
+      - name: Apply route lazy loading
+        run: node migration-tools/apply-route-lazy-loading.mjs
+      - name: Parse optimized App
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';import ts from 'typescript';
+          const file='src/App.tsx';const source=fs.readFileSync(file,'utf8');
+          const out=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext,jsx:ts.JsxEmit.ReactJSX},reportDiagnostics:true,fileName:file});
+          const errors=(out.diagnostics||[]).filter(d=>d.category===ts.DiagnosticCategory.Error);
+          if(errors.length){console.error(errors.map(e=>ts.flattenDiagnosticMessageText(e.messageText,'\n')).join('\n'));process.exit(1);}
+          console.log('Optimized App parses cleanly');
+          NODE
+      - name: Measure optimized bundle
+        env:
+          BUNDLE_REPORT_FILE: bundle-after.json
+        run: npx vite build --config migration-tools/vite.route-split-audit.config.ts
+      - name: Enforce measured startup improvement
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const before=JSON.parse(fs.readFileSync('bundle-before.json','utf8'));
+          const after=JSON.parse(fs.readFileSync('bundle-after.json','utf8'));
+          const b=before.chunks.find(c=>c.isEntry),a=after.chunks.find(c=>c.isEntry);
+          if(!b||!a)throw new Error('Entry chunk missing');
+          const saved=b.codeBytes-a.codeBytes;
+          const pct=(saved/b.codeBytes)*100;
+          console.log('STARTUP_BUNDLE_DELTA',JSON.stringify({beforeBytes:b.codeBytes,afterBytes:a.codeBytes,savedBytes:saved,savedPercent:Number(pct.toFixed(2)),beforeModules:b.modules.length,afterModules:a.modules.length,afterDynamicImports:a.dynamicImports.length}));
+          if(saved<200000)throw new Error(`Expected at least 200000 bytes startup reduction, got ${saved}`);
+          const banned=[/\/src\/admin\//,/\/src\/pages\/AdminPage\.tsx$/,/\/src\/features\/account\/AccountCenter\.tsx$/,/\/src\/features\/producer-onboarding\/ProducerApplicationFlow\.tsx$/,/\/src\/features\/catalog\/ProductDetailScreen\.tsx$/,/\/src\/features\/cart\/CartCheckoutFlow\.tsx$/];
+          for(const module of a.modules){if(banned.some(re=>re.test(module.id)))throw new Error(`Heavy route module remained in entry: ${module.id}`);}
+          console.log('Heavy route modules are outside the startup entry.');
+          NODE
+      - name: Validate accessible lazy boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'role="status" aria-live="polite"' src/App.tsx
+          grep -q "React.lazy(() => import('./pages/AdminPage')" src/App.tsx
+          grep -q "React.lazy(() => import('./features/account/AccountCenter')" src/App.tsx
+          grep -q '<React.Suspense fallback={<RouteLoading />}>' src/App.tsx
+          ! grep -q "import { AdminPage } from './pages/AdminPage';" src/App.tsx
+          ! grep -q "import AccountCenter from './features/account/AccountCenter';" src/App.tsx
+      - name: Synchronize Android project
+        run: npx cap sync android
+      - name: Compile Android debug app
+        working-directory: android
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --no-daemon
+      - name: Commit verified route split
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/verify-startup-route-splitting.yml
+          rm -f migration-tools/apply-route-lazy-loading.mjs
+          rm -f migration-tools/vite.route-split-audit.config.ts
+          rm -f bundle-before.json bundle-after.json
+          git config user.name 'Golden Oremar Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git diff --cached --stat
+          git commit -m 'Lazy load heavy application routes'
+          git push origin HEAD:agent/startup-route-splitting
