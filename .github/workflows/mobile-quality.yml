@@ -4,15 +4,15 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, agent/admin-supabase-retire-node]
 
 permissions:
   contents: read
 
 jobs:
-  verify-mobile:
+  verify-web-android:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -29,7 +29,7 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Validate mobile baseline and preserved auth
+      - name: Validate current native baseline and preserved OAuth
         shell: bash
         run: |
           set -euo pipefail
@@ -50,6 +50,7 @@ jobs:
           for (const [name, version] of Object.entries(expected)) {
             if (pkg.dependencies?.[name] !== version) throw new Error(`${name}: expected ${version}, got ${pkg.dependencies?.[name]}`);
           }
+          if (pkg.dependencies?.firebase) throw new Error('Firebase must not return to the runtime dependency graph.');
           if (pkg.devDependencies?.['@capacitor/cli'] !== '8.5.0') throw new Error('@capacitor/cli must be 8.5.0');
           NODE
           grep -q "com.android.tools.build:gradle:8.13.0" android/build.gradle
@@ -72,11 +73,18 @@ jobs:
           grep -q "from '@capacitor/browser'" src/features/auth/api.ts
           grep -q 'signInWithOAuth' src/features/auth/api.ts
           grep -q 'skipBrowserRedirect: native' src/features/auth/api.ts
+          if git grep -nE "firebase/(app|auth|firestore|storage)|from ['\"][^'\"]*firebase['\"]" -- 'src/**'; then
+            echo 'Firebase runtime source residue found.' >&2
+            exit 1
+          fi
+
+      - name: TypeScript check
+        run: npm run lint
 
       - name: Production web build
         run: npm run build
 
-      - name: Synchronize Android and iOS
+      - name: Synchronize Android and iOS native projects
         run: npx cap sync android && npx cap sync ios
 
       - name: Ensure native sync is reproducible
@@ -84,7 +92,7 @@ jobs:
         run: |
           set -euo pipefail
           if ! git diff --quiet; then
-            echo 'Capacitor sync changed tracked native files. Commit the generated changes before merging.' >&2
+            echo 'Capacitor sync changed tracked native files. Commit generated native changes before merging.' >&2
             git diff --stat
             git diff
             exit 1
@@ -93,3 +101,59 @@ jobs:
       - name: Compile Android debug app
         working-directory: android
         run: chmod +x gradlew && ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Compile Android release bundle without signing
+        working-directory: android
+        run: ./gradlew :app:bundleRelease --no-daemon
+
+  verify-ios:
+    runs-on: macos-26
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Select Xcode 26.6
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build and synchronize iOS
+        run: npm run build && npx cap sync ios
+
+      - name: Ensure iOS sync is reproducible
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet; then
+            echo 'Capacitor iOS sync changed tracked files. Commit generated changes before merging.' >&2
+            git diff --stat
+            git diff
+            exit 1
+          fi
+
+      - name: Resolve Swift packages
+        run: xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj -scheme App
+
+      - name: Compile iOS simulator app
+        run: >-
+          xcodebuild
+          -project ios/App/App.xcodeproj
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+      - name: Verify iOS deployment target and app identifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;' ios/App/App.xcodeproj/project.pbxproj
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.goldenoremar.app;' ios/App/App.xcodeproj/project.pbxproj
