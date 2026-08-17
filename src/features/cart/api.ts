@@ -159,14 +159,16 @@ function normalizeCheckoutPreview(value: unknown): CheckoutPreview {
   if (!isRecord(value)) throw new Error('Sipariş özeti sunucudan doğrulanamadı.');
   if (typeof value.canCheckout !== 'boolean') throw new Error('Checkout uygunluk durumu doğrulanamadı.');
   if (!isRecord(value.shipping) || !isRecord(value.promotion)) throw new Error('Kargo veya kampanya özeti doğrulanamadı.');
-  const previewOnly = value.previewOnly;
-  if (previewOnly !== true) throw new Error('Checkout önizleme sözleşmesi doğrulanamadı.');
+  const blockingReason = optionalText(value.blockingReason, 200);
+  const itemCount = safeInteger(value.itemCount, 'Checkout ürün adedi', 0, 9900);
+  const validLegacyEmptyPreview = value.previewOnly == null && value.canCheckout === false && blockingReason === 'cart_empty' && itemCount === 0;
+  if (value.previewOnly !== true && !validLegacyEmptyPreview) throw new Error('Checkout önizleme sözleşmesi doğrulanamadı.');
   const result: CheckoutPreview = {
     canCheckout: value.canCheckout,
-    blockingReason: optionalText(value.blockingReason, 200),
+    blockingReason,
     countryCode: normalizedCountryCode(String(value.countryCode || '')),
     currency: normalizedCurrency(value.currency),
-    itemCount: safeInteger(value.itemCount, 'Checkout ürün adedi', 0, 9900),
+    itemCount,
     subtotalMinor: safeInteger(value.subtotalMinor, 'Checkout ara toplamı'),
     shippingMinor: safeInteger(value.shippingMinor, 'Kargo tutarı'),
     discountMinor: safeInteger(value.discountMinor, 'İndirim tutarı'),
