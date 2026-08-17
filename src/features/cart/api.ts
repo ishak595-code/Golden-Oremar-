@@ -62,6 +62,19 @@ function unwrap<T>(data: T | null, error: any): T {
   return data as T;
 }
 
+function normalizedCountryCode(value: string) {
+  const countryCode = value.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(countryCode)) throw new Error('Ülke kodu iki harfli ISO kodu olmalıdır.');
+  return countryCode;
+}
+
+function normalizedCoupon(value?: string | null) {
+  const coupon = value?.trim().toUpperCase() || '';
+  if (coupon.length > 64) throw new Error('Kupon kodu en fazla 64 karakter olabilir.');
+  if (coupon && !/^[A-Z0-9_-]+$/.test(coupon)) throw new Error('Kupon kodu yalnız harf, rakam, tire ve alt çizgi içerebilir.');
+  return coupon || null;
+}
+
 export async function getCart(): Promise<CartSnapshot> {
   const { data, error } = await supabase.rpc('get_my_cart_v1');
   return unwrap<CartSnapshot>(data, error);
@@ -72,17 +85,25 @@ export async function setCartItem(input: {
   quantity: number;
   selectedOptions?: Record<string, unknown>;
 }): Promise<CartSnapshot> {
+  const variantId = String(input.variantId || '').trim();
+  const quantity = Number(input.quantity);
+  if (!variantId) throw new Error('Ürün varyantı seçilmedi.');
+  if (!Number.isInteger(quantity) || quantity < 0 || quantity > 99) throw new Error('Ürün adedi 0 ile 99 arasında tam sayı olmalıdır.');
+  const selectedOptions = input.selectedOptions ?? {};
+  if (!selectedOptions || Array.isArray(selectedOptions) || typeof selectedOptions !== 'object') throw new Error('Ürün seçenekleri geçersiz.');
   const { data, error } = await supabase.rpc('set_my_cart_item_v1', {
-    p_variant_id: input.variantId,
-    p_quantity: input.quantity,
-    p_selected_options: input.selectedOptions ?? {},
+    p_variant_id: variantId,
+    p_quantity: quantity,
+    p_selected_options: selectedOptions,
   });
   return unwrap<CartSnapshot>(data, error);
 }
 
 export async function removeCartItem(cartItemId: string): Promise<CartSnapshot> {
+  const id = String(cartItemId || '').trim();
+  if (!id) throw new Error('Sepet kalemi bulunamadı.');
   const { data, error } = await supabase.rpc('remove_my_cart_item_v1', {
-    p_cart_item_id: cartItemId,
+    p_cart_item_id: id,
   });
   return unwrap<CartSnapshot>(data, error);
 }
@@ -94,8 +115,8 @@ export async function clearCart(): Promise<CartSnapshot> {
 
 export async function previewCheckout(countryCode: string, couponCode?: string | null): Promise<CheckoutPreview> {
   const { data, error } = await supabase.rpc('preview_my_checkout_v1', {
-    p_country_code: countryCode,
-    p_coupon_code: couponCode?.trim() || null,
+    p_country_code: normalizedCountryCode(countryCode),
+    p_coupon_code: normalizedCoupon(couponCode),
   });
   return unwrap<CheckoutPreview>(data, error);
 }
@@ -107,17 +128,30 @@ export async function createOrder(input: {
   couponCode?: string | null;
   idempotencyKey: string;
 }) {
+  if (!Array.isArray(input.items) || !input.items.length) throw new Error('Sipariş için sepet boş olamaz.');
+  if (input.items.length > 100) throw new Error('Tek siparişte en fazla 100 ürün kalemi olabilir.');
+  const customerNote = input.customerNote?.trim() || '';
+  if (customerNote.length > 1000) throw new Error('Sipariş notu en fazla 1000 karakter olabilir.');
+  const idempotencyKey = String(input.idempotencyKey || '').trim();
+  if (!/^[A-Za-z0-9_-]{16,120}$/.test(idempotencyKey)) throw new Error('Sipariş güvenlik anahtarı geçersiz.');
+  if (!input.shippingAddress || Array.isArray(input.shippingAddress) || typeof input.shippingAddress !== 'object') throw new Error('Teslimat adresi geçersiz.');
+
+  const orderItems = input.items.map(item => {
+    const productReference = String(item.slug || item.productId || '').trim();
+    const variantReference = String(item.variantId || '').trim();
+    const quantity = Number(item.quantity);
+    if (!productReference || !variantReference) throw new Error('Sepette eksik ürün veya varyant bilgisi var.');
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 99) throw new Error('Sipariş ürün adedi 1 ile 99 arasında tam sayı olmalıdır.');
+    return { productReference, variantReference, quantity };
+  });
+
   const { data, error } = await supabase.rpc('create_customer_order_v4', {
-    p_items: input.items.map(item => ({
-      productReference: item.slug || item.productId,
-      variantReference: item.variantId,
-      quantity: item.quantity,
-    })),
+    p_items: orderItems,
     p_shipping_address: input.shippingAddress,
-    p_customer_note: input.customerNote?.trim() || null,
-    p_coupon_code: input.couponCode?.trim() || null,
+    p_customer_note: customerNote || null,
+    p_coupon_code: normalizedCoupon(input.couponCode),
     p_gift: null,
-    p_idempotency_key: input.idempotencyKey,
+    p_idempotency_key: idempotencyKey,
   });
   return unwrap<any>(data, error);
 }
@@ -128,8 +162,9 @@ export async function startShippingQuoteSupport(input: {
   cart: CartSnapshot;
   preview?: CheckoutPreview | null;
 }) {
-  const countryCode = input.countryCode.trim().toUpperCase();
-  const cityLabel = input.cityLabel?.trim() || '';
+  const countryCode = normalizedCountryCode(input.countryCode);
+  const cityLabel = input.cityLabel?.trim().slice(0, 200) || '';
+  if (!input.cart?.items?.length) throw new Error('Kargo teklifi için sepet boş olamaz.');
   const lines = input.cart.items.slice(0, 25).map(item =>
     `- ${item.productName} / ${item.variantName}: ${item.quantity} adet`
   );
@@ -149,7 +184,7 @@ export async function startShippingQuoteSupport(input: {
 
   const { data, error } = await supabase.rpc('start_support_conversation_v1', {
     p_order_id: null,
-    p_subject: `Yurtdışı kargo teklifi – ${countryCode}`,
+    p_subject: `Yurtdışı kargo teklifi - ${countryCode}`,
     p_initial_message: message,
   });
   return unwrap<any>(data, error);
@@ -181,8 +216,10 @@ export async function getCheckoutAccountOverview() {
 }
 
 export async function resolveDefaultVariant(productReference: string) {
+  const reference = String(productReference || '').trim();
+  if (!reference) throw new Error('Ürün referansı bulunamadı.');
   const { data, error } = await supabase.rpc('get_public_product_detail_v1', {
-    p_reference: productReference,
+    p_reference: reference,
   });
   const detail = unwrap<any>(data, error);
   const variants = Array.isArray(detail?.variants) ? detail.variants.filter((v: any) => v.available !== false) : [];
