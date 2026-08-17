@@ -4,9 +4,19 @@ on:
   push:
     branches:
       - agent/admin-supabase-retire-node
+    paths:
+      - 'src/admin/**'
+      - 'src/pages/AdminPage.tsx'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
 
 permissions:
   contents: read
+
+concurrency:
+  group: admin-delta-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   admin-delta-typecheck:
