@@ -1,6 +1,7 @@
 {
-  "generatedAt": "2026-08-17T10:18:30+00:00",
+  "generatedAt": "2026-08-17T10:50:00+00:00",
   "packageMode": "single-cumulative",
+  "productFormFactor": "android-ios-application",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
   "liveMigrationCount": 127,
   "latestMigration": "20260817101553_add_public_checkout_payment_readiness_v1",
@@ -61,10 +62,18 @@
     "accountSecurityConfirmationAccessibility": "IMPLEMENTED_PASSWORD_BOUNDARIES_AND_ACCESSIBLE_SESSION_CONFIRMATION_PENDING_CI_RECHECK",
     "capacitorPublicShareContract": "IMPLEMENTED_NATIVE_NAVIGATION_SCHEME_WITH_EXPLICIT_HTTPS_PUBLIC_SHARE_ORIGIN_PENDING_CI_RECHECK",
     "checkoutPaymentReadinessMigrationHistory": "PASS_APPLIED_THROUGH_SUPABASE_MIGRATION_TOOL_AND_REPOSITORY_FILENAME_ALIGNED_TO_20260817101553",
+    "nativeApplicationShell": "IMPLEMENTED_DESKTOP_TOP_NAV_AND_HAMBURGER_REMOVED_FROM_REACT_SHELL_PENDING_CI_RECHECK",
+    "nativePersistentBottomNavigation": "IMPLEMENTED_PHONE_AND_TABLET_APP_NAVIGATION_PENDING_CI_RECHECK",
+    "nativeHeaderUnreadBadge": "IMPLEMENTED_REAL_SERVER_UNREAD_COUNT_RED_BADGE_PENDING_CI_RECHECK",
+    "nativeForegroundPushUnreadRefresh": "IMPLEMENTED_SERVER_AUTHORITATIVE_REFRESH_ON_FOREGROUND_PUSH_RECEIPT_PENDING_CI_RECHECK",
+    "nativeCartTotalItemBadge": "IMPLEMENTED_SERVER_ITEM_COUNT_WITH_SAFE_QUANTITY_FALLBACK_PENDING_CI_RECHECK",
+    "nativeCheckoutCartBadgeSynchronization": "IMPLEMENTED_CHECKOUT_MUTATIONS_PROPAGATE_CART_SNAPSHOT_TO_APP_SHELL_PENDING_CI_RECHECK",
+    "nativeKeyboardNavigationCoordination": "IMPLEMENTED_KEYBOARD_VISIBILITY_SIGNAL_HIDES_BOTTOM_NAV_PENDING_CI_RECHECK",
+    "nativeKeyboardResizeConfiguration": "IMPLEMENTED_ANDROID_FULLSCREEN_RESIZE_WORKAROUND_AND_IOS_BACKDROP_AUTO_PENDING_CI_RECHECK",
     "androidReleaseBundleBaseline": "PASS",
     "iosSimulatorCompileBaseline": "PASS",
     "latestUiHardeningCi": "NOT_EXECUTED_FOR_NEW_HEAD_GITHUB_BILLING_BLOCKER_REMAINS",
-    "latestFunctionalFrontendHead": "282c7a87b8996ff222d488bb9157db870aafba50",
+    "latestFunctionalFrontendHead": "bade93a2a177b116ddd62be45d36184c5eb7604d",
     "latestWorkflowRunId": 32014393717,
     "latestWorkflowHeadSha": "699bb69d249711727972dc07ddd298d2231a4955",
     "latestWorkflowJobs": {
@@ -111,6 +120,15 @@
     "profileAndSellerMediaValidationRejectsUnsupportedFilesBeforeMutation": true,
     "destructiveSellerAndSecurityActionsUseAccessibleConfirmationDialogs": true,
     "allCurrentBranchMigrationsRepresentedLive": true,
+    "desktopTopNavigationRemovedFromApplicationShell": true,
+    "hamburgerMenuRemovedFromApplicationShell": true,
+    "repositorySearchDesignPreserved": true,
+    "notificationBadgeUsesServerUnreadCount": true,
+    "foregroundPushRefreshesUnreadCountWithoutForcedNavigation": true,
+    "cartBadgeUsesServerTotalItemCountNotDistinctLineCount": true,
+    "checkoutQuantityRemoveAndClearMutationsRefreshAppShellCartCount": true,
+    "accountBottomNavigationDoesNotMislabelUnreadNotificationsAsAccountCount": true,
+    "nativeKeyboardTemporarilyHidesBottomNavigation": true,
     "newFrontendHeadDoesNotClaimUnexecutedCiAsPassing": true
   },
   "liveCatalogAudit": {
@@ -126,7 +144,7 @@
     "note": "Missing real shipping weights remain visible for correction and are never fabricated."
   },
   "externalBlockers": {
-    "githubActions": "The newest manual frontend hardening head was not sent through another Actions run because the existing GitHub billing or spending-limit blocker prevents runner allocation. The last recorded workflow run 32014393717 failed before any job steps executed; this is not recorded as a code pass or code failure.",
+    "githubActions": "The newest Android/iOS application hardening head has not executed the mobile quality workflow because the GitHub account billing or spending-limit condition still prevents runner allocation. The last recorded workflow run 32014393717 failed before any job steps executed; this is not recorded as a code pass or code failure.",
     "liveSalesIdentity": "Legal business and support identity are not configured.",
     "paymentProvider": "Production payment provider configuration is external.",
     "nativePushProviders": "Production push provider configuration is external.",
