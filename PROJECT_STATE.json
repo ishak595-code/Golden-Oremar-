@@ -2,7 +2,12 @@
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
   "appliedMigrationCount": 127,
-  "latestMigration": "20260817001643_add_provider_filtered_push_delivery_claim_v2",
+  "latestMigration": "20260817101553_add_public_checkout_payment_readiness_v1",
+  "migrationReconciliation": {
+    "status": "aligned",
+    "reconciledAt": "2026-08-17T10:16:00Z",
+    "note": "The checkout payment readiness schema/data already existed live but its repository timestamp was not represented in Supabase migration history. The idempotent migration was applied through Supabase migration tooling and the repository migration filename was aligned to the recorded live version 20260817101553. All 21 migrations currently present on this feature branch are represented in live migration history."
+  },
   "securityAdvisorLints": 0,
   "performanceBlockingLints": 0,
   "edgeFunctions": {
@@ -12,26 +17,13 @@
   },
   "completedFrontendBlocks": [
     "account-center","gift-order-flow","server-cart-checkout","supabase-auth-session","server-catalog-search","public-product-detail","public-producer-profile","category-directory","category-directory-pagination","category-directory-reconnect-and-pagination-error-preservation","category-directory-live-image-and-description-polish","live-home-catalog","home-search-producer-origin-village-alignment","server-product-favorites","live-catalog-filter-options","catalog-filter-connectivity-resilience","catalog-product-card-action-locking-accessibility","catalog-search-pagination-dedup-accessibility","no-fake-voice-search","public-contact","public-events","authenticated-event-linking","account-newsletter","public-health-content","public-content-api-boundary-validation","product-safety-api-boundary-validation","customer-content-favorites","public-storefront-config","public-about-and-help-content","account-panel-lazy-splitting","account-deep-link-routing-complete","account-order-history-pagination","account-payment-history-pagination","account-payment-history-reconnect-and-pagination-error-preservation","account-payment-history-defensive-total-amount-and-currency-rendering","account-notification-cursor-pagination","account-notification-mutation-locking","account-notification-action-truthfulness-and-date-resilience","account-notification-reconnect-and-pagination-error-preservation","account-message-history-pagination","account-conversation-list-pagination","account-messaging-api-input-hardening","account-favorites-live-trust-polish","account-favorites-media-accessibility","account-followed-producer-live-trust-rating-polish","account-followed-producer-media-accessibility","account-followed-producer-defensive-trust-metric-rendering","account-gift-history-live-product-polish","account-gift-history-media-accessibility","account-address-validation-normalization","account-address-modal-error-accessibility","account-help-faq-reconnect-resilience","public-faq-response-boundary-hardening","verified-review-center-accessibility-polish","producer-onboarding-v4-ui","producer-product-management","producer-profile-edit","producer-location-change-request","producer-stock-input-and-change-request-action-hardening","producer-finance-zero-value-and-dashboard-metric-correctness","producer-inventory-safe-integer-and-version-validation","verified-purchase-review-center","dynamic-product-producer-metrics","product-safety-detail","faq-help-center","checkout-cart-client-boundary-validation","checkout-form-autofill-semantic-and-media-accessibility-hardening","admin-dashboard-supabase-rpc","admin-products-supabase-rpc","admin-orders-supabase-rpc","admin-stock-supabase-rpc","admin-returns-supabase-rpc","admin-categories-supabase-rpc","admin-category-input-boundary-hardening","admin-events-supabase-rpc","admin-notifications-supabase-rpc","admin-notification-safe-target-and-action-url-validation","admin-producer-document-path-hardening","admin-content-supabase-rpc","admin-settings-supabase-rpc","admin-campaigns-supabase-rpc","admin-finance-supabase-rpc","admin-finance-csv-formula-injection-hardening","admin-review-moderation-supabase-rpc","admin-users-supabase-rpc","admin-vendors-supabase-rpc","admin-vendor-applications-supabase-rpc","firebase-datacontext-runtime-retired","firebase-package-retired","legacy-node-sqlite-runtime-retired","legacy-source-mutators-retired","legacy-static-catalog-data-retired","metadata-microphone-residue-retired","release-architecture-audit","admin-catalog-integrity-readiness","seller-shipping-weight-integrity","native-push-client-preparation","exact-push-device-unregister-hardened","push-provider-filtered-queue-claim","push-dispatch-edge-worker-fcm-apns","storefront-demo-assets-retired","recipe-live-catalog-alignment","admin-section-lazy-splitting-implemented","production-bundle-budget-implemented","checkout-payment-readiness-contract","react19-types-aligned","cross-platform-mobile-quality-gate-baseline-green","dialog-background-inert-and-focus-trap-hardening","global-keyboard-high-contrast-and-text-scaling-hardening","android-post-notification-release-permission-explicit","ios-release-metadata-and-turkish-development-region","cross-platform-release-metadata-audit-expanded",
-    "catalog-product-canonical-share-fallback",
-    "product-detail-canonical-share-and-copy-resilience",
-    "canonical-public-product-producer-search-deep-links",
-    "home-category-slug-filter-correctness",
-    "home-search-product-producer-origin-village-alignment",
-    "home-live-configurable-hero-and-trust-metrics",
-    "legacy-home-local-placeholder-interactions-retired",
-    "app-shell-deep-link-navigation-refactor",
-    "catalog-search-overlay-position-and-category-route-correctness",
-    "admin-mobile-navigation-accessibility-dialog-hardening",
-    "producer-product-numeric-media-boundary-hardening",
-    "producer-product-accessible-archive-confirmation",
-    "account-profile-input-avatar-boundary-hardening",
-    "account-security-session-confirmation-and-password-boundary-hardening"
+    "catalog-product-canonical-share-fallback","product-detail-canonical-share-and-copy-resilience","canonical-public-product-producer-search-deep-links","home-category-slug-filter-correctness","home-search-product-producer-origin-village-alignment","home-live-configurable-hero-and-trust-metrics","legacy-home-local-placeholder-interactions-retired","app-shell-deep-link-navigation-refactor","browser-native-history-route-integrity","strictmode-safe-route-history","catalog-search-overlay-position-and-category-route-correctness","admin-mobile-navigation-accessibility-dialog-hardening","producer-product-numeric-media-boundary-hardening","producer-product-accessible-archive-confirmation","account-profile-input-avatar-boundary-hardening","account-security-session-confirmation-and-password-boundary-hardening","capacitor-safe-public-share-origin-contract"
   ],
   "integrationEntryPoint": "frontend/integration/apply-all-current.mjs",
-  "latestFrontendHead": "454ff47af57f8007a68f92edf7f539cdf14e3476",
+  "latestFrontendHead": "282c7a87b8996ff222d488bb9157db870aafba50",
   "latestFrontendValidation": "implemented-awaiting-ci-runner-allocation",
   "externalBlockers": [
-    "github-actions-billing-or-spending-limit","business-and-support-identity-required-for-live-sales","production-payment-provider-and-merchant-credentials","production-oauth-provider-configuration","production-fcm-apns-provider-configuration","mobile-store-signing-and-release-credentials"
+    "github-actions-billing-or-spending-limit","business-and-support-identity-required-for-live-sales","production-payment-provider-and-merchant-credentials","production-oauth-provider-configuration","production-fcm-apns-provider-configuration","mobile-store-signing-and-release-credentials","production-public-web-origin-required-for-native-share-links"
   ],
-  "nextBlock": "browser-native-history-route-integrity-final-account-seller-admin-a11y-scan-and-release-recheck"
+  "nextBlock": "explicit-home-navigation-search-state-reset-producer-onboarding-input-hardening-final-account-seller-admin-a11y-scan-and-release-recheck"
 }
