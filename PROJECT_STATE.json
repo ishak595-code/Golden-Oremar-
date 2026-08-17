@@ -74,7 +74,9 @@
     "production-bundle-budget-implemented",
     "checkout-payment-readiness-contract",
     "react19-types-aligned",
-    "cross-platform-mobile-quality-gate-baseline-green"
+    "cross-platform-mobile-quality-gate-baseline-green",
+    "dialog-background-inert-and-focus-trap-hardening",
+    "global-keyboard-high-contrast-and-text-scaling-hardening"
   ],
   "integrationEntryPoint": "frontend/integration/apply-all-current.mjs",
   "externalBlockers": [
@@ -85,5 +87,5 @@
     "production-fcm-apns-provider-configuration",
     "mobile-store-signing-and-release-credentials"
   ],
-  "nextBlock": "accessibility-performance-release-hardening-and-external-provider-readiness"
+  "nextBlock": "checkout-semantic-accessibility-performance-and-release-hardening"
 }
