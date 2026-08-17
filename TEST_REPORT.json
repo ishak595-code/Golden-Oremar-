@@ -1,9 +1,10 @@
 {
-  "generatedAt": "2026-08-17T10:04:10+00:00",
+  "generatedAt": "2026-08-17T10:18:30+00:00",
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
   "liveMigrationCount": 127,
-  "latestMigration": "20260817001643_add_provider_filtered_push_delivery_claim_v2",
+  "latestMigration": "20260817101553_add_public_checkout_payment_readiness_v1",
+  "migrationReconciliation": "PASS_ALL_21_CURRENT_BRANCH_MIGRATION_VERSIONS_REPRESENTED_LIVE",
   "securityAdvisorLints": 0,
   "performanceBlockingLints": 0,
   "edgeFunctions": {
@@ -14,7 +15,7 @@
   "validation": {
     "typescriptSyntaxErrorsAtLastExecutedQualityGate": 0,
     "productionWebBuildAtLastExecutedQualityGate": "PASS",
-    "supabaseSecurityAdvisor": "PASS_ZERO_LINTS_RECHECKED_2026-08-17",
+    "supabaseSecurityAdvisor": "PASS_ZERO_LINTS_RECHECKED_2026-08-17_AFTER_MIGRATION_RECONCILIATION",
     "supabasePerformanceBlockingLints": "PASS_ZERO_BLOCKING_LINTS_INFO_UNUSED_INDEXES_ONLY_RECHECKED_2026-08-17",
     "categoryDirectoryPagination": "IMPLEMENTED_PENDING_CI_RECHECK",
     "categoryDirectoryReconnectAndPaginationErrorPreservation": "IMPLEMENTED_PENDING_CI_RECHECK",
@@ -52,15 +53,18 @@
     "homeLiveHero": "IMPLEMENTED_STOREFRONT_CONFIG_TEXT_AND_LIVE_CATALOG_IMAGES_COUNTS_PENDING_CI_RECHECK",
     "legacyHomePlaceholderInteractionRetirement": "IMPLEMENTED_OLD_LOCAL_FAKE_LIKE_FOLLOW_CONTENT_STATE_REMOVED_FROM_APP_SHELL_PENDING_CI_RECHECK",
     "appShellDeepLinkHydration": "IMPLEMENTED_SHARED_PRODUCT_PRODUCER_SEARCH_ROUTES_HYDRATE_ON_RELOAD_PENDING_CI_RECHECK",
+    "browserNativeHistoryRouteIntegrity": "IMPLEMENTED_REAL_WINDOW_HISTORY_BACK_WITH_STRICTMODE_SAFE_DEPTH_TRACKING_PENDING_CI_RECHECK",
     "searchOverlayRouteCorrectness": "IMPLEMENTED_HEADER_RELATIVE_POSITIONING_STALE_REQUEST_INVALIDATION_AND_CATEGORY_SLUG_ONLY_ROUTING_PENDING_CI_RECHECK",
     "adminMobileNavigationAccessibility": "IMPLEMENTED_DIALOG_FOCUS_TRAP_ESCAPE_INERT_BACKGROUND_AND_FOCUS_RESTORE_PENDING_CI_RECHECK",
     "producerProductBoundaryValidation": "IMPLEMENTED_NUMERIC_MEDIA_AND_ACCESSIBLE_ARCHIVE_CONFIRMATION_PENDING_CI_RECHECK",
     "accountProfileBoundaryValidation": "IMPLEMENTED_LOCALE_PHONE_NAME_AND_AVATAR_BOUNDARIES_PENDING_CI_RECHECK",
     "accountSecurityConfirmationAccessibility": "IMPLEMENTED_PASSWORD_BOUNDARIES_AND_ACCESSIBLE_SESSION_CONFIRMATION_PENDING_CI_RECHECK",
+    "capacitorPublicShareContract": "IMPLEMENTED_NATIVE_NAVIGATION_SCHEME_WITH_EXPLICIT_HTTPS_PUBLIC_SHARE_ORIGIN_PENDING_CI_RECHECK",
+    "checkoutPaymentReadinessMigrationHistory": "PASS_APPLIED_THROUGH_SUPABASE_MIGRATION_TOOL_AND_REPOSITORY_FILENAME_ALIGNED_TO_20260817101553",
     "androidReleaseBundleBaseline": "PASS",
     "iosSimulatorCompileBaseline": "PASS",
     "latestUiHardeningCi": "NOT_EXECUTED_FOR_NEW_HEAD_GITHUB_BILLING_BLOCKER_REMAINS",
-    "latestFunctionalFrontendHead": "454ff47af57f8007a68f92edf7f539cdf14e3476",
+    "latestFunctionalFrontendHead": "282c7a87b8996ff222d488bb9157db870aafba50",
     "latestWorkflowRunId": 32014393717,
     "latestWorkflowHeadSha": "699bb69d249711727972dc07ddd298d2231a4955",
     "latestWorkflowJobs": {
@@ -100,12 +104,13 @@
     "iosExportComplianceMetadataDoesNotInventCustomEncryption": true,
     "releaseAuditChecksNativeAndWebMetadataContracts": true,
     "canonicalShareUrlsOpenPublicProductRoutes": true,
+    "nativeShareDoesNotExposeCapacitorLocalhostUrl": true,
     "homeCategoryFiltersUseSlugsNotLocalizedLabels": true,
     "homeTrustMetricsComeFromLiveCatalogState": true,
     "searchCategorySelectionDoesNotCombineLocalizedLabelWithExactSlug": true,
     "profileAndSellerMediaValidationRejectsUnsupportedFilesBeforeMutation": true,
     "destructiveSellerAndSecurityActionsUseAccessibleConfirmationDialogs": true,
-    "noDatabaseMigrationAddedForFrontendOnlyHardening": true,
+    "allCurrentBranchMigrationsRepresentedLive": true,
     "newFrontendHeadDoesNotClaimUnexecutedCiAsPassing": true
   },
   "liveCatalogAudit": {
@@ -126,6 +131,7 @@
     "paymentProvider": "Production payment provider configuration is external.",
     "nativePushProviders": "Production push provider configuration is external.",
     "oauthProviders": "Production Google and Facebook provider configuration is external.",
-    "mobileSigning": "Store signing and release configuration is external."
+    "mobileSigning": "Store signing and release configuration is external.",
+    "publicWebOrigin": "A real public HTTPS origin must be set in VITE_PUBLIC_APP_ORIGIN before native product sharing can produce externally openable links."
   }
 }
