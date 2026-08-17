@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T00:27:00+00:00",
+  "generatedAt": "2026-08-17T01:20:00+00:00",
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
   "liveMigrationCount": 127,
@@ -19,6 +19,7 @@
     "firebaseRuntimeResidue": "PASS_NONE_FOUND",
     "legacyStaticCatalogRuntime": "PASS_RETIRED",
     "catalogReadinessQualityGate": "PASS",
+    "supabaseProjectHealth": "PASS_ACTIVE_HEALTHY_POSTGRES_17",
     "supabaseSecurityAdvisor": "PASS_ZERO_LINTS",
     "supabasePerformanceBlockingLints": "PASS_ZERO_BLOCKING_LINTS_INFO_UNUSED_INDEXES_ONLY",
     "storefrontDemoAssetAudit": "PASS_ZERO_UNSPLASH_PICSUM_PLACEHOLDER_LOREM",
@@ -27,11 +28,13 @@
     "pushProviderFilteredClaimRpc": "PASS_SERVICE_ROLE_ONLY",
     "pushDispatchEdgeWorker": "PASS_DEPLOYED_ACTIVE_FCM_APNS_PROVIDER_AWARE",
     "pushDispatchCredentialBehavior": "PASS_DOES_NOT_CLAIM_QUEUE_WHEN_NO_PROVIDER_CREDENTIAL_SET_IS_CONFIGURED",
+    "dialogAccessibilityHardening": "IMPLEMENTED_BACKGROUND_INERT_FOCUS_CONTAINMENT_ESCAPE_AND_FOCUS_RESTORE",
+    "globalAccessibilityHardening": "IMPLEMENTED_KEYBOARD_FOCUS_HIGH_CONTRAST_TEXT_SCALING_AND_REDUCED_MOTION",
     "mobileBrandAssets": "PASS_VALIDATED_PNG",
     "androidReleaseBundleBaseline": "PASS",
     "iosSimulatorCompileBaseline": "PASS",
     "latestMobileQualityGate": "EXTERNAL_BLOCKED_GITHUB_BILLING_OR_SPENDING_LIMIT",
-    "latestLazySplitAndBundleBudgetExternalCi": "PENDING_UNTIL_GITHUB_RUNNERS_START"
+    "latestAccessibilityCommitCi": "EXTERNAL_BLOCKED_BEFORE_STEPS_STARTED"
   },
   "truthfulnessChecks": {
     "adminFakeMetricsRetired": true,
@@ -52,7 +55,8 @@
     "checkoutDoesNotExposeProviderSecrets": true,
     "storefrontHeroImagesUseLocalCatalogAssets": true,
     "legacyRecipeHeroImagesUseLocalCatalogAssets": true,
-    "legacyRecipesAlignedToLiveCatalogProducts": true
+    "legacyRecipesAlignedToLiveCatalogProducts": true,
+    "accessibilityChangesDoNotClaimUnexecutedCiAsPassing": true
   },
   "liveCatalogAudit": {
     "publishedActiveProducts": 42,
@@ -95,7 +99,7 @@
     ]
   },
   "externalBlockers": {
-    "githubActions": "Jobs currently do not start because the GitHub account reports failed recent payments or a spending limit that must be increased.",
+    "githubActions": "Jobs still fail before any steps start because the GitHub account reports a billing or spending-limit problem; this is treated as an external CI blocker, not a passing test.",
     "liveSalesIdentity": "Legal business and support contact identity are not configured in brand settings.",
     "paymentProvider": "Production merchant/provider credentials are not configured; checkout remains truthful manual-confirmation mode and exposes readiness state without secrets.",
     "nativePushProviders": "Queue, native registration and FCM/APNs dispatch worker are implemented, but production provider credentials are intentionally absent.",
