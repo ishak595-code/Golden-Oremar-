@@ -39,7 +39,7 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
   );
 }
 
-export function Money({ minor, currency = 'TRY' }: { minor: number; currency?: string }) {
+export function Money({ minor, currency }: { minor: number; currency?: string | null }) {
   const amountMinor = Number(minor);
   const normalizedCurrency = String(currency || '').trim().toUpperCase();
   const validAmount = Number.isSafeInteger(amountMinor);
