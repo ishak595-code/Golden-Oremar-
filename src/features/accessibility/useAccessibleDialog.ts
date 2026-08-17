@@ -9,6 +9,41 @@ const FOCUSABLE_SELECTOR = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
 
+type InertSnapshot = {
+  element: HTMLElement;
+  inert: boolean;
+  ariaHidden: string | null;
+};
+
+function isolateDialogFromBackground(dialog: HTMLElement) {
+  const snapshots: InertSnapshot[] = [];
+  let current: HTMLElement = dialog;
+  let parent = current.parentElement;
+
+  while (parent && parent !== document.body) {
+    for (const sibling of Array.from(parent.children)) {
+      if (!(sibling instanceof HTMLElement) || sibling === current) continue;
+      snapshots.push({
+        element: sibling,
+        inert: sibling.inert,
+        ariaHidden: sibling.getAttribute('aria-hidden'),
+      });
+      sibling.inert = true;
+      sibling.setAttribute('aria-hidden', 'true');
+    }
+    current = parent;
+    parent = parent.parentElement;
+  }
+
+  return () => {
+    for (const snapshot of snapshots.reverse()) {
+      snapshot.element.inert = snapshot.inert;
+      if (snapshot.ariaHidden === null) snapshot.element.removeAttribute('aria-hidden');
+      else snapshot.element.setAttribute('aria-hidden', snapshot.ariaHidden);
+    }
+  };
+}
+
 export function useAccessibleDialog<T extends HTMLElement>(open: boolean, onClose: () => void) {
   const dialogRef = useRef<T | null>(null);
   const onCloseRef = useRef(onClose);
@@ -24,6 +59,7 @@ export function useAccessibleDialog<T extends HTMLElement>(open: boolean, onClos
 
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
+    const restoreBackground = isolateDialogFromBackground(dialog);
     document.body.style.overflow = 'hidden';
 
     const frame = window.requestAnimationFrame(() => {
@@ -43,7 +79,9 @@ export function useAccessibleDialog<T extends HTMLElement>(open: boolean, onClos
         (element): element is HTMLElement =>
           element instanceof HTMLElement &&
           !element.hasAttribute('disabled') &&
-          element.getAttribute('aria-hidden') !== 'true',
+          element.getAttribute('aria-hidden') !== 'true' &&
+          element.closest('[inert], [aria-hidden="true"]') === null &&
+          element.getClientRects().length > 0,
       );
       if (!focusable.length) {
         event.preventDefault();
@@ -68,6 +106,7 @@ export function useAccessibleDialog<T extends HTMLElement>(open: boolean, onClos
       window.cancelAnimationFrame(frame);
       document.removeEventListener('keydown', onKeyDown, true);
       document.body.style.overflow = previousOverflow;
+      restoreBackground();
       window.requestAnimationFrame(() => {
         if (previouslyFocused?.isConnected) previouslyFocused.focus({ preventScroll: true });
       });
