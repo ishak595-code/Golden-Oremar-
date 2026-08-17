@@ -260,7 +260,7 @@ function AppContent(){
   if(currentTab==='cart'){
    if(!authReady)return<RouteLoading label="Sepet oturumunuz doğrulanıyor"/>;
    if(!currentUser)return<AuthScreen title="Sepetinizi kullanmak için hesabınıza giriş yapın." description="Sepetiniz, stok durumunuz ve siparişiniz hesabınıza güvenli şekilde bağlanır."/>;
-   return<CartCheckoutFlow onBack={goBack} onOpenAddresses={()=>{setAccountView('addresses');navigateToTab('account');}} onOrderCreated={()=>{setCart([]);setCartItemCount(0);setAccountView('orders');navigateToTab('account');}}/>;
+   return<CartCheckoutFlow onBack={goBack} onCartChanged={applyServerCartSnapshot} onOpenAddresses={()=>{setAccountView('addresses');navigateToTab('account');}} onOrderCreated={()=>{setCart([]);setCartItemCount(0);setAccountView('orders');navigateToTab('account');}}/>;
   }
   if(currentTab==='categories')return<CategoryDirectoryScreen onOpenProduct={slug=>openProduct(slug)} onAddToCart={async(item,quantity)=>{await addToCart({id:item.id,slug:item.slug,name:item.name,variantId:item.variant?.id},quantity);}}/>;
   if(currentTab==='events')return<PublicEventsScreen onBack={goBack} currentUser={currentUser}/>;
