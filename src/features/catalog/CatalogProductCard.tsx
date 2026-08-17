@@ -52,7 +52,9 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
   if(cardBusy)return;
   try{
    setActionBusy('share');setActionFeedback('');
-   if(onShare){await onShare(product);setActionFeedback('Paylaşım işlemi tamamlandı.');return;}
+   // When the parent owns sharing it also owns truthful success/failure feedback.
+   // Avoid a second local success message that could contradict the parent toast.
+   if(onShare){await onShare(product);return;}
    const reference=product?.slug||product?.legacyId||product?.id;
    const result=await shareOrCopy({title:productName,text:description,url:buildProductUrl(reference)});
    setActionFeedback(result==='copied'?'Ürün bağlantısı panoya kopyalandı.':result==='shared'?'Paylaşım işlemi tamamlandı.':'Paylaşım iptal edildi.');
