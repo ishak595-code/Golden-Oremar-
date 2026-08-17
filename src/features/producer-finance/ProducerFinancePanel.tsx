@@ -3,6 +3,8 @@ import { ArrowLeft, RefreshCw, ShieldCheck } from 'lucide-react';
 import { getProducerFinance, listProducerPayouts } from './api';
 import { ErrorState, LoadingState, Money, Panel } from '../account/ui';
 
+const PAYOUT_PAGE_SIZE = 20;
+
 const payoutLabel: Record<string, string> = {
   scheduled: 'Planlandı',
   processing: 'İşleniyor',
@@ -21,26 +23,57 @@ function currencyCode(value: unknown) {
   return /^[A-Z]{3}$/.test(currency) ? currency : '';
 }
 
+function mergePayouts(previous: any[], incoming: any[]) {
+  const unique = new Map<string, any>();
+  [...previous, ...incoming].forEach((payout, index) => {
+    const id = String(payout?.id || `${payout?.created_at || 'unknown'}:${payout?.amount_minor ?? 'unknown'}:${index}`);
+    if (!unique.has(id)) unique.set(id, payout);
+  });
+  return Array.from(unique.values());
+}
+
 export default function ProducerFinancePanel({ onBack }: { onBack: () => void }) {
   const [balances, setBalances] = useState<any[]>([]);
   const [payouts, setPayouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState('');
+  const [loadMoreError, setLoadMoreError] = useState('');
 
   async function load() {
     try {
       setLoading(true);
       setError('');
+      setLoadMoreError('');
       const [balanceRows, payoutRows] = await Promise.all([
         getProducerFinance(),
-        listProducerPayouts(20, 0),
+        listProducerPayouts(PAYOUT_PAGE_SIZE, 0),
       ]);
+      const nextPayouts = Array.isArray(payoutRows) ? payoutRows : [];
       setBalances(Array.isArray(balanceRows) ? balanceRows : []);
-      setPayouts(Array.isArray(payoutRows) ? payoutRows : []);
+      setPayouts(nextPayouts);
+      setHasMore(nextPayouts.length === PAYOUT_PAGE_SIZE);
     } catch (err: any) {
       setError(err?.message || 'Finans bilgileri yüklenemedi.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadMore() {
+    if (loadingMore || !hasMore) return;
+    try {
+      setLoadingMore(true);
+      setLoadMoreError('');
+      const rows = await listProducerPayouts(PAYOUT_PAGE_SIZE, payouts.length);
+      const next = Array.isArray(rows) ? rows : [];
+      setPayouts(previous => mergePayouts(previous, next));
+      setHasMore(next.length === PAYOUT_PAGE_SIZE);
+    } catch (err: any) {
+      setLoadMoreError(err?.message || 'Daha eski ödeme kayıtları yüklenemedi.');
+    } finally {
+      setLoadingMore(false);
     }
   }
 
@@ -55,7 +88,7 @@ export default function ProducerFinancePanel({ onBack }: { onBack: () => void })
         <button type="button" onClick={onBack} className="min-h-11 rounded-xl border px-4 font-semibold" aria-label="Satıcı paneline dön">
           <ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4" />Geri
         </button>
-        <button type="button" onClick={() => void load()} className="min-h-11 rounded-xl border px-4 font-semibold" aria-label="Finans bilgilerini yenile">
+        <button type="button" onClick={() => void load()} disabled={loadingMore} className="min-h-11 rounded-xl border px-4 font-semibold disabled:opacity-50" aria-label="Finans bilgilerini yenile">
           <RefreshCw aria-hidden="true" className="mr-2 inline h-4 w-4" />Yenile
         </button>
       </div>
@@ -106,6 +139,9 @@ export default function ProducerFinancePanel({ onBack }: { onBack: () => void })
                 </article>
               );
             })}
+            {loadMoreError ? <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100"><p>{loadMoreError}</p><button type="button" disabled={loadingMore} onClick={() => void loadMore()} className="mt-2 min-h-11 rounded-xl border border-amber-300 px-4 font-semibold disabled:opacity-50 dark:border-amber-800">Tekrar dene</button></div> : null}
+            {hasMore ? <button type="button" onClick={() => void loadMore()} disabled={loadingMore} className="min-h-11 w-full rounded-xl border border-brand-green px-4 font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:text-brand-gold">{loadingMore ? 'Daha eski ödemeler yükleniyor…' : 'Daha eski ödemeleri göster'}</button> : null}
+            <div className="sr-only" aria-live="polite">{loadingMore ? 'Daha eski ödeme kayıtları yükleniyor.' : loadMoreError || `${payouts.length} ödeme kaydı gösteriliyor.`}</div>
           </div>
         )}
       </Panel>
