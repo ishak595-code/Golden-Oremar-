@@ -19,7 +19,11 @@ export function useUnreadNotificationCount(authenticated: boolean) {
     const previous = lastKnownUnread.current;
     lastKnownUnread.current = next;
     setUnreadCountState(next);
-    if (previous !== null && previous > 0 && next === 0) void clearNativeDeliveredNotifications();
+
+    // Supabase is authoritative for unread state. Clear stale delivered native
+    // notifications both when unread transitions to zero and when the first
+    // authenticated hydration already reports zero after a cold app launch.
+    if (next === 0 && previous !== 0) void clearNativeDeliveredNotifications();
     return { next, previous };
   }, []);
 
