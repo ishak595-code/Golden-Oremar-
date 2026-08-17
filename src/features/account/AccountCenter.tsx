@@ -29,7 +29,7 @@ const menu=[
  ['followed-producers','Takip Ettiğim Satıcılar',Store,'Takip ettiğiniz doğrulanmış üreticiler'],
  ['gifts','Hediye Ettiklerim',Gift,'Hediye olarak verdiğiniz siparişler'],
  ['addresses','Adreslerim',MapPin,'Teslimat adresleri'],
- ['payments','Ödeme Yöntemlerim',WalletCards,'Güvenli ödeme hareketleri'],
+ ['payments','Ödeme Geçmişim',WalletCards,'Doğrulanmış ödeme ve geri ödeme hareketleri'],
  ['messages','Mesajlarım',MessageCircle,'Destek ve üretici konuşmaları'],
  ['notifications','Bildirimler',Bell,'Sipariş, ödeme, kargo ve sistem bildirimleri'],
  ['contact','İletişim',MessageCircle,'Golden Oremar ile iletişime geçin'],
@@ -45,19 +45,21 @@ export default function AccountCenter({
 }:{
  requestedView?:string; theme?:AppTheme; onThemeChange?:(theme:AppTheme)=>void; onOpenProduct?:(slug:string)=>void; onOpenProducer?:(slug:string)=>void; onStartGift?:()=>void; onOpenMessages?:()=>void; onOpenNotificationAction?:(url:string,metadata:any)=>void; onUnreadNotificationCountChange?:(count:number)=>void; onOpenContact?:()=>void; onOpenHealth?:()=>void; onOpenEvents?:()=>void; onOpenAdmin?:()=>void; onOpenSellerApplication?:()=>void; onOpenSellerProductManager?:()=>void; onBack?:()=>void;
 }){
- const[overview,setOverview]=useState<AccountOverview|null>(null);const[view,setView]=useState<AccountView>('home');const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[messageConversationId,setMessageConversationId]=useState('');const[orderDetailId,setOrderDetailId]=useState('');
+ const[overview,setOverview]=useState<AccountOverview|null>(null);const[view,setView]=useState<AccountView>('home');const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[refreshError,setRefreshError]=useState('');const[messageConversationId,setMessageConversationId]=useState('');const[orderDetailId,setOrderDetailId]=useState('');
  const viewContentRef=useRef<HTMLDivElement|null>(null);const homeTitleRef=useRef<HTMLHeadingElement|null>(null);const previousViewRef=useRef<AccountView>('home');
- async function refresh(){
+ async function refresh(silent=false){
   try{
-   setLoading(true);setError('');
+   if(!silent)setLoading(true);
+   setError('');setRefreshError('');
    const next=await getAccountOverview();
    setOverview(next);
    const unread=nonNegativeCount(next?.summary?.unread_notification_count);
-   // The dedicated notification endpoint remains authoritative. Never erase a
-   // valid red app badge because an overview payload is malformed or stale.
    if(unread!==null)onUnreadNotificationCountChange?.(unread);
-  }catch(e:any){setError(e?.message||'Hesap bilgileri yüklenemedi.');}
-  finally{setLoading(false);}
+  }catch(e:any){
+   const message=e?.message||'Hesap bilgileri yüklenemedi.';
+   if(silent&&overview)setRefreshError(message);else setError(message);
+  }
+  finally{if(!silent)setLoading(false);}
  }
  useEffect(()=>{void refresh();},[]);
  useEffect(()=>{
@@ -97,34 +99,37 @@ export default function AccountCenter({
   return()=>window.cancelAnimationFrame(frame);
  },[view]);
  if(loading)return<LoadingState label="Hesabınız yükleniyor"/>;
- if(error||!overview)return<ErrorState message={error||'Hesap bulunamadı.'} onRetry={refresh}/>;
+ if(error||!overview)return<ErrorState message={error||'Hesap bulunamadı.'} onRetry={()=>void refresh()}/>;
 
  const body=()=>{
-  if(view==='profile')return<ProfilePanel overview={overview} onChanged={refresh}/>;
+  if(view==='profile')return<ProfilePanel overview={overview} onChanged={()=>void refresh(true)}/>;
   if(view==='orders')return<OrdersPanel initialOrderId={orderDetailId||null}/>;
   if(view==='reviews')return<ReviewsPanel userId={overview.profile.id} onOpenProduct={onOpenProduct}/>;
-  if(view==='addresses')return<AddressesPanel addresses={overview.addresses} onChanged={refresh}/>;
+  if(view==='addresses')return<AddressesPanel addresses={overview.addresses} onChanged={()=>void refresh(true)}/>;
   if(view==='favorites')return<FavoritesPanel onOpenProduct={onOpenProduct}/>;
   if(view==='followed-producers')return<FollowedProducersPanel onOpenProducer={onOpenProducer}/>;
   if(view==='gifts')return<GiftsPanel onStartGift={onStartGift}/>;
   if(view==='payments')return<PaymentsPanel/>;
   if(view==='notifications')return<NotificationsPanel onOpenAction={onOpenNotificationAction} onUnreadCountChange={onUnreadNotificationCountChange}/>;
   if(view==='messages')return<MessagesPanel initialConversationId={messageConversationId}/>;
-  if(view==='support')return<SupportPanel locale={overview.profile.locale} onOpenMessages={()=>{if(onOpenMessages)onOpenMessages();else setView('messages');}}/>;
+  if(view==='support')return<SupportPanel locale={overview.profile.locale} onOpenMessages={()=>{if(onOpenMessages)onOpenMessages();else{setMessageConversationId('');setView('messages');}}}/>;
   if(view==='seller')return<SellerPanel producer={overview.producer} onOpenApplication={onOpenSellerApplication} onOpenProductManager={()=>{if(onOpenSellerProductManager)onOpenSellerProductManager();else setView('producer-products');}}/>;
   if(view==='producer-products')return<ProducerProductManager onBack={()=>setView('seller')}/>;
-  if(view==='producer-profile-edit')return<ProducerProfilePanel onChanged={refresh}/>;
-  if(view==='settings')return<SettingsPanel closure={overview.account_closure} profile={overview.profile} onChanged={refresh} theme={theme} onThemeChange={onThemeChange}/>;
+  if(view==='producer-profile-edit')return<ProducerProfilePanel onChanged={()=>void refresh(true)}/>;
+  if(view==='settings')return<SettingsPanel closure={overview.account_closure} profile={overview.profile} onChanged={()=>void refresh(true)} theme={theme} onThemeChange={onThemeChange}/>;
   return null;
  };
 
  if(view!=='home')return<div className="space-y-4">
   <button type="button" onClick={()=>setView('home')} className="min-h-11 rounded-xl border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4"/>Hesabıma dön</button>
+  {refreshError?<div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">Değişiklik kaydedildi ancak hesap özeti yeniden yüklenemedi: {refreshError}<button type="button" onClick={()=>void refresh(true)} className="ml-2 min-h-11 rounded-lg border border-amber-300 px-3 font-semibold dark:border-amber-800">Tekrar dene</button></div>:null}
   <div ref={viewContentRef} tabIndex={-1} className="outline-none"><React.Suspense fallback={<LoadingState label="Hesap bölümü yükleniyor"/>}>{body()}</React.Suspense></div>
  </div>;
 
  const roles=Array.isArray(overview.roles)?overview.roles:[];
+ const producerSignals=[overview.producer?.is_verified?'Üretici doğrulandı':'',overview.producer?.origin_verified?'Menşe doğrulandı':''].filter(Boolean);
  return<section aria-labelledby="account-title" className="space-y-5">
+  {refreshError?<div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">Hesap özeti yenilenemedi. Mevcut bilgiler korunuyor. <button type="button" onClick={()=>void refresh(true)} className="ml-2 min-h-11 rounded-lg border border-amber-300 px-3 font-semibold dark:border-amber-800">Tekrar dene</button></div>:null}
   <div className="rounded-2xl bg-brand-green p-5 text-white">
     <div className="flex items-center justify-between gap-3">
       <div><h1 ref={homeTitleRef} tabIndex={-1} id="account-title" className="text-2xl font-bold outline-none">Hesabım</h1><p className="mt-1 text-sm text-white/80">{overview.profile.display_name || overview.profile.email}</p></div>
@@ -140,7 +145,7 @@ export default function AccountCenter({
 
   {overview.producer?<div className="rounded-2xl border border-brand-gold/30 bg-brand-gold/5 p-4">
     <div className="font-bold">{overview.producer.display_name}</div>
-    <div className="mt-1 text-sm text-gray-600 dark:text-gray-300">{overview.producer.is_verified?'Üretici doğrulandı':''}{overview.producer.origin_verified?' • Menşe doğrulandı':''}</div>
+    {producerSignals.length?<div className="mt-1 text-sm text-gray-600 dark:text-gray-300">{producerSignals.join(' • ')}</div>:null}
   </div>:null}
 
   <div className="grid gap-3">
@@ -168,7 +173,7 @@ export default function AccountCenter({
      <div className="min-w-0 flex-1"><div className="font-bold">Yönetim Paneli</div><div className="text-sm text-gray-500">Golden Oremar yönetimi</div></div><ChevronRight aria-hidden="true" className="h-5 w-5 text-gray-400"/></div>
     </button>
    ):null}
-   {menu.map(([key,label,Icon,description])=><button type="button" key={key} onClick={()=>{if(key==='contact'){onOpenContact?.();return;} if(key==='orders')setOrderDetailId(''); setView(key as AccountView);}} disabled={key==='contact'&&!onOpenContact} className="min-h-16 w-full rounded-2xl border border-gray-200 bg-white p-4 text-left disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-800 dark:bg-gray-900">
+   {menu.map(([key,label,Icon,description])=><button type="button" key={key} onClick={()=>{if(key==='contact'){onOpenContact?.();return;}if(key==='orders')setOrderDetailId('');if(key==='messages')setMessageConversationId('');setView(key as AccountView);}} disabled={key==='contact'&&!onOpenContact} className="min-h-16 w-full rounded-2xl border border-gray-200 bg-white p-4 text-left disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-800 dark:bg-gray-900">
      <div className="flex items-center gap-3"><div aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2 text-brand-green"><Icon className="h-5 w-5"/></div>
      <div className="min-w-0 flex-1"><div className="font-bold">{label}</div><div className="text-sm text-gray-500">{description}</div></div><ChevronRight aria-hidden="true" className="h-5 w-5 text-gray-400"/></div>
    </button>)}
