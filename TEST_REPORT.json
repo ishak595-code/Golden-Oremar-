@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T03:24:00+00:00",
+  "generatedAt": "2026-08-17T04:14:00+00:00",
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
   "liveMigrationCount": 127,
@@ -20,6 +20,9 @@
     "homeSearchProducerOriginVillageAlignment": "IMPLEMENTED_PENDING_CI_RECHECK",
     "catalogProductCardActionLockingAccessibility": "IMPLEMENTED_PENDING_CI_RECHECK",
     "catalogSearchPaginationDedupAccessibility": "IMPLEMENTED_PENDING_CI_RECHECK",
+    "catalogFilterConnectivityResilience": "IMPLEMENTED_PENDING_CI_RECHECK",
+    "publicContentApiBoundaryValidation": "IMPLEMENTED_PENDING_CI_RECHECK",
+    "productSafetyApiBoundaryValidation": "IMPLEMENTED_PENDING_CI_RECHECK",
     "producerStockInputAndChangeRequestActionHardening": "IMPLEMENTED_PENDING_CI_RECHECK",
     "accountOrderPagination": "IMPLEMENTED_PENDING_CI_RECHECK",
     "accountPaymentPagination": "IMPLEMENTED_PENDING_CI_RECHECK",
@@ -39,6 +42,8 @@
     "giftHistoryLiveProductPolish": "IMPLEMENTED_LIVE_RPC_CONTRACT_VERIFIED_PENDING_CI_RECHECK",
     "giftHistoryMediaAccessibility": "IMPLEMENTED_PENDING_CI_RECHECK",
     "verifiedReviewAccessibilityPolish": "IMPLEMENTED_PENDING_CI_RECHECK",
+    "adminNotificationSafeTargetAndActionUrlValidation": "IMPLEMENTED_PENDING_CI_RECHECK",
+    "adminProducerDocumentPathHardening": "IMPLEMENTED_PENDING_CI_RECHECK",
     "androidReleaseBundleBaseline": "PASS",
     "iosSimulatorCompileBaseline": "PASS",
     "latestUiHardeningCi": "EXTERNAL_BLOCKED_BEFORE_STEPS_STARTED_GITHUB_BILLING",
@@ -47,7 +52,8 @@
     "latestWorkflowJobs": {
       "verify-ios": "FAILURE_WITH_NO_EXECUTED_STEPS",
       "verify-web-android": "FAILURE_WITH_NO_EXECUTED_STEPS"
-    }
+    },
+    "currentHeadWorkflowRuns": "NONE_OBSERVED_YET"
   },
   "truthfulnessChecks": {
     "firebaseDataContextRetired": true,
@@ -58,6 +64,9 @@
     "homeSearchUsesLiveProducerAndOriginTerms": true,
     "catalogActionsPreventDuplicateConcurrentMutations": true,
     "catalogPaginationDeduplicatesOverlappingRows": true,
+    "catalogFiltersRefreshAfterConnectivityRestore": true,
+    "publicContentRpcInputsBoundedAndNormalized": true,
+    "productSafetyRpcInputsBoundedAndNormalized": true,
     "sellerInventoryDoesNotCoerceClearedInputsToZero": true,
     "sellerChangeWithdrawalPreventsDuplicateRequests": true,
     "favoriteCardsUseLiveAvailabilityAndProducerVerification": true,
@@ -74,6 +83,8 @@
     "conversationPollingPreservesLoadedHistoryWindow": true,
     "addressMutationsNormalizeAndValidateClientInput": true,
     "cartAndCheckoutRpcInputsValidatedAtClientBoundary": true,
+    "adminNotificationActionUrlRejectsUnsafeSchemes": true,
+    "producerDocumentPreviewRejectsExternalAndTraversalPaths": true,
     "uiHardeningDoesNotClaimUnexecutedCiAsPassing": true
   },
   "liveCatalogAudit": {
@@ -89,7 +100,7 @@
     "note": "Missing real shipping weights remain visible for correction and are never fabricated."
   },
   "externalBlockers": {
-    "githubActions": "Latest run 31990554749 on head 613b783a9054771cb183b165797f6f30f71c752d created both iOS and web/Android jobs, but both contain zero workflow steps and no runner assignment; the GitHub billing or spending-limit blocker therefore remains external and no passing CI result is claimed.",
+    "githubActions": "Latest completed run 31990554749 created both iOS and web/Android jobs, but both contained zero workflow steps and no runner assignment. Current hardening commits have no workflow run observed yet, so no new passing CI result is claimed.",
     "liveSalesIdentity": "Legal business and support identity are not configured.",
     "paymentProvider": "Production payment provider configuration is external.",
     "nativePushProviders": "Production push provider configuration is external.",
