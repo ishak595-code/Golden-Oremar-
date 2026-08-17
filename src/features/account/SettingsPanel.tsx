@@ -13,15 +13,17 @@ const keys=[
 ] as const;
 
 type SessionAction='current'|'others'|'all'|null;
+type ConfirmedSessionAction='others'|'all'|null;
 
 export default function SettingsPanel({closure,onChanged,profile,theme='light',onThemeChange}:{closure:any;onChanged:()=>Promise<void>|void;profile?:any;theme?:AppTheme;onThemeChange?:(theme:AppTheme)=>void}){
  const[prefs,setPrefs]=useState<any>(null);const[prefsLoading,setPrefsLoading]=useState(true);const[prefsBusy,setPrefsBusy]=useState(false);const[prefsError,setPrefsError]=useState('');const[prefsMessage,setPrefsMessage]=useState('');
  const[nativePushPermission,setNativePushPermission]=useState<string>('unknown');const nativePushPlatform=isNativePushPlatform();const nativePushConfigured=isNativePushProviderConfigured();
  const[currentPassword,setCurrentPassword]=useState('');const[newPassword,setNewPassword]=useState('');const[confirmPassword,setConfirmPassword]=useState('');const[passwordBusy,setPasswordBusy]=useState(false);const[passwordError,setPasswordError]=useState('');const[passwordMessage,setPasswordMessage]=useState('');
  const[newsletter,setNewsletter]=useState<any>(null);const[newsletterLoading,setNewsletterLoading]=useState(true);const[newsletterBusy,setNewsletterBusy]=useState(false);const[newsletterError,setNewsletterError]=useState('');const[newsletterMessage,setNewsletterMessage]=useState('');
- const[sessionBusy,setSessionBusy]=useState<SessionAction>(null);const[sessionError,setSessionError]=useState('');const[sessionMessage,setSessionMessage]=useState('');
+ const[sessionBusy,setSessionBusy]=useState<SessionAction>(null);const[sessionError,setSessionError]=useState('');const[sessionMessage,setSessionMessage]=useState('');const[sessionConfirmAction,setSessionConfirmAction]=useState<ConfirmedSessionAction>(null);
  const[reason,setReason]=useState('');const[closureBusy,setClosureBusy]=useState(false);const[closureError,setClosureError]=useState('');const[closureMessage,setClosureMessage]=useState('');const[closureConfirmOpen,setClosureConfirmOpen]=useState(false);
  const closureDialogRef=useAccessibleDialog<HTMLDivElement>(closureConfirmOpen,()=>{if(!closureBusy)setClosureConfirmOpen(false);});
+ const sessionDialogRef=useAccessibleDialog<HTMLDivElement>(!!sessionConfirmAction,()=>{if(!sessionBusy)setSessionConfirmAction(null);});
  const passwordMismatch=confirmPassword.length>0&&newPassword!==confirmPassword;
 
  async function loadPrefs(){
@@ -48,7 +50,10 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
 
  async function savePassword(e:React.FormEvent){
   e.preventDefault();if(passwordBusy)return;setPasswordMessage('');setPasswordError('');
+  if(currentPassword.length>256){setPasswordError('Mevcut şifre geçersiz uzunlukta.');return;}
+  if(newPassword.length<8||newPassword.length>72){setPasswordError('Yeni şifre 8-72 karakter arasında olmalıdır.');return;}
   if(newPassword!==confirmPassword){setPasswordError('Yeni şifreler eşleşmiyor.');return;}
+  if(currentPassword===newPassword){setPasswordError('Yeni şifre mevcut şifrenizden farklı olmalıdır.');return;}
   try{setPasswordBusy(true);await changeMyPassword(currentPassword,newPassword);setCurrentPassword('');setNewPassword('');setConfirmPassword('');setPasswordMessage('Şifreniz güncellendi.');}
   catch(e:any){setPasswordError(e?.message||'Şifre güncellenemedi.');}
   finally{setPasswordBusy(false);}
@@ -74,7 +79,8 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
    if(action==='current')await signOutCurrentDevice();
    else if(action==='others'){await signOutOtherDevices();setSessionMessage('Diğer cihazlardaki oturumlar kapatıldı.');}
    else await signOutAllDevices();
-  }catch(e:any){setSessionError(e?.message||'Oturum işlemi tamamlanamadı.');}
+   setSessionConfirmAction(null);
+  }catch(e:any){setSessionConfirmAction(null);setSessionError(e?.message||'Oturum işlemi tamamlanamadı.');}
   finally{setSessionBusy(null);}
  }
 
@@ -98,10 +104,10 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
     {passwordError?<ErrorState message={passwordError}/>:null}
     {passwordMessage?<div role="status" aria-live="polite" className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{passwordMessage}</div>:null}
     <form onSubmit={savePassword} className="space-y-3" aria-busy={passwordBusy}>
-      <label className="block"><span className="text-sm font-semibold">Mevcut şifre</span><input required disabled={passwordBusy} type="password" autoComplete="current-password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3 disabled:opacity-60"/></label>
+      <label className="block"><span className="text-sm font-semibold">Mevcut şifre</span><input required maxLength={256} disabled={passwordBusy} type="password" autoComplete="current-password" value={currentPassword} onChange={e=>setCurrentPassword(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3 disabled:opacity-60"/></label>
       <label className="block"><span className="text-sm font-semibold">Yeni şifre</span><input required minLength={8} maxLength={72} disabled={passwordBusy} type="password" autoComplete="new-password" aria-describedby="new-password-rules" value={newPassword} onChange={e=>setNewPassword(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3 disabled:opacity-60"/><span id="new-password-rules" className="mt-1 block text-xs text-gray-500">8-72 karakter kullanın.</span></label>
-      <label className="block"><span className="text-sm font-semibold">Yeni şifre tekrar</span><input required disabled={passwordBusy} type="password" autoComplete="new-password" aria-invalid={passwordMismatch||undefined} aria-describedby={passwordMismatch?'password-match-error':undefined} value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3 disabled:opacity-60"/>{passwordMismatch?<span id="password-match-error" className="mt-1 block text-xs font-semibold text-red-700 dark:text-red-300">Yeni şifreler eşleşmiyor.</span>:null}</label>
-      <button disabled={passwordBusy||!currentPassword||newPassword.length<8||passwordMismatch||!confirmPassword} className="min-h-11 w-full rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{passwordBusy?'Şifre güncelleniyor…':'Şifreyi Güncelle'}</button>
+      <label className="block"><span className="text-sm font-semibold">Yeni şifre tekrar</span><input required minLength={8} maxLength={72} disabled={passwordBusy} type="password" autoComplete="new-password" aria-invalid={passwordMismatch||undefined} aria-describedby={passwordMismatch?'password-match-error':undefined} value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3 disabled:opacity-60"/>{passwordMismatch?<span id="password-match-error" className="mt-1 block text-xs font-semibold text-red-700 dark:text-red-300">Yeni şifreler eşleşmiyor.</span>:null}</label>
+      <button disabled={passwordBusy||!currentPassword||newPassword.length<8||newPassword.length>72||passwordMismatch||!confirmPassword||currentPassword===newPassword} className="min-h-11 w-full rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{passwordBusy?'Şifre güncelleniyor…':'Şifreyi Güncelle'}</button>
     </form>
   </Panel>
 
@@ -131,8 +137,8 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
     {sessionMessage?<div role="status" aria-live="polite" className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{sessionMessage}</div>:null}
     <div className="space-y-2" aria-busy={!!sessionBusy}>
       <button type="button" disabled={!!sessionBusy} onClick={()=>void runSession('current')} className="min-h-11 w-full rounded-xl border border-gray-200 font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700">{sessionBusy==='current'?'Çıkış yapılıyor…':'Bu cihazdan çıkış yap'}</button>
-      <button type="button" disabled={!!sessionBusy} onClick={()=>void runSession('others')} className="min-h-11 w-full rounded-xl border border-gray-200 font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700">{sessionBusy==='others'?'Oturumlar kapatılıyor…':'Diğer cihazlardaki oturumları kapat'}</button>
-      <button type="button" disabled={!!sessionBusy} onClick={()=>void runSession('all')} className="min-h-11 w-full rounded-xl border border-red-300 font-semibold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">{sessionBusy==='all'?'Tüm oturumlar kapatılıyor…':'Tüm cihazlardan çıkış yap'}</button>
+      <button type="button" disabled={!!sessionBusy} onClick={()=>{setSessionError('');setSessionMessage('');setSessionConfirmAction('others');}} className="min-h-11 w-full rounded-xl border border-gray-200 font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700">Diğer cihazlardaki oturumları kapat</button>
+      <button type="button" disabled={!!sessionBusy} onClick={()=>{setSessionError('');setSessionMessage('');setSessionConfirmAction('all');}} className="min-h-11 w-full rounded-xl border border-red-300 font-semibold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Tüm cihazlardan çıkış yap</button>
     </div>
   </Panel>
 
@@ -147,6 +153,18 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
      <button type="button" onClick={()=>{setClosureError('');setClosureMessage('');setClosureConfirmOpen(true);}} disabled={closureBusy||reason.trim().length<10} className="mt-3 min-h-11 w-full rounded-xl border border-red-300 font-bold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Hesap kapatma talebi oluştur</button>
    </div>}
   </Panel>
+
+  {sessionConfirmAction?<div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4">
+    <div ref={sessionDialogRef} role="alertdialog" aria-modal="true" aria-labelledby="session-confirm-title" aria-describedby="session-confirm-description" tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white p-5 text-brand-text shadow-xl outline-none dark:bg-gray-900">
+      <h3 id="session-confirm-title" className="text-lg font-bold">Oturumları kapatmayı onaylıyor musunuz?</h3>
+      <p id="session-confirm-description" className="mt-2 text-sm text-gray-600 dark:text-gray-300">{sessionConfirmAction==='all'?'Bu hesap tüm cihazlardan çıkarılacak. Bu cihazdaki oturumunuz da sona erebilir ve yeniden giriş yapmanız gerekir.':'Bu cihaz açık kalırken hesabınız diğer cihazlardaki aktif oturumlardan çıkarılacak.'}</p>
+      <div aria-live="polite" className="sr-only">{sessionBusy?'Oturumlar kapatılıyor.':''}</div>
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <button type="button" disabled={!!sessionBusy} onClick={()=>setSessionConfirmAction(null)} className="min-h-11 rounded-xl border font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Vazgeç</button>
+        <button type="button" disabled={!!sessionBusy} onClick={()=>void runSession(sessionConfirmAction)} className="min-h-11 rounded-xl bg-red-700 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">{sessionBusy?'Kapatılıyor…':'Oturumları Kapat'}</button>
+      </div>
+    </div>
+  </div>:null}
 
   {closureConfirmOpen?<div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4">
     <div ref={closureDialogRef} role="alertdialog" aria-modal="true" aria-labelledby="closure-confirm-title" aria-describedby="closure-confirm-description" tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white p-5 text-brand-text shadow-xl outline-none dark:bg-gray-900">
