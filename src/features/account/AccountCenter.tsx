@@ -37,8 +37,29 @@ const menu=[
  ['settings','Ayarlar',Settings,'Bildirimler, oturum ve hesap yönetimi'],
 ] as const;
 
+const accountRoles=new Set(['user','vendor','admin','super_admin']);
 function nonNegativeCount(value:unknown){const count=Number(value);return Number.isSafeInteger(count)&&count>=0?count:null;}
 function summaryCount(value:unknown){const count=nonNegativeCount(value);return count===null?'Doğrulanamadı':count;}
+function normalizeOverview(value:any):AccountOverview{
+ if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('Hesap özeti sunucudan doğrulanamadı.');
+ const profile=value.profile;
+ const summary=value.summary;
+ if(!profile||typeof profile!=='object'||Array.isArray(profile))throw new Error('Hesap profiliniz sunucudan doğrulanamadı.');
+ if(!summary||typeof summary!=='object'||Array.isArray(summary))throw new Error('Hesap sayaçları sunucudan doğrulanamadı.');
+ const profileId=String(profile.id||'').trim();
+ if(!profileId||profileId.length>128||!/^[A-Za-z0-9_-]+$/.test(profileId))throw new Error('Hesap kimliği doğrulanamadı.');
+ const producer=value.producer&&typeof value.producer==='object'&&!Array.isArray(value.producer)?value.producer:null;
+ const closure=value.account_closure&&typeof value.account_closure==='object'&&!Array.isArray(value.account_closure)?value.account_closure:null;
+ return{
+  ...value,
+  profile:{...profile,id:profileId},
+  summary,
+  addresses:Array.isArray(value.addresses)?value.addresses:[],
+  roles:Array.isArray(value.roles)?value.roles.map((role:any)=>String(role||'').trim()).filter((role:string)=>accountRoles.has(role)):[],
+  producer,
+  account_closure:closure,
+ } as AccountOverview;
+}
 
 export default function AccountCenter({
  requestedView,theme,onThemeChange,onOpenProduct,onOpenProducer,onStartGift,onOpenMessages,onOpenNotificationAction,onUnreadNotificationCountChange,onOpenContact,onOpenHealth,onOpenEvents,onOpenAdmin,onOpenSellerApplication,onOpenSellerProductManager,onBack
@@ -51,9 +72,9 @@ export default function AccountCenter({
   try{
    if(!silent)setLoading(true);
    setError('');setRefreshError('');
-   const next=await getAccountOverview();
+   const next=normalizeOverview(await getAccountOverview());
    setOverview(next);
-   const unread=nonNegativeCount(next?.summary?.unread_notification_count);
+   const unread=nonNegativeCount(next.summary?.unread_notification_count);
    if(unread!==null)onUnreadNotificationCountChange?.(unread);
   }catch(e:any){
    const message=e?.message||'Hesap bilgileri yüklenemedi.';
@@ -132,7 +153,7 @@ export default function AccountCenter({
   {refreshError?<div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">Hesap özeti yenilenemedi. Mevcut bilgiler korunuyor. <button type="button" onClick={()=>void refresh(true)} className="ml-2 min-h-11 rounded-lg border border-amber-300 px-3 font-semibold dark:border-amber-800">Tekrar dene</button></div>:null}
   <div className="rounded-2xl bg-brand-green p-5 text-white">
     <div className="flex items-center justify-between gap-3">
-      <div><h1 ref={homeTitleRef} tabIndex={-1} id="account-title" className="text-2xl font-bold outline-none">Hesabım</h1><p className="mt-1 text-sm text-white/80">{overview.profile.display_name || overview.profile.email}</p></div>
+      <div><h1 ref={homeTitleRef} tabIndex={-1} id="account-title" className="text-2xl font-bold outline-none">Hesabım</h1><p className="mt-1 text-sm text-white/80">{overview.profile.display_name || overview.profile.email || 'Hesap bilgisi'}</p></div>
       {onBack?<button type="button" onClick={onBack} className="min-h-11 rounded-xl border border-white/30 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Geri</button>:null}
     </div>
     <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Hesap özeti">
@@ -144,7 +165,7 @@ export default function AccountCenter({
   </div>
 
   {overview.producer?<div className="rounded-2xl border border-brand-gold/30 bg-brand-gold/5 p-4">
-    <div className="font-bold">{overview.producer.display_name}</div>
+    <div className="font-bold">{overview.producer.display_name || 'Üretici hesabı'}</div>
     {producerSignals.length?<div className="mt-1 text-sm text-gray-600 dark:text-gray-300">{producerSignals.join(' • ')}</div>:null}
   </div>:null}
 
