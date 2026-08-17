@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T08:14:00+00:00",
+  "generatedAt": "2026-08-17T08:19:00+00:00",
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
   "liveMigrationCount": 127,
@@ -43,8 +43,8 @@
     "androidReleaseBundleBaseline": "PASS",
     "iosSimulatorCompileBaseline": "PASS",
     "latestUiHardeningCi": "EXTERNAL_BLOCKED_BEFORE_STEPS_STARTED_GITHUB_BILLING",
-    "latestWorkflowRunId": 32007547832,
-    "latestWorkflowHeadSha": "b3ab10651f13cf76c4139396dc89f1274ab60440",
+    "latestWorkflowRunId": 32009738285,
+    "latestWorkflowHeadSha": "99246ac05bd19f34bbe7e7ddd70fa54bd5e9c4e4",
     "latestWorkflowJobs": {
       "verify-ios": "FAILURE_WITH_NO_EXECUTED_STEPS",
       "verify-web-android": "FAILURE_WITH_NO_EXECUTED_STEPS"
@@ -92,7 +92,7 @@
     "note": "Missing real shipping weights remain visible for correction and are never fabricated."
   },
   "externalBlockers": {
-    "githubActions": "The latest recorded mobile quality gate remains externally blocked before workflow steps start because of the GitHub Actions billing or spending-limit condition. This run adds defensive seller and account hardening without claiming an unexecuted CI pass.",
+    "githubActions": "Mobile Quality Gate run 32009738285 was created for head 99246ac05bd19f34bbe7e7ddd70fa54bd5e9c4e4. Both verify-ios and verify-web-android completed as failures with no executed steps and no job logs, consistent with the existing external Actions billing or spending-limit blocker. No CI pass is claimed for this run's defensive seller and account changes.",
     "liveSalesIdentity": "Legal business and support identity are not configured.",
     "paymentProvider": "Production payment provider configuration is external.",
     "nativePushProviders": "Production push provider configuration is external.",
