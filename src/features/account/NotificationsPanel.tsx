@@ -11,6 +11,8 @@ export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{o
  const[loadingMore,setLoadingMore]=useState(false);
  const[hasMore,setHasMore]=useState(false);
  const[error,setError]=useState('');
+ const[openingId,setOpeningId]=useState<string|null>(null);
+ const[markAllBusy,setMarkAllBusy]=useState(false);
 
  async function load(reset=true){
   const items=Array.isArray(data?.items)?data.items:[];
@@ -35,24 +37,30 @@ export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{o
  useEffect(()=>{void load(true);},[]);
 
  async function open(item:any){
+  const id=String(item?.id||'');
+  if(!id||openingId||markAllBusy)return;
   try{
+   setOpeningId(id);setError('');
    if(!item.readAt){
-    await markNotificationRead(item.id);
+    await markNotificationRead(id);
     const nextUnread=Math.max(0,unread(data?.unreadCount)-1);
     const readAt=new Date().toISOString();
     setData((previous:any)=>previous?{
      ...previous,
      unreadCount:nextUnread,
-     items:(previous.items||[]).map((candidate:any)=>candidate.id===item.id?{...candidate,readAt}:candidate),
+     items:(previous.items||[]).map((candidate:any)=>candidate.id===id?{...candidate,readAt}:candidate),
     }:previous);
     onUnreadCountChange?.(nextUnread);
    }
    if(item.actionUrl){onOpenAction?.(item.actionUrl,item.metadata||{});return;}
   }catch(e:any){setError(e?.message||'Bildirim açılamadı.');}
+  finally{setOpeningId(null);}
  }
 
  async function markAll(){
+  if(markAllBusy||openingId)return;
   try{
+   setMarkAllBusy(true);setError('');
    await markAllNotificationsRead();
    const readAt=new Date().toISOString();
    setData((previous:any)=>previous?{
@@ -63,6 +71,7 @@ export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{o
    onUnreadCountChange?.(0);
   }
   catch(e:any){setError(e?.message||'Bildirimler güncellenemedi.');}
+  finally{setMarkAllBusy(false);}
  }
 
  if(loading)return<LoadingState label="Bildirimler yükleniyor"/>;
@@ -70,19 +79,21 @@ export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{o
    {error?<ErrorState message={error} onRetry={()=>void load(true)}/>:null}
    <div className="mb-4 flex items-center justify-between gap-3">
      <div className="text-sm text-gray-500" aria-live="polite">Okunmamış: <strong>{unread(data?.unreadCount)}</strong></div>
-     {unread(data?.unreadCount)>0?<button type="button" onClick={()=>void markAll()} className="min-h-11 rounded-xl border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Tümünü okundu işaretle</button>:null}
+     {unread(data?.unreadCount)>0?<button type="button" disabled={markAllBusy||Boolean(openingId)} onClick={()=>void markAll()} className="min-h-11 rounded-xl border px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{markAllBusy?'İşaretleniyor…':'Tümünü okundu işaretle'}</button>:null}
    </div>
+   <div className="sr-only" aria-live="polite">{openingId?'Bildirim açılıyor.':markAllBusy?'Bildirimler okundu olarak işaretleniyor.':''}</div>
    {!data?.items?.length?<EmptyState title="Yeni bildiriminiz yok" body="Önemli sipariş ve hesap gelişmeleri burada görünecek."/>:<>
-   <div className="space-y-2">{data.items.map((item:any)=>
-     <button type="button" key={item.id} onClick={()=>void open(item)}
+   <div className="space-y-2">{data.items.map((item:any)=>{
+     const busy=openingId===String(item.id);
+     return <button type="button" key={item.id} disabled={Boolean(openingId)||markAllBusy} aria-busy={busy} onClick={()=>void open(item)}
        aria-label={`${item.readAt?'Okundu':'Okunmamış'} bildirim: ${item.title}. ${item.message}`}
-       className={`min-h-16 w-full rounded-xl border p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${item.readAt?'bg-white dark:bg-gray-900':'border-brand-gold/40 bg-brand-gold/5'}`}>
+       className={`min-h-16 w-full rounded-xl border p-4 text-left disabled:cursor-wait disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${item.readAt?'bg-white dark:bg-gray-900':'border-brand-gold/40 bg-brand-gold/5'}`}>
        <div className="font-bold">{item.title}</div>
        <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{item.message}</p>
-       <div className="mt-2 text-xs text-gray-400">{new Date(item.createdAt).toLocaleString('tr-TR')}</div>
-     </button>
-   )}</div>
-   {hasMore?<div className="mt-5 flex justify-center"><button type="button" disabled={loadingMore} onClick={()=>void load(false)} className="min-h-11 rounded-xl border border-brand-green px-5 font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:text-brand-gold">{loadingMore?'Yükleniyor…':'Daha fazla bildirim göster'}</button></div>:null}
+       <div className="mt-2 text-xs text-gray-400">{busy?'Açılıyor…':new Date(item.createdAt).toLocaleString('tr-TR')}</div>
+     </button>;
+   })}</div>
+   {hasMore?<div className="mt-5 flex justify-center"><button type="button" disabled={loadingMore||Boolean(openingId)||markAllBusy} onClick={()=>void load(false)} className="min-h-11 rounded-xl border border-brand-green px-5 font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:text-brand-gold">{loadingMore?'Yükleniyor…':'Daha fazla bildirim göster'}</button></div>:null}
    </>}
  </Panel>;
 }
