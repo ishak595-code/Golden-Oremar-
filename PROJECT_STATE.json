@@ -19,6 +19,7 @@
     "public-product-detail",
     "public-producer-profile",
     "category-directory",
+    "category-directory-pagination",
     "live-home-catalog",
     "server-product-favorites",
     "live-catalog-filter-options",
@@ -31,6 +32,16 @@
     "customer-content-favorites",
     "public-storefront-config",
     "public-about-and-help-content",
+    "account-panel-lazy-splitting",
+    "account-deep-link-routing-complete",
+    "account-order-history-pagination",
+    "account-payment-history-pagination",
+    "account-notification-cursor-pagination",
+    "account-message-history-pagination",
+    "account-favorites-live-trust-polish",
+    "account-followed-producer-live-trust-rating-polish",
+    "account-gift-history-live-product-polish",
+    "verified-review-center-accessibility-polish",
     "producer-onboarding-v4-ui",
     "producer-product-management",
     "producer-profile-edit",
@@ -87,5 +98,5 @@
     "production-fcm-apns-provider-configuration",
     "mobile-store-signing-and-release-credentials"
   ],
-  "nextBlock": "checkout-semantic-accessibility-performance-and-release-hardening"
+  "nextBlock": "home-search-filter-slug-alignment-conversation-list-pagination-checkout-and-account-final-polish"
 }
