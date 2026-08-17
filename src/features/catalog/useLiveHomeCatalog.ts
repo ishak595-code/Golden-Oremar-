@@ -46,6 +46,15 @@ export type LegacyHomeCategory = {
   sortOrder: number;
 };
 
+function compactSearchTerms(values: unknown[]) {
+  return Array.from(new Set(
+    values
+      .flatMap(value => String(value ?? '').split(/[\s,;/|]+/g))
+      .map(value => value.trim())
+      .filter(value => value.length > 1)
+  ));
+}
+
 export function useLiveHomeCatalog() {
   const [products, setProducts] = useState<LegacyHomeProduct[]>([]);
   const [categories, setCategories] = useState<LegacyHomeCategory[]>([]);
@@ -82,6 +91,19 @@ export function useLiveHomeCatalog() {
 
         setProducts(catalogItems.map((item: any) => {
           const producerMetric = metricByProducer.get(String(item.producer.id));
+          const origin = item.origin || [item.producer?.village, item.producer?.district, item.producer?.province].filter(Boolean).join(', ') || null;
+          const tags = compactSearchTerms([
+            item.name,
+            item.category?.name,
+            item.category?.slug,
+            item.producer?.name,
+            item.producer?.village,
+            item.producer?.district,
+            item.producer?.province,
+            origin,
+            item.unitLabel,
+            item.variant?.name,
+          ]);
           return {
             id: item.id,
             legacyId: item.legacyId ?? null,
@@ -95,9 +117,9 @@ export function useLiveHomeCatalog() {
             originalPrice: item.variant.compareAtPriceMinor ? Number(item.variant.compareAtPriceMinor) / 100 : null,
             currency: String(item.currency || 'TRY').toUpperCase(),
             image: publicCatalogUrl(item.imagePath),
-            origin: item.origin || null,
+            origin,
             unit: item.unitLabel || item.variant.name,
-            tags: [],
+            tags,
             rating: Number(item.averageRating || 0),
             reviewCount: Number(item.reviewCount || 0),
             stock: item.availableQuantity ?? null,
