@@ -40,10 +40,13 @@
     "account-order-history-pagination",
     "account-payment-history-pagination",
     "account-notification-cursor-pagination",
+    "account-notification-mutation-locking",
     "account-message-history-pagination",
+    "account-conversation-list-pagination",
     "account-favorites-live-trust-polish",
     "account-followed-producer-live-trust-rating-polish",
     "account-gift-history-live-product-polish",
+    "account-address-validation-normalization",
     "verified-review-center-accessibility-polish",
     "producer-onboarding-v4-ui",
     "producer-product-management",
@@ -54,6 +57,7 @@
     "dynamic-product-producer-metrics",
     "product-safety-detail",
     "faq-help-center",
+    "checkout-cart-client-boundary-validation",
     "admin-dashboard-supabase-rpc",
     "admin-products-supabase-rpc",
     "admin-orders-supabase-rpc",
@@ -102,5 +106,5 @@
     "production-fcm-apns-provider-configuration",
     "mobile-store-signing-and-release-credentials"
   ],
-  "nextBlock": "conversation-list-pagination-checkout-form-semantics-share-fallback-and-final-admin-mobile-polish"
+  "nextBlock": "checkout-form-semantics-share-fallback-final-admin-mobile-polish-and-release-recheck"
 }
