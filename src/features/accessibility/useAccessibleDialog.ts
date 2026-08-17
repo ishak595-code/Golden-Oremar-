@@ -6,8 +6,12 @@ const FOCUSABLE_SELECTOR = [
   'input:not([disabled])',
   'select:not([disabled])',
   'textarea:not([disabled])',
+  'summary',
+  '[contenteditable="true"]',
   '[tabindex]:not([tabindex="-1"])',
 ].join(',');
+
+const activeDialogs: HTMLElement[] = [];
 
 type InertSnapshot = {
   element: HTMLElement;
@@ -44,6 +48,17 @@ function isolateDialogFromBackground(dialog: HTMLElement) {
   };
 }
 
+function visibleFocusableElements(dialog: HTMLElement) {
+  return Array.from(dialog.querySelectorAll(FOCUSABLE_SELECTOR)).filter(
+    (element): element is HTMLElement =>
+      element instanceof HTMLElement &&
+      !element.hasAttribute('disabled') &&
+      element.getAttribute('aria-hidden') !== 'true' &&
+      element.closest('[inert], [aria-hidden="true"]') === null &&
+      element.getClientRects().length > 0,
+  );
+}
+
 export function useAccessibleDialog<T extends HTMLElement>(open: boolean, onClose: () => void) {
   const dialogRef = useRef<T | null>(null);
   const onCloseRef = useRef(onClose);
@@ -60,13 +75,17 @@ export function useAccessibleDialog<T extends HTMLElement>(open: boolean, onClos
     const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     const restoreBackground = isolateDialogFromBackground(dialog);
+    activeDialogs.push(dialog);
     document.body.style.overflow = 'hidden';
 
     const frame = window.requestAnimationFrame(() => {
-      dialog.focus({ preventScroll: true });
+      const first = visibleFocusableElements(dialog)[0];
+      (first || dialog).focus({ preventScroll: true });
     });
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (activeDialogs[activeDialogs.length - 1] !== dialog) return;
+
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
@@ -75,14 +94,7 @@ export function useAccessibleDialog<T extends HTMLElement>(open: boolean, onClos
       }
       if (event.key !== 'Tab') return;
 
-      const focusable = Array.from(dialog.querySelectorAll(FOCUSABLE_SELECTOR)).filter(
-        (element): element is HTMLElement =>
-          element instanceof HTMLElement &&
-          !element.hasAttribute('disabled') &&
-          element.getAttribute('aria-hidden') !== 'true' &&
-          element.closest('[inert], [aria-hidden="true"]') === null &&
-          element.getClientRects().length > 0,
-      );
+      const focusable = visibleFocusableElements(dialog);
       if (!focusable.length) {
         event.preventDefault();
         dialog.focus({ preventScroll: true });
@@ -92,6 +104,13 @@ export function useAccessibleDialog<T extends HTMLElement>(open: boolean, onClos
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       const active = document.activeElement;
+      const activeInside = active instanceof Node && dialog.contains(active);
+
+      if (!activeInside) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+        return;
+      }
       if (event.shiftKey && (active === first || active === dialog)) {
         event.preventDefault();
         last.focus();
@@ -105,10 +124,17 @@ export function useAccessibleDialog<T extends HTMLElement>(open: boolean, onClos
     return () => {
       window.cancelAnimationFrame(frame);
       document.removeEventListener('keydown', onKeyDown, true);
-      document.body.style.overflow = previousOverflow;
+      const stackIndex = activeDialogs.lastIndexOf(dialog);
+      if (stackIndex >= 0) activeDialogs.splice(stackIndex, 1);
+      document.body.style.overflow = activeDialogs.length ? 'hidden' : previousOverflow;
       restoreBackground();
       window.requestAnimationFrame(() => {
-        if (previouslyFocused?.isConnected) previouslyFocused.focus({ preventScroll: true });
+        if (previouslyFocused?.isConnected && !previouslyFocused.closest('[inert], [aria-hidden="true"]')) {
+          previouslyFocused.focus({ preventScroll: true });
+          return;
+        }
+        const parentDialog = activeDialogs[activeDialogs.length - 1];
+        if (parentDialog?.isConnected) parentDialog.focus({ preventScroll: true });
       });
     };
   }, [open]);
