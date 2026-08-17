@@ -40,6 +40,18 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
 }
 
 export function Money({ minor, currency = 'TRY' }: { minor: number; currency?: string }) {
-  const value = Number(minor || 0) / 100;
-  return <>{new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(value)}</>;
+  const amountMinor = Number(minor);
+  const normalizedCurrency = String(currency || '').trim().toUpperCase();
+  const validAmount = Number.isSafeInteger(amountMinor);
+  const validCurrency = /^[A-Z]{3}$/.test(normalizedCurrency);
+
+  if (!validAmount || !validCurrency) {
+    return <span role="status" className="text-red-700 dark:text-red-300">Tutar doğrulanamadı</span>;
+  }
+
+  try {
+    return <>{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: normalizedCurrency }).format(amountMinor / 100)}</>;
+  } catch {
+    return <span role="status" className="text-red-700 dark:text-red-300">Tutar doğrulanamadı</span>;
+  }
 }
