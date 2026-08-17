@@ -11,9 +11,23 @@ const keys=[
  ['returnPush','İade ve geri ödeme'],['messagePush','Mesajlar'],['reviewPush','Yorumlar'],
  ['producerPush','Satıcı/üretici işlemleri'],['systemPush','Sistem ve güvenlik'],['campaignPush','Kampanyalar']
 ] as const;
+const prefKeys=['pushEnabled',...keys.map(([key])=>key)] as const;
+const newsletterStatuses=new Set(['active','pending','unsubscribed','none']);
+const supportedLocales=new Set(['tr','en','de','fr','ku','ar']);
 
 type SessionAction='current'|'others'|'all'|null;
 type ConfirmedSessionAction='others'|'all'|null;
+
+function normalizePrefs(value:any){
+ if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('Bildirim tercihleri sunucudan doğrulanamadı.');
+ for(const key of prefKeys){if(typeof value[key]!=='boolean')throw new Error('Bildirim tercihleri sunucudan doğrulanamadı.');}
+ return value;
+}
+function newsletterStatus(value:any){const status=String(value?.status||'').trim();return newsletterStatuses.has(status)?status:'';}
+function newsletterStatusLabel(status:string){return status==='active'?'Aktif':status==='pending'?'E-posta onayı bekleniyor':status==='unsubscribed'?'Abonelik kapalı':status==='none'?'Abone değil':'Durum doğrulanamadı';}
+function permissionLabel(value:string){return value==='granted'?'İzin verildi':value==='denied'?'İzin reddedildi':value==='prompt'?'Henüz sorulmadı':value==='prompt-with-rationale'?'İzin onayı bekleniyor':'Durum doğrulanamadı';}
+function closureStatusLabel(value:unknown){const status=String(value||'').trim();const labels:Record<string,string>={requested:'Talep alındı',pending:'Bekliyor',under_review:'İnceleniyor',approved:'Onaylandı',scheduled:'Planlandı',cancelled:'İptal edildi',completed:'Tamamlandı',rejected:'Reddedildi'};return labels[status]||'Durum doğrulanamadı';}
+function validEmail(value:unknown){const email=String(value||'').trim();return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)?email:'';}
 
 export default function SettingsPanel({closure,onChanged,profile,theme='light',onThemeChange}:{closure:any;onChanged:()=>Promise<void>|void;profile?:any;theme?:AppTheme;onThemeChange?:(theme:AppTheme)=>void}){
  const[prefs,setPrefs]=useState<any>(null);const[prefsLoading,setPrefsLoading]=useState(true);const[prefsBusy,setPrefsBusy]=useState(false);const[prefsError,setPrefsError]=useState('');const[prefsMessage,setPrefsMessage]=useState('');
@@ -25,32 +39,34 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
  const closureDialogRef=useAccessibleDialog<HTMLDivElement>(closureConfirmOpen,()=>{if(!closureBusy)setClosureConfirmOpen(false);});
  const sessionDialogRef=useAccessibleDialog<HTMLDivElement>(!!sessionConfirmAction,()=>{if(!sessionBusy)setSessionConfirmAction(null);});
  const passwordMismatch=confirmPassword.length>0&&newPassword!==confirmPassword;
+ const accountEmail=validEmail(profile?.email||newsletter?.email);
+ const currentNewsletterStatus=newsletterStatus(newsletter);
 
  async function loadPrefs(){
-  try{setPrefsLoading(true);setPrefsError('');setPrefs(await getNotificationPreferences());}
-  catch(e:any){setPrefsError(e?.message||'Bildirim ayarları yüklenemedi.');}
+  try{setPrefsLoading(true);setPrefsError('');const next=await getNotificationPreferences();setPrefs(normalizePrefs(next));}
+  catch(e:any){setPrefs(null);setPrefsError(e?.message||'Bildirim ayarları yüklenemedi.');}
   finally{setPrefsLoading(false);}
  }
  async function loadNewsletter(){
-  try{setNewsletterLoading(true);setNewsletterError('');setNewsletter(await getMyNewsletterStatus());}
-  catch{setNewsletter({status:'none',email:profile?.email||null});setNewsletterError('E-bülten durumu şu anda alınamadı.');}
+  try{setNewsletterLoading(true);setNewsletterError('');const next=await getMyNewsletterStatus();setNewsletter(next&&typeof next==='object'&&!Array.isArray(next)?next:null);if(!newsletterStatus(next))setNewsletterError('E-bülten durumu sunucudan doğrulanamadı.');}
+  catch{setNewsletter(null);setNewsletterError('E-bülten durumu şu anda alınamadı.');}
   finally{setNewsletterLoading(false);}
  }
  useEffect(()=>{void loadPrefs();void loadNewsletter();if(nativePushPlatform){void getNativePushPermission().then(value=>setNativePushPermission(String(value))).catch(()=>setNativePushPermission('unknown'));}},[]);
 
  async function savePrefs(){
   if(!prefs||prefsBusy)return;
-  try{setPrefsBusy(true);setPrefsError('');setPrefsMessage('');
-   if(nativePushPlatform&&prefs.pushEnabled){const registration=await enableNativePushRegistration();if(registration.status==='not-configured')throw new Error('Cihaz push sağlayıcısı henüz üretim anahtarlarıyla yapılandırılmadı.');if(registration.status==='denied')throw new Error('Cihaz bildirim izni verilmedi. Sistem ayarlarından bildirimlere izin verin.');setNativePushPermission('granted');}
-   if(nativePushPlatform&&!prefs.pushEnabled){await disableNativePushRegistration();setNativePushPermission(String(await getNativePushPermission()));}
-   setPrefs(await updateNotificationPreferences(prefs));setPrefsMessage('Bildirim tercihleriniz kaydedildi.');}
+  try{setPrefsBusy(true);setPrefsError('');setPrefsMessage('');const verified=normalizePrefs(prefs);
+   if(nativePushPlatform&&verified.pushEnabled){const registration=await enableNativePushRegistration();if(registration.status==='not-configured')throw new Error('Cihaz push sağlayıcısı henüz üretim anahtarlarıyla yapılandırılmadı.');if(registration.status==='denied')throw new Error('Cihaz bildirim izni verilmedi. Sistem ayarlarından bildirimlere izin verin.');setNativePushPermission('granted');}
+   if(nativePushPlatform&&!verified.pushEnabled){await disableNativePushRegistration();setNativePushPermission(String(await getNativePushPermission()));}
+   const saved=await updateNotificationPreferences(verified);setPrefs(normalizePrefs(saved));setPrefsMessage('Bildirim tercihleriniz kaydedildi.');}
   catch(e:any){setPrefsError(e?.message||'Bildirim tercihleri kaydedilemedi.');}
   finally{setPrefsBusy(false);}
  }
 
  async function savePassword(e:React.FormEvent){
   e.preventDefault();if(passwordBusy)return;setPasswordMessage('');setPasswordError('');
-  if(currentPassword.length>256){setPasswordError('Mevcut şifre geçersiz uzunlukta.');return;}
+  if(currentPassword.length<1||currentPassword.length>256){setPasswordError('Mevcut şifre geçersiz uzunlukta.');return;}
   if(newPassword.length<8||newPassword.length>72){setPasswordError('Yeni şifre 8-72 karakter arasında olmalıdır.');return;}
   if(newPassword!==confirmPassword){setPasswordError('Yeni şifreler eşleşmiyor.');return;}
   if(currentPassword===newPassword){setPasswordError('Yeni şifre mevcut şifrenizden farklı olmalıdır.');return;}
@@ -60,14 +76,15 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
  }
 
  async function startNewsletter(){
-  if(newsletterBusy)return;
-  try{setNewsletterBusy(true);setNewsletterMessage('');setNewsletterError('');const result=await subscribeNewsletter(profile?.email||newsletter?.email||'',profile?.locale||'tr');setNewsletter(await getMyNewsletterStatus());setNewsletterMessage(result?.status==='active'?'E-bülten aboneliğiniz zaten aktif.':'Onay bağlantısı e-posta adresinize gönderilmek üzere oluşturuldu. Abonelik onaydan sonra aktif olur.');}
+  if(newsletterBusy||!accountEmail)return;
+  const locale=supportedLocales.has(String(profile?.locale||''))?String(profile.locale):'tr';
+  try{setNewsletterBusy(true);setNewsletterMessage('');setNewsletterError('');await subscribeNewsletter(accountEmail,locale);let refreshed:any=null;try{refreshed=await getMyNewsletterStatus();setNewsletter(refreshed);}catch{setNewsletter(null);}const status=newsletterStatus(refreshed);setNewsletterMessage(status==='active'?'E-bülten aboneliğiniz aktif.':status==='pending'?'E-posta onayı bekleniyor. Abonelik onaydan sonra aktif olur.':'Abonelik isteğiniz işlendi ancak güncel durum henüz doğrulanamadı.');if(!status)setNewsletterError('Güncel e-bülten durumu yeniden alınamadı.');}
   catch(e:any){setNewsletterError(e?.message?.includes('invalid_email')?'E-bülten için geçerli hesap e-postası bulunamadı.':e?.message||'E-bülten aboneliği başlatılamadı.');}
   finally{setNewsletterBusy(false);}
  }
  async function stopNewsletter(){
   if(newsletterBusy)return;
-  try{setNewsletterBusy(true);setNewsletterMessage('');setNewsletterError('');await unsubscribeMyNewsletter();setNewsletter(await getMyNewsletterStatus());setNewsletterMessage('E-bülten aboneliğiniz kapatıldı; kampanya pazarlama izni de devre dışı bırakıldı.');await onChanged();}
+  try{setNewsletterBusy(true);setNewsletterMessage('');setNewsletterError('');await unsubscribeMyNewsletter();let refreshed:any=null;try{refreshed=await getMyNewsletterStatus();setNewsletter(refreshed);}catch{setNewsletter(null);}setNewsletterMessage('E-bülten aboneliğiniz kapatıldı; kampanya pazarlama izni de devre dışı bırakıldı.');if(!newsletterStatus(refreshed))setNewsletterError('Abonelik kapatıldı ancak güncel e-bülten durumu yeniden alınamadı.');await onChanged();}
   catch(e:any){setNewsletterError(e?.message||'E-bülten aboneliği kapatılamadı.');}
   finally{setNewsletterBusy(false);}
  }
@@ -85,8 +102,8 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
  }
 
  async function confirmCloseAccount(){
-  if(closureBusy)return;
-  try{setClosureBusy(true);setClosureError('');setClosureMessage('');await requestAccountClosure(reason.trim());setReason('');setClosureConfirmOpen(false);await onChanged();setClosureMessage('Hesap kapatma talebiniz oluşturuldu.');}
+  if(closureBusy)return;const normalizedReason=reason.trim();if(normalizedReason.length<10||normalizedReason.length>1000){setClosureConfirmOpen(false);setClosureError('Kapatma nedeni 10 ile 1000 karakter arasında olmalıdır.');return;}
+  try{setClosureBusy(true);setClosureError('');setClosureMessage('');await requestAccountClosure(normalizedReason);setReason('');setClosureConfirmOpen(false);await onChanged();setClosureMessage('Hesap kapatma talebiniz oluşturuldu.');}
   catch(e:any){setClosureConfirmOpen(false);setClosureError(e?.message||'Hesap kapatma talebi oluşturulamadı.');}
   finally{setClosureBusy(false);}
  }
@@ -97,6 +114,7 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
   finally{setClosureBusy(false);}
  }
 
+ const closureStatus=String(closure?.status||'').trim();const activeClosure=Boolean(closure)&&!['cancelled','completed','rejected'].includes(closureStatus);
  return<div className="space-y-5">
   <PremiumPreferencesPanel theme={theme} onThemeChange={onThemeChange}/>
 
@@ -116,9 +134,9 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
     {newsletterMessage?<div role="status" aria-live="polite" className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{newsletterMessage}</div>:null}
     {newsletterLoading?<div role="status" className="text-sm text-gray-500">E-bülten durumu yükleniyor…</div>:<div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700" aria-busy={newsletterBusy}>
       <div className="text-sm text-gray-500">E-posta</div>
-      <div className="mt-1 break-all font-semibold">{profile?.email||newsletter?.email||'Hesap e-postası bulunamadı'}</div>
-      <div className="mt-3 text-sm">Durum: <strong>{newsletter?.status==='active'?'Aktif':newsletter?.status==='pending'?'E-posta onayı bekleniyor':newsletter?.status==='unsubscribed'?'Abonelik kapalı':'Abone değil'}</strong></div>
-      {newsletter?.status==='active'||newsletter?.status==='pending'?<button type="button" disabled={newsletterBusy} onClick={()=>void stopNewsletter()} className="mt-4 min-h-11 w-full rounded-xl border border-red-300 font-bold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">{newsletterBusy?'İşleniyor…':'E-bülten aboneliğini kapat'}</button>:<button type="button" disabled={newsletterBusy||!profile?.email} onClick={()=>void startNewsletter()} className="mt-4 min-h-11 w-full rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{newsletterBusy?'İşleniyor…':'E-bültene abone ol'}</button>}
+      <div className="mt-1 break-all font-semibold">{accountEmail||'Hesap e-postası doğrulanamadı'}</div>
+      <div className="mt-3 text-sm">Durum: <strong>{newsletterStatusLabel(currentNewsletterStatus)}</strong></div>
+      {currentNewsletterStatus==='active'||currentNewsletterStatus==='pending'?<button type="button" disabled={newsletterBusy} onClick={()=>void stopNewsletter()} className="mt-4 min-h-11 w-full rounded-xl border border-red-300 font-bold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">{newsletterBusy?'İşleniyor…':'E-bülten aboneliğini kapat'}</button>:currentNewsletterStatus==='none'||currentNewsletterStatus==='unsubscribed'?<button type="button" disabled={newsletterBusy||!accountEmail} onClick={()=>void startNewsletter()} className="mt-4 min-h-11 w-full rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{newsletterBusy?'İşleniyor…':'E-bültene abone ol'}</button>:<button type="button" disabled={newsletterBusy} onClick={()=>void loadNewsletter()} className="mt-4 min-h-11 w-full rounded-xl border font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Durumu yeniden kontrol et</button>}
     </div>}
   </Panel>
 
@@ -126,8 +144,8 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
    {prefsError?<ErrorState message={prefsError} onRetry={()=>void loadPrefs()}/>:null}
    {prefsMessage?<div role="status" aria-live="polite" className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{prefsMessage}</div>:null}
    {prefsLoading?<div role="status" className="text-sm text-gray-500">Bildirim ayarları yükleniyor…</div>:prefs?<div className="space-y-2" aria-busy={prefsBusy}>
-    <label className="flex min-h-11 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"><span className="font-bold">Push bildirimleri</span><input disabled={prefsBusy} type="checkbox" className="h-5 w-5 shrink-0" checked={!!prefs.pushEnabled} onChange={e=>setPrefs({...prefs,pushEnabled:e.target.checked})}/></label>{nativePushPlatform?<div className={`rounded-xl border p-3 text-sm ${nativePushConfigured?'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200':'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200'}`}><div className="font-semibold">Cihaz push durumu</div><div className="mt-1">{nativePushConfigured?`Sağlayıcı yapılandırması hazır. Sistem izni: ${nativePushPermission}.`:'Uygulama kodu hazır. FCM/APNs üretim yapılandırması eklenmeden cihaz kaydı açılmaz.'}</div><div className="mt-1 text-xs opacity-80">Bildirim izni yalnız Push bildirimleri seçilip kaydedildiğinde istenir.</div></div>:null}
-    {keys.map(([key,label])=><label key={key} className="flex min-h-11 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"><span>{label}</span><input disabled={prefsBusy} type="checkbox" className="h-5 w-5 shrink-0" checked={!!prefs[key]} onChange={e=>setPrefs({...prefs,[key]:e.target.checked})}/></label>)}
+    <label className="flex min-h-11 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"><span className="font-bold">Push bildirimleri</span><input disabled={prefsBusy} type="checkbox" className="h-5 w-5 shrink-0" checked={prefs.pushEnabled===true} onChange={e=>setPrefs({...prefs,pushEnabled:e.target.checked})}/></label>{nativePushPlatform?<div className={`rounded-xl border p-3 text-sm ${nativePushConfigured?'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200':'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200'}`}><div className="font-semibold">Cihaz push durumu</div><div className="mt-1">{nativePushConfigured?`Sağlayıcı yapılandırması hazır. Sistem izni: ${permissionLabel(nativePushPermission)}.`:'Uygulama kodu hazır. FCM/APNs üretim yapılandırması eklenmeden cihaz kaydı açılmaz.'}</div><div className="mt-1 text-xs opacity-80">Bildirim izni yalnız Push bildirimleri seçilip kaydedildiğinde istenir.</div></div>:null}
+    {keys.map(([key,label])=><label key={key} className="flex min-h-11 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"><span>{label}</span><input disabled={prefsBusy} type="checkbox" className="h-5 w-5 shrink-0" checked={prefs[key]===true} onChange={e=>setPrefs({...prefs,[key]:e.target.checked})}/></label>)}
     <button type="button" disabled={prefsBusy} onClick={()=>void savePrefs()} className="min-h-11 w-full rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{prefsBusy?'Kaydediliyor…':'Bildirim tercihlerini kaydet'}</button>
    </div>:null}
   </Panel>
@@ -145,12 +163,12 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
   <Panel title="Hesap Kapatma" description="Sipariş ve yasal işlem kayıtları muhasebe bütünlüğü için korunabilir; aktif sipariş/iade varken kapatma engellenir.">
    {closureError?<ErrorState message={closureError}/>:null}
    {closureMessage?<div role="status" aria-live="polite" className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{closureMessage}</div>:null}
-   {closure&&!['cancelled','completed','rejected'].includes(closure.status)?<div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" aria-busy={closureBusy}>
-     Aktif hesap kapatma talebiniz var: <strong>{closure.status}</strong>.
-     <button type="button" disabled={closureBusy} onClick={()=>void cancelClose()} className="mt-3 min-h-11 w-full rounded-lg border border-amber-500 font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600">{closureBusy?'İptal ediliyor…':'Talebi iptal et'}</button>
+   {activeClosure?<div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" aria-busy={closureBusy}>
+     Aktif hesap kapatma talebiniz var. Durum: <strong>{closureStatusLabel(closureStatus)}</strong>.
+     <button type="button" disabled={closureBusy||!closureStatus} onClick={()=>void cancelClose()} className="mt-3 min-h-11 w-full rounded-lg border border-amber-500 font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600">{closureBusy?'İptal ediliyor…':'Talebi iptal et'}</button>
    </div>:<div>
      <label className="block"><span className="text-sm font-semibold">Kapatma nedeni</span><textarea value={reason} onChange={e=>setReason(e.target.value)} rows={3} minLength={10} maxLength={1000} aria-describedby="closure-reason-help" className="mt-1 w-full rounded-xl border bg-transparent p-3" placeholder="Neden hesabınızı kapatmak istediğinizi kısaca yazın."/><span id="closure-reason-help" className="mt-1 block text-xs text-gray-500">En az 10 karakter yazın. Talep oluşturulmadan önce ayrıca onay istenir.</span></label>
-     <button type="button" onClick={()=>{setClosureError('');setClosureMessage('');setClosureConfirmOpen(true);}} disabled={closureBusy||reason.trim().length<10} className="mt-3 min-h-11 w-full rounded-xl border border-red-300 font-bold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Hesap kapatma talebi oluştur</button>
+     <button type="button" onClick={()=>{setClosureError('');setClosureMessage('');setClosureConfirmOpen(true);}} disabled={closureBusy||reason.trim().length<10||reason.trim().length>1000} className="mt-3 min-h-11 w-full rounded-xl border border-red-300 font-bold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Hesap kapatma talebi oluştur</button>
    </div>}
   </Panel>
 
