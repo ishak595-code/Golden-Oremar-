@@ -1,14 +1,15 @@
 {
-  "generatedAt": "2026-08-16T23:16:00+00:00",
+  "generatedAt": "2026-08-17T00:27:00+00:00",
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "liveMigrationCount": 126,
-  "latestMigration": "20260816231230_add_public_checkout_payment_readiness_v1",
+  "liveMigrationCount": 127,
+  "latestMigration": "20260817001643_add_provider_filtered_push_delivery_claim_v2",
   "securityAdvisorLints": 0,
   "performanceBlockingLints": 0,
   "edgeFunctions": {
     "contact-submit": { "status": "ACTIVE", "version": 1 },
-    "event-reservation": { "status": "ACTIVE", "version": 2 }
+    "event-reservation": { "status": "ACTIVE", "version": 2 },
+    "push-dispatch": { "status": "ACTIVE", "version": 1 }
   },
   "validation": {
     "typescriptScope": "shipped-application-source",
@@ -19,9 +20,13 @@
     "legacyStaticCatalogRuntime": "PASS_RETIRED",
     "catalogReadinessQualityGate": "PASS",
     "supabaseSecurityAdvisor": "PASS_ZERO_LINTS",
+    "supabasePerformanceBlockingLints": "PASS_ZERO_BLOCKING_LINTS_INFO_UNUSED_INDEXES_ONLY",
     "storefrontDemoAssetAudit": "PASS_ZERO_UNSPLASH_PICSUM_PLACEHOLDER_LOREM",
     "checkoutPaymentReadinessRpc": "PASS_MANUAL_CONFIRMATION_NO_PROVIDER_SECRETS",
     "checkoutPaymentReadinessSecurity": "PASS_SECURITY_INVOKER_EXPLICIT_ANON_AUTHENTICATED_EXECUTE",
+    "pushProviderFilteredClaimRpc": "PASS_SERVICE_ROLE_ONLY",
+    "pushDispatchEdgeWorker": "PASS_DEPLOYED_ACTIVE_FCM_APNS_PROVIDER_AWARE",
+    "pushDispatchCredentialBehavior": "PASS_DOES_NOT_CLAIM_QUEUE_WHEN_NO_PROVIDER_CREDENTIAL_SET_IS_CONFIGURED",
     "mobileBrandAssets": "PASS_VALIDATED_PNG",
     "androidReleaseBundleBaseline": "PASS",
     "iosSimulatorCompileBaseline": "PASS",
@@ -40,6 +45,9 @@
     "sellerShippingWeightValidatedClientAndServer": true,
     "internationalReadinessDoesNotInventShippingWeight": true,
     "nativePushDoesNotInventProviderCredentials": true,
+    "pushDispatchUsesEncryptedQueuedDeviceTokens": true,
+    "pushDispatchClaimsOnlyConfiguredProviders": true,
+    "pushDispatchWorkerRequiresSupabaseSecretKey": true,
     "checkoutDoesNotInventPaymentProvider": true,
     "checkoutDoesNotExposeProviderSecrets": true,
     "storefrontHeroImagesUseLocalCatalogAssets": true,
@@ -69,11 +77,28 @@
     "requiresProviderConfiguration": true,
     "storesProviderSecretsClientSide": false
   },
+  "pushReadiness": {
+    "queue": "LIVE_DATABASE_QUEUE",
+    "worker": "ACTIVE_EDGE_FUNCTION",
+    "supportedProviders": ["fcm", "apns"],
+    "providerFilteredClaiming": true,
+    "automaticInvalidTokenDisable": true,
+    "productionProviderCredentialsConfigured": false,
+    "requiredExternalConfiguration": [
+      "FCM_PROJECT_ID",
+      "FCM_SERVICE_ACCOUNT_EMAIL",
+      "FCM_PRIVATE_KEY",
+      "APNS_TEAM_ID",
+      "APNS_KEY_ID",
+      "APNS_PRIVATE_KEY",
+      "APNS_BUNDLE_ID"
+    ]
+  },
   "externalBlockers": {
     "githubActions": "Jobs currently do not start because the GitHub account reports failed recent payments or a spending limit that must be increased.",
     "liveSalesIdentity": "Legal business and support contact identity are not configured in brand settings.",
     "paymentProvider": "Production merchant/provider credentials are not configured; checkout remains truthful manual-confirmation mode and exposes readiness state without secrets.",
-    "nativePushProviders": "Client and backend registration path are prepared, but production FCM/APNs configuration is intentionally absent.",
+    "nativePushProviders": "Queue, native registration and FCM/APNs dispatch worker are implemented, but production provider credentials are intentionally absent.",
     "oauthProviders": "Production Google/Facebook provider configuration remains external.",
     "mobileSigning": "Store signing and release credentials remain external."
   }
