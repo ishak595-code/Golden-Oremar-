@@ -198,6 +198,24 @@ nav[aria-label="Ana gezinme"] button > span.relative > span[aria-hidden="true"] 
   font-weight: 800 !important;
 }
 
+/* Capacitor runs on touch-first Android and iOS surfaces. On coarse pointers,
+   interactive controls must retain a minimum physical target even when an admin
+   or seller component forgets to add an explicit Tailwind min-height. */
+@media (pointer: coarse) {
+  :where(button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], select, summary) {
+    min-height: 44px;
+  }
+
+  :where(button, [role="button"]):has(> svg:only-child) {
+    min-width: 44px;
+  }
+
+  :where(input[type="checkbox"], input[type="radio"]) {
+    min-width: 20px;
+    min-height: 20px;
+  }
+}
+
 /* The software keyboard owns the lower screen area while text entry is active. */
 :root[data-native-keyboard="open"] nav[aria-label="Ana gezinme"] {
   display: none;
