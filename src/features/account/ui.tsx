@@ -40,9 +40,8 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
 }
 
 export function Money({ minor, currency }: { minor: number; currency?: string | null }) {
-  const amountMinor = Number(minor);
   const normalizedCurrency = String(currency || '').trim().toUpperCase();
-  const validAmount = Number.isSafeInteger(amountMinor);
+  const validAmount = typeof minor === 'number' && Number.isSafeInteger(minor);
   const validCurrency = /^[A-Z]{3}$/.test(normalizedCurrency);
 
   if (!validAmount || !validCurrency) {
@@ -50,7 +49,7 @@ export function Money({ minor, currency }: { minor: number; currency?: string | 
   }
 
   try {
-    return <>{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: normalizedCurrency }).format(amountMinor / 100)}</>;
+    return <>{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: normalizedCurrency }).format(minor / 100)}</>;
   } catch {
     return <span role="status" className="text-red-700 dark:text-red-300">Tutar doğrulanamadı</span>;
   }
