@@ -41,12 +41,16 @@
     "account-payment-history-pagination",
     "account-notification-cursor-pagination",
     "account-notification-mutation-locking",
+    "account-notification-action-truthfulness-and-date-resilience",
     "account-message-history-pagination",
     "account-conversation-list-pagination",
     "account-messaging-api-input-hardening",
     "account-favorites-live-trust-polish",
+    "account-favorites-media-accessibility",
     "account-followed-producer-live-trust-rating-polish",
+    "account-followed-producer-media-accessibility",
     "account-gift-history-live-product-polish",
+    "account-gift-history-media-accessibility",
     "account-address-validation-normalization",
     "verified-review-center-accessibility-polish",
     "producer-onboarding-v4-ui",
@@ -107,5 +111,5 @@
     "production-fcm-apns-provider-configuration",
     "mobile-store-signing-and-release-credentials"
   ],
-  "nextBlock": "checkout-form-semantics-share-fallback-final-admin-mobile-polish-and-release-recheck"
+  "nextBlock": "checkout-form-semantics-real-share-fallback-final-admin-mobile-polish-and-release-recheck"
 }
