@@ -69,10 +69,12 @@ export default function CartCheckoutFlow({
   onBack,
   onOrderCreated,
   onOpenAddresses,
+  onCartChanged,
 }: {
   onBack?: () => void;
   onOrderCreated?: (order: any) => void;
   onOpenAddresses?: () => void;
+  onCartChanged?: (cart: CartSnapshot) => void;
 }) {
   const [cart, setCart] = useState<CartSnapshot | null>(null);
   const [overview, setOverview] = useState<any>(null);
@@ -98,6 +100,12 @@ export default function CartCheckoutFlow({
   const errorRef = useRef<HTMLDivElement | null>(null);
   const clearDialogRef = useAccessibleDialog<HTMLDivElement>(clearConfirmOpen, () => { if (!clearBusy) setClearConfirmOpen(false); });
 
+  function applyCart(next: CartSnapshot) {
+    setCart(next);
+    onCartChanged?.(next);
+    return next;
+  }
+
   useEffect(() => {
     if (!error) return;
     queueMicrotask(() => errorRef.current?.focus({ preventScroll: false }));
@@ -108,7 +116,7 @@ export default function CartCheckoutFlow({
       setLoading(true);
       setError('');
       const [nextCart, nextOverview] = await Promise.all([getCart(), getCheckoutAccountOverview()]);
-      setCart(nextCart);
+      applyCart(nextCart);
       setOverview(nextOverview);
       const addresses = nextOverview?.addresses || [];
       const defaultAddress = addresses.find((a: any) => a.is_default) || addresses[0];
@@ -171,10 +179,10 @@ export default function CartCheckoutFlow({
         return;
       }
       if (nextQuantity <= 0) {
-        setCart(await removeCartItem(item.cartItemId));
+        applyCart(await removeCartItem(item.cartItemId));
         setActionStatus(`${item.productName} sepetten çıkarıldı.`);
       } else {
-        setCart(await setCartItem({
+        applyCart(await setCartItem({
           variantId: item.variantId,
           quantity: nextQuantity,
           selectedOptions: item.selectedOptions || {},
@@ -194,7 +202,7 @@ export default function CartCheckoutFlow({
       setRowBusyId(item.cartItemId);
       setError('');
       setActionStatus('');
-      setCart(await removeCartItem(item.cartItemId));
+      applyCart(await removeCartItem(item.cartItemId));
       setActionStatus(`${item.productName} sepetten çıkarıldı.`);
     } catch (e: any) {
       setError(e?.message || 'Ürün sepetten çıkarılamadı.');
@@ -209,7 +217,7 @@ export default function CartCheckoutFlow({
       setClearBusy(true);
       setError('');
       setActionStatus('');
-      setCart(await clearCart());
+      applyCart(await clearCart());
       setPreview(null);
       setClearConfirmOpen(false);
       setActionStatus('Sepet temizlendi.');
@@ -268,7 +276,7 @@ export default function CartCheckoutFlow({
         idempotencyKey: idempotencyRef.current,
       });
       setSuccess(result);
-      setCart({ cartId: null, currency: cart.currency, itemCount: 0, subtotalMinor: 0, items: [] });
+      applyCart({ cartId: null, currency: cart.currency, itemCount: 0, subtotalMinor: 0, items: [] });
       setPreview(null);
       idempotencyRef.current = null;
       onOrderCreated?.(result);
@@ -416,6 +424,6 @@ export default function CartCheckoutFlow({
       <p className="mt-2 text-center text-xs text-gray-500">Bu adım karttan para çekmez. Canlı ödeme sağlayıcısı bağlanmadan ödeme başarılı gösterilmez.</p>
     </section>
 
-    {clearConfirmOpen ? <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4"><div ref={clearDialogRef} role="alertdialog" aria-modal="true" aria-labelledby="clear-cart-title" aria-describedby="clear-cart-description" tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white p-5 text-brand-text shadow-xl outline-none dark:bg-gray-900"><h2 id="clear-cart-title" className="text-lg font-bold">Sepetin tamamı temizlensin mi?</h2><p id="clear-cart-description" className="mt-2 text-sm text-gray-600 dark:text-gray-300">Sepetinizdeki {cart.itemCount} ürün satırı kaldırılacak. Ürünleri daha sonra yeniden ekleyebilirsiniz.</p><div aria-live="polite" className="sr-only">{clearBusy ? 'Sepet temizleniyor.' : ''}</div><div className="mt-5 grid grid-cols-2 gap-3"><button type="button" disabled={clearBusy} onClick={() => setClearConfirmOpen(false)} className="min-h-11 rounded-xl border font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Vazgeç</button><button type="button" disabled={clearBusy} onClick={() => void confirmEmptyCart()} className="min-h-11 rounded-xl bg-red-700 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">{clearBusy ? 'Temizleniyor…' : 'Sepeti Temizle'}</button></div></div></div> : null}
+    {clearConfirmOpen ? <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4"><div ref={clearDialogRef} role="alertdialog" aria-modal="true" aria-labelledby="clear-cart-title" aria-describedby="clear-cart-description" tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white p-5 text-brand-text shadow-xl outline-none dark:bg-gray-900"><h2 id="clear-cart-title" className="text-lg font-bold">Sepetin tamamı temizlensin mi?</h2><p id="clear-cart-description" className="mt-2 text-sm text-gray-600 dark:text-gray-300">Sepetinizdeki {cart.itemCount} ürün kaldırılacak. Ürünleri daha sonra yeniden ekleyebilirsiniz.</p><div aria-live="polite" className="sr-only">{clearBusy ? 'Sepet temizleniyor.' : ''}</div><div className="mt-5 grid grid-cols-2 gap-3"><button type="button" disabled={clearBusy} onClick={() => setClearConfirmOpen(false)} className="min-h-11 rounded-xl border font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Vazgeç</button><button type="button" disabled={clearBusy} onClick={() => void confirmEmptyCart()} className="min-h-11 rounded-xl bg-red-700 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">{clearBusy ? 'Temizleniyor…' : 'Sepeti Temizle'}</button></div></div></div> : null}
   </main>;
 }
