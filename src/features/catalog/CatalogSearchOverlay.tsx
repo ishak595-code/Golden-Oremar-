@@ -77,9 +77,8 @@ export default function CatalogSearchOverlay({
       onProducer(item.id, item.value, item.label);
       return;
     }
-    // Category selection must not also submit the display label as a free-text
-    // query. The server category slug is already an exact filter and combining
-    // both can incorrectly hide valid products.
+    // Category selection uses the exact server slug rather than combining it
+    // with the localized display label as a second free-text filter.
     onQueryChange('');
     onCategory(item.value, '');
   }
@@ -89,6 +88,7 @@ export default function CatalogSearchOverlay({
       className="absolute left-4 right-4 top-full z-[100] mx-auto mt-2 max-h-[70vh] max-w-7xl overflow-y-auto rounded-2xl border border-brand-gold/20 bg-white shadow-2xl dark:bg-gray-900"
       role="region"
       aria-label="Arama önerileri"
+      aria-busy={loading}
     >
       {!query.trim() ? (
         <div className="p-5 text-sm text-gray-600 dark:text-gray-300">
@@ -102,7 +102,7 @@ export default function CatalogSearchOverlay({
         </div>
       ) : (
         <div className="p-3">
-          <div className="sr-only" aria-live="polite">
+          <div className="sr-only" aria-live="polite" aria-atomic="true">
             {loading ? 'Aranıyor' : error ? error : `${items.length} öneri bulundu`}
           </div>
 
@@ -114,26 +114,26 @@ export default function CatalogSearchOverlay({
           ) : null}
 
           {items.length > 0 ? (
-            <div role="listbox" aria-label="Arama önerileri" className="space-y-1">
+            <div role="list" aria-label="Arama önerileri" className="space-y-1">
               {items.map(item => {
                 const Icon = iconFor(item.kind);
                 const typeLabel = item.kind === 'product' ? 'Ürün' : item.kind === 'producer' ? 'Üretici' : 'Kategori';
                 return (
-                  <button
-                    key={`${item.kind}:${item.id}`}
-                    type="button"
-                    role="option"
-                    aria-selected="false"
-                    onMouseDown={event => event.preventDefault()}
-                    onClick={() => choose(item)}
-                    className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-brand-text transition-colors hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
-                  >
-                    <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-gold" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-semibold">{item.label}</span>
-                      <span className="block text-xs text-gray-500">{typeLabel}</span>
-                    </span>
-                  </button>
+                  <div key={`${item.kind}:${item.id}`} role="listitem">
+                    <button
+                      type="button"
+                      onMouseDown={event => event.preventDefault()}
+                      onClick={() => choose(item)}
+                      aria-label={`${item.label}, ${typeLabel}`}
+                      className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-brand-text transition-colors hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+                    >
+                      <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-gold" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-semibold">{item.label}</span>
+                        <span className="block text-xs text-gray-500">{typeLabel}</span>
+                      </span>
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -143,7 +143,8 @@ export default function CatalogSearchOverlay({
             type="button"
             onMouseDown={event => event.preventDefault()}
             onClick={() => onAllResults(query.trim())}
-            className="mt-2 min-h-12 w-full rounded-xl border border-brand-gold/30 px-4 text-left font-bold text-brand-gold hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+            disabled={!query.trim()}
+            className="mt-2 min-h-12 w-full rounded-xl border border-brand-gold/30 px-4 text-left font-bold text-brand-gold hover:bg-brand-gold/10 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
           >
             “{query.trim()}” için tüm sonuçları göster
           </button>
