@@ -43,6 +43,7 @@
     "account-notification-mutation-locking",
     "account-message-history-pagination",
     "account-conversation-list-pagination",
+    "account-messaging-api-input-hardening",
     "account-favorites-live-trust-polish",
     "account-followed-producer-live-trust-rating-polish",
     "account-gift-history-live-product-polish",
