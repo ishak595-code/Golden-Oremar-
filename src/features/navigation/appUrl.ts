@@ -12,6 +12,8 @@ export type PublicAppTab =
   | 'about';
 
 const SAFE_REFERENCE = /^[a-zA-Z0-9][a-zA-Z0-9._~-]{0,199}$/;
+const NAVIGATION_PROTOCOLS = new Set(['http:', 'https:', 'capacitor:']);
+const PUBLIC_PROTOCOLS = new Set(['http:', 'https:']);
 
 export function cleanPublicReference(value: unknown): string | null {
   const normalized = String(value ?? '').trim();
@@ -22,7 +24,7 @@ export function cleanPublicReference(value: unknown): string | null {
 export function buildProductUrl(reference: unknown, baseHref?: string): string {
   const safeReference = cleanPublicReference(reference);
   if (!safeReference) throw new Error('invalid_product_reference');
-  const url = safeBaseUrl(baseHref);
+  const url = safeNavigationBaseUrl(baseHref);
   url.search = '';
   url.hash = '';
   url.searchParams.set('tab', 'product-detail');
@@ -33,7 +35,7 @@ export function buildProductUrl(reference: unknown, baseHref?: string): string {
 export function buildProducerUrl(reference: unknown, baseHref?: string): string {
   const safeReference = cleanPublicReference(reference);
   if (!safeReference) throw new Error('invalid_producer_reference');
-  const url = safeBaseUrl(baseHref);
+  const url = safeNavigationBaseUrl(baseHref);
   url.search = '';
   url.hash = '';
   url.searchParams.set('tab', 'producer-profile');
@@ -46,7 +48,7 @@ export function buildSearchUrl(input: {
   categorySlug?: unknown;
   producerId?: unknown;
 }, baseHref?: string): string {
-  const url = safeBaseUrl(baseHref);
+  const url = safeNavigationBaseUrl(baseHref);
   url.search = '';
   url.hash = '';
   url.searchParams.set('tab', 'search-results');
@@ -60,7 +62,7 @@ export function buildSearchUrl(input: {
 }
 
 export function parsePublicRoute(href?: string) {
-  const url = safeBaseUrl(href);
+  const url = safeNavigationBaseUrl(href);
   const tab = String(url.searchParams.get('tab') || 'home') as PublicAppTab;
   return {
     tab,
@@ -77,12 +79,13 @@ export async function shareOrCopy(input: {
   text?: string;
   url: string;
 }): Promise<'shared' | 'copied' | 'cancelled'> {
+  const publicUrl = toPublicShareUrl(input.url);
   if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
     try {
       await navigator.share({
         title: input.title,
         text: input.text?.trim() || undefined,
-        url: input.url,
+        url: publicUrl,
       });
       return 'shared';
     } catch (error: any) {
@@ -90,7 +93,7 @@ export async function shareOrCopy(input: {
       // Some Web Share implementations reject valid payloads. Fall through to clipboard.
     }
   }
-  await copyText(input.url);
+  await copyText(publicUrl);
   return 'copied';
 }
 
@@ -117,9 +120,24 @@ export async function copyText(value: string): Promise<void> {
   if (!copied) throw new Error('clipboard_copy_failed');
 }
 
-function safeBaseUrl(href?: string) {
+function safeNavigationBaseUrl(href?: string) {
   const value = href || (typeof window !== 'undefined' ? window.location.href : 'https://goldenoremar.invalid/');
   const url = new URL(value);
-  if (!['http:', 'https:'].includes(url.protocol)) throw new Error('invalid_base_url');
+  if (!NAVIGATION_PROTOCOLS.has(url.protocol)) throw new Error('invalid_navigation_base_url');
   return url;
+}
+
+function toPublicShareUrl(value: string) {
+  const source = new URL(value);
+  if (PUBLIC_PROTOCOLS.has(source.protocol)) return source.toString();
+  if (source.protocol !== 'capacitor:') throw new Error('invalid_share_url');
+
+  const configuredOrigin = String(import.meta.env.VITE_PUBLIC_APP_ORIGIN || '').trim();
+  if (!configuredOrigin) throw new Error('public_share_origin_not_configured');
+  const publicBase = new URL(configuredOrigin);
+  if (!PUBLIC_PROTOCOLS.has(publicBase.protocol)) throw new Error('invalid_public_share_origin');
+
+  publicBase.search = source.search;
+  publicBase.hash = source.hash;
+  return publicBase.toString();
 }
