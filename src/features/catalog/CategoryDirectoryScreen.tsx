@@ -135,29 +135,40 @@ export default function CategoryDirectoryScreen({ onOpenProduct, onAddToCart }: 
         </div>
       ) : null}
 
-      <div className="mt-6 overflow-x-auto pb-2 [scrollbar-width:thin]" aria-label="Ürün kategorileri">
+      <div className="mt-6 overflow-x-auto pb-3 [scrollbar-width:thin]" aria-label="Ürün kategorileri">
         <div className="flex min-w-max gap-3" role="list">
           <div role="listitem">
-            <button type="button" onClick={() => setSelected(null)} aria-pressed={selected === null} aria-controls="category-products" className={`min-h-16 min-w-[150px] rounded-2xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${selected === null ? 'border-brand-gold bg-brand-gold/10' : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900'}`}>
-              <span className="flex items-center gap-2 font-bold"><Grid2X2 aria-hidden="true" className="h-5 w-5 text-brand-gold" />Tüm Ürünler</span>
-              <span className="mt-1 block text-xs text-gray-500">Canlı katalog</span>
+            <button type="button" onClick={() => setSelected(null)} aria-pressed={selected === null} aria-controls="category-products" className={`group min-h-24 min-w-[180px] rounded-2xl border p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${selected === null ? 'border-brand-gold bg-brand-gold/10 shadow-brand-gold/10' : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900'}`}>
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-green/10 text-brand-green dark:bg-brand-gold/10 dark:text-brand-gold"><Grid2X2 aria-hidden="true" className="h-5 w-5" /></span>
+              <span className="mt-3 block font-bold">Tüm Ürünler</span>
+              <span className="mt-1 block text-xs text-gray-500">Canlı katalogdaki tüm seçki</span>
             </button>
           </div>
-          {categoryLoading ? <div role="status" className="flex min-h-16 min-w-[190px] items-center rounded-2xl border border-dashed px-4 text-sm text-gray-500">Kategoriler yükleniyor…</div> : null}
-          {categories.map(category => (
-            <div key={category.id} role="listitem">
-              <button type="button" onClick={() => setSelected(category.slug)} aria-pressed={selected === category.slug} aria-controls="category-products" className={`min-h-16 min-w-[190px] max-w-[230px] rounded-2xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${selected === category.slug ? 'border-brand-gold bg-brand-gold/10' : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900'}`}>
-                <span className="line-clamp-1 font-bold">{category.name}</span>
-                <span className="mt-1 block text-xs text-gray-500">{category.productCount} ürün</span>
-              </button>
-            </div>
-          ))}
+          {categoryLoading ? <div role="status" className="flex min-h-24 min-w-[210px] items-center rounded-2xl border border-dashed px-4 text-sm text-gray-500">Kategoriler yükleniyor…</div> : null}
+          {categories.map(category => {
+            const categoryImage = publicCatalogUrl(category.imagePath);
+            return (
+              <div key={category.id} role="listitem">
+                <button type="button" onClick={() => setSelected(category.slug)} aria-pressed={selected === category.slug} aria-controls="category-products" className={`group relative min-h-24 min-w-[220px] max-w-[260px] overflow-hidden rounded-2xl border p-3 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${selected === category.slug ? 'border-brand-gold bg-brand-gold/10 shadow-brand-gold/10' : 'border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900'}`}>
+                  <span className="flex items-start gap-3">
+                    {categoryImage ? <img src={categoryImage} alt="" loading="lazy" decoding="async" className="h-14 w-14 shrink-0 rounded-xl object-cover ring-1 ring-black/5 dark:ring-white/10" /> : <span aria-hidden="true" className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-brand-green/10 text-lg font-bold text-brand-green dark:bg-brand-gold/10 dark:text-brand-gold">{category.name.charAt(0).toLocaleUpperCase('tr-TR')}</span>}
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-1 font-bold text-brand-text">{category.name}</span>
+                      <span className="mt-1 block text-xs font-semibold text-brand-green dark:text-brand-gold">{category.productCount} ürün</span>
+                      {category.description ? <span className="mt-1 line-clamp-2 block text-xs leading-4 text-gray-500">{category.description}</span> : null}
+                    </span>
+                  </span>
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:flex sm:items-end sm:justify-between sm:gap-4">
+      <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:flex sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h2 className="text-xl font-bold text-brand-text">{selectedCategory?.name || 'Tüm Ürünler'}</h2>
+          {selectedCategory?.description ? <p className="mt-1 max-w-2xl text-sm leading-5 text-gray-500">{selectedCategory.description}</p> : null}
           <p className="mt-1 text-sm text-gray-500">{productLoading ? 'Ürünler güncelleniyor…' : `${items.length} / ${total} ürün gösteriliyor`}</p>
         </div>
         <div className="mt-4 grid gap-3 sm:mt-0 sm:grid-cols-[minmax(190px,1fr)_auto]">
