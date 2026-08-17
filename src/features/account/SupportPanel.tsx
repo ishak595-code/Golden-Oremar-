@@ -16,11 +16,28 @@ const meta:Record<Key,{label:string;description:string;Icon:any}>={
 function isRecord(value:unknown):value is Record<string,any>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
 function text(value:unknown,max=4000){return typeof value==='string'?value.trim().slice(0,max):'';}
 function documentText(value:unknown){if(typeof value!=='string')return'';const normalized=value.trim();return normalized.length<=200000?normalized:'';}
-function publishedItem(value:unknown){
- if(!isRecord(value))return null;
- const sanitizedHtml=documentText(value.sanitizedHtml);const markdown=documentText(value.markdown);
- if(!sanitizedHtml&&!markdown)return null;
- return{...value,title:text(value.title,240),summary:text(value.summary,1200),sanitizedHtml,markdown};
+function publishedItem(value:unknown){if(!isRecord(value))return null;const sanitizedHtml=documentText(value.sanitizedHtml);const markdown=documentText(value.markdown);if(!sanitizedHtml&&!markdown)return null;return{...value,title:text(value.title,240),summary:text(value.summary,1200),sanitizedHtml,markdown};}
+function safeHref(value:string){const href=value.trim();if(/^https:\/\//i.test(href)||/^mailto:/i.test(href)||/^tel:/i.test(href))return href;return'';}
+function renderSafeNode(node:ChildNode,key:string):React.ReactNode{
+ if(node.nodeType===3)return node.textContent;
+ if(node.nodeType!==1)return null;
+ const element=node as Element;const tag=element.tagName.toLowerCase();const children=Array.from(element.childNodes).map((child,index)=>renderSafeNode(child,`${key}-${index}`));
+ if(tag==='h1'||tag==='h2'||tag==='h3'||tag==='h4')return<h3 key={key} className="mt-6 text-lg font-bold text-brand-green first:mt-0 dark:text-brand-gold">{children}</h3>;
+ if(tag==='p')return<p key={key} className="mt-3 leading-7 text-gray-700 dark:text-gray-300">{children}</p>;
+ if(tag==='ul')return<ul key={key} className="mt-3 list-disc space-y-2 pl-5 text-gray-700 dark:text-gray-300">{children}</ul>;
+ if(tag==='ol')return<ol key={key} className="mt-3 list-decimal space-y-2 pl-5 text-gray-700 dark:text-gray-300">{children}</ol>;
+ if(tag==='li')return<li key={key}>{children}</li>;
+ if(tag==='strong'||tag==='b')return<strong key={key}>{children}</strong>;
+ if(tag==='em'||tag==='i')return<em key={key}>{children}</em>;
+ if(tag==='br')return<br key={key}/>;
+ if(tag==='a'){const href=safeHref(element.getAttribute('href')||'');return href?<a key={key} href={href} target={href.startsWith('https://')?'_blank':undefined} rel={href.startsWith('https://')?'noopener noreferrer':undefined} className="font-semibold text-brand-green underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:text-brand-gold">{children}</a>:<React.Fragment key={key}>{children}</React.Fragment>;}
+ return<React.Fragment key={key}>{children}</React.Fragment>;
+}
+function PublishedBody({source}:{source:string}){
+ if(!source)return null;
+ if(typeof DOMParser==='undefined')return<div className="whitespace-pre-wrap break-words leading-7">{source.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim()}</div>;
+ const documentValue=new DOMParser().parseFromString(source,'text/html');
+ return<div className="break-words">{Array.from(documentValue.body.childNodes).map((node,index)=>renderSafeNode(node,`help-${index}`))}</div>;
 }
 
 export default function SupportPanel({locale='tr',onOpenMessages,onOpenContact}:{locale?:string;onOpenMessages?:()=>void;onOpenContact?:()=>void}){
@@ -30,11 +47,7 @@ export default function SupportPanel({locale='tr',onOpenMessages,onOpenContact}:
  useEffect(()=>{const restore=()=>void load(true);window.addEventListener(NETWORK_RESTORED_EVENT,restore);return()=>window.removeEventListener(NETWORK_RESTORED_EVENT,restore);},[locale]);
  useEffect(()=>{if(!selected)return;const frame=window.requestAnimationFrame(()=>documentRef.current?.focus({preventScroll:false}));return()=>window.cancelAnimationFrame(frame);},[selected]);
  if(loading)return<LoadingState label="Yardım merkezi yükleniyor"/>;
- if(selected){
-   const item=publishedItem(data?.[selected]);
-   if(!item)return<div ref={documentRef} tabIndex={-1} role="region" aria-label={`${meta[selected].label} belgesi`} className="outline-none"><Panel title={meta[selected].label} description={meta[selected].description}><button type="button" onClick={()=>setSelected(null)} className="mb-4 min-h-11 rounded-xl border border-gray-200 px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700">Yardım merkezine dön</button><div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">Bu belge için doğrulanmış yayın içeriği şu anda kullanılamıyor. Uydurma metin gösterilmiyor.</div></Panel></div>;
-   return<div ref={documentRef} tabIndex={-1} role="region" aria-label={`${item.title||meta[selected].label} belgesi`} className="outline-none"><Panel title={item.title||meta[selected].label} description={item.summary||meta[selected].description}><button type="button" onClick={()=>setSelected(null)} className="mb-5 min-h-11 rounded-xl border border-gray-200 px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700">Yardım merkezine dön</button>{item.sanitizedHtml?<div className="prose max-w-none break-words dark:prose-invert" dangerouslySetInnerHTML={{__html:item.sanitizedHtml}}/>:<div className="whitespace-pre-wrap break-words leading-7">{item.markdown}</div>}</Panel></div>;
- }
+ if(selected){const item=publishedItem(data?.[selected]);if(!item)return<div ref={documentRef} tabIndex={-1} role="region" aria-label={`${meta[selected].label} belgesi`} className="outline-none"><Panel title={meta[selected].label} description={meta[selected].description}><button type="button" onClick={()=>setSelected(null)} className="mb-4 min-h-11 rounded-xl border border-gray-200 px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700">Yardım merkezine dön</button><div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">Bu belge için doğrulanmış yayın içeriği şu anda kullanılamıyor. Uydurma metin gösterilmiyor.</div></Panel></div>;const source=item.sanitizedHtml||item.markdown;return<div ref={documentRef} tabIndex={-1} role="region" aria-label={`${item.title||meta[selected].label} belgesi`} className="outline-none"><Panel title={item.title||meta[selected].label} description={item.summary||meta[selected].description}><button type="button" onClick={()=>setSelected(null)} className="mb-5 min-h-11 rounded-xl border border-gray-200 px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700">Yardım merkezine dön</button><PublishedBody source={source}/></Panel></div>;}
  const publishedCount=(Object.keys(meta)as Key[]).filter(key=>Boolean(publishedItem(data?.[key]))).length;
  return<Panel title="Yardım & Destek" description="SSS, destek kanalları, iade bilgileri, gizlilik, kullanım koşulları ve Golden Oremar bilgilendirmeleri tek merkezde.">
    {error?<div className="mb-4"><ErrorState message={error} onRetry={()=>void load()}/></div>:null}
