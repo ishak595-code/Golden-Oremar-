@@ -21,8 +21,11 @@
     "category-directory",
     "category-directory-pagination",
     "live-home-catalog",
+    "home-search-producer-origin-village-alignment",
     "server-product-favorites",
     "live-catalog-filter-options",
+    "catalog-product-card-action-locking-accessibility",
+    "catalog-search-pagination-dedup-accessibility",
     "no-fake-voice-search",
     "public-contact",
     "public-events",
@@ -46,6 +49,7 @@
     "producer-product-management",
     "producer-profile-edit",
     "producer-location-change-request",
+    "producer-stock-input-and-change-request-action-hardening",
     "verified-purchase-review-center",
     "dynamic-product-producer-metrics",
     "product-safety-detail",
@@ -98,5 +102,5 @@
     "production-fcm-apns-provider-configuration",
     "mobile-store-signing-and-release-credentials"
   ],
-  "nextBlock": "home-search-filter-slug-alignment-conversation-list-pagination-checkout-and-account-final-polish"
+  "nextBlock": "conversation-list-pagination-checkout-form-semantics-share-fallback-and-final-admin-mobile-polish"
 }
