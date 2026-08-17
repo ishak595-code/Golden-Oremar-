@@ -15,6 +15,7 @@ import {
   type CampaignTargetScope,
 } from './supabaseAdminApi';
 import type { CatalogItem, PublicCategory } from '../features/catalog/api';
+import { useAccessibleDialog } from '../features/accessibility/useAccessibleDialog';
 
 type FormState = {
   title: string;
@@ -37,6 +38,25 @@ function toLocalInput(value: string | Date) {
   if (Number.isNaN(date.getTime())) return '';
   const offset = date.getTimezoneOffset() * 60_000;
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+}
+
+function toIsoInput(value: string, label: string) {
+  const date = new Date(value);
+  if (!value || Number.isNaN(date.getTime())) throw new Error(`${label} tarihi geçersiz.`);
+  return date.toISOString();
+}
+
+function campaignDateLabel(value: unknown) {
+  const raw = String(value || '').trim();
+  if (!raw) return 'Tarih doğrulanamadı';
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return 'Tarih doğrulanamadı';
+  try { return date.toLocaleDateString('tr-TR'); } catch { return 'Tarih doğrulanamadı'; }
+}
+
+function safeCount(value: unknown) {
+  const count = Number(value);
+  return Number.isSafeInteger(count) && count >= 0 ? count : 0;
 }
 
 function initialForm(): FormState {
@@ -73,12 +93,12 @@ function campaignToForm(campaign: AdminCampaign): FormState {
     discountDisplayValue,
     minimumOrderTry: minorToMajor(campaign.minimum_order_minor),
     usageLimit: campaign.usage_limit == null ? '' : String(campaign.usage_limit),
-    perUserLimit: campaign.per_user_limit || 1,
+    perUserLimit: Number.isSafeInteger(Number(campaign.per_user_limit)) && Number(campaign.per_user_limit) > 0 ? Number(campaign.per_user_limit) : 1,
     startsAt: toLocalInput(campaign.starts_at),
     endsAt: toLocalInput(campaign.ends_at),
     status: campaign.status,
     targetScope: campaign.target_scope,
-    targetIds: campaign.target_ids || [],
+    targetIds: Array.isArray(campaign.target_ids) ? campaign.target_ids : [],
   };
 }
 
@@ -100,6 +120,9 @@ export function AdminCampaigns() {
   const [slugTouched, setSlugTouched] = useState(false);
   const [form, setForm] = useState<FormState>(initialForm);
   const [toast, setToast] = useState('');
+  const campaignDialogRef = useAccessibleDialog<HTMLDivElement>(isModalOpen, () => {
+    if (!saving) closeModal();
+  });
 
   const showToast = (message: string) => {
     setToast(message);
@@ -114,9 +137,9 @@ export function AdminCampaigns() {
         adminListCampaigns(),
         adminCampaignTargetOptions(),
       ]);
-      setCampaigns(campaignRows);
-      setCategories(options.categories);
-      setProducts(options.products);
+      setCampaigns(Array.isArray(campaignRows) ? campaignRows : []);
+      setCategories(Array.isArray(options?.categories) ? options.categories : []);
+      setProducts(Array.isArray(options?.products) ? options.products : []);
     } catch (err) {
       setError(adminErrorMessage(err, 'Kampanyalar yüklenemedi.'));
     } finally {
@@ -128,15 +151,6 @@ export function AdminCampaigns() {
     void load();
   }, []);
 
-  useEffect(() => {
-    if (!isModalOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !saving) setIsModalOpen(false);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isModalOpen, saving]);
-
   const filteredCampaigns = useMemo(() => {
     const q = searchTerm.trim().toLocaleLowerCase('tr-TR');
     if (!q) return campaigns;
@@ -146,13 +160,21 @@ export function AdminCampaigns() {
   const targetOptions = useMemo(() => {
     const q = targetSearch.trim().toLocaleLowerCase('tr-TR');
     const rows = form.targetScope === 'categories'
-      ? categories.map(category => ({ id: category.id, label: category.name, meta: `${category.productCount} ürün` }))
+      ? categories.map(category => ({ id: category.id, label: category.name, meta: `${safeCount(category.productCount)} ürün` }))
       : form.targetScope === 'products'
         ? products.map(product => ({ id: product.id, label: product.name, meta: product.producer?.name || '' }))
         : [];
     if (!q) return rows;
     return rows.filter(row => `${row.label} ${row.meta}`.toLocaleLowerCase('tr-TR').includes(q));
   }, [categories, products, form.targetScope, targetSearch]);
+
+  const closeModal = () => {
+    if (saving) return;
+    setIsModalOpen(false);
+    setEditingCampaign(null);
+    setTargetSearch('');
+    setError('');
+  };
 
   const openCreate = () => {
     setEditingCampaign(null);
@@ -200,6 +222,18 @@ export function AdminCampaigns() {
     setSaving(true);
     setError('');
     try {
+      const startsAt = toIsoInput(form.startsAt, 'Başlangıç');
+      const endsAt = toIsoInput(form.endsAt, 'Bitiş');
+      if (new Date(endsAt).getTime() <= new Date(startsAt).getTime()) throw new Error('Bitiş tarihi başlangıç tarihinden sonra olmalıdır.');
+      if (form.targetScope !== 'all' && form.targetIds.length === 0) throw new Error('Seçilen hedef türü için en az bir hedef seçin.');
+      if (!Number.isFinite(form.discountDisplayValue) || form.discountDisplayValue < 0) throw new Error('İndirim değeri geçersiz.');
+      if (form.discountType === 'percentage' && (form.discountDisplayValue <= 0 || form.discountDisplayValue > 100)) throw new Error('Yüzde indirim 0 ile 100 arasında olmalıdır.');
+      if (form.discountType === 'fixed' && form.discountDisplayValue <= 0) throw new Error('Sabit indirim tutarı sıfırdan büyük olmalıdır.');
+      if (!Number.isFinite(form.minimumOrderTry) || form.minimumOrderTry < 0) throw new Error('Minimum sepet tutarı geçersiz.');
+      if (!Number.isSafeInteger(form.perUserLimit) || form.perUserLimit < 1) throw new Error('Kullanıcı başına limit pozitif tam sayı olmalıdır.');
+      const usageLimit = form.usageLimit === '' ? null : Number(form.usageLimit);
+      if (usageLimit !== null && (!Number.isSafeInteger(usageLimit) || usageLimit < 1)) throw new Error('Toplam kullanım limiti pozitif tam sayı olmalıdır.');
+
       await adminSaveCampaign({
         id: editingCampaign?.id,
         slug: form.slug || slugifyCampaign(form.title),
@@ -209,16 +243,17 @@ export function AdminCampaigns() {
         discountDisplayValue: form.discountDisplayValue,
         currency: 'TRY',
         minimumOrderTry: form.minimumOrderTry,
-        usageLimit: form.usageLimit ? Number(form.usageLimit) : null,
+        usageLimit,
         perUserLimit: form.perUserLimit,
-        startsAt: new Date(form.startsAt).toISOString(),
-        endsAt: new Date(form.endsAt).toISOString(),
+        startsAt,
+        endsAt,
         status: form.status,
         targetScope: form.targetScope,
         targetIds: form.targetIds,
       });
       await load();
       setIsModalOpen(false);
+      setEditingCampaign(null);
       showToast(editingCampaign ? 'Kampanya güncellendi.' : 'Kampanya oluşturuldu.');
     } catch (err) {
       setError(adminErrorMessage(err, 'Kampanya kaydedilemedi.'));
@@ -228,8 +263,14 @@ export function AdminCampaigns() {
   };
 
   const formatDiscount = (campaign: AdminCampaign) => {
-    if (campaign.discount_type === 'percentage') return `%${basisPointsToPercentage(campaign.discount_value).toLocaleString('tr-TR')}`;
-    if (campaign.discount_type === 'fixed') return `${minorToTry(campaign.discount_value)} ${campaign.currency || 'TRY'}`;
+    if (campaign.discount_type === 'percentage') {
+      const percentage = basisPointsToPercentage(campaign.discount_value);
+      return Number.isFinite(percentage) ? `%${percentage.toLocaleString('tr-TR')}` : 'İndirim doğrulanamadı';
+    }
+    if (campaign.discount_type === 'fixed') {
+      const value = minorToTry(campaign.discount_value);
+      return value === 'Tutar doğrulanamadı' ? value : `${value} ${campaign.currency || 'TRY'}`;
+    }
     return 'Ücretsiz kargo';
   };
 
@@ -249,14 +290,14 @@ export function AdminCampaigns() {
         </button>
       </div>
 
-      {error && !isModalOpen && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
+      {error && !isModalOpen && <div role="alert" aria-live="assertive" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
         <div className="border-b border-gray-100 p-4 dark:border-gray-700">
           <label className="relative block max-w-md">
             <span className="sr-only">Kampanya ara</span>
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" aria-hidden="true" />
-            <input type="search" placeholder="Kampanya ara..." value={searchTerm} onChange={event => setSearchTerm(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
+            <input type="search" maxLength={160} placeholder="Kampanya ara..." value={searchTerm} onChange={event => setSearchTerm(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-4 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" />
           </label>
         </div>
 
@@ -275,7 +316,7 @@ export function AdminCampaigns() {
               <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div><dt className="text-xs text-gray-500">İndirim</dt><dd className="font-semibold text-gray-900 dark:text-white">{formatDiscount(campaign)}</dd></div>
                 <div><dt className="text-xs text-gray-500">Durum</dt><dd className="font-semibold text-gray-900 dark:text-white">{statusLabel(campaign.status)}</dd></div>
-                <div><dt className="text-xs text-gray-500">Hedef</dt><dd>{campaign.target_scope === 'all' ? 'Tüm ürünler' : campaign.target_scope === 'categories' ? `${campaign.target_ids.length} kategori` : `${campaign.target_ids.length} ürün`}</dd></div>
+                <div><dt className="text-xs text-gray-500">Hedef</dt><dd>{campaign.target_scope === 'all' ? 'Tüm ürünler' : campaign.target_scope === 'categories' ? `${safeCount(campaign.target_ids?.length)} kategori` : `${safeCount(campaign.target_ids?.length)} ürün`}</dd></div>
                 <div><dt className="text-xs text-gray-500">Minimum sepet</dt><dd>{minorToTry(campaign.minimum_order_minor)} TRY</dd></div>
               </dl>
             </article>
@@ -292,8 +333,8 @@ export function AdminCampaigns() {
                 <tr key={campaign.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/40">
                   <td className="px-6 py-4"><div className="font-medium text-gray-900 dark:text-white">{campaign.title}</div><div className="max-w-56 truncate text-xs text-gray-500">{campaign.description || campaign.slug}</div></td>
                   <td className="px-6 py-4 font-semibold text-gray-900 dark:text-white">{formatDiscount(campaign)}</td>
-                  <td className="px-6 py-4"><span className="flex items-center gap-1"><Tag className="h-4 w-4 text-gray-400" aria-hidden="true" />{campaign.target_scope === 'all' ? 'Tüm ürünler' : campaign.target_scope === 'categories' ? `${campaign.target_ids.length} kategori` : `${campaign.target_ids.length} ürün`}</span></td>
-                  <td className="px-6 py-4"><span className="flex items-center gap-1 text-xs"><Calendar className="h-4 w-4 text-gray-400" aria-hidden="true" />{new Date(campaign.starts_at).toLocaleDateString('tr-TR')} - {new Date(campaign.ends_at).toLocaleDateString('tr-TR')}</span></td>
+                  <td className="px-6 py-4"><span className="flex items-center gap-1"><Tag className="h-4 w-4 text-gray-400" aria-hidden="true" />{campaign.target_scope === 'all' ? 'Tüm ürünler' : campaign.target_scope === 'categories' ? `${safeCount(campaign.target_ids?.length)} kategori` : `${safeCount(campaign.target_ids?.length)} ürün`}</span></td>
+                  <td className="px-6 py-4"><span className="flex items-center gap-1 text-xs"><Calendar className="h-4 w-4 text-gray-400" aria-hidden="true" />{campaignDateLabel(campaign.starts_at)} - {campaignDateLabel(campaign.ends_at)}</span></td>
                   <td className="px-6 py-4"><span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-700 dark:bg-gray-700 dark:text-gray-100">{statusLabel(campaign.status)}</span></td>
                   <td className="px-6 py-4 text-right"><button type="button" onClick={() => openEdit(campaign)} aria-label={`${campaign.title} kampanyasını düzenle`} className="min-h-11 min-w-11 rounded-lg p-2 text-blue-600 hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:hover:bg-blue-950/30"><Edit2 className="mx-auto h-4 w-4" aria-hidden="true" /></button></td>
                 </tr>
@@ -306,17 +347,18 @@ export function AdminCampaigns() {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget && !saving) setIsModalOpen(false); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="campaign-dialog-title" className="flex max-h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl dark:bg-gray-800 sm:rounded-2xl">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget) closeModal(); }}>
+          <div ref={campaignDialogRef} role="dialog" aria-modal="true" aria-labelledby="campaign-dialog-title" aria-describedby="campaign-dialog-description" tabIndex={-1} className="flex max-h-[94dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl outline-none dark:bg-gray-800 sm:rounded-2xl">
             <div className="shrink-0 border-b border-gray-100 p-5 dark:border-gray-700">
               <h3 id="campaign-dialog-title" className="text-xl font-bold text-gray-900 dark:text-white">{editingCampaign ? 'Kampanyayı Düzenle' : 'Yeni Kampanya'}</h3>
+              <p id="campaign-dialog-description" className="mt-1 text-sm text-gray-500">İndirim, hedef kitle, kullanım sınırı ve tarihleri doğrulayarak kaydedin.</p>
             </div>
             <form id="campaign-form" onSubmit={handleSubmit} className="flex-1 space-y-5 overflow-y-auto p-5">
-              {error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
+              {error && <div role="alert" aria-live="assertive" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="sm:col-span-2"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Kampanya adı</span><input autoFocus required minLength={2} maxLength={160} value={form.title} onChange={event => updateTitle(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
-                <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Kısa ad</span><input required value={form.slug} onChange={event => { setSlugTouched(true); setForm(current => ({ ...current, slug: slugifyCampaign(event.target.value) })); }} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
+                <label className="sm:col-span-2"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Kampanya adı</span><input required minLength={2} maxLength={160} value={form.title} onChange={event => updateTitle(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
+                <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Kısa ad</span><input required maxLength={160} value={form.slug} onChange={event => { setSlugTouched(true); setForm(current => ({ ...current, slug: slugifyCampaign(event.target.value) })); }} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
                 <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Durum</span><select value={form.status} onChange={event => setForm(current => ({ ...current, status: event.target.value as CampaignStatus }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="draft">Taslak</option><option value="scheduled">Planlandı</option><option value="active">Aktif</option><option value="paused">Duraklatıldı</option><option value="ended">Sona erdi</option></select></label>
                 <label className="sm:col-span-2"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Açıklama</span><textarea maxLength={4000} rows={3} value={form.description} onChange={event => setForm(current => ({ ...current, description: event.target.value }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
               </div>
@@ -325,10 +367,10 @@ export function AdminCampaigns() {
                 <legend className="px-2 text-sm font-semibold text-gray-900 dark:text-white">İndirim</legend>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <label><span className="mb-1 block text-sm text-gray-600 dark:text-gray-300">Tür</span><select value={form.discountType} onChange={event => setForm(current => ({ ...current, discountType: event.target.value as CampaignDiscountType, discountDisplayValue: event.target.value === 'free_shipping' ? 0 : current.discountDisplayValue || 10 }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-900"><option value="percentage">Yüzde indirim</option><option value="fixed">Sabit tutar</option><option value="free_shipping">Ücretsiz kargo</option></select></label>
-                  {form.discountType !== 'free_shipping' ? <label><span className="mb-1 flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">{form.discountType === 'percentage' ? <Percent className="h-4 w-4" aria-hidden="true" /> : 'TRY'} Değer</span><input type="number" required min={form.discountType === 'percentage' ? 0.01 : 0.01} max={form.discountType === 'percentage' ? 100 : undefined} step="0.01" value={form.discountDisplayValue} onChange={event => setForm(current => ({ ...current, discountDisplayValue: Number(event.target.value) }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-900" /></label> : <div className="flex items-end"><div className="flex min-h-11 w-full items-center gap-2 rounded-xl bg-green-50 px-4 text-sm font-medium text-green-800 dark:bg-green-950/30 dark:text-green-200"><Truck className="h-5 w-5" aria-hidden="true" /> Kargo ücreti kampanya tarafından karşılanır</div></div>}
-                  <label><span className="mb-1 block text-sm text-gray-600 dark:text-gray-300">Minimum sepet (TRY)</span><input type="number" min="0" step="0.01" value={form.minimumOrderTry} onChange={event => setForm(current => ({ ...current, minimumOrderTry: Number(event.target.value) }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-900" /></label>
-                  <label><span className="mb-1 block text-sm text-gray-600 dark:text-gray-300">Kullanıcı başına limit</span><input type="number" min="1" step="1" value={form.perUserLimit} onChange={event => setForm(current => ({ ...current, perUserLimit: Number(event.target.value) }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-900" /></label>
-                  <label><span className="mb-1 block text-sm text-gray-600 dark:text-gray-300">Toplam kullanım limiti (isteğe bağlı)</span><input type="number" min="1" step="1" value={form.usageLimit} onChange={event => setForm(current => ({ ...current, usageLimit: event.target.value }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-900" /></label>
+                  {form.discountType !== 'free_shipping' ? <label><span className="mb-1 flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">{form.discountType === 'percentage' ? <Percent className="h-4 w-4" aria-hidden="true" /> : 'TRY'} Değer</span><input type="number" inputMode="decimal" required min="0.01" max={form.discountType === 'percentage' ? 100 : undefined} step="0.01" value={form.discountDisplayValue} onChange={event => setForm(current => ({ ...current, discountDisplayValue: Number(event.target.value) }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-900" /></label> : <div className="flex items-end"><div className="flex min-h-11 w-full items-center gap-2 rounded-xl bg-green-50 px-4 text-sm font-medium text-green-800 dark:bg-green-950/30 dark:text-green-200"><Truck className="h-5 w-5" aria-hidden="true" /> Kargo ücreti kampanya tarafından karşılanır</div></div>}
+                  <label><span className="mb-1 block text-sm text-gray-600 dark:text-gray-300">Minimum sepet (TRY)</span><input type="number" inputMode="decimal" min="0" step="0.01" value={form.minimumOrderTry} onChange={event => setForm(current => ({ ...current, minimumOrderTry: Number(event.target.value) }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-900" /></label>
+                  <label><span className="mb-1 block text-sm text-gray-600 dark:text-gray-300">Kullanıcı başına limit</span><input type="number" inputMode="numeric" min="1" step="1" value={form.perUserLimit} onChange={event => setForm(current => ({ ...current, perUserLimit: Number(event.target.value) }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-900" /></label>
+                  <label><span className="mb-1 block text-sm text-gray-600 dark:text-gray-300">Toplam kullanım limiti (isteğe bağlı)</span><input type="number" inputMode="numeric" min="1" step="1" value={form.usageLimit} onChange={event => setForm(current => ({ ...current, usageLimit: event.target.value }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-900" /></label>
                 </div>
               </fieldset>
 
@@ -340,18 +382,18 @@ export function AdminCampaigns() {
               <fieldset className="rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
                 <legend className="px-2 text-sm font-semibold text-gray-900 dark:text-white">Kampanya hedefi</legend>
                 <label><span className="sr-only">Hedef türü</span><select value={form.targetScope} onChange={event => updateTargetScope(event.target.value as CampaignTargetScope)} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 dark:border-gray-700 dark:bg-gray-900"><option value="all">Tüm ürünler</option><option value="categories">Belirli kategoriler</option><option value="products">Belirli ürünler</option></select></label>
-                {form.targetScope !== 'all' && <div className="mt-4 space-y-3"><label className="relative block"><span className="sr-only">Hedeflerde ara</span><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" /><input type="search" value={targetSearch} onChange={event => setTargetSearch(event.target.value)} placeholder={form.targetScope === 'categories' ? 'Kategori ara...' : 'Ürün ara...'} className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 dark:border-gray-700 dark:bg-gray-900" /></label><p className="text-xs text-gray-500">{form.targetIds.length} seçim</p><div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-gray-200 p-2 dark:border-gray-700">{targetOptions.map(option => <label key={option.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2 hover:bg-gray-50 dark:hover:bg-gray-700/50"><input type="checkbox" checked={form.targetIds.includes(option.id)} onChange={() => toggleTarget(option.id)} className="h-4 w-4 rounded border-gray-300 text-brand-green focus:ring-brand-green" /><span className="min-w-0"><span className="block truncate text-sm font-medium text-gray-900 dark:text-white">{option.label}</span>{option.meta && <span className="block truncate text-xs text-gray-500">{option.meta}</span>}</span></label>)}{targetOptions.length === 0 && <div className="p-4 text-center text-sm text-gray-500">Eşleşen hedef bulunamadı.</div>}</div></div>}
+                {form.targetScope !== 'all' && <div className="mt-4 space-y-3"><label className="relative block"><span className="sr-only">Hedeflerde ara</span><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" /><input type="search" maxLength={160} value={targetSearch} onChange={event => setTargetSearch(event.target.value)} placeholder={form.targetScope === 'categories' ? 'Kategori ara...' : 'Ürün ara...'} className="w-full rounded-xl border border-gray-200 bg-gray-50 py-2.5 pl-9 pr-4 dark:border-gray-700 dark:bg-gray-900" /></label><p className="text-xs text-gray-500" aria-live="polite">{safeCount(form.targetIds.length)} seçim</p><div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-gray-200 p-2 dark:border-gray-700">{targetOptions.map(option => <label key={option.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2 hover:bg-gray-50 dark:hover:bg-gray-700/50"><input type="checkbox" checked={form.targetIds.includes(option.id)} onChange={() => toggleTarget(option.id)} className="h-4 w-4 rounded border-gray-300 text-brand-green focus:ring-brand-green" /><span className="min-w-0"><span className="block truncate text-sm font-medium text-gray-900 dark:text-white">{option.label}</span>{option.meta && <span className="block truncate text-xs text-gray-500">{option.meta}</span>}</span></label>)}{targetOptions.length === 0 && <div className="p-4 text-center text-sm text-gray-500">Eşleşen hedef bulunamadı.</div>}</div></div>}
               </fieldset>
             </form>
             <div className="flex shrink-0 gap-3 border-t border-gray-100 p-5 dark:border-gray-700">
-              <button type="button" disabled={saving} onClick={() => setIsModalOpen(false)} className="min-h-11 flex-1 rounded-xl px-4 py-2 text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700">İptal</button>
+              <button type="button" disabled={saving} onClick={closeModal} className="min-h-11 flex-1 rounded-xl px-4 py-2 text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700">İptal</button>
               <button type="submit" form="campaign-form" disabled={saving} className="min-h-11 flex-1 rounded-xl bg-brand-green px-4 py-2 font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60">{saving ? <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Kaydediliyor</span> : 'Kaydet'}</button>
             </div>
-          </section>
+          </div>
         </div>
       )}
 
-      {toast && <div role="status" className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-xl bg-gray-900 px-5 py-3 text-white shadow-2xl"><Check className="h-5 w-5 text-green-400" aria-hidden="true" /><span className="font-medium">{toast}</span></div>}
+      {toast && <div role="status" aria-live="polite" aria-atomic="true" className="fixed bottom-4 right-4 z-50 flex items-center gap-3 rounded-xl bg-gray-900 px-5 py-3 text-white shadow-2xl"><Check className="h-5 w-5 text-green-400" aria-hidden="true" /><span className="font-medium">{toast}</span></div>}
     </div>
   );
 }
