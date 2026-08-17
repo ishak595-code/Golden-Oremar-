@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T10:59:00+00:00",
+  "generatedAt": "2026-08-17T12:19:00+00:00",
   "packageMode": "single-cumulative",
   "productFormFactor": "android-ios-application",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
@@ -72,13 +72,19 @@
     "nativeKeyboardResizeConfiguration": "IMPLEMENTED_ANDROID_FULLSCREEN_RESIZE_WORKAROUND_AND_IOS_BACKDROP_AUTO_PENDING_CI_RECHECK",
     "nativeLauncherBadgeClaimV3": "PASS_LIVE_MIGRATION_RETURNS_UNREAD_NONEXPIRED_SERVER_COUNT_SERVICE_ROLE_ONLY",
     "nativeLauncherBadgeDispatch": "PASS_EDGE_FUNCTION_V3_ACTIVE_APNS_BADGE_AND_FCM_NOTIFICATION_COUNT_USE_SERVER_UNREAD_COUNT",
+    "producerOnboardingRpcBoundaryHardening": "IMPLEMENTED_UUID_TEXT_ENUM_NUMERIC_AND_STORAGE_PATH_BOUNDARIES_PENDING_CI_RECHECK",
+    "nativeTouchTargetFloor": "IMPLEMENTED_COARSE_POINTER_44PX_MINIMUM_FOR_PRIMARY_CONTROLS_PENDING_CI_RECHECK",
+    "nestedAccessibleDialogContainment": "IMPLEMENTED_TOPMOST_DIALOG_ESCAPE_TAB_AND_FOCUS_RESTORE_STACK_PENDING_CI_RECHECK",
+    "nativeZeroUnreadColdStartSynchronization": "IMPLEMENTED_FIRST_AUTHENTICATED_ZERO_BASELINE_CLEARS_STALE_DELIVERED_NOTIFICATIONS_PENDING_CI_RECHECK",
+    "notificationReadCountSynchronization": "IMPLEMENTED_SERVER_AUTHORITATIVE_UNREAD_RECHECK_AFTER_SINGLE_AND_MARK_ALL_READ_PENDING_CI_RECHECK",
+    "catalogProductShareFeedbackOwnership": "IMPLEMENTED_PARENT_SHARE_HANDLER_NO_LONGER_GETS_DUPLICATE_LOCAL_SUCCESS_MESSAGE_PENDING_CI_RECHECK",
+    "searchResultsCanonicalUrl": "IMPLEMENTED_HEADER_QUERY_CLEAR_AND_CHANGE_REPLACE_SEARCH_URL_WITH_CURRENT_CANONICAL_STATE_PENDING_CI_RECHECK",
     "androidReleaseBundleBaseline": "PASS",
     "iosSimulatorCompileBaseline": "PASS",
     "latestUiHardeningCi": "NOT_EXECUTED_FOR_NEW_HEAD_GITHUB_BILLING_BLOCKER_REMAINS",
-    "latestFunctionalFrontendHead": "bade93a2a177b116ddd62be45d36184c5eb7604d",
+    "latestFunctionalFrontendHead": "67a776d107613cd28d19eac6bacdf2ca2ac5f063",
     "latestFunctionalBackendHead": "8f302a727861099c44cda52b6ce174b84f8318fd",
-    "latestWorkflowRunId": 32014393717,
-    "latestWorkflowHeadSha": "699bb69d249711727972dc07ddd298d2231a4955",
+    "latestWorkflowRunId": 32023999666,
     "latestWorkflowJobs": {
       "verify-ios": "FAILURE_WITH_NO_EXECUTED_STEPS",
       "verify-web-android": "FAILURE_WITH_NO_EXECUTED_STEPS"
@@ -135,6 +141,10 @@
     "launcherBadgeCountExcludesReadAndExpiredNotifications": true,
     "apnsBadgePayloadUsesServerUnreadCount": true,
     "fcmNotificationCountUsesServerUnreadCountForSupportingLaunchers": true,
+    "initialZeroUnreadClearsStaleDeliveredNativeNotifications": true,
+    "notificationReadActionsRecheckServerUnreadCount": true,
+    "parentOwnedShareFeedbackIsNotDuplicatedByProductCard": true,
+    "searchResultsUrlTracksCurrentHeaderQueryState": true,
     "pushProviderCredentialsStillNotInvented": true,
     "newFrontendHeadDoesNotClaimUnexecutedCiAsPassing": true
   },
@@ -151,7 +161,7 @@
     "note": "Missing real shipping weights remain visible for correction and are never fabricated."
   },
   "externalBlockers": {
-    "githubActions": "The newest Android/iOS application hardening head has not executed the mobile quality workflow because the GitHub account billing or spending-limit condition still prevents runner allocation. The last recorded workflow run 32014393717 failed before any job steps executed; this is not recorded as a code pass or code failure.",
+    "githubActions": "The newest Android/iOS application hardening head has not executed the mobile quality workflow because the GitHub account billing or spending-limit condition still prevents runner allocation. The latest recorded workflow run 32023999666 failed before any job steps executed; this is not recorded as a code pass or code failure.",
     "liveSalesIdentity": "Legal business and support identity are not configured.",
     "paymentProvider": "Production payment provider configuration is external.",
     "nativePushProviders": "Production push provider credentials are external. Badge payload construction is active in code, but real provider delivery cannot be claimed until FCM/APNs credentials are configured.",
