@@ -143,6 +143,15 @@ export function subscribeNativePushReceipts(listener: () => void) {
   return () => { receiptSubscribers.delete(listener); };
 }
 
+export async function clearNativeDeliveredNotifications() {
+  if (!isNativePushPlatform()) return;
+  try {
+    await PushNotifications.removeAllDeliveredNotifications();
+  } catch (error) {
+    console.warn('Delivered native notifications could not be cleared', error);
+  }
+}
+
 export async function getNativePushPermission() {
   if (!isNativePushPlatform()) return 'unsupported' as const;
   const status = await PushNotifications.checkPermissions();
