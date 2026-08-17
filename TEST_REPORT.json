@@ -1,22 +1,22 @@
 {
-  "generatedAt": "2026-08-17T10:50:00+00:00",
+  "generatedAt": "2026-08-17T10:59:00+00:00",
   "packageMode": "single-cumulative",
   "productFormFactor": "android-ios-application",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "liveMigrationCount": 127,
-  "latestMigration": "20260817101553_add_public_checkout_payment_readiness_v1",
-  "migrationReconciliation": "PASS_ALL_21_CURRENT_BRANCH_MIGRATION_VERSIONS_REPRESENTED_LIVE",
+  "liveMigrationCount": 128,
+  "latestMigration": "20260817105414_add_server_authoritative_push_badge_count_v3",
+  "migrationReconciliation": "PASS_ALL_22_CURRENT_BRANCH_MIGRATION_VERSIONS_REPRESENTED_LIVE",
   "securityAdvisorLints": 0,
   "performanceBlockingLints": 0,
   "edgeFunctions": {
     "contact-submit": { "status": "ACTIVE", "version": 1 },
     "event-reservation": { "status": "ACTIVE", "version": 2 },
-    "push-dispatch": { "status": "ACTIVE", "version": 1 }
+    "push-dispatch": { "status": "ACTIVE", "version": 3 }
   },
   "validation": {
     "typescriptSyntaxErrorsAtLastExecutedQualityGate": 0,
     "productionWebBuildAtLastExecutedQualityGate": "PASS",
-    "supabaseSecurityAdvisor": "PASS_ZERO_LINTS_RECHECKED_2026-08-17_AFTER_MIGRATION_RECONCILIATION",
+    "supabaseSecurityAdvisor": "PASS_ZERO_LINTS_RECHECKED_2026-08-17_AFTER_PUSH_BADGE_MIGRATION",
     "supabasePerformanceBlockingLints": "PASS_ZERO_BLOCKING_LINTS_INFO_UNUSED_INDEXES_ONLY_RECHECKED_2026-08-17",
     "categoryDirectoryPagination": "IMPLEMENTED_PENDING_CI_RECHECK",
     "categoryDirectoryReconnectAndPaginationErrorPreservation": "IMPLEMENTED_PENDING_CI_RECHECK",
@@ -70,10 +70,13 @@
     "nativeCheckoutCartBadgeSynchronization": "IMPLEMENTED_CHECKOUT_MUTATIONS_PROPAGATE_CART_SNAPSHOT_TO_APP_SHELL_PENDING_CI_RECHECK",
     "nativeKeyboardNavigationCoordination": "IMPLEMENTED_KEYBOARD_VISIBILITY_SIGNAL_HIDES_BOTTOM_NAV_PENDING_CI_RECHECK",
     "nativeKeyboardResizeConfiguration": "IMPLEMENTED_ANDROID_FULLSCREEN_RESIZE_WORKAROUND_AND_IOS_BACKDROP_AUTO_PENDING_CI_RECHECK",
+    "nativeLauncherBadgeClaimV3": "PASS_LIVE_MIGRATION_RETURNS_UNREAD_NONEXPIRED_SERVER_COUNT_SERVICE_ROLE_ONLY",
+    "nativeLauncherBadgeDispatch": "PASS_EDGE_FUNCTION_V3_ACTIVE_APNS_BADGE_AND_FCM_NOTIFICATION_COUNT_USE_SERVER_UNREAD_COUNT",
     "androidReleaseBundleBaseline": "PASS",
     "iosSimulatorCompileBaseline": "PASS",
     "latestUiHardeningCi": "NOT_EXECUTED_FOR_NEW_HEAD_GITHUB_BILLING_BLOCKER_REMAINS",
     "latestFunctionalFrontendHead": "bade93a2a177b116ddd62be45d36184c5eb7604d",
+    "latestFunctionalBackendHead": "8f302a727861099c44cda52b6ce174b84f8318fd",
     "latestWorkflowRunId": 32014393717,
     "latestWorkflowHeadSha": "699bb69d249711727972dc07ddd298d2231a4955",
     "latestWorkflowJobs": {
@@ -129,6 +132,10 @@
     "checkoutQuantityRemoveAndClearMutationsRefreshAppShellCartCount": true,
     "accountBottomNavigationDoesNotMislabelUnreadNotificationsAsAccountCount": true,
     "nativeKeyboardTemporarilyHidesBottomNavigation": true,
+    "launcherBadgeCountExcludesReadAndExpiredNotifications": true,
+    "apnsBadgePayloadUsesServerUnreadCount": true,
+    "fcmNotificationCountUsesServerUnreadCountForSupportingLaunchers": true,
+    "pushProviderCredentialsStillNotInvented": true,
     "newFrontendHeadDoesNotClaimUnexecutedCiAsPassing": true
   },
   "liveCatalogAudit": {
@@ -147,7 +154,7 @@
     "githubActions": "The newest Android/iOS application hardening head has not executed the mobile quality workflow because the GitHub account billing or spending-limit condition still prevents runner allocation. The last recorded workflow run 32014393717 failed before any job steps executed; this is not recorded as a code pass or code failure.",
     "liveSalesIdentity": "Legal business and support identity are not configured.",
     "paymentProvider": "Production payment provider configuration is external.",
-    "nativePushProviders": "Production push provider configuration is external.",
+    "nativePushProviders": "Production push provider credentials are external. Badge payload construction is active in code, but real provider delivery cannot be claimed until FCM/APNs credentials are configured.",
     "oauthProviders": "Production Google and Facebook provider configuration is external.",
     "mobileSigning": "Store signing and release configuration is external.",
     "publicWebOrigin": "A real public HTTPS origin must be set in VITE_PUBLIC_APP_ORIGIN before native product sharing can produce externally openable links."
