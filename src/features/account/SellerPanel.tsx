@@ -9,6 +9,9 @@ const ProducerFinancePanel=React.lazy(()=>import('../producer-finance/ProducerFi
 const applicationStatus:Record<string,string>={draft:'Taslak',submitted:'İncelemede',under_review:'İncelemede',needs_information:'Ek bilgi gerekiyor',approved:'Onaylandı',rejected:'Reddedildi',withdrawn:'Geri çekildi'};
 const changeStatus:Record<string,string>={pending:'Onay bekliyor',approved:'Onaylandı',rejected:'Reddedildi',withdrawn:'Geri çekildi'};
 
+function safeCount(value:unknown){const parsed=Number(value);return Number.isFinite(parsed)&&parsed>=0?Math.floor(parsed):0;}
+function safeMinor(primary:unknown,fallback:unknown){const selected=primary??fallback??0;const parsed=Number(selected);return Number.isFinite(parsed)?Math.trunc(parsed):0;}
+
 export default function SellerPanel({
  producer,onOpenApplication,onOpenProductManager
 }:{producer:any|null;onOpenApplication?:()=>void;onOpenProductManager?:()=>void}){
@@ -30,7 +33,7 @@ export default function SellerPanel({
     {draft?<div className="rounded-xl border p-4">
       <div className="font-bold">Başvuru durumu: {applicationStatus[draft.status]||draft.status}</div>
       <p className="mt-2 text-sm text-gray-500">{draft.public_name||draft.brand_name||'Satıcı başvurunuz'}</p>
-      {draft.rejection_reason?<p className="mt-2 text-sm text-red-700 dark:text-red-300">{draft.rejection_reason}</p>:null}
+      {draft.rejection_reason?<p role="alert" className="mt-2 text-sm text-red-700 dark:text-red-300">{draft.rejection_reason}</p>:null}
       <button type="button" disabled={!onOpenApplication} onClick={onOpenApplication} className="mt-4 min-h-11 w-full rounded-xl bg-brand-green font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
         {draft.status==='draft'||draft.status==='needs_information'?'Başvuruya devam et':'Başvuruyu görüntüle'}
       </button>
@@ -42,16 +45,17 @@ export default function SellerPanel({
  if(subview!=='dashboard')return<React.Suspense fallback={<LoadingState label="Satıcı operasyonu yükleniyor"/>}>{subview==='orders'?<ProducerOrdersPanel onBack={()=>setSubview('dashboard')} onChanged={load}/>:subview==='traceability'?<ProducerTraceabilityPanel onBack={()=>setSubview('dashboard')} onChanged={load}/>:<ProducerFinancePanel onBack={()=>setSubview('dashboard')}/>}</React.Suspense>;
 
  const summary=dash?.summary||{};
+ const trustLine=[dash?.profile?.is_verified?'Üretici doğrulandı':'',dash?.profile?.production_location||''].filter(Boolean).join(' • ');
  return<div className="space-y-5">
   {error?<div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div>:null}
   <Panel title={dash?.profile?.display_name||'Satıcı Paneli'} description="Sipariş, ürün, stok, izlenebilirlik ve finans operasyonlarınızı yönetin.">
-   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{summary.publishedProducts||0}</div><div className="text-xs">Yayındaki ürün</div></div>
-    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{summary.reviewProducts||0}</div><div className="text-xs">İncelemede</div></div>
-    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{summary.pendingChanges||0}</div><div className="text-xs">Bekleyen değişiklik</div></div>
-    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{summary.lowStockVariants||0}</div><div className="text-xs">Düşük stok</div></div>
+   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Satıcı hesap özeti">
+    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{safeCount(summary.publishedProducts)}</div><div className="text-xs">Yayındaki ürün</div></div>
+    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{safeCount(summary.reviewProducts)}</div><div className="text-xs">İncelemede</div></div>
+    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{safeCount(summary.pendingChanges)}</div><div className="text-xs">Bekleyen değişiklik</div></div>
+    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{safeCount(summary.lowStockVariants)}</div><div className="text-xs">Düşük stok</div></div>
    </div>
-   <div className="mt-4 text-sm font-semibold text-brand-green">{dash?.profile?.is_verified?'Üretici doğrulandı':''}{dash?.profile?.production_location?' • '+dash.profile.production_location:''}</div>
+   {trustLine?<div className="mt-4 text-sm font-semibold text-brand-green">{trustLine}</div>:null}
   </Panel>
 
   <section aria-labelledby="seller-operations-title"><h2 id="seller-operations-title" className="mb-3 text-lg font-bold">Operasyonlar</h2><div className="grid gap-3 sm:grid-cols-2">
@@ -69,9 +73,9 @@ export default function SellerPanel({
    {!dash?.changeRequests?.length?<EmptyState title="Bekleyen değişiklik yok" body="Yayındaki bir üründe değişiklik yaptığınızda admin onayı için burada görünür."/>:<div className="space-y-3">{dash.changeRequests.map((r:any)=><div key={r.id} className="rounded-xl border p-4"><div className="font-bold">{r.productName}</div><div className="text-sm text-gray-500">Durum: {changeStatus[r.status]||r.status}</div>{r.reviewReason?<p className="mt-2 text-sm text-red-700 dark:text-red-300">{r.reviewReason}</p>:null}{r.status==='pending'?<WithdrawChangeButton requestId={r.id} productName={r.productName} onWithdrawn={load} onError={setError}/>:null}</div>)}</div>}
   </Panel>
 
-  <Panel title="Lot Özeti"><div className="grid grid-cols-3 gap-2"><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{summary.draftBatches||0}</div><div className="text-xs">Taslak</div></div><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{summary.reviewBatches||0}</div><div className="text-xs">İncelemede</div></div><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{summary.releasedBatches||0}</div><div className="text-xs">Yayınlandı</div></div></div></Panel>
+  <Panel title="Lot Özeti"><div className="grid grid-cols-3 gap-2" aria-label="Lot durum özeti"><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{safeCount(summary.draftBatches)}</div><div className="text-xs">Taslak</div></div><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{safeCount(summary.reviewBatches)}</div><div className="text-xs">İncelemede</div></div><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{safeCount(summary.releasedBatches)}</div><div className="text-xs">Yayınlandı</div></div></div></Panel>
 
-  <Panel title="Finans Özeti">{!dash?.finance?.balances?.length?<p className="text-sm text-gray-500">Henüz finans hareketi yok.</p>:<div className="space-y-2">{dash.finance.balances.map((b:any,index:number)=><div key={`${b.currency||'TRY'}-${index}`} className="rounded-xl border p-3"><div className="text-sm text-gray-500">{b.currency||'TRY'}</div><div className="font-bold"><Money minor={b.availableMinor||b.availableToPayoutMinor||0} currency={b.currency||'TRY'}/></div></div>)}</div>}</Panel>
+  <Panel title="Finans Özeti">{!dash?.finance?.balances?.length?<p className="text-sm text-gray-500">Henüz finans hareketi yok.</p>:<div className="space-y-2">{dash.finance.balances.map((b:any,index:number)=>{const currency=String(b.currency||'TRY').toUpperCase();return <div key={`${currency}-${index}`} className="rounded-xl border p-3"><div className="text-sm text-gray-500">{currency}</div><div className="font-bold"><Money minor={safeMinor(b.availableMinor,b.availableToPayoutMinor)} currency={currency}/></div></div>;})}</div>}</Panel>
  </div>;
 }
 
@@ -82,13 +86,15 @@ function WithdrawChangeButton({requestId,productName,onWithdrawn,onError}:{reque
 }
 
 function InventoryRow({item,onSaved}:{item:any;onSaved:()=>Promise<void>|void}){
- const[available,setAvailable]=useState(String(Number(item.availableQuantity||0)));const[reorder,setReorder]=useState(String(Number(item.reorderLevel||0)));const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[status,setStatus]=useState('');
- useEffect(()=>{setAvailable(String(Number(item.availableQuantity||0)));setReorder(String(Number(item.reorderLevel||0)));},[item.availableQuantity,item.reorderLevel,item.version]);
+ const[available,setAvailable]=useState(String(Number(item.availableQuantity??0)));const[reorder,setReorder]=useState(String(Number(item.reorderLevel??0)));const[busy,setBusy]=useState(false);const[error,setError]=useState('');const[status,setStatus]=useState('');
+ useEffect(()=>{setAvailable(String(Number(item.availableQuantity??0)));setReorder(String(Number(item.reorderLevel??0)));},[item.availableQuantity,item.reorderLevel,item.version]);
  async function save(){
-  const normalizedAvailable=Number(available);const normalizedReorder=Number(reorder);
-  if(available.trim()===''||!Number.isInteger(normalizedAvailable)||normalizedAvailable<0){setError('Toplam mevcut stok sıfır veya pozitif tam sayı olmalıdır.');return;}
-  if(reorder.trim()===''||!Number.isInteger(normalizedReorder)||normalizedReorder<0){setError('Düşük stok eşiği sıfır veya pozitif tam sayı olmalıdır.');return;}
-  try{setBusy(true);setError('');setStatus('');await updateProducerInventory({variantId:item.variantId,availableQuantity:normalizedAvailable,reorderLevel:normalizedReorder,expectedVersion:Number(item.version)});setStatus('Stok başarıyla güncellendi.');await onSaved();}catch(e:any){setError(e?.message||'Stok güncellenemedi.');}finally{setBusy(false);}
+  const normalizedAvailable=Number(available);const normalizedReorder=Number(reorder);const expectedVersion=Number(item.version);
+  if(available.trim()===''||!Number.isSafeInteger(normalizedAvailable)||normalizedAvailable<0){setError('Toplam mevcut stok sıfır veya pozitif güvenli bir tam sayı olmalıdır.');return;}
+  if(reorder.trim()===''||!Number.isSafeInteger(normalizedReorder)||normalizedReorder<0){setError('Düşük stok eşiği sıfır veya pozitif güvenli bir tam sayı olmalıdır.');return;}
+  if(!Number.isSafeInteger(expectedVersion)||expectedVersion<0){setError('Stok sürüm bilgisi geçersiz. Sayfayı yenileyip tekrar deneyin.');return;}
+  try{setBusy(true);setError('');setStatus('');await updateProducerInventory({variantId:item.variantId,availableQuantity:normalizedAvailable,reorderLevel:normalizedReorder,expectedVersion});setStatus('Stok başarıyla güncellendi.');await onSaved();}catch(e:any){setError(e?.message||'Stok güncellenemedi.');}finally{setBusy(false);}
  }
- return<div className="rounded-xl border p-4" aria-busy={busy}><div className="font-bold">{item.productName} • {item.variantName}</div><div className="mt-1 text-sm text-gray-500">Satılabilir: {item.sellableQuantity} • Rezerve: {item.reservedQuantity}</div>{error?<div role="alert" className="mt-2 text-sm text-red-700 dark:text-red-300">{error}</div>:null}{status?<div role="status" aria-live="polite" className="mt-2 text-sm text-green-700 dark:text-green-300">{status}</div>:null}<div className="mt-3 grid grid-cols-2 gap-3"><label><span className="text-xs font-semibold">Toplam mevcut</span><input type="number" inputMode="numeric" min="0" step="1" value={available} onChange={e=>setAvailable(e.target.value)} disabled={busy} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"/></label><label><span className="text-xs font-semibold">Düşük stok eşiği</span><input type="number" inputMode="numeric" min="0" step="1" value={reorder} onChange={e=>setReorder(e.target.value)} disabled={busy} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"/></label></div><button type="button" onClick={()=>void save()} disabled={busy} className="mt-3 min-h-11 w-full rounded-lg border font-bold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{busy?'Kaydediliyor…':'Stoğu güncelle'}</button></div>;
+ const sellable=safeCount(item.sellableQuantity);const reserved=safeCount(item.reservedQuantity);
+ return<div className="rounded-xl border p-4" aria-busy={busy}><div className="font-bold">{item.productName} • {item.variantName}</div><div className="mt-1 text-sm text-gray-500">Satılabilir: {sellable} • Rezerve: {reserved}</div>{error?<div role="alert" className="mt-2 text-sm text-red-700 dark:text-red-300">{error}</div>:null}{status?<div role="status" aria-live="polite" className="mt-2 text-sm text-green-700 dark:text-green-300">{status}</div>:null}<div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2"><label><span className="text-xs font-semibold">Toplam mevcut</span><input type="number" inputMode="numeric" min="0" step="1" value={available} onChange={e=>setAvailable(e.target.value)} disabled={busy} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"/></label><label><span className="text-xs font-semibold">Düşük stok eşiği</span><input type="number" inputMode="numeric" min="0" step="1" value={reorder} onChange={e=>setReorder(e.target.value)} disabled={busy} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"/></label></div><button type="button" onClick={()=>void save()} disabled={busy} className="mt-3 min-h-11 w-full rounded-lg border font-bold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{busy?'Kaydediliyor…':'Stoğu güncelle'}</button></div>;
 }
