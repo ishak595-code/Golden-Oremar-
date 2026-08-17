@@ -19,6 +19,43 @@ function unwrap<T>(data: T | null, error: any): T {
   return data as T;
 }
 
+function safeNonNegativeInteger(value: unknown, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function normalizeSortOrder(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || !Number.isSafeInteger(Math.round(parsed))) {
+    throw new Error('Kategori sıralaması geçerli bir tam sayı olmalıdır.');
+  }
+  const normalized = Math.round(parsed);
+  if (normalized < -100000 || normalized > 100000) {
+    throw new Error('Kategori sıralaması -100000 ile 100000 arasında olmalıdır.');
+  }
+  return normalized;
+}
+
+function normalizePersistentImage(value?: string | null) {
+  const image = String(value || '').trim();
+  if (!image) return '';
+  if (image.length > 2048) throw new Error('Kategori görsel yolu çok uzun.');
+  if (/^(data|blob|javascript):/i.test(image)) {
+    throw new Error('Geçici veya güvensiz kategori görsel adresi kullanılamaz.');
+  }
+  if (/^https?:\/\//i.test(image)) {
+    let url: URL;
+    try { url = new URL(image); } catch { throw new Error('Kategori görsel URL adresi geçersiz.'); }
+    if (url.protocol !== 'https:') throw new Error('Harici kategori görseli yalnız HTTPS üzerinden kullanılabilir.');
+    return url.toString();
+  }
+  const normalized = image.replace(/^\/+/, '');
+  if (!normalized || normalized.includes('..') || normalized.includes('\\')) {
+    throw new Error('Kategori görsel dosya yolu geçersiz.');
+  }
+  return normalized;
+}
+
 export async function adminListCategories(): Promise<AdminCategory[]> {
   const { data, error } = await supabase.rpc('admin_list_categories_v1');
   const rows = unwrap<any[]>(data, error);
@@ -31,10 +68,10 @@ export async function adminListCategories(): Promise<AdminCategory[]> {
     description: row.description ? String(row.description) : null,
     icon: row.icon ? String(row.icon) : null,
     image_path: row.image_path ? String(row.image_path) : null,
-    sort_order: Number(row.sort_order || 0),
+    sort_order: Number.isFinite(Number(row.sort_order)) ? Math.trunc(Number(row.sort_order)) : 0,
     is_active: row.is_active === true,
-    product_count: Number(row.product_count || 0),
-    published_product_count: Number(row.published_product_count || 0),
+    product_count: safeNonNegativeInteger(row.product_count),
+    published_product_count: safeNonNegativeInteger(row.published_product_count),
   }));
 }
 
@@ -48,18 +85,21 @@ export async function adminSaveCategory(input: {
   isActive: boolean;
 }) {
   const name = input.name.trim();
+  const description = String(input.description || '').trim();
+  const icon = String(input.icon || '').trim();
+  const image = normalizePersistentImage(input.image);
+  const sortOrder = normalizeSortOrder(input.sortOrder);
   if (name.length < 2 || name.length > 120) throw new Error('Kategori adı 2 ile 120 karakter arasında olmalıdır.');
-  if ((input.description || '').length > 3000) throw new Error('Kategori açıklaması 3000 karakteri aşamaz.');
-  if ((input.icon || '').length > 80) throw new Error('Kategori ikon alanı 80 karakteri aşamaz.');
-  if ((input.image || '').length > 2048) throw new Error('Kategori görsel yolu çok uzun.');
+  if (description.length > 3000) throw new Error('Kategori açıklaması 3000 karakteri aşamaz.');
+  if (icon.length > 80) throw new Error('Kategori ikon alanı 80 karakteri aşamaz.');
   const { data, error } = await supabase.rpc('management_upsert_category_v1', {
     p_reference: input.reference || null,
     p_payload: {
       name,
-      description: input.description?.trim() || '',
-      icon: input.icon?.trim() || '',
-      image: input.image?.trim() || '',
-      sortOrder: Math.round(input.sortOrder || 0),
+      description,
+      icon,
+      image,
+      sortOrder,
       is_active: input.isActive,
     },
   });
@@ -67,7 +107,9 @@ export async function adminSaveCategory(input: {
 }
 
 export async function adminArchiveCategory(reference: string) {
-  const { data, error } = await supabase.rpc('management_archive_category_v1', { p_reference: reference });
+  const normalized = String(reference || '').trim();
+  if (!normalized || normalized.length > 200) throw new Error('Kategori referansı geçersiz.');
+  const { data, error } = await supabase.rpc('management_archive_category_v1', { p_reference: normalized });
   return unwrap<boolean>(data, error);
 }
 
