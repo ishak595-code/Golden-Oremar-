@@ -29,6 +29,7 @@ export type LegacyHomeProduct = {
   variantId: string;
   variantName: string;
   vendor_id: string;
+  producerId: string;
   producerName: string;
   producerFollowerCount: number | null;
   producerVerified: boolean;
@@ -90,7 +91,8 @@ export function useLiveHomeCatalog() {
         const metricByProducer = new Map(metrics.map(metric => [metric.producerId, metric] as const));
 
         setProducts(catalogItems.map((item: any) => {
-          const producerMetric = metricByProducer.get(String(item.producer.id));
+          const producerId = String(item?.producer?.id || '');
+          const producerMetric = metricByProducer.get(producerId);
           const origin = item.origin || [item.producer?.village, item.producer?.district, item.producer?.province].filter(Boolean).join(', ') || null;
           const tags = compactSearchTerms([
             item.name,
@@ -130,7 +132,8 @@ export function useLiveHomeCatalog() {
             preOrder: item.stockMode === 'preorder',
             variantId: item.variant.id,
             variantName: item.variant.name,
-            vendor_id: item.producer.id,
+            vendor_id: producerId,
+            producerId,
             producerName: item.producer.name,
             producerFollowerCount: producerMetric ? producerMetric.followerCount : null,
             producerVerified: producerMetric?.verified === true,
