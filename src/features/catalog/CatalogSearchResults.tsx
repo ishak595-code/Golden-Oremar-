@@ -14,6 +14,12 @@ type Props = {
   onAddToCart: (item: CatalogItem, quantity: number) => Promise<void> | void;
 };
 
+function mergeCatalogItems(previous: CatalogItem[], incoming: CatalogItem[]) {
+  const unique = new Map<string, CatalogItem>();
+  [...previous, ...incoming].forEach(item => unique.set(`${item.id}:${item.variant?.id || ''}`, item));
+  return Array.from(unique.values());
+}
+
 export default function CatalogSearchResults({
   query,
   categorySlug = null,
@@ -56,7 +62,7 @@ export default function CatalogSearchResults({
       setProducerMetrics(previous => append ? { ...previous, ...nextMetrics } : nextMetrics);
       setOffset(nextOffset);
       setResult(previous => append && previous
-        ? { ...next, items: [...previous.items, ...next.items], offset: 0, limit: previous.items.length + next.items.length }
+        ? { ...next, items: mergeCatalogItems(previous.items, next.items), offset: 0, limit: previous.items.length + next.items.length }
         : next);
     } catch (err: any) {
       if (requestId.current === current) setError(err?.message || 'Katalog sonuçları yüklenemedi.');
@@ -69,25 +75,26 @@ export default function CatalogSearchResults({
 
   const items = result?.items || [];
   const canLoadMore = !!result && items.length < result.total;
+  const resultLabel = result ? `${result.total} gerçek katalog sonucu` : 'Katalog aranıyor';
 
   return (
-    <section className="mx-auto max-w-7xl px-4 py-6 sm:py-8" aria-labelledby="catalog-results-title">
+    <section className="mx-auto max-w-7xl px-4 py-6 sm:py-8" aria-labelledby="catalog-results-title" aria-busy={loading}>
       <div className="mb-5 flex items-center gap-3">
-        <button onClick={onBack} aria-label="Arama sonuçlarından geri dön" className="min-h-11 min-w-11 rounded-xl border p-2">
+        <button type="button" onClick={onBack} aria-label="Arama sonuçlarından geri dön" className="min-h-11 min-w-11 rounded-xl border p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
           <ArrowLeft aria-hidden="true" className="mx-auto h-5 w-5" />
         </button>
         <div className="min-w-0">
           <h1 id="catalog-results-title" className="truncate text-2xl font-bold text-brand-green dark:text-brand-gold">
             {query.trim() ? `“${query.trim()}” sonuçları` : 'Katalog'}
           </h1>
-          <p className="text-sm text-gray-500">{result ? `${result.total} gerçek katalog sonucu` : 'Katalog aranıyor'}</p>
+          <p className="text-sm text-gray-500" aria-live="polite">{resultLabel}</p>
         </div>
       </div>
 
-      <div className="mb-5 grid gap-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:grid-cols-[1fr_auto]">
+      <div className="mb-5 grid gap-3 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:grid-cols-[1fr_auto]" aria-label="Katalog sonuç kontrolleri">
         <label className="block">
           <span className="text-sm font-semibold">Sırala</span>
-          <select value={sort} onChange={e => setSort(e.target.value as any)} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3">
+          <select value={sort} onChange={e => setSort(e.target.value as typeof sort)} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
             <option value="relevance">En ilgili</option>
             <option value="newest">En yeni</option>
             <option value="price_asc">Fiyat: düşükten yükseğe</option>
@@ -95,20 +102,20 @@ export default function CatalogSearchResults({
             <option value="rating">Değerlendirme</option>
           </select>
         </label>
-        <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border px-4">
+        <label className="flex min-h-11 items-center gap-3 self-end rounded-xl border px-4 focus-within:ring-2 focus-within:ring-brand-gold">
           <input type="checkbox" checked={inStock} onChange={e => setInStock(e.target.checked)} className="h-5 w-5" />
           <span className="font-semibold">Sadece stokta</span>
         </label>
       </div>
 
-      <div className="sr-only" aria-live="polite">
-        {loading ? 'Katalog sonuçları yükleniyor' : error ? error : `${result?.total || 0} sonuç bulundu`}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {loading ? (offset > 0 ? 'Daha fazla katalog sonucu yükleniyor' : 'Katalog sonuçları yükleniyor') : error ? error : `${result?.total || 0} sonuç bulundu, ${items.length} sonuç gösteriliyor`}
       </div>
 
       {error ? (
-        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">
+        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
           <p>{error}</p>
-          <button onClick={() => load(0, false)} className="mt-3 min-h-11 rounded-lg border border-red-300 px-4 font-semibold">Tekrar dene</button>
+          <button type="button" onClick={() => void load(0, false)} className="mt-3 min-h-11 rounded-lg border border-red-300 px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">Tekrar dene</button>
         </div>
       ) : null}
 
@@ -153,7 +160,7 @@ export default function CatalogSearchResults({
             producerOriginVerified: metric?.originVerified ?? false,
           };
           return <CatalogProductCard
-            key={item.id}
+            key={`${item.id}:${item.variant.id}`}
             product={cardProduct}
             onClick={() => onOpenProduct(item.slug)}
             onAddToCart={(_, quantity) => onAddToCart(item, quantity)}
@@ -161,9 +168,9 @@ export default function CatalogSearchResults({
         })}
       </div>
 
-      {loading ? <div role="status" className="py-6 text-center text-gray-500">Yükleniyor…</div> : null}
+      {loading ? <div role="status" className="py-6 text-center text-gray-500">{offset > 0 ? 'Daha fazla ürün yükleniyor…' : 'Yükleniyor…'}</div> : null}
       {!loading && canLoadMore ? (
-        <button onClick={() => load(offset + PAGE_SIZE, true)} className="mt-6 min-h-12 w-full rounded-xl border border-brand-gold/30 font-bold text-brand-gold">
+        <button type="button" onClick={() => void load(offset + PAGE_SIZE, true)} className="mt-6 min-h-12 w-full rounded-xl border border-brand-gold/30 font-bold text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
           Daha fazla ürün göster
         </button>
       ) : null}
