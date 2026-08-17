@@ -28,7 +28,8 @@ function resolveRange(key: RangeKey) {
 }
 
 function csvCell(value: string | number) {
-  const text = String(value ?? '');
+  let text = String(value ?? '');
+  if (/^[\s]*[=+\-@]/.test(text)) text = `'${text}`;
   return `"${text.replace(/"/g, '""')}"`;
 }
 
@@ -91,7 +92,7 @@ export function AdminFinance() {
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
   const totals = report?.totals;
