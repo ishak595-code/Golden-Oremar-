@@ -12,15 +12,33 @@ const blank: Address = {
 };
 
 const fields = [
-  { key: 'label', label: 'Adres etiketi', autoComplete: 'off' },
-  { key: 'recipient_name', label: 'Alıcı adı', autoComplete: 'name', required: true },
-  { key: 'phone', label: 'Telefon', autoComplete: 'tel', inputMode: 'tel', required: true },
+  { key: 'label', label: 'Adres etiketi', autoComplete: 'off', maxLength: 60 },
+  { key: 'recipient_name', label: 'Alıcı adı', autoComplete: 'name', required: true, maxLength: 120 },
+  { key: 'phone', label: 'Telefon', autoComplete: 'tel', inputMode: 'tel', required: true, maxLength: 32 },
   { key: 'country_code', label: 'Ülke kodu', autoComplete: 'country', required: true, maxLength: 2 },
-  { key: 'province', label: 'İl/Bölge', autoComplete: 'address-level1', required: true },
-  { key: 'district', label: 'İlçe/Şehir', autoComplete: 'address-level2', required: true },
-  { key: 'neighborhood', label: 'Mahalle/Köy', autoComplete: 'address-level3' },
-  { key: 'postal_code', label: 'Posta kodu', autoComplete: 'postal-code', inputMode: 'text' },
+  { key: 'province', label: 'İl/Bölge', autoComplete: 'address-level1', required: true, maxLength: 120 },
+  { key: 'district', label: 'İlçe/Şehir', autoComplete: 'address-level2', required: true, maxLength: 120 },
+  { key: 'neighborhood', label: 'Mahalle/Köy', autoComplete: 'address-level3', maxLength: 160 },
+  { key: 'postal_code', label: 'Posta kodu', autoComplete: 'postal-code', inputMode: 'text', maxLength: 24 },
 ] as const;
+
+function validateAddress(address: Address) {
+  const recipient = String(address.recipient_name || '').trim();
+  const phone = String(address.phone || '').trim();
+  const country = String(address.country_code || '').trim().toUpperCase();
+  const province = String(address.province || '').trim();
+  const district = String(address.district || '').trim();
+  const line = String(address.address_line || '').trim();
+  if (recipient.length < 2) return 'Alıcı adı en az 2 karakter olmalıdır.';
+  if (phone.replace(/[^0-9]/g, '').length < 7) return 'Geçerli bir teslimat telefonu yazın.';
+  if (!/^[A-Z]{2}$/.test(country)) return 'Ülke kodu iki harfli ISO kodu olmalıdır.';
+  if (province.length < 2) return 'İl veya bölge bilgisini yazın.';
+  if (district.length < 2) return 'İlçe veya şehir bilgisini yazın.';
+  if (line.length < 5) return 'Açık adres en az 5 karakter olmalıdır.';
+  if (line.length > 500) return 'Açık adres en fazla 500 karakter olabilir.';
+  if (String(address.delivery_notes || '').length > 500) return 'Teslimat notu en fazla 500 karakter olabilir.';
+  return '';
+}
 
 export default function AddressesPanel({ addresses, onChanged }: { addresses: Address[]; onChanged: () => Promise<void> | void }) {
   const [editing, setEditing] = useState<Address | null>(null);
@@ -49,9 +67,24 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
     if (!editing || saving) return;
     setError('');
     setStatus('');
+    const normalized = {
+      ...editing,
+      label: String(editing.label || '').trim() || 'Teslimat',
+      recipient_name: String(editing.recipient_name || '').trim(),
+      phone: String(editing.phone || '').trim(),
+      country_code: String(editing.country_code || '').trim().toUpperCase(),
+      province: String(editing.province || '').trim(),
+      district: String(editing.district || '').trim(),
+      neighborhood: String(editing.neighborhood || '').trim() || null,
+      address_line: String(editing.address_line || '').trim(),
+      postal_code: String(editing.postal_code || '').trim() || null,
+      delivery_notes: String(editing.delivery_notes || '').trim() || null,
+    } as Address;
+    const issue = validateAddress(normalized);
+    if (issue) { setError(issue); return; }
     try {
       setSaving(true);
-      await upsertAddress({ ...editing, country_code: String(editing.country_code || '').trim().toUpperCase() });
+      await upsertAddress(normalized);
       setEditing(null);
       await onChanged();
       setStatus(editing.id ? 'Adres güncellendi.' : 'Yeni adres kaydedildi.');
@@ -137,7 +170,8 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
                       required={'required' in field ? field.required : false}
                       autoComplete={field.autoComplete}
                       inputMode={'inputMode' in field ? field.inputMode as any : undefined}
-                      maxLength={'maxLength' in field ? field.maxLength : undefined}
+                      maxLength={field.maxLength}
+                      pattern={field.key === 'country_code' ? '[A-Za-z]{2}' : undefined}
                       disabled={saving}
                       onChange={e => {
                         const nextValue = field.key === 'country_code' ? e.target.value.toUpperCase().slice(0, 2) : e.target.value;
@@ -151,12 +185,12 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
             </div>
             <label className="mt-3 block">
               <span className="text-sm font-semibold">Açık adres *</span>
-              <textarea required autoComplete="street-address" value={editing.address_line} disabled={saving} onChange={e => setEditing({ ...editing, address_line: e.target.value })}
+              <textarea required minLength={5} maxLength={500} autoComplete="street-address" value={editing.address_line} disabled={saving} onChange={e => setEditing({ ...editing, address_line: e.target.value })}
                 rows={3} className="mt-1 w-full rounded-xl border bg-transparent p-3 disabled:opacity-60" />
             </label>
             <label className="mt-3 block">
               <span className="text-sm font-semibold">Teslimat notu</span>
-              <textarea value={editing.delivery_notes || ''} disabled={saving} onChange={e => setEditing({ ...editing, delivery_notes: e.target.value })}
+              <textarea maxLength={500} value={editing.delivery_notes || ''} disabled={saving} onChange={e => setEditing({ ...editing, delivery_notes: e.target.value })}
                 rows={2} className="mt-1 w-full rounded-xl border bg-transparent p-3 disabled:opacity-60" />
             </label>
             <label className="mt-3 flex min-h-11 items-center gap-3 rounded-xl px-1">
