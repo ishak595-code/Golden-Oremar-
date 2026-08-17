@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { catalogPublicUrl, listFavorites, toggleFavorite } from './api';
 import { EmptyState, ErrorState, LoadingState, Money, Panel } from './ui';
 
@@ -44,21 +45,36 @@ export default function FavoritesPanel({ onOpenProduct }: { onOpenProduct?: (slu
 
   if (loading) return <LoadingState label="Favoriler yükleniyor" />;
 
-  return <Panel title="Favorilerim" description="Kaydettiğiniz ürünleri burada görüntüleyin ve yönetin.">
+  return <Panel title="Favorilerim" description="Kaydettiğiniz ürünleri canlı fiyat, üretici doğrulaması ve satış durumu ile yönetin.">
     {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
     {status ? <div role="status" aria-live="polite" className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{status}</div> : null}
     {!items.length ? <EmptyState title="Favoriniz yok" body="Beğendiğiniz ürünleri kalp düğmesiyle burada toplayabilirsiniz." /> :
-      <div className="grid gap-3 sm:grid-cols-2">{items.map(i => {
+      <div className="grid gap-4 sm:grid-cols-2">{items.map(i => {
         const id = String(i.productId || i.slug);
         const busy = busyId === id;
-        return <article key={id} aria-busy={busy} className="rounded-2xl border border-gray-200 bg-white p-3 dark:border-gray-800 dark:bg-gray-900">
-          {i.imagePath ? <img src={catalogPublicUrl(i.imagePath)} alt="" loading="lazy" className="h-36 w-full rounded-xl object-cover" /> : <div className="grid h-36 w-full place-items-center rounded-xl bg-gray-100 text-sm text-gray-500 dark:bg-gray-800">Görsel henüz eklenmedi</div>}
-          <h3 className="mt-3 line-clamp-2 font-bold">{i.name}</h3>
-          <p className="mt-1 text-sm text-gray-500">{i.producer?.name || 'Üretici bilgisi'}</p>
-          <div className="mt-2 font-bold text-brand-green dark:text-brand-gold"><Money minor={i.variant?.priceMinor || 0} currency={i.currency} /></div>
-          <div className="mt-3 grid grid-cols-[1fr_auto] gap-2">
-            <button type="button" onClick={() => onOpenProduct?.(i.slug)} className="min-h-11 rounded-xl bg-brand-green px-3 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Ürünü aç</button>
-            <button type="button" disabled={busy} onClick={() => void remove(i)} aria-label={`${i.name} ürününü favorilerden çıkar`} className="min-h-11 rounded-xl border border-gray-200 px-3 font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700">{busy ? 'Çıkarılıyor…' : 'Çıkar'}</button>
+        const available = i.available === true && Boolean(i.variant?.id);
+        const compareMinor = Number(i.variant?.compareAtPriceMinor || 0);
+        const priceMinor = Number(i.variant?.priceMinor || 0);
+        return <article key={id} aria-busy={busy} className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
+          {i.imagePath ? <img src={catalogPublicUrl(i.imagePath)} alt="" loading="lazy" decoding="async" className="h-40 w-full object-cover" /> : <div className="grid h-40 w-full place-items-center bg-gray-100 text-sm text-gray-500 dark:bg-gray-800">Görsel henüz eklenmedi</div>}
+          <div className="p-4">
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
+              <span className={`rounded-full px-2.5 py-1 ${available ? 'bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-200' : 'bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200'}`}>{available ? 'Satışta' : 'Şu an satışta değil'}</span>
+              {i.producer?.verified ? <span className="inline-flex items-center gap-1 rounded-full bg-brand-green/10 px-2.5 py-1 text-brand-green"><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />Doğrulanmış üretici</span> : null}
+              {i.producer?.originVerified ? <span className="inline-flex items-center gap-1 rounded-full bg-brand-gold/10 px-2.5 py-1 text-brand-gold"><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5" />Menşe doğrulandı</span> : null}
+            </div>
+            <h3 className="line-clamp-2 text-lg font-bold">{i.name}</h3>
+            {i.shortDescription ? <p className="mt-1 line-clamp-2 text-sm leading-5 text-gray-500">{i.shortDescription}</p> : null}
+            <p className="mt-2 text-sm font-semibold text-gray-700 dark:text-gray-200">{i.producer?.name || 'Üretici bilgisi'}</p>
+            {i.origin ? <p className="mt-1 text-xs text-gray-500">Menşe: {i.origin}</p> : null}
+            <div className="mt-3 flex items-end gap-2">
+              <div className="font-bold text-brand-green dark:text-brand-gold"><Money minor={priceMinor} currency={i.currency} /></div>
+              {compareMinor > priceMinor ? <div className="text-sm text-gray-400 line-through"><Money minor={compareMinor} currency={i.currency} /></div> : null}
+            </div>
+            <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+              <button type="button" onClick={() => onOpenProduct?.(i.slug)} className="min-h-11 rounded-xl bg-brand-green px-3 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Ürünü aç</button>
+              <button type="button" disabled={busy} onClick={() => void remove(i)} aria-label={`${i.name} ürününü favorilerden çıkar`} className="min-h-11 rounded-xl border border-gray-200 px-3 font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700">{busy ? 'Çıkarılıyor…' : 'Çıkar'}</button>
+            </div>
           </div>
         </article>;
       })}</div>}
