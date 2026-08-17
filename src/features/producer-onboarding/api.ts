@@ -5,6 +5,12 @@ const SELLER_CLASSES = new Set(['individual_non_merchant','tax_exempt_artisan','
 const DOCUMENT_TYPES = new Set(['identity','cks','organic_certificate','business_registration','tax_certificate','bank_proof','food_business_registration','food_business_approval','tax_exemption_certificate','mersis_record','cooperative_registration','residence_proof','other']);
 const SOURCE_MODELS = new Set(['own_production','family_production','cooperative_production','partner_farm','authorized_local_supplier']);
 const FULFILLMENT_METHODS = new Set(['cargo','local_delivery','pickup']);
+const DOCUMENT_MIME_EXTENSIONS = new Map([
+  ['application/pdf', 'pdf'],
+  ['image/jpeg', 'jpg'],
+  ['image/png', 'png'],
+  ['image/webp', 'webp'],
+]);
 
 function unwrap<T>(data: T | null, error: any): T {
   if (error) throw error;
@@ -155,7 +161,6 @@ export async function uploadProducerDocuments(userId: string, applicationId: str
   const safeApplicationId = requiredUuid(applicationId, 'Başvuru kimliği');
   if (!Array.isArray(documents)) throw new Error('Belge listesi geçersiz.');
   if (documents.length > 6) throw new Error('En fazla 6 belge yükleyebilirsiniz.');
-  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
   const uploaded: { storage_path: string; document_type: string }[] = [];
 
   try {
@@ -163,10 +168,10 @@ export async function uploadProducerDocuments(userId: string, applicationId: str
       if (!document?.file || !(document.file instanceof File)) throw new Error('Belge dosyası geçersiz.');
       const documentType = boundedText(document.documentType, 'Belge türü', 80, true);
       if (!DOCUMENT_TYPES.has(documentType)) throw new Error('Belge türü desteklenmiyor.');
-      if (!allowedTypes.includes(document.file.type)) throw new Error('Belgeler PDF, JPEG, PNG veya WebP olmalıdır.');
+      const storageExtension = DOCUMENT_MIME_EXTENSIONS.get(document.file.type);
+      if (!storageExtension) throw new Error('Belgeler PDF, JPEG, PNG veya WebP olmalıdır.');
       if (document.file.size <= 0 || document.file.size > 20 * 1024 * 1024) throw new Error('Her belge en fazla 20 MB olabilir.');
-      const originalExt = document.file.name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '') || 'bin';
-      const path = `${safeUserId}/${safeApplicationId}/${documentType}-${crypto.randomUUID()}.${originalExt}`;
+      const path = `${safeUserId}/${safeApplicationId}/${documentType}-${crypto.randomUUID()}.${storageExtension}`;
       const { error } = await supabase.storage.from('producer-documents').upload(path, document.file, {
         contentType: document.file.type,
         upsert: false,
