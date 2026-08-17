@@ -46,26 +46,35 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
   const [saving, setSaving] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [status, setStatus] = useState('');
   const editDialogRef = useAccessibleDialog<HTMLFormElement>(!!editing, () => { if (!saving) setEditing(null); });
   const deleteDialogRef = useAccessibleDialog<HTMLDivElement>(!!deleteCandidate, () => { if (!deleteBusy) setDeleteCandidate(null); });
 
   function startCreate() {
     setError('');
+    setFormError('');
     setStatus('');
     setEditing({ ...blank });
   }
 
   function startEdit(address: Address) {
     setError('');
+    setFormError('');
     setStatus('');
     setEditing({ ...address });
+  }
+
+  function closeEditor() {
+    if (saving) return;
+    setFormError('');
+    setEditing(null);
   }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!editing || saving) return;
-    setError('');
+    setFormError('');
     setStatus('');
     const normalized = {
       ...editing,
@@ -81,15 +90,17 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
       delivery_notes: String(editing.delivery_notes || '').trim() || null,
     } as Address;
     const issue = validateAddress(normalized);
-    if (issue) { setError(issue); return; }
+    if (issue) { setFormError(issue); return; }
     try {
       setSaving(true);
       await upsertAddress(normalized);
+      const wasEditing = Boolean(editing.id);
       setEditing(null);
+      setFormError('');
       await onChanged();
-      setStatus(editing.id ? 'Adres güncellendi.' : 'Yeni adres kaydedildi.');
+      setStatus(wasEditing ? 'Adres güncellendi.' : 'Yeni adres kaydedildi.');
     } catch (err: any) {
-      setError(err?.message || 'Adres kaydedilemedi.');
+      setFormError(err?.message || 'Adres kaydedilemedi.');
     } finally {
       setSaving(false);
     }
@@ -155,10 +166,11 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
                 <h3 id="address-dialog-title" className="text-lg font-bold">{editing.id ? 'Adresi düzenle' : 'Yeni adres'}</h3>
                 <p id="address-dialog-description" className="mt-1 text-sm text-gray-500">Teslimat için gerekli alanları eksiksiz girin.</p>
               </div>
-              <button type="button" disabled={saving} onClick={() => setEditing(null)} aria-label="Adres penceresini kapat" className="grid min-h-11 min-w-11 place-items-center rounded-xl border disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
+              <button type="button" disabled={saving} onClick={closeEditor} aria-label="Adres penceresini kapat" className="grid min-h-11 min-w-11 place-items-center rounded-xl border disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
                 <X aria-hidden="true" className="h-5 w-5" />
               </button>
             </div>
+            {formError ? <div id="address-form-error" role="alert" aria-live="assertive" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{formError}</div> : null}
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {fields.map(field => {
                 const value = String((editing as any)[field.key] || '');
@@ -173,7 +185,9 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
                       maxLength={field.maxLength}
                       pattern={field.key === 'country_code' ? '[A-Za-z]{2}' : undefined}
                       disabled={saving}
+                      aria-describedby={formError ? 'address-form-error' : undefined}
                       onChange={e => {
+                        if (formError) setFormError('');
                         const nextValue = field.key === 'country_code' ? e.target.value.toUpperCase().slice(0, 2) : e.target.value;
                         setEditing({ ...editing, [field.key]: nextValue });
                       }}
@@ -185,7 +199,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
             </div>
             <label className="mt-3 block">
               <span className="text-sm font-semibold">Açık adres *</span>
-              <textarea required minLength={5} maxLength={500} autoComplete="street-address" value={editing.address_line} disabled={saving} onChange={e => setEditing({ ...editing, address_line: e.target.value })}
+              <textarea required minLength={5} maxLength={500} autoComplete="street-address" value={editing.address_line} disabled={saving} aria-describedby={formError ? 'address-form-error' : undefined} onChange={e => { if (formError) setFormError(''); setEditing({ ...editing, address_line: e.target.value }); }}
                 rows={3} className="mt-1 w-full rounded-xl border bg-transparent p-3 disabled:opacity-60" />
             </label>
             <label className="mt-3 block">
@@ -199,7 +213,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
             </label>
             <div aria-live="polite" className="sr-only">{saving ? 'Adres kaydediliyor.' : ''}</div>
             <div className="mt-5 grid grid-cols-2 gap-3">
-              <button type="button" disabled={saving} onClick={() => setEditing(null)} className="min-h-11 rounded-xl border font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Vazgeç</button>
+              <button type="button" disabled={saving} onClick={closeEditor} className="min-h-11 rounded-xl border font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Vazgeç</button>
               <button disabled={saving} className="min-h-11 rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
             </div>
           </form>
