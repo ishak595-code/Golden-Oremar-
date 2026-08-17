@@ -170,6 +170,74 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   scrollbar-width: none;
 }
 
+/* Golden Oremar is an Android/iOS application. Keep the shell app-native on every
+   phone and tablet width instead of falling back to a desktop website menu. */
+nav[aria-label="Üst menü"],
+button[aria-label="Menüyü aç"] {
+  display: none !important;
+}
+
+/* The existing repository search field remains the primary app header control.
+   Notification and cart actions are always reachable beside it on native widths. */
+header .hidden.items-center.gap-1 {
+  display: flex !important;
+  flex: 0 0 auto;
+}
+
+header button[aria-label^="Bildirimler,"] {
+  color: #B91C1C;
+  background: #FEF2F2;
+}
+
+:root[data-theme="dark"] header button[aria-label^="Bildirimler,"] {
+  color: #FCA5A5;
+  background: rgb(127 29 29 / 0.28);
+}
+
+/* Count pills deliberately use a high-contrast red treatment and a larger touch-
+   readable size. Values above 99 continue to render as 99+ in the React shell. */
+header button[aria-label^="Bildirimler"] > span[aria-hidden="true"],
+header button[aria-label^="Sepetim"] > span[aria-hidden="true"],
+nav[aria-label="Ana gezinme"] button > span.relative > span[aria-hidden="true"] {
+  min-width: 1.25rem !important;
+  height: 1.25rem !important;
+  padding-inline: 0.25rem !important;
+  border: 2px solid var(--bg-card);
+  background: #DC2626 !important;
+  color: #FFFFFF !important;
+  font-size: 0.625rem !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+}
+
+/* Bottom navigation is the primary native navigation on both phones and tablets. */
+nav[aria-label="Ana gezinme"] {
+  display: flex !important;
+  max-width: 44rem;
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  body {
+    padding-bottom: calc(6.5rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 420px) {
+  header > div > div {
+    gap: 0.35rem !important;
+  }
+
+  header button[aria-label="Golden Oremar ana sayfası"] {
+    min-width: 2.5rem;
+  }
+
+  header button[aria-label="Golden Oremar ana sayfası"] img {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html:focus-within { scroll-behavior: auto; }
   *, *::before, *::after {
