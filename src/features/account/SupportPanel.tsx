@@ -3,6 +3,7 @@ import{FileText,Info,Shield,Undo2}from'lucide-react';
 import{getAccountHelpContent}from'./api';
 import{ErrorState,LoadingState,Panel}from'./ui';
 import FaqPanel from'./FaqPanel';
+import{NETWORK_RESTORED_EVENT}from'../resilience/useConnectivity';
 
 type Key='about'|'returns'|'privacy'|'terms';
 const meta:Record<Key,{label:string;Icon:any}>={
@@ -14,13 +15,14 @@ const meta:Record<Key,{label:string;Icon:any}>={
 
 export default function SupportPanel({locale='tr',onOpenMessages}:{locale?:string;onOpenMessages?:()=>void}){
  const[data,setData]=useState<any>(null);const[selected,setSelected]=useState<Key|null>(null);const[loading,setLoading]=useState(true);const[error,setError]=useState('');
- async function load(){try{setLoading(true);setError('');setData(await getAccountHelpContent(locale));}catch(e:any){setError(e?.message||'Yardım içerikleri yüklenemedi.');}finally{setLoading(false);}}
+ async function load(silent=false){try{if(!silent)setLoading(true);setError('');setData(await getAccountHelpContent(locale));}catch(e:any){setError(e?.message||'Yardım içerikleri yüklenemedi.');if(!silent)setData(null);}finally{if(!silent)setLoading(false);}}
  useEffect(()=>{void load();},[locale]);
+ useEffect(()=>{const restore=()=>void load(true);window.addEventListener(NETWORK_RESTORED_EVENT,restore);return()=>window.removeEventListener(NETWORK_RESTORED_EVENT,restore);},[locale]);
  if(loading)return<LoadingState label="Yardım merkezi yükleniyor"/>;
  if(selected&&data?.[selected]){
    const item=data[selected];
    return<Panel title={item.title||meta[selected].label}>
-     <button onClick={()=>setSelected(null)} className="mb-4 min-h-11 rounded-xl border px-4 font-semibold">Yardım merkezine dön</button>
+     <button type="button" onClick={()=>setSelected(null)} className="mb-4 min-h-11 rounded-xl border px-4 font-semibold">Yardım merkezine dön</button>
      {item.summary?<p className="mb-4 text-sm text-gray-500">{item.summary}</p>:null}
      {item.sanitizedHtml
        ? <div className="prose max-w-none dark:prose-invert" dangerouslySetInnerHTML={{__html:item.sanitizedHtml}}/>
@@ -28,14 +30,14 @@ export default function SupportPanel({locale='tr',onOpenMessages}:{locale?:strin
    </Panel>;
  }
  return<Panel title="Yardım & Destek" description="Yayınlanmış bilgilendirme metinleri, sık sorulan sorular ve destek kanalına buradan ulaşabilirsiniz.">
-   {error?<ErrorState message={error} onRetry={load}/>:null}
+   {error?<ErrorState message={error} onRetry={()=>void load()}/>:null}
    <div className="space-y-4">
      <FaqPanel locale={locale}/>
      <section aria-labelledby="help-policies-title" className="space-y-3">
        <h2 id="help-policies-title" className="text-lg font-bold">Politikalar & Bilgilendirme</h2>
        {(Object.keys(meta) as Key[]).map(key=>{
          const item=data?.[key]; if(!item)return null; const Icon=meta[key].Icon;
-         return<button key={key} onClick={()=>setSelected(key)} className="min-h-14 w-full rounded-xl border p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
+         return<button type="button" key={key} onClick={()=>setSelected(key)} className="min-h-14 w-full rounded-xl border p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
            <span className="flex items-center gap-3"><Icon aria-hidden="true" className="h-5 w-5 text-brand-gold"/><span className="font-bold">{item.title||meta[key].label}</span></span>
          </button>;
        })}
@@ -43,7 +45,7 @@ export default function SupportPanel({locale='tr',onOpenMessages}:{locale?:strin
          Kullanım Koşulları için doğrulanmış yayın kaydı henüz yok. Uydurma hukuk metni gösterilmiyor.
        </div>:null}
      </section>
-     {onOpenMessages?<button onClick={onOpenMessages} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Destek konuşmalarımı aç</button>:null}
+     {onOpenMessages?<button type="button" onClick={onOpenMessages} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Destek konuşmalarımı aç</button>:null}
    </div>
  </Panel>;
 }
