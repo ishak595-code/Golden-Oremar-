@@ -23,11 +23,10 @@ export function useUnreadNotificationCount(authenticated: boolean) {
     return { next, previous };
   }, []);
 
-  const resetUnreadSession = useCallback(() => {
-    const hadUnread = (lastKnownUnread.current || 0) > 0;
+  const resetUnreadSession = useCallback((clearDelivered = false) => {
     lastKnownUnread.current = null;
     setUnreadCountState(0);
-    if (hadUnread && Capacitor.isNativePlatform()) void clearNativeDeliveredNotifications();
+    if (clearDelivered && Capacitor.isNativePlatform()) void clearNativeDeliveredNotifications();
   }, []);
 
   const setUnreadCount = useCallback((value: number) => {
@@ -36,7 +35,7 @@ export function useUnreadNotificationCount(authenticated: boolean) {
 
   const refresh = useCallback(async () => {
     if (!authenticated) {
-      resetUnreadSession();
+      resetUnreadSession(false);
       return 0;
     }
     const data = await listNotifications(1);
@@ -51,7 +50,8 @@ export function useUnreadNotificationCount(authenticated: boolean) {
 
   useEffect(() => {
     if (!authenticated) {
-      resetUnreadSession();
+      // Signed-out sessions must not retain notifications from the previous customer.
+      resetUnreadSession(true);
       return;
     }
 
