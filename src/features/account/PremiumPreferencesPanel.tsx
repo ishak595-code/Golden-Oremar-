@@ -32,7 +32,7 @@ export default function PremiumPreferencesPanel({theme,onThemeChange}:{theme:App
   try{
    setPreviewing(next);
    const played=await playNotificationSound(next,{force:true});
-   if(!played)setStatus('Ses önizlemesi tarayıcı veya cihaz tarafından engellendi. Ses açıkken tekrar deneyin.');
+   if(!played)setStatus('Ses önizlemesi sistem veya cihaz ses politikası tarafından engellendi. Medya sesini kontrol edip tekrar deneyin.');
   }finally{
    window.setTimeout(()=>setPreviewing(null),900);
   }
@@ -46,7 +46,7 @@ export default function PremiumPreferencesPanel({theme,onThemeChange}:{theme:App
  }
 
  return<div className="space-y-5">
-  <Panel title="Premium Görünüm" description="Tema yalnız bu cihazda saklanır. Ürün ve güven durumları değişmez; yalnız görsel karakter değişir.">
+  <Panel title="Premium Görünüm" description="Tema yalnız bu cihazda saklanır. Ürün, fiyat, stok ve güven durumları değişmez; yalnız uygulamanın görsel karakteri değişir.">
    <div role="radiogroup" aria-label="Premium tema seçimi" className="grid gap-3 sm:grid-cols-2">
     {APP_THEME_OPTIONS.map(option=>{
      const selected=theme===option.id;
@@ -63,9 +63,9 @@ export default function PremiumPreferencesPanel({theme,onThemeChange}:{theme:App
    </div>
   </Panel>
 
-  <Panel title="Premium Bildirim Sesi" description="Varsayılan Oremar Damlası’dır. Uygulama açıkken yeni bir bildirim geldiğinde seçtiğiniz kısa imza çalar.">
+  <Panel title="Premium Bildirim Sesi" description="Varsayılan Oremar Damlası’dır. Uygulama ön plandayken yeni bir bildirim geldiğinde seçtiğiniz kısa Golden Oremar imzası çalar.">
    <label className="mb-4 flex min-h-12 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
-    <span className="flex items-center gap-3"><span aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2 text-brand-green">{enabled?<Volume2 className="h-5 w-5"/>:<VolumeX className="h-5 w-5"/>}</span><span><span className="block font-bold">Bildirim sesleri</span><span className="block text-sm text-gray-500">İsterseniz bütün uygulama içi bildirim seslerini kapatın.</span></span></span>
+    <span className="flex items-center gap-3"><span aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2 text-brand-green">{enabled?<Volume2 className="h-5 w-5"/>:<VolumeX className="h-5 w-5"/>}</span><span><span className="block font-bold">Bildirim sesleri</span><span className="block text-sm text-gray-500">İsterseniz uygulama içi bildirim imzasını tamamen sessize alın.</span></span></span>
     <input type="checkbox" className="h-5 w-5 shrink-0" checked={enabled} onChange={e=>toggleEnabled(e.target.checked)} aria-label="Bildirim seslerini aç veya kapat"/>
    </label>
 
@@ -81,7 +81,7 @@ export default function PremiumPreferencesPanel({theme,onThemeChange}:{theme:App
      </div>;
     })}
    </div>
-   <p className="mt-3 text-xs text-gray-500">Arka plandaki işletim sistemi push sesi cihaz ve bildirim kanalı kurallarına bağlıdır. Bu seçim Golden Oremar uygulaması açıkken gelen bildirim imzasını yönetir.</p>
+   <p className="mt-3 text-xs text-gray-500">Arka plandaki işletim sistemi push sesi cihaz ve bildirim kanalı kurallarına bağlıdır. Bu seçim yalnız Golden Oremar uygulaması ön plandayken çalan uygulama içi imzayı yönetir.</p>
   </Panel>
 
   {status?<div role="status" aria-live="polite" className="rounded-xl border border-brand-green/20 bg-brand-green/5 p-3 text-sm font-semibold text-brand-green">{status}</div>:null}
