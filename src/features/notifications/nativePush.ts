@@ -16,7 +16,9 @@ const DEVICE_ID_KEY = 'golden-oremar:push-device-id';
 const PUSH_CHANNEL_ID = 'golden-oremar-updates';
 const registrationTimeoutMs = 15000;
 const subscribers = new Set<(action: NativePushAction) => void>();
+const receiptSubscribers = new Set<() => void>();
 let pendingAction: NativePushAction | null = null;
+let pendingReceipt = false;
 let listenersReady = false;
 let listenerHandles: PluginListenerHandle[] = [];
 let pendingRegistration: {
@@ -65,6 +67,14 @@ function emitAction(action: NativePushAction) {
   for (const subscriber of subscribers) subscriber(action);
 }
 
+function emitReceipt() {
+  if (!receiptSubscribers.size) {
+    pendingReceipt = true;
+    return;
+  }
+  for (const subscriber of receiptSubscribers) subscriber();
+}
+
 function settleRegistration(error?: unknown, result?: NativePushRegistrationResult) {
   if (!pendingRegistration) return;
   clearTimeout(pendingRegistration.timer);
@@ -102,6 +112,11 @@ export async function initNativePushListeners() {
     PushNotifications.addListener('registrationError', event => {
       settleRegistration(new Error(String(event?.error || 'Cihaz push kaydı başarısız oldu.')));
     }),
+    PushNotifications.addListener('pushNotificationReceived', () => {
+      // A foreground push must update the in-app unread badge immediately without
+      // forcing navigation. The unread total remains server-authoritative.
+      emitReceipt();
+    }),
     PushNotifications.addListener('pushNotificationActionPerformed', event => {
       emitAction(parseAction(event));
     }),
@@ -117,6 +132,15 @@ export function subscribeNativePushActions(listener: (action: NativePushAction) 
     queueMicrotask(() => listener(action));
   }
   return () => { subscribers.delete(listener); };
+}
+
+export function subscribeNativePushReceipts(listener: () => void) {
+  receiptSubscribers.add(listener);
+  if (pendingReceipt) {
+    pendingReceipt = false;
+    queueMicrotask(listener);
+  }
+  return () => { receiptSubscribers.delete(listener); };
 }
 
 export async function getNativePushPermission() {
@@ -178,4 +202,5 @@ export async function removeNativePushListeners() {
   await Promise.all(listenerHandles.map(handle => handle.remove().catch(() => undefined)));
   listenerHandles = [];
   listenersReady = false;
+  pendingReceipt = false;
 }
