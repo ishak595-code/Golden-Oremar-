@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T05:15:00+00:00",
+  "generatedAt": "2026-08-17T06:22:00+00:00",
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
   "liveMigrationCount": 127,
@@ -27,12 +27,16 @@
     "accountMessageHistoryPagination": "IMPLEMENTED_BACKEND_CURSOR_CONTRACT_VERIFIED_PENDING_CI_RECHECK",
     "accountConversationListPagination": "IMPLEMENTED_WITH_POLLING_LIMIT_PRESERVATION_PENDING_CI_RECHECK",
     "accountAddressValidationNormalization": "IMPLEMENTED_PENDING_CI_RECHECK",
+    "accountAddressModalErrorAccessibility": "IMPLEMENTED_ERROR_STAYS_INSIDE_MODAL_LIVE_REGION_PENDING_CI_RECHECK",
     "checkoutCartClientBoundaryValidation": "IMPLEMENTED_PENDING_CI_RECHECK",
+    "androidPostNotificationPermission": "IMPLEMENTED_EXPLICIT_MANIFEST_CONTRACT_PENDING_CI_RECHECK",
+    "iosReleaseMetadata": "IMPLEMENTED_TURKISH_DEVELOPMENT_REGION_AND_EXPORT_COMPLIANCE_PENDING_CI_RECHECK",
+    "releaseAuditNativeMetadataContracts": "IMPLEMENTED_ANDROID_IOS_WEB_ASSERTIONS_PENDING_CI_RECHECK",
     "androidReleaseBundleBaseline": "PASS",
     "iosSimulatorCompileBaseline": "PASS",
     "latestUiHardeningCi": "EXTERNAL_BLOCKED_BEFORE_STEPS_STARTED_GITHUB_BILLING",
-    "latestWorkflowRunId": 31997153983,
-    "latestWorkflowHeadSha": "c524449164a49059c5c31698b7e3d7dbf335e989",
+    "latestWorkflowRunId": 32001047304,
+    "latestWorkflowHeadSha": "31e02d02e170ebf7296fc4de8e85f3773984dd88",
     "latestWorkflowJobs": {
       "verify-ios": "FAILURE_WITH_NO_EXECUTED_STEPS",
       "verify-web-android": "FAILURE_WITH_NO_EXECUTED_STEPS"
@@ -53,7 +57,11 @@
     "notificationHistoryUsesLiveServerCursor": true,
     "messageHistoryUsesLiveServerCursor": true,
     "addressMutationsNormalizeAndValidateClientInput": true,
+    "addressModalErrorsRemainReachableToAssistiveTechnology": true,
     "cartAndCheckoutRpcInputsValidatedAtClientBoundary": true,
+    "androidNotificationPermissionDeclaredForAndroid13Plus": true,
+    "iosExportComplianceMetadataDoesNotInventCustomEncryption": true,
+    "releaseAuditChecksNativeAndWebMetadataContracts": true,
     "uiHardeningDoesNotClaimUnexecutedCiAsPassing": true
   },
   "liveCatalogAudit": {
@@ -69,7 +77,7 @@
     "note": "Missing real shipping weights remain visible for correction and are never fabricated."
   },
   "externalBlockers": {
-    "githubActions": "Run 31997153983 was created for head c524449164a49059c5c31698b7e3d7dbf335e989. Both iOS and web/Android jobs completed as failures with no workflow steps returned, consistent with the existing external Actions billing/spending blocker. No passing CI result is claimed for the new reconnect changes.",
+    "githubActions": "Run 32001047304 was created for head 31e02d02e170ebf7296fc4de8e85f3773984dd88. Both iOS and web/Android jobs completed as failures with no workflow steps returned, consistent with the existing external Actions billing/spending blocker. No passing CI result is claimed for this run's release and address accessibility changes.",
     "liveSalesIdentity": "Legal business and support identity are not configured.",
     "paymentProvider": "Production payment provider configuration is external.",
     "nativePushProviders": "Production push provider configuration is external.",
