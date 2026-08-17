@@ -55,6 +55,16 @@ const blankAddress = {
   neighborhood: '', address_line: '', postal_code: '', delivery_notes: '',
 };
 
+const manualAddressFields = [
+  { key: 'recipient_name', label: 'Teslim alacak kişi', autoComplete: 'name', required: true, maxLength: 120 },
+  { key: 'phone', label: 'Telefon', autoComplete: 'tel', inputMode: 'tel' as const, required: true, maxLength: 30 },
+  { key: 'country_code', label: 'Ülke kodu', autoComplete: 'country', inputMode: 'text' as const, required: true, maxLength: 2 },
+  { key: 'province', label: 'İl/Bölge', autoComplete: 'address-level1', required: false, maxLength: 120 },
+  { key: 'district', label: 'Şehir/İlçe', autoComplete: 'address-level2', required: true, maxLength: 120 },
+  { key: 'neighborhood', label: 'Mahalle/Köy', autoComplete: 'address-level3', required: false, maxLength: 160 },
+  { key: 'postal_code', label: 'Posta kodu', autoComplete: 'postal-code', inputMode: 'text' as const, required: false, maxLength: 24 },
+] as const;
+
 export default function CartCheckoutFlow({
   onBack,
   onOrderCreated,
@@ -147,7 +157,6 @@ export default function CartCheckoutFlow({
 
   useEffect(() => {
     if (!loading && cart?.items?.length) void refreshPreview(appliedCoupon);
-    // country / cart totals change should refresh; coupon only changes after explicit apply.
   }, [countryCode, cart?.subtotalMinor, cart?.itemCount, appliedCoupon, loading]);
 
   async function updateQuantity(item: CartSnapshot['items'][number], nextQuantity: number) {
@@ -318,23 +327,23 @@ export default function CartCheckoutFlow({
       <button type="button" onClick={() => { setError(''); setActionStatus(''); setClearConfirmOpen(true); }} className="min-h-11 rounded-xl border border-red-200 px-3 text-sm font-semibold text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Sepeti temizle</button>
     </div>
 
-    {error ? <div ref={errorRef} role="alert" tabIndex={-1} className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 outline-none dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div> : null}
+    {error ? <div ref={errorRef} id="checkout-error" role="alert" aria-live="assertive" tabIndex={-1} className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 outline-none dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div> : null}
     {actionStatus ? <div role="status" aria-live="polite" className="rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{actionStatus}</div> : null}
 
     <section aria-labelledby="cart-items-title" className="rounded-2xl border bg-white dark:bg-gray-900 p-4 sm:p-5">
       <h2 id="cart-items-title" className="sr-only">Sepetteki ürünler</h2>
       <div className="space-y-4">{cart.items.map(item => { const rowBusy = rowBusyId === item.cartItemId; return <article key={item.cartItemId} aria-busy={rowBusy} className="flex gap-3 border-b pb-4 last:border-b-0 last:pb-0">
-        {item.imagePath ? <img src={publicCatalogUrl(item.imagePath)} alt="" className="h-24 w-24 shrink-0 rounded-xl object-cover" /> : <div className="h-24 w-24 shrink-0 rounded-xl bg-gray-100" />}
+        {item.imagePath ? <img src={publicCatalogUrl(item.imagePath)} alt={`${item.productName} ürün görseli`} loading="lazy" decoding="async" className="h-24 w-24 shrink-0 rounded-xl object-cover" /> : <div role="img" aria-label={`${item.productName} için görsel henüz eklenmedi`} className="grid h-24 w-24 shrink-0 place-items-center rounded-xl bg-gray-100 px-2 text-center text-xs text-gray-500 dark:bg-gray-800">Görsel yok</div>}
         <div className="min-w-0 flex-1">
           <h3 className="font-bold">{item.productName}</h3>
           <p className="mt-1 text-sm text-gray-500">{item.variantName} • {item.producer?.name}</p>
           {!item.available ? <p className="mt-1 text-sm font-semibold text-red-700">Bu ürün artık satışa uygun değil.</p> : null}
           {item.sellableQuantity != null && item.quantity > item.sellableQuantity ? <p className="mt-1 text-sm font-semibold text-red-700">Yeterli stok yok. Satılabilir: {item.sellableQuantity}</p> : null}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center rounded-xl border" aria-label={`${item.productName} adet seçimi`}>
-              <button type="button" disabled={rowBusy} onClick={() => void updateQuantity(item, item.quantity - 1)} aria-label="Adedi azalt" className="min-h-11 min-w-11 p-2 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><Minus aria-hidden="true" className="mx-auto h-4 w-4" /></button>
-              <span className="min-w-10 text-center font-bold" aria-live="polite">{item.quantity}</span>
-              <button type="button" onClick={() => void updateQuantity(item, item.quantity + 1)} disabled={rowBusy || (!item.available) || (item.sellableQuantity != null && item.quantity >= Number(item.sellableQuantity))} aria-label="Adedi artır" className="min-h-11 min-w-11 p-2 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><Plus aria-hidden="true" className="mx-auto h-4 w-4" /></button>
+            <div className="flex items-center rounded-xl border" role="group" aria-label={`${item.productName} adet seçimi`}>
+              <button type="button" disabled={rowBusy} onClick={() => void updateQuantity(item, item.quantity - 1)} aria-label={`${item.productName} adedini azalt`} className="min-h-11 min-w-11 p-2 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><Minus aria-hidden="true" className="mx-auto h-4 w-4" /></button>
+              <span className="min-w-10 text-center font-bold" aria-live="polite" aria-label={`${item.quantity} adet`}>{item.quantity}</span>
+              <button type="button" onClick={() => void updateQuantity(item, item.quantity + 1)} disabled={rowBusy || (!item.available) || (item.sellableQuantity != null && item.quantity >= Number(item.sellableQuantity))} aria-label={`${item.productName} adedini artır`} className="min-h-11 min-w-11 p-2 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><Plus aria-hidden="true" className="mx-auto h-4 w-4" /></button>
             </div>
             <div className="flex items-center gap-3">
               <strong><Money minor={item.lineTotalMinor} currency={cart.currency} /></strong>
@@ -348,39 +357,42 @@ export default function CartCheckoutFlow({
     <section className="rounded-2xl border bg-white dark:bg-gray-900 p-4 sm:p-5" aria-labelledby="address-title">
       <h2 id="address-title" className="text-lg font-bold">Teslimat adresi</h2>
       {overview?.addresses?.length ? <div className="mt-4 space-y-3">
-        <label className="block"><span className="text-sm font-semibold">Kayıtlı adres</span>
-          <select value={useManualAddress ? '__new__' : selectedAddressId} onChange={e => {
+        <label className="block" htmlFor="checkout-saved-address"><span className="text-sm font-semibold">Kayıtlı adres</span>
+          <select id="checkout-saved-address" value={useManualAddress ? '__new__' : selectedAddressId} onChange={e => {
             if (e.target.value === '__new__') setUseManualAddress(true);
             else { setUseManualAddress(false); setSelectedAddressId(e.target.value); }
           }} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3">
-            {overview.addresses.map((a: any) => <option key={a.id} value={a.id}>{a.label} — {a.district}/{a.province}</option>)}
+            {overview.addresses.map((a: any) => <option key={a.id} value={a.id}>{a.label} - {a.district}/{a.province}</option>)}
             <option value="__new__">Farklı teslimat adresi kullan</option>
           </select>
         </label>
         {onOpenAddresses ? <button type="button" onClick={onOpenAddresses} className="min-h-11 rounded-xl border px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Adreslerimi yönet</button> : null}
       </div> : null}
 
-      {useManualAddress ? <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {[
-          ['recipient_name','Teslim alacak kişi'],['phone','Telefon'],['country_code','Ülke kodu'],['province','İl/Bölge'],
-          ['district','Şehir/İlçe'],['neighborhood','Mahalle/Köy'],['postal_code','Posta kodu']
-        ].map(([key,label]) => <label key={key} className="block"><span className="text-sm font-semibold">{label}</span><input value={manualAddress[key] || ''} onChange={e => setManualAddress({ ...manualAddress, [key]: key==='country_code' ? e.target.value.toUpperCase() : e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3" /></label>)}
-        <label className="block sm:col-span-2"><span className="text-sm font-semibold">Açık adres</span><textarea value={manualAddress.address_line} onChange={e => setManualAddress({ ...manualAddress, address_line: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border bg-transparent p-3" /></label>
-        <label className="block sm:col-span-2"><span className="text-sm font-semibold">Teslimat notu</span><textarea value={manualAddress.delivery_notes} onChange={e => setManualAddress({ ...manualAddress, delivery_notes: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border bg-transparent p-3" /></label>
-      </div> : selectedSavedAddress ? <div className="mt-4 rounded-xl bg-gray-50 dark:bg-gray-800 p-4 text-sm">
+      {useManualAddress ? <fieldset className="mt-4 grid gap-3 sm:grid-cols-2" aria-describedby={error ? 'checkout-error' : undefined}>
+        <legend className="sr-only">Yeni teslimat adresi</legend>
+        {manualAddressFields.map(field => {
+          const inputId = `checkout-${field.key.replace(/_/g, '-')}`;
+          return <label key={field.key} className="block" htmlFor={inputId}><span className="text-sm font-semibold">{field.label}{field.required ? <span aria-hidden="true"> *</span> : null}</span><input id={inputId} name={field.key} required={field.required} maxLength={field.maxLength} autoComplete={field.autoComplete} inputMode={'inputMode' in field ? field.inputMode : undefined} value={manualAddress[field.key] || ''} onChange={e => setManualAddress({ ...manualAddress, [field.key]: field.key==='country_code' ? e.target.value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 2) : e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3" /></label>;
+        })}
+        <label className="block sm:col-span-2" htmlFor="checkout-address-line"><span className="text-sm font-semibold">Açık adres <span aria-hidden="true">*</span></span><textarea id="checkout-address-line" name="address_line" required autoComplete="street-address" maxLength={500} value={manualAddress.address_line} onChange={e => setManualAddress({ ...manualAddress, address_line: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border bg-transparent p-3" /></label>
+        <label className="block sm:col-span-2" htmlFor="checkout-delivery-notes"><span className="text-sm font-semibold">Teslimat notu</span><textarea id="checkout-delivery-notes" name="delivery_notes" maxLength={500} value={manualAddress.delivery_notes} onChange={e => setManualAddress({ ...manualAddress, delivery_notes: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border bg-transparent p-3" /></label>
+        <p className="text-xs text-gray-500 sm:col-span-2"><span aria-hidden="true">*</span> Zorunlu alanlar</p>
+      </fieldset> : selectedSavedAddress ? <address className="mt-4 rounded-xl bg-gray-50 p-4 text-sm not-italic dark:bg-gray-800">
         <strong>{selectedSavedAddress.recipient_name}</strong><br />
         {selectedSavedAddress.address_line}, {selectedSavedAddress.neighborhood ? `${selectedSavedAddress.neighborhood}, ` : ''}{selectedSavedAddress.district}/{selectedSavedAddress.province} • {selectedSavedAddress.country_code}
-      </div> : null}
+      </address> : null}
     </section>
 
     <section className="rounded-2xl border bg-white dark:bg-gray-900 p-4 sm:p-5" aria-labelledby="coupon-title">
       <h2 id="coupon-title" className="text-lg font-bold">Kupon ve sipariş notu</h2>
       <div className="mt-4 flex gap-2">
-        <label className="min-w-0 flex-1"><span className="sr-only">Kupon kodu</span><input value={couponInput} onChange={e => setCouponInput(e.target.value.toUpperCase())} placeholder="Kupon kodu" autoCapitalize="characters" className="min-h-11 w-full rounded-xl border bg-transparent px-3" /></label>
+        <label className="min-w-0 flex-1" htmlFor="checkout-coupon"><span className="sr-only">Kupon kodu</span><input id="checkout-coupon" name="coupon" value={couponInput} onChange={e => setCouponInput(e.target.value.toUpperCase())} placeholder="Kupon kodu" autoCapitalize="characters" autoComplete="off" maxLength={64} className="min-h-11 w-full rounded-xl border bg-transparent px-3" /></label>
         <button type="button" onClick={() => void applyCoupon()} disabled={previewBusy || submitting} className="min-h-11 rounded-xl border px-4 font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{previewBusy ? 'Kontrol…' : 'Uygula'}</button>
       </div>
       {appliedCoupon ? <button type="button" disabled={previewBusy || submitting} onClick={() => { setCouponInput(''); setAppliedCoupon(''); }} className="mt-2 min-h-11 rounded-lg px-2 text-sm font-semibold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Kuponu kaldır</button> : null}
-      <label className="mt-4 block"><span className="text-sm font-semibold">Sipariş notu (opsiyonel)</span><textarea value={customerNote} onChange={e => setCustomerNote(e.target.value)} maxLength={1000} rows={3} className="mt-1 w-full rounded-xl border bg-transparent p-3" /></label>
+      <label className="mt-4 block" htmlFor="checkout-customer-note"><span className="text-sm font-semibold">Sipariş notu (opsiyonel)</span><textarea id="checkout-customer-note" name="customer_note" value={customerNote} onChange={e => setCustomerNote(e.target.value)} maxLength={1000} rows={3} aria-describedby="checkout-note-counter" className="mt-1 w-full rounded-xl border bg-transparent p-3" /></label>
+      <div id="checkout-note-counter" className="mt-1 text-right text-xs text-gray-500" aria-live="polite">{customerNote.length}/1000</div>
     </section>
 
     <section className="rounded-2xl border bg-white dark:bg-gray-900 p-4 sm:p-5" aria-labelledby="summary-title">
