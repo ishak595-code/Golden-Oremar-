@@ -2,7 +2,7 @@ import React,{useCallback,useEffect,useRef,useState}from'react';
 import{App as CapApp}from'@capacitor/app';
 import{Capacitor}from'@capacitor/core';
 import{Haptics,ImpactStyle}from'@capacitor/haptics';
-import{Bell,CheckCircle,Grid,Heart,Home,Menu,Mic,Search,ShoppingCart,User,X}from'lucide-react';
+import{Bell,CheckCircle,Grid,Heart,Home,Mic,Search,ShoppingCart,User,X}from'lucide-react';
 import{useCustomerSession}from'./features/auth/useCustomerSession';
 import{useUnreadNotificationCount}from'./features/account/useUnreadNotificationCount';
 import{useAccessibleDialog}from'./features/accessibility/useAccessibleDialog';
@@ -41,6 +41,7 @@ function safeTab(value:unknown):Tab{const candidate=String(value||'home')as Tab;
 function tabUrl(tab:Tab){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab',tab);return url.toString();}
 function normalizeInitialTab(route:ReturnType<typeof parsePublicRoute>,tab:Tab):Tab{if(tab==='product-detail'&&!route.productReference)return'home';if(tab==='producer-profile'&&!route.producerReference)return'home';return tab;}
 function routeDepthFromState(state:any){const value=Number(state?.goldenOremarDepth);return Number.isSafeInteger(value)&&value>=0?value:0;}
+function snapshotItemCount(snapshot:any,items:any[]){const reported=Number(snapshot?.itemCount);if(Number.isSafeInteger(reported)&&reported>=0)return reported;return items.reduce((total,item)=>total+Math.max(0,Math.floor(Number(item?.quantity)||0)),0);}
 
 function AppContent(){
  const initialRoute=useRef(parsePublicRoute()).current;
@@ -61,18 +62,17 @@ function AppContent(){
  const[searchCategorySlug,setSearchCategorySlug]=useState<string|null>(initialRoute.categorySlug);
  const[searchProducerId,setSearchProducerId]=useState<string|null>(initialRoute.producerId);
  const[cart,setCart]=useState<any[]>([]);
+ const[cartItemCount,setCartItemCount]=useState(0);
  const[favorites,setFavorites]=useState<string[]>([]);
  const[toast,setToast]=useState<{message:string;visible:boolean}>({message:'',visible:false});
  const[showGiftModal,setShowGiftModal]=useState(false);
  const[giftProduct,setGiftProduct]=useState<any>(null);
  const[isSearchFocused,setIsSearchFocused]=useState(false);
- const[isMobileMenuOpen,setIsMobileMenuOpen]=useState(false);
  const[isListening,setIsListening]=useState(false);
  const[speechText,setSpeechText]=useState('');
  const[voiceError,setVoiceError]=useState('');
  const recognitionRef=useRef<any>(null);
  const voiceDialogRef=useAccessibleDialog<HTMLDivElement>(isListening,()=>stopVoiceSearch());
- const mobileMenuRef=useAccessibleDialog<HTMLDivElement>(isMobileMenuOpen,()=>setIsMobileMenuOpen(false));
  const[adminSession,setAdminSession]=useState<{checked:boolean;isAdmin:boolean;roles:string[]}>({checked:false,isAdmin:false,roles:[]});
  const isAdminLoggedIn=adminSession.checked&&adminSession.isAdmin;
 
@@ -93,7 +93,6 @@ function AppContent(){
    window.history.pushState({goldenOremar:true,goldenOremarDepth:next,tab},'',url);
   }
   setCurrentTab(tab);
-  setIsMobileMenuOpen(false);
   window.scrollTo({top:0,behavior:'auto'});
  },[]);
 
@@ -101,7 +100,7 @@ function AppContent(){
   const url=tabUrl('home');
   routeDepthRef.current=0;
   window.history.replaceState({goldenOremar:true,goldenOremarDepth:0,tab:'home'},'',url);
-  setRouteDepth(0);setCurrentTab('home');setSelectedProductReference(null);setSelectedProducerReference(null);setSearchCategorySlug(null);setSearchProducerId(null);setIsMobileMenuOpen(false);window.scrollTo({top:0,behavior:'auto'});
+  setRouteDepth(0);setCurrentTab('home');setSelectedProductReference(null);setSelectedProducerReference(null);setSearchQuery('');setSearchCategorySlug(null);setSearchProducerId(null);setIsSearchFocused(false);window.scrollTo({top:0,behavior:'auto'});
  },[]);
 
  const navigateToTab=useCallback((tab:Tab)=>{
@@ -111,6 +110,7 @@ function AppContent(){
    pushRoute(tabUrl('account'),'account');
    return;
   }
+  if(tab==='home'){setSearchQuery('');setSearchCategorySlug(null);setSearchProducerId(null);setIsSearchFocused(false);}
   pushRoute(tabUrl(tab),tab);
  },[adminSession.checked,isAdminLoggedIn,pushRoute,showToast]);
 
@@ -141,7 +141,7 @@ function AppContent(){
    setSelectedProductReference(route.productReference);
    setSelectedProducerReference(route.producerReference);
    setSearchQuery(route.query);setSearchCategorySlug(route.categorySlug);setSearchProducerId(route.producerId);
-   setCurrentTab(next);setIsMobileMenuOpen(false);setIsSearchFocused(false);window.scrollTo({top:0,behavior:'auto'});
+   setCurrentTab(next);setIsSearchFocused(false);window.scrollTo({top:0,behavior:'auto'});
   };
   window.addEventListener('popstate',applyLocation);return()=>window.removeEventListener('popstate',applyLocation);
  },[]);
@@ -176,11 +176,12 @@ function AppContent(){
  },[currentUser?.id]);
 
  const applyServerCartSnapshot=useCallback((snapshot:any)=>{
-  const items=(snapshot?.items||[]).map((item:any)=>({id:item.productId,slug:item.slug,name:item.productName,price:Number(item.priceMinor||0)/100,image:serverCatalogUrl(item.imagePath),quantity:item.quantity,variantId:item.variantId,variantName:item.variantName,cartItemId:item.cartItemId,selectedOptions:item.selectedOptions||{},sellableQuantity:item.sellableQuantity,producer:item.producer,_serverCart:true}));setCart(items);return snapshot;
+  const items=(snapshot?.items||[]).map((item:any)=>({id:item.productId,slug:item.slug,name:item.productName,price:Number(item.priceMinor||0)/100,image:serverCatalogUrl(item.imagePath),quantity:item.quantity,variantId:item.variantId,variantName:item.variantName,cartItemId:item.cartItemId,selectedOptions:item.selectedOptions||{},sellableQuantity:item.sellableQuantity,producer:item.producer,_serverCart:true}));
+  setCart(items);setCartItemCount(snapshotItemCount(snapshot,items));return snapshot;
  },[]);
  const fetchCart=useCallback(async()=>{
-  if(!currentUser){setCart([]);return;}
-  try{applyServerCartSnapshot(await getServerCart());}catch(error:any){if(!String(error?.message||'').includes('authentication_required'))console.error('Supabase cart hydration failed',error);setCart([]);}
+  if(!currentUser){setCart([]);setCartItemCount(0);return;}
+  try{applyServerCartSnapshot(await getServerCart());}catch(error:any){if(!String(error?.message||'').includes('authentication_required'))console.error('Supabase cart hydration failed',error);setCart([]);setCartItemCount(0);}
  },[currentUser?.id,applyServerCartSnapshot]);
  useEffect(()=>{void fetchCart();},[fetchCart]);
  useEffect(()=>{if(restoreSequence===0)return;showToast('İnternet bağlantısı geri geldi. Güncel veriler doğrulanıyor.');if(currentUser){void fetchCart();void refreshUnreadCount();}},[restoreSequence,currentUser?.id,fetchCart,refreshUnreadCount,showToast]);
@@ -241,9 +242,9 @@ function AppContent(){
 
  useEffect(()=>{
   if(!Capacitor.isNativePlatform())return;let disposed=false;let handle:{remove:()=>Promise<void>}|undefined;
-  void CapApp.addListener('backButton',()=>{if(authRecovery.recoveryPending)return;if(isListening){stopVoiceSearch();return;}if(isMobileMenuOpen){setIsMobileMenuOpen(false);return;}if(isSearchFocused){setIsSearchFocused(false);return;}if(showGiftModal){setShowGiftModal(false);return;}if(currentTab==='account'&&accountView!=='menu'){setAccountView('menu');return;}if(routeDepth>0){window.history.back();return;}if(currentTab!=='home'){replaceWithHome();return;}void CapApp.exitApp();}).then(next=>{if(disposed)void next.remove();else handle=next;});
+  void CapApp.addListener('backButton',()=>{if(authRecovery.recoveryPending)return;if(isListening){stopVoiceSearch();return;}if(isSearchFocused){setIsSearchFocused(false);return;}if(showGiftModal){setShowGiftModal(false);return;}if(currentTab==='account'&&accountView!=='menu'){setAccountView('menu');return;}if(routeDepth>0){window.history.back();return;}if(currentTab!=='home'){replaceWithHome();return;}void CapApp.exitApp();}).then(next=>{if(disposed)void next.remove();else handle=next;});
   return()=>{disposed=true;if(handle)void handle.remove();};
- },[authRecovery.recoveryPending,isListening,isMobileMenuOpen,isSearchFocused,showGiftModal,currentTab,accountView,routeDepth,replaceWithHome]);
+ },[authRecovery.recoveryPending,isListening,isSearchFocused,showGiftModal,currentTab,accountView,routeDepth,replaceWithHome]);
 
  const renderContent=()=>{
   if(currentTab==='product-detail'&&selectedProductReference)return<ProductDetailScreen reference={selectedProductReference} authenticated={!!currentUser} favoriteReferences={favorites} onFavoriteChanged={(reference,isFavorite)=>setFavorites(previous=>isFavorite?(previous.includes(reference)?previous:[...previous,reference]):previous.filter(item=>item!==reference))} onBack={goBack} onLoginRequired={()=>{showToast('Bu işlem için hesabınıza giriş yapın.');setAccountView('menu');navigateToTab('account');}} onCartChanged={fetchCart} onGift={reference=>openGift({id:reference,slug:reference})} onProducer={(_id,slug)=>openProducer(slug)}/>;
@@ -259,7 +260,7 @@ function AppContent(){
   if(currentTab==='cart'){
    if(!authReady)return<RouteLoading label="Sepet oturumunuz doğrulanıyor"/>;
    if(!currentUser)return<AuthScreen title="Sepetinizi kullanmak için hesabınıza giriş yapın." description="Sepetiniz, stok durumunuz ve siparişiniz hesabınıza güvenli şekilde bağlanır."/>;
-   return<CartCheckoutFlow onBack={goBack} onOpenAddresses={()=>{setAccountView('addresses');navigateToTab('account');}} onOrderCreated={()=>{setCart([]);setAccountView('orders');navigateToTab('account');}}/>;
+   return<CartCheckoutFlow onBack={goBack} onOpenAddresses={()=>{setAccountView('addresses');navigateToTab('account');}} onOrderCreated={()=>{setCart([]);setCartItemCount(0);setAccountView('orders');navigateToTab('account');}}/>;
   }
   if(currentTab==='categories')return<CategoryDirectoryScreen onOpenProduct={slug=>openProduct(slug)} onAddToCart={async(item,quantity)=>{await addToCart({id:item.id,slug:item.slug,name:item.name,variantId:item.variant?.id},quantity);}}/>;
   if(currentTab==='events')return<PublicEventsScreen onBack={goBack} currentUser={currentUser}/>;
@@ -271,29 +272,25 @@ function AppContent(){
 
  if(currentTab==='admin'){
   if(!adminSession.checked)return<RouteLoading label="Yönetici yetkisi doğrulanıyor"/>;
-  if(isAdminLoggedIn)return<React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor"/>}><AdminPage currentUser={currentUser} onBack={goBack} onLogout={async()=>{await signOutCurrentSession();setCurrentUser(null);setAdminSession({checked:true,isAdmin:false,roles:[]});replaceWithHome();}}/></React.Suspense>;
+  if(isAdminLoggedIn)return<React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor"/>}><AdminPage currentUser={currentUser} onBack={goBack} onLogout={async()=>{await signOutCurrentSession();setCurrentUser(null);setAdminSession({checked:true,isAdmin:false,roles:[]});setCart([]);setCartItemCount(0);replaceWithHome();}}/></React.Suspense>;
  }
 
- return<div className="min-h-screen bg-brand-main pb-28 font-sans text-brand-text md:pb-0">
+ return<div className="min-h-screen bg-brand-main pb-28 font-sans text-brand-text">
   <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/95 shadow-sm backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/95" style={{paddingTop:'env(safe-area-inset-top, 0px)'}}>
    {!isOnline?<div role="status" aria-live="polite" className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-950 dark:border-amber-800 dark:bg-amber-950/70 dark:text-amber-100">Çevrimdışısınız. Canlı işlemler bağlantı geri gelene kadar tamamlanamaz.</div>:null}
    <div className="mx-auto max-w-7xl px-4 sm:px-6">
     <div className="flex min-h-16 items-center gap-3 md:min-h-20">
      <button type="button" onClick={()=>navigateToTab('home')} aria-label="Golden Oremar ana sayfası" className="grid min-h-11 min-w-11 place-items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><img src="/logo.svg" alt="" aria-hidden="true" className="h-11 w-11 rounded-xl object-contain"/></button>
      <div className="relative min-w-0 flex-1 md:mx-auto md:max-w-2xl"><Search aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"/><input type="search" aria-label="Ürün, üretici veya köy ara" placeholder="Ürün, üretici veya köy ara..." value={searchQuery} onChange={event=>setSearchQuery(event.target.value.slice(0,160))} onFocus={()=>setIsSearchFocused(true)} onBlur={()=>window.setTimeout(()=>setIsSearchFocused(false),180)} onKeyDown={event=>{if(event.key==='Enter'&&searchQuery.trim()){event.preventDefault();openSearch(searchQuery);}}} className="h-11 w-full rounded-xl border border-transparent bg-gray-100 pl-11 pr-14 text-sm outline-none transition focus:bg-white focus:ring-2 focus:ring-brand-gold/50 dark:bg-gray-800 dark:focus:bg-gray-800"/><button type="button" onClick={searchQuery?()=>setSearchQuery(''):triggerVoiceSearch} aria-label={searchQuery?'Aramayı temizle':'Sesli arama'} className="absolute right-1 top-1/2 grid min-h-11 min-w-11 -translate-y-1/2 place-items-center rounded-lg text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{searchQuery?<X aria-hidden="true" className="h-5 w-5"/>:<Mic aria-hidden="true" className="h-5 w-5"/>}</button></div>
-     <div className="hidden items-center gap-1 sm:flex"><HeaderAction label={unreadCount?`Bildirimler, ${unreadCount} okunmamış`:'Bildirimler'} onClick={()=>{setAccountView('notifications');navigateToTab('account');}} icon={<Bell aria-hidden="true" className="h-5 w-5"/>} badge={unreadCount}/><HeaderAction label={cart.length?`Sepetim, ${cart.length} ürün`:'Sepetim'} onClick={()=>navigateToTab('cart')} icon={<ShoppingCart aria-hidden="true" className="h-5 w-5"/>} badge={cart.length}/></div>
-     <button type="button" onClick={()=>setIsMobileMenuOpen(true)} aria-label="Menüyü aç" aria-expanded={isMobileMenuOpen} className="grid min-h-11 min-w-11 place-items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold md:hidden"><Menu aria-hidden="true" className="h-6 w-6"/></button>
+     <div className="flex items-center gap-1"><HeaderAction label={unreadCount?`Bildirimler, ${unreadCount} okunmamış`:'Bildirimler'} onClick={()=>{setAccountView('notifications');navigateToTab('account');}} icon={<Bell aria-hidden="true" className="h-5 w-5"/>} badge={unreadCount}/><HeaderAction label={cartItemCount?`Sepetim, ${cartItemCount} ürün`:'Sepetim'} onClick={()=>navigateToTab('cart')} icon={<ShoppingCart aria-hidden="true" className="h-5 w-5"/>} badge={cartItemCount}/></div>
     </div>
-    <nav className="hidden min-h-11 items-center justify-center gap-1 border-t border-gray-100 py-1 dark:border-gray-800 md:flex" aria-label="Üst menü"><NavButton active={currentTab==='home'} onClick={()=>navigateToTab('home')}>Ana Sayfa</NavButton><NavButton active={currentTab==='categories'} onClick={()=>navigateToTab('categories')}>Kategoriler</NavButton><NavButton active={currentTab==='events'} onClick={()=>navigateToTab('events')}>Etkinlikler</NavButton><NavButton active={currentTab==='health'} onClick={()=>navigateToTab('health')}>Bilgi Merkezi</NavButton><NavButton active={currentTab==='about'} onClick={()=>navigateToTab('about')}>Hakkımızda</NavButton><NavButton active={currentTab==='contact'} onClick={()=>navigateToTab('contact')}>İletişim</NavButton><NavButton active={currentTab==='account'} onClick={()=>{setAccountView('menu');navigateToTab('account');}}>Hesabım</NavButton></nav>
     <CatalogSearchOverlay query={searchQuery} open={isSearchFocused} onQueryChange={setSearchQuery} onProduct={slug=>{setIsSearchFocused(false);openProduct(slug);}} onProducer={(_id,slug)=>{setIsSearchFocused(false);openProducer(slug);}} onCategory={(slug,label)=>{setIsSearchFocused(false);openSearch(label,slug,null);}} onAllResults={value=>openSearch(value)}/>
    </div>
   </header>
 
   <main><React.Suspense fallback={<RouteLoading/>}>{renderContent()}</React.Suspense></main>
 
-  {currentTab!=='product-detail'?<nav aria-label="Ana gezinme" className="fixed bottom-4 left-3 right-3 z-[60] flex h-[68px] items-center justify-around rounded-3xl border border-gray-200/70 bg-white/95 px-1 shadow-xl backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/95 md:hidden" style={{bottom:'calc(0.75rem + env(safe-area-inset-bottom, 0px))'}}><BottomNavButton icon={Home} label="Ana Sayfa" active={currentTab==='home'} onClick={()=>navigateToTab('home')}/><BottomNavButton icon={Grid} label="Kategoriler" active={currentTab==='categories'} onClick={()=>navigateToTab('categories')}/><BottomNavButton icon={Heart} label="Favoriler" active={currentTab==='account'&&accountView==='favorites'} onClick={()=>{setAccountView('favorites');navigateToTab('account');}}/><BottomNavButton icon={ShoppingCart} label="Sepet" active={currentTab==='cart'} onClick={()=>navigateToTab('cart')} badge={cart.length}/><BottomNavButton icon={User} label="Hesabım" active={currentTab==='account'&&accountView!=='favorites'} onClick={()=>{setAccountView('menu');navigateToTab('account');}} badge={unreadCount}/></nav>:null}
-
-  {isMobileMenuOpen?<div className="fixed inset-0 z-[100] bg-black/60 p-4 md:hidden"><div ref={mobileMenuRef} role="dialog" aria-modal="true" aria-labelledby="mobile-menu-title" tabIndex={-1} className="ml-auto flex h-full w-full max-w-sm flex-col rounded-3xl bg-white p-5 shadow-2xl outline-none dark:bg-gray-900"><div className="flex items-center justify-between"><h2 id="mobile-menu-title" className="text-xl font-bold">Golden Oremar</h2><button type="button" onClick={()=>setIsMobileMenuOpen(false)} aria-label="Menüyü kapat" className="grid min-h-11 min-w-11 place-items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><X aria-hidden="true" className="h-5 w-5"/></button></div><nav className="mt-6 grid gap-2" aria-label="Mobil menü"><MenuLink onClick={()=>navigateToTab('home')}>Ana Sayfa</MenuLink><MenuLink onClick={()=>navigateToTab('categories')}>Kategoriler</MenuLink><MenuLink onClick={()=>navigateToTab('events')}>Etkinlikler</MenuLink><MenuLink onClick={()=>navigateToTab('health')}>Bilgi Merkezi</MenuLink><MenuLink onClick={()=>navigateToTab('about')}>Hakkımızda</MenuLink><MenuLink onClick={()=>navigateToTab('contact')}>İletişim</MenuLink><MenuLink onClick={()=>{setAccountView('menu');navigateToTab('account');}}>Hesabım</MenuLink><MenuLink onClick={()=>navigateToTab('cart')}>Sepetim</MenuLink></nav></div></div>:null}
+  <nav aria-label="Ana gezinme" className="fixed bottom-4 left-3 right-3 z-[60] mx-auto flex h-[68px] max-w-[44rem] items-center justify-around rounded-3xl border border-gray-200/70 bg-white/95 px-1 shadow-xl backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/95" style={{bottom:'calc(0.75rem + env(safe-area-inset-bottom, 0px))'}}><BottomNavButton icon={Home} label="Ana Sayfa" active={currentTab==='home'} onClick={()=>navigateToTab('home')}/><BottomNavButton icon={Grid} label="Kategoriler" active={currentTab==='categories'} onClick={()=>navigateToTab('categories')}/><BottomNavButton icon={Heart} label="Favoriler" active={currentTab==='account'&&accountView==='favorites'} onClick={()=>{setAccountView('favorites');navigateToTab('account');}}/><BottomNavButton icon={ShoppingCart} label="Sepet" active={currentTab==='cart'} onClick={()=>navigateToTab('cart')} badge={cartItemCount}/><BottomNavButton icon={User} label="Hesabım" active={currentTab==='account'&&accountView!=='favorites'} onClick={()=>{setAccountView('menu');navigateToTab('account');}}/></nav>
 
   {showGiftModal&&giftProduct?<React.Suspense fallback={<RouteLoading label="Hediye sipariş ekranı yükleniyor"/>}><GiftOrderFlow productReference={giftProduct.slug||String(giftProduct.id)} onClose={()=>setShowGiftModal(false)} onCreated={()=>{showToast('Hediye siparişiniz oluşturuldu ve ödeme doğrulaması bekliyor.');setShowGiftModal(false);setAccountView('gifts');navigateToTab('account');}}/></React.Suspense>:null}
 
@@ -306,6 +303,4 @@ function AppContent(){
 export default function App(){return<AppContent/>;}
 
 function HeaderAction({label,onClick,icon,badge=0}:{label:string;onClick:()=>void;icon:React.ReactNode;badge?:number}){return<button type="button" onClick={onClick} aria-label={label} className="relative grid min-h-11 min-w-11 place-items-center rounded-full text-gray-500 transition hover:bg-gray-100 hover:text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:hover:bg-gray-800">{icon}{badge>0?<span aria-hidden="true" className="absolute right-0 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{badge>99?'99+':badge}</span>:null}</button>;}
-function NavButton({active,onClick,children}:{active:boolean;onClick:()=>void;children:React.ReactNode}){return<button type="button" onClick={onClick} aria-current={active?'page':undefined} className={`min-h-11 rounded-xl px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${active?'text-brand-gold':'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800'}`}>{children}</button>;}
-function MenuLink({onClick,children}:{onClick:()=>void;children:React.ReactNode}){return<button type="button" onClick={onClick} className="min-h-12 rounded-xl border border-gray-200 px-4 text-left font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-800">{children}</button>;}
-function BottomNavButton({icon:Icon,label,active,onClick,badge=0}:{icon:any;label:string;active:boolean;onClick:()=>void;badge?:number}){return<button type="button" onClick={onClick} aria-current={active?'page':undefined} aria-label={badge>0?`${label}, ${badge} bildirim veya öğe`:label} className={`relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${active?'text-brand-gold':'text-gray-500 dark:text-gray-400'}`}><span className="relative"><Icon aria-hidden="true" className="h-6 w-6"/>{badge>0?<span aria-hidden="true" className="absolute -right-2 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{badge>99?'99+':badge}</span>:null}</span><span className="text-[11px] font-bold">{label}</span></button>;}
+function BottomNavButton({icon:Icon,label,active,onClick,badge=0}:{icon:any;label:string;active:boolean;onClick:()=>void;badge?:number}){return<button type="button" onClick={onClick} aria-current={active?'page':undefined} aria-label={badge>0?`${label}, ${badge} öğe`:label} className={`relative flex h-full min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${active?'text-brand-gold':'text-gray-500 dark:text-gray-400'}`}><span className="relative"><Icon aria-hidden="true" className="h-6 w-6"/>{badge>0?<span aria-hidden="true" className="absolute -right-2 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{badge>99?'99+':badge}</span>:null}</span><span className="text-[11px] font-bold">{label}</span></button>;}
