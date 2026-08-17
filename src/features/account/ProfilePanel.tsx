@@ -4,6 +4,10 @@ import { getPrivateAssetSignedUrl, removeCustomerAvatar, updateProfile, uploadCu
 import type { AccountOverview } from './types';
 import { useAccessibleDialog } from '../accessibility/useAccessibleDialog';
 
+const PROFILE_LOCALES = new Set(['tr','en','de','fr','ku','ar']);
+const AVATAR_TYPES = new Set(['image/jpeg','image/png','image/webp','image/avif']);
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+
 export default function ProfilePanel({ overview, onChanged }: {
   overview: AccountOverview;
   onChanged: () => Promise<void> | void;
@@ -26,7 +30,7 @@ export default function ProfilePanel({ overview, onChanged }: {
   useEffect(() => {
     setDisplayName(p.display_name || '');
     setPhone(p.phone || '');
-    setLocale(p.locale || 'tr');
+    setLocale(PROFILE_LOCALES.has(String(p.locale || '')) ? String(p.locale) : 'tr');
     setMarketingConsent(!!p.marketing_consent);
   }, [p.display_name, p.phone, p.locale, p.marketing_consent]);
 
@@ -44,14 +48,21 @@ export default function ProfilePanel({ overview, onChanged }: {
 
   async function changeAvatar(file?: File) {
     if (!file || avatarBusy) return;
+    setError('');
+    setMessage('');
+    if (!AVATAR_TYPES.has(file.type)) {
+      setError('Profil fotoğrafı JPEG, PNG, WebP veya AVIF olmalıdır.');
+      return;
+    }
+    if (file.size <= 0 || file.size > MAX_AVATAR_BYTES) {
+      setError('Profil fotoğrafı en fazla 5 MB olabilir.');
+      return;
+    }
     try {
       setAvatarBusy(true);
-      setError('');
-      setMessage('');
       const previous = p.avatar_path;
       const result = await uploadCustomerAvatar(p.id, file);
       if (previous && previous !== result.avatar_path) {
-        // Delete the old object only after the database points to the new object.
         const { supabase } = await import('../../lib/supabase');
         await supabase.storage.from('user-private').remove([previous]).catch(()=>{});
       }
@@ -87,19 +98,39 @@ export default function ProfilePanel({ overview, onChanged }: {
     if (saving) return;
     setError('');
     setMessage('');
-    if (displayName.trim().length < 2) {
+    const normalizedName = displayName.trim().replace(/\s+/g, ' ');
+    const normalizedPhone = phone.trim();
+    if (normalizedName.length < 2) {
       setError('Ad soyad en az 2 karakter olmalıdır.');
+      return;
+    }
+    if (normalizedName.length > 120) {
+      setError('Ad soyad en fazla 120 karakter olabilir.');
+      return;
+    }
+    if (normalizedPhone.length > 40) {
+      setError('Telefon numarası en fazla 40 karakter olabilir.');
+      return;
+    }
+    if (normalizedPhone && !/^[+()0-9 .\-]{5,40}$/.test(normalizedPhone)) {
+      setError('Telefon numarası yalnız rakam ve standart telefon işaretlerini içermelidir.');
+      return;
+    }
+    if (!PROFILE_LOCALES.has(locale)) {
+      setError('Desteklenmeyen uygulama dili seçildi.');
       return;
     }
     try {
       setSaving(true);
       await updateProfile({
-        displayName: displayName.trim(),
-        phone: phone.trim() || null,
+        displayName: normalizedName,
+        phone: normalizedPhone || null,
         locale,
         marketingConsent,
       });
       await onChanged();
+      setDisplayName(normalizedName);
+      setPhone(normalizedPhone);
       setMessage('Profil bilgileriniz güncellendi.');
     } catch (err: any) {
       setError(err?.message || 'Profil güncellenemedi.');
@@ -142,13 +173,13 @@ export default function ProfilePanel({ overview, onChanged }: {
 
         <label className="block">
           <span className="text-sm font-semibold">Ad Soyad</span>
-          <input disabled={saving} value={displayName} onChange={e => setDisplayName(e.target.value)} autoComplete="name"
+          <input required minLength={2} maxLength={120} disabled={saving} value={displayName} onChange={e => setDisplayName(e.target.value)} autoComplete="name"
             className="mt-1 min-h-11 w-full rounded-xl border border-gray-300 bg-transparent px-3 disabled:opacity-60 dark:border-gray-700" />
         </label>
 
         <label className="block">
           <span className="text-sm font-semibold">Telefon</span>
-          <input disabled={saving} value={phone} onChange={e => setPhone(e.target.value)} autoComplete="tel" inputMode="tel"
+          <input maxLength={40} disabled={saving} value={phone} onChange={e => setPhone(e.target.value)} autoComplete="tel" inputMode="tel"
             className="mt-1 min-h-11 w-full rounded-xl border border-gray-300 bg-transparent px-3 disabled:opacity-60 dark:border-gray-700" />
         </label>
 
