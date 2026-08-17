@@ -1,5 +1,6 @@
 import React,{useMemo,useState}from'react';
 import{Calendar,CheckCircle2,Gift,Heart,Minus,Plus,Share2,ShoppingCart,Star,ThumbsUp,Users}from'lucide-react';
+import{buildProductUrl,shareOrCopy}from'../navigation/appUrl';
 
 type Props={
  product:any;
@@ -45,18 +46,12 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
   if(cardBusy)return;
   try{
    setActionBusy('share');setActionFeedback('');
-   const shareUrl=typeof window!=='undefined'?window.location.href:'';
-   if(typeof navigator!=='undefined'&&typeof navigator.share==='function'){
-    if(onShare){await onShare(product);}else{await navigator.share({title:productName,text:description||undefined,url:shareUrl||undefined});}
-    setActionFeedback('Paylaşım işlemi tamamlandı.');
-    return;
-   }
-   if(!shareUrl)throw new Error('share_url_unavailable');
-   await copyText(shareUrl);
-   setActionFeedback('Bağlantı panoya kopyalandı.');
-  }catch(error:any){
-   if(error?.name==='AbortError')setActionFeedback('Paylaşım iptal edildi.');
-   else setActionFeedback('Bağlantı paylaşılamadı. Ürün detayını açıp adres çubuğundaki bağlantıyı kopyalayabilirsiniz.');
+   if(onShare){await onShare(product);setActionFeedback('Paylaşım işlemi tamamlandı.');return;}
+   const reference=product?.slug||product?.legacyId||product?.id;
+   const result=await shareOrCopy({title:productName,text:description,url:buildProductUrl(reference)});
+   setActionFeedback(result==='copied'?'Ürün bağlantısı panoya kopyalandı.':result==='shared'?'Paylaşım işlemi tamamlandı.':'Paylaşım iptal edildi.');
+  }catch{
+   setActionFeedback('Ürün bağlantısı paylaşılamadı. Ürün detayını açıp tekrar deneyebilirsiniz.');
   }finally{setActionBusy(null);}
  }
  function decrease(){setQuantity(current=>Math.max(1,current-1));}
@@ -64,7 +59,7 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
  return <article aria-busy={cardBusy} className="flex h-full flex-col overflow-hidden rounded-3xl border border-brand-gold/10 bg-brand-card shadow-sm transition-shadow hover:shadow-lg">
   <div className="relative aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-800">
    <button type="button" onClick={onClick} className={`block h-full w-full ${focusClass} focus-visible:ring-inset focus-visible:ring-offset-0`} aria-label={`${productName} detayını aç`}>
-    {product?.image?<img src={product.image} alt={`${productName} ürün görseli`} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 motion-safe:hover:scale-[1.03]"/>:<div className="grid h-full place-items-center text-sm text-gray-500">Görsel henüz eklenmedi</div>}
+    {product?.image?<img src={product.image} alt={`${productName} ürün görseli`} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 motion-safe:hover:scale-[1.03]"/>:<div role="img" aria-label={`${productName} için görsel henüz eklenmedi`} className="grid h-full place-items-center text-sm text-gray-500">Görsel henüz eklenmedi</div>}
    </button>
    {badges.length?<div className="pointer-events-none absolute left-3 top-3 flex max-w-[75%] flex-wrap gap-2">{badges.map(badge=><span key={badge.key} className={`rounded-full px-3 py-1 text-xs font-bold ${badge.className}`}>{badge.label}</span>)}</div>:null}
    <div className="absolute right-3 top-3 flex gap-2">
@@ -103,14 +98,5 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
  </article>;
 }
 
-async function copyText(value:string){
- if(typeof navigator!=='undefined'&&navigator.clipboard?.writeText){await navigator.clipboard.writeText(value);return;}
- if(typeof document==='undefined')throw new Error('clipboard_unavailable');
- const textarea=document.createElement('textarea');const active=document.activeElement as HTMLElement|null;
- textarea.value=value;textarea.setAttribute('readonly','');textarea.style.position='fixed';textarea.style.opacity='0';textarea.style.pointerEvents='none';textarea.style.left='-9999px';
- document.body.appendChild(textarea);textarea.focus();textarea.select();
- const copied=document.execCommand('copy');document.body.removeChild(textarea);active?.focus?.();
- if(!copied)throw new Error('clipboard_copy_failed');
-}
 function formatMoney(value:number,currency:string){try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency}).format(Number.isFinite(value)?value:0);}catch{return `${(Number.isFinite(value)?value:0).toFixed(2)} ${currency}`;}}
 function formatNumber(value:number){try{return new Intl.NumberFormat('tr-TR').format(Number.isFinite(value)?value:0);}catch{return String(Math.max(0,Math.floor(value||0)));}}
