@@ -27,14 +27,34 @@ export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{o
 
  async function open(item:any){
   const id=String(item?.id||'');if(!id||openingId||markAllBusy)return;
-  try{setOpeningId(id);setError('');setActionStatus('');if(!item.readAt){await markNotificationRead(id);const nextUnread=Math.max(0,unread(data?.unreadCount)-1);const readAt=new Date().toISOString();setData((previous:any)=>previous?{...previous,unreadCount:nextUnread,items:(previous.items||[]).map((candidate:any)=>candidate.id===id?{...candidate,readAt}:candidate)}:previous);onUnreadCountChange?.(nextUnread);}if(item.actionUrl&&onOpenAction){onOpenAction(item.actionUrl,item.metadata||{});return;}setActionStatus(item.actionUrl?'Bildirim okundu. Bu bildirim için uygulama içi hedef şu anda kullanılamıyor.':'Bildirim okundu.');}
-  catch(e:any){setError(e?.message||'Bildirim açılamadı.');}finally{setOpeningId(null);}
+  try{
+   setOpeningId(id);setError('');setActionStatus('');
+   if(!item.readAt){
+    await markNotificationRead(id);
+    let nextUnread=Math.max(0,unread(data?.unreadCount)-1);
+    try{const latest=await listNotifications(1);nextUnread=unread(latest?.unreadCount);}catch{}
+    const readAt=new Date().toISOString();
+    setData((previous:any)=>previous?{...previous,unreadCount:nextUnread,items:(previous.items||[]).map((candidate:any)=>candidate.id===id?{...candidate,readAt}:candidate)}:previous);
+    onUnreadCountChange?.(nextUnread);
+   }
+   if(item.actionUrl&&onOpenAction){onOpenAction(item.actionUrl,item.metadata||{});return;}
+   setActionStatus(item.actionUrl?'Bildirim okundu. Bu bildirim için uygulama içi hedef şu anda kullanılamıyor.':'Bildirim okundu.');
+  }catch(e:any){setError(e?.message||'Bildirim açılamadı.');}finally{setOpeningId(null);}
  }
 
  async function markAll(){
   if(markAllBusy||openingId)return;
-  try{setMarkAllBusy(true);setError('');setActionStatus('');await markAllNotificationsRead();const readAt=new Date().toISOString();setData((previous:any)=>previous?{...previous,unreadCount:0,items:(previous.items||[]).map((item:any)=>item.readAt?item:{...item,readAt})}:previous);onUnreadCountChange?.(0);setActionStatus('Tüm bildirimler okundu olarak işaretlendi.');}
-  catch(e:any){setError(e?.message||'Bildirimler güncellenemedi.');}finally{setMarkAllBusy(false);}
+  try{
+   setMarkAllBusy(true);setError('');setActionStatus('');await markAllNotificationsRead();
+   const readAt=new Date().toISOString();
+   try{
+    const latest=await listNotifications(PAGE_SIZE,null);const latestItems=Array.isArray(latest?.items)?latest.items:[];
+    setData(latest);setHasMore(latestItems.length===PAGE_SIZE);onUnreadCountChange?.(unread(latest?.unreadCount));
+   }catch{
+    setData((previous:any)=>previous?{...previous,unreadCount:0,items:(previous.items||[]).map((item:any)=>item.readAt?item:{...item,readAt})}:previous);onUnreadCountChange?.(0);
+   }
+   setActionStatus('Tüm bildirimler okundu olarak işaretlendi.');
+  }catch(e:any){setError(e?.message||'Bildirimler güncellenemedi.');}finally{setMarkAllBusy(false);}
  }
 
  if(loading)return<LoadingState label="Bildirimler yükleniyor"/>;
