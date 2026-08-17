@@ -4,9 +4,18 @@ on:
   push:
     branches:
       - agent/admin-supabase-retire-node
+    paths:
+      - 'src/admin/**'
+      - 'src/pages/AdminPage.tsx'
+      - 'src/**/firebase*'
+      - 'src/**/DataContext*'
 
 permissions:
   contents: read
+
+concurrency:
+  group: admin-residue-audit-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   audit:
