@@ -3,6 +3,7 @@ import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { listNotifications } from './api';
 import { getNotificationSoundEnabled, playNotificationSound, primeNotificationAudio } from '../notifications/premiumSounds';
+import { subscribeNativePushReceipts } from '../notifications/nativePush';
 
 function normalizeUnreadCount(value: unknown) {
   const count = Number(value);
@@ -47,6 +48,7 @@ export function useUnreadNotificationCount(authenticated: boolean) {
 
     let disposed = false;
     let appStateHandle: PluginListenerHandle | undefined;
+    let unsubscribePushReceipt: (() => void) | undefined;
 
     const safeRefresh = async () => {
       try {
@@ -67,6 +69,7 @@ export function useUnreadNotificationCount(authenticated: boolean) {
     window.addEventListener('focus', onWindowFocus);
 
     if (Capacitor.isNativePlatform()) {
+      unsubscribePushReceipt = subscribeNativePushReceipts(() => { void safeRefresh(); });
       void CapApp.addListener('appStateChange', ({ isActive }) => {
         if (isActive) void safeRefresh();
       }).then(handle => {
@@ -80,6 +83,7 @@ export function useUnreadNotificationCount(authenticated: boolean) {
       window.removeEventListener('pointerdown', prime);
       window.removeEventListener('keydown', prime);
       window.removeEventListener('focus', onWindowFocus);
+      unsubscribePushReceipt?.();
       if (appStateHandle) void appStateHandle.remove();
     };
   }, [authenticated, refresh]);
