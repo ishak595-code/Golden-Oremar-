@@ -1,90 +1,171 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Calendar, Clock, MapPin, Users, X } from 'lucide-react';
-import { listPublicEvents, publicContentUrl, submitEventReservation } from './api';
+import { ArrowLeft, Calendar, CheckCircle2, Clock, MapPin, RefreshCw, TicketCheck, Users, X } from 'lucide-react';
+import { listMyEventReservations, listPublicEvents, publicContentUrl, submitEventReservation, type MyEventReservation, type PublicEvent, type PublicEventsResult } from './api';
 import { useAccessibleDialog } from '../accessibility/useAccessibleDialog';
 
 type Props = {
   onBack: () => void;
-  currentUser?: { email?: string | null; name?: string | null; displayName?: string | null } | null;
+  currentUser?: { id?: string | null; email?: string | null; name?: string | null; displayName?: string | null } | null;
 };
 
 const formatDate = (value: string) => {
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'Tarih bilgisi yok';
+  if (Number.isNaN(date.getTime())) return 'Tarih doğrulanamadı';
   try { return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'long', timeStyle: 'short' }).format(date); }
-  catch { return 'Tarih bilgisi yok'; }
+  catch { return 'Tarih doğrulanamadı'; }
+};
+
+const reservationStatusLabel = (status: MyEventReservation['status']) => {
+  const labels: Record<MyEventReservation['status'], string> = {
+    pending: 'Onay bekliyor', confirmed: 'Onaylandı', waitlisted: 'Bekleme listesi', cancelled: 'İptal edildi', attended: 'Katılım tamamlandı', no_show: 'Katılım gerçekleşmedi',
+  };
+  return labels[status];
+};
+
+const reservationStatusClass = (status: MyEventReservation['status']) => {
+  if (status === 'confirmed' || status === 'attended') return 'bg-green-50 text-green-800 dark:bg-green-950/30 dark:text-green-200';
+  if (status === 'waitlisted' || status === 'pending') return 'bg-amber-50 text-amber-900 dark:bg-amber-950/30 dark:text-amber-100';
+  return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
 };
 
 const reservationError = (message: string) => {
   if (message.includes('rate_limit_exceeded')) return 'Kısa sürede çok fazla kayıt denemesi yapıldı. Lütfen daha sonra tekrar deneyin.';
   if (message.includes('duplicate_reservation')) return 'Bu e-posta adresiyle etkinliğe zaten aktif bir kayıt bulunuyor.';
   if (message.includes('event_not_available')) return 'Bu etkinlik artık kayıt kabul etmiyor.';
+  if (message.includes('event_already_started')) return 'Bu etkinlik başlamış olduğu için yeni kayıt alınamıyor.';
   if (message.includes('reservation_deadline_passed')) return 'Etkinlik kayıt süresi sona erdi.';
+  if (message.includes('invalid_guest_count')) return 'Kişi sayısı 1 ile 20 arasında olmalıdır.';
   if (message.includes('invalid_phone')) return 'Geçerli bir telefon numarası yazın.';
   if (message.includes('invalid_email')) return 'Geçerli bir e-posta adresi yazın.';
   return 'Etkinlik kaydı tamamlanamadı. Lütfen bilgileri kontrol edip tekrar deneyin.';
 };
 
 export default function PublicEventsScreen({ onBack, currentUser }: Props) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<PublicEventsResult | null>(null);
+  const [reservations, setReservations] = useState<MyEventReservation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reservationLoading, setReservationLoading] = useState(false);
   const [error, setError] = useState('');
-  const [selected, setSelected] = useState<any>(null);
+  const [reservationErrorText, setReservationErrorText] = useState('');
+  const [selected, setSelected] = useState<PublicEvent | null>(null);
   const errorRef = useRef<HTMLDivElement | null>(null);
 
-  async function load() {
-    try { setLoading(true); setError(''); setData(await listPublicEvents(true)); }
-    catch (err: any) { setError(err?.message || 'Etkinlikler yüklenemedi.'); }
-    finally { setLoading(false); }
+  async function load(silent = false) {
+    try {
+      if (!silent) setLoading(true);
+      setError('');
+      setData(await listPublicEvents(true));
+    } catch (err: any) {
+      setError(err?.message || 'Etkinlikler yüklenemedi.');
+      if (!silent) setData(null);
+    } finally { if (!silent) setLoading(false); }
   }
+
+  async function loadReservations(silent = false) {
+    if (!currentUser?.id) { setReservations([]); setReservationErrorText(''); return; }
+    try {
+      if (!silent) setReservationLoading(true);
+      setReservationErrorText('');
+      setReservations(await listMyEventReservations(30));
+    } catch (err: any) {
+      setReservationErrorText(err?.message || 'Etkinlik kayıtlarınız yüklenemedi.');
+      if (!silent) setReservations([]);
+    } finally { if (!silent) setReservationLoading(false); }
+  }
+
   useEffect(() => { void load(); }, []);
+  useEffect(() => { void loadReservations(); }, [currentUser?.id]);
   useEffect(() => { if (error) queueMicrotask(() => errorRef.current?.focus()); }, [error]);
 
-  const upcoming = useMemo(() => (data?.items || []).filter((event: any) => new Date(event.endsAt).getTime() >= Date.now()), [data]);
-  const past = useMemo(() => (data?.items || []).filter((event: any) => new Date(event.endsAt).getTime() < Date.now()), [data]);
+  const upcoming = useMemo(() => (data?.items || []).filter(event => Date.parse(event.endsAt) >= Date.now()), [data]);
+  const past = useMemo(() => (data?.items || []).filter(event => Date.parse(event.endsAt) < Date.now()), [data]);
+  const activeReservationByEvent = useMemo(() => {
+    const map = new Map<string, MyEventReservation>();
+    for (const reservation of reservations) {
+      if (['pending', 'confirmed', 'waitlisted', 'attended'].includes(reservation.status) && !map.has(reservation.eventId)) map.set(reservation.eventId, reservation);
+    }
+    return map;
+  }, [reservations]);
+  const activeReservationCount = useMemo(() => reservations.filter(item => ['pending', 'confirmed', 'waitlisted'].includes(item.status)).length, [reservations]);
+
+  async function refreshAll() {
+    await Promise.all([load(true), loadReservations(true)]);
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <button type="button" onClick={onBack} className="mb-5 min-h-11 rounded-xl border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4" />Geri</button>
-      <header className="mb-6"><h1 className="text-3xl font-bold text-brand-green dark:text-brand-gold">Etkinlikler</h1><p className="mt-2 text-gray-600 dark:text-gray-300">Golden Oremar’ın yayınlanmış etkinlikleri ve kayıt durumları.</p></header>
-      {loading ? <div role="status" aria-live="polite" className="rounded-xl border p-5 text-center text-gray-500">Etkinlikler yükleniyor…</div> : null}
-      {error ? <div ref={errorRef} role="alert" tabIndex={-1} className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800 outline-none dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}<button type="button" onClick={() => void load()} className="mt-3 block min-h-11 rounded-lg border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Tekrar dene</button></div> : null}
 
-      {!loading && !error ? <>
-        <section aria-labelledby="upcoming-events-title">
-          <h2 id="upcoming-events-title" className="text-2xl font-bold">Yaklaşan Etkinlikler</h2>
-          {!upcoming.length ? <div className="mt-4 rounded-2xl border border-dashed p-7 text-center text-gray-500">Şu anda yayınlanmış yaklaşan etkinlik bulunmuyor.</div> : <div className="mt-4 grid gap-4 md:grid-cols-2">{upcoming.map((event: any) => <EventCard key={event.id} event={event} onReserve={() => setSelected(event)} />)}</div>}
+      <header className="overflow-hidden rounded-3xl bg-brand-green p-5 text-white shadow-sm sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div><h1 className="text-3xl font-bold">Etkinlikler</h1><p className="mt-2 max-w-3xl text-white/80">Golden Oremar etkinliklerini, gerçek kayıt durumlarını ve hesabınıza bağlı etkinlik kayıtlarını tek ekrandan takip edin.</p></div>
+          <button type="button" onClick={() => void refreshAll()} aria-label="Etkinlikleri ve kayıtlarımı yenile" className="grid min-h-11 min-w-11 place-items-center rounded-xl border border-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><RefreshCw aria-hidden="true" className="h-5 w-5" /></button>
+        </div>
+        <div className="mt-5 grid grid-cols-3 gap-2" aria-label="Etkinlik özeti">
+          <div className="rounded-2xl bg-white/10 p-3 text-center"><div className="text-xl font-bold">{data ? upcoming.length : '...'}</div><div className="text-xs text-white/80">Yaklaşan</div></div>
+          <div className="rounded-2xl bg-white/10 p-3 text-center"><div className="text-xl font-bold">{data ? past.length : '...'}</div><div className="text-xs text-white/80">Arşiv</div></div>
+          <div className="rounded-2xl bg-white/10 p-3 text-center"><div className="text-xl font-bold">{currentUser?.id ? activeReservationCount : '-'}</div><div className="text-xs text-white/80">Aktif kaydım</div></div>
+        </div>
+      </header>
+
+      {loading ? <div role="status" aria-live="polite" className="mt-5 rounded-2xl border p-5 text-center text-gray-500">Etkinlikler yükleniyor…</div> : null}
+      {error ? <div ref={errorRef} role="alert" tabIndex={-1} className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 outline-none dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}<button type="button" onClick={() => void load()} className="mt-3 block min-h-11 rounded-lg border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Tekrar dene</button></div> : null}
+
+      {currentUser?.id ? <section className="mt-7" aria-labelledby="my-event-reservations-title">
+        <div className="flex items-end justify-between gap-3"><div><h2 id="my-event-reservations-title" className="text-2xl font-bold">Etkinlik Kayıtlarım</h2><p className="mt-1 text-sm text-gray-500">Hesabınızla oluşturulan kayıt kodları, kişi sayısı ve güncel durum.</p></div></div>
+        {reservationLoading ? <div role="status" aria-live="polite" className="mt-4 rounded-2xl border p-5 text-center text-gray-500">Kayıtlarınız yükleniyor…</div> : null}
+        {reservationErrorText ? <div role="alert" className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">{reservationErrorText}<button type="button" onClick={() => void loadReservations()} className="mt-3 block min-h-11 rounded-lg border border-amber-300 px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-amber-800">Kayıtlarımı yeniden yükle</button></div> : null}
+        {!reservationLoading && !reservationErrorText && !reservations.length ? <div className="mt-4 rounded-2xl border border-dashed p-6 text-center text-gray-500">Hesabınıza bağlı etkinlik kaydı henüz yok.</div> : null}
+        {reservations.length ? <div className="mt-4 grid gap-3 md:grid-cols-2">{reservations.map(reservation => <ReservationCard key={reservation.id} reservation={reservation} />)}</div> : null}
+      </section> : null}
+
+      {!loading && !error && data ? <>
+        <section className="mt-9" aria-labelledby="upcoming-events-title">
+          <div><h2 id="upcoming-events-title" className="text-2xl font-bold">Yaklaşan Etkinlikler</h2><p className="mt-1 text-sm text-gray-500">Yalnız sunucuda yayınlanmış ve tarih bilgisi doğrulanmış etkinlikler gösterilir.</p></div>
+          {!upcoming.length ? <div className="mt-4 rounded-2xl border border-dashed p-7 text-center text-gray-500">Şu anda yayınlanmış yaklaşan etkinlik bulunmuyor. Geçmiş etkinlikler aşağıdaki arşivde tutuluyor.</div> : <div className="mt-4 grid gap-4 md:grid-cols-2">{upcoming.map(event => <EventCard key={event.id} event={event} reservation={activeReservationByEvent.get(event.id)} onReserve={() => setSelected(event)} />)}</div>}
         </section>
 
         <section className="mt-9" aria-labelledby="past-events-title">
-          <h2 id="past-events-title" className="text-2xl font-bold">Geçmiş Etkinlikler</h2>
-          {!past.length ? <div className="mt-4 rounded-2xl border border-dashed p-7 text-center text-gray-500">Geçmiş etkinlik kaydı bulunmuyor.</div> : <div className="mt-4 grid gap-4 md:grid-cols-2">{past.map((event: any) => <EventCard key={event.id} event={event} />)}</div>}
+          <div><h2 id="past-events-title" className="text-2xl font-bold">Etkinlik Arşivi</h2><p className="mt-1 text-sm text-gray-500">Tamamlanmış etkinlikler tarihsel kayıt olarak gösterilir; yeni kayıt alınmaz.</p></div>
+          {!past.length ? <div className="mt-4 rounded-2xl border border-dashed p-7 text-center text-gray-500">Geçmiş etkinlik kaydı bulunmuyor.</div> : <div className="mt-4 grid gap-4 md:grid-cols-2">{past.map(event => <EventCard key={event.id} event={event} reservation={activeReservationByEvent.get(event.id)} />)}</div>}
         </section>
       </> : null}
 
-      {selected ? <ReservationDialog event={selected} currentUser={currentUser} onClose={() => setSelected(null)} /> : null}
+      {selected ? <ReservationDialog event={selected} currentUser={currentUser} onClose={() => setSelected(null)} onReserved={() => void refreshAll()} /> : null}
     </main>
   );
 }
 
-function EventCard({ event, onReserve }: { event: any; onReserve?: () => void }) {
-  const image = publicContentUrl(event.imagePath);
-  return <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-    {image ? <img src={image} alt="" loading="lazy" className="aspect-[16/8] w-full object-cover" /> : null}
-    <div className="p-5">
-      <h3 className="text-xl font-bold text-brand-green dark:text-brand-gold">{event.title}</h3>
-      <div className="mt-3 space-y-2 text-sm text-gray-500">
-        <div className="flex gap-2"><Calendar aria-hidden="true" className="h-4 w-4 text-brand-gold" />{formatDate(event.startsAt)}</div>
-        <div className="flex gap-2"><MapPin aria-hidden="true" className="h-4 w-4 text-brand-gold" />{event.locationName}</div>
-        {event.capacity != null ? <div className="flex gap-2"><Users aria-hidden="true" className="h-4 w-4 text-brand-gold" />{event.remainingCapacity > 0 ? `${event.remainingCapacity} kişilik yer` : 'Kontenjan dolu'}</div> : null}
-      </div>
-      <p className="mt-4 line-clamp-4 leading-7 text-gray-600 dark:text-gray-300">{event.description}</p>
-      {event.reservable && onReserve ? <button type="button" onClick={onReserve} className="mt-5 min-h-11 w-full rounded-xl bg-brand-green px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{event.waitlistOnly ? 'Bekleme Listesine Katıl' : 'Kayıt Ol'}</button> : <div className="mt-5 rounded-xl bg-gray-50 p-3 text-center text-sm font-semibold text-gray-500 dark:bg-gray-800">{event.status === 'completed' ? 'Etkinlik tamamlandı' : 'Kayıt kapalı'}</div>}
+function ReservationCard({ reservation }: { reservation: MyEventReservation }) {
+  const event = reservation.event;
+  return <article className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="text-xs font-bold uppercase tracking-wide text-brand-gold">Kayıt kodu {reservation.reservationCode}</div><h3 className="mt-1 font-bold">{event?.title || 'Etkinlik bilgisi doğrulanamadı'}</h3></div><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${reservationStatusClass(reservation.status)}`}>{reservationStatusLabel(reservation.status)}</span></div>
+    <div className="mt-3 space-y-2 text-sm text-gray-500">
+      {event ? <><div className="flex gap-2"><Calendar aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" /><span>{formatDate(event.startsAt)}</span></div><div className="flex gap-2"><MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" /><span>{event.locationName}</span></div></> : null}
+      <div className="flex gap-2"><Users aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" /><span>{reservation.guestCount} kişi</span></div>
     </div>
   </article>;
 }
 
-function ReservationDialog({ event, currentUser, onClose }: { event: any; currentUser: any; onClose: () => void }) {
+function EventCard({ event, reservation, onReserve }: { event: PublicEvent; reservation?: MyEventReservation; onReserve?: () => void }) {
+  const image = publicContentUrl(event.imagePath);
+  return <article className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    {image ? <img src={image} alt="" loading="lazy" decoding="async" className="aspect-[16/8] w-full object-cover" /> : null}
+    <div className="p-5">
+      <div className="flex items-start justify-between gap-3"><h3 className="text-xl font-bold text-brand-green dark:text-brand-gold">{event.title}</h3>{reservation ? <TicketCheck aria-label="Bu etkinliğe kayıtlısınız" className="h-5 w-5 shrink-0 text-green-600" /> : null}</div>
+      <div className="mt-3 space-y-2 text-sm text-gray-500">
+        <div className="flex gap-2"><Calendar aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" /><span>{formatDate(event.startsAt)}</span></div>
+        <div className="flex gap-2"><MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" /><span>{event.locationName}</span></div>
+        {event.capacity != null ? <div className="flex gap-2"><Users aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" /><span>{event.remainingCapacity != null && event.remainingCapacity > 0 ? `${event.remainingCapacity} kişilik yer` : 'Kontenjan dolu veya bekleme listesi'}</span></div> : null}
+        {event.reservationDeadline ? <div className="flex gap-2"><Clock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" /><span>Kayıt sonu: {formatDate(event.reservationDeadline)}</span></div> : null}
+      </div>
+      <p className="mt-4 line-clamp-4 leading-7 text-gray-600 dark:text-gray-300">{event.description}</p>
+      {reservation ? <div className={`mt-5 rounded-xl p-3 text-center text-sm font-bold ${reservationStatusClass(reservation.status)}`}>Kaydınız: {reservationStatusLabel(reservation.status)} · {reservation.guestCount} kişi</div> : event.reservable && onReserve ? <button type="button" onClick={onReserve} className="mt-5 min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{event.waitlistOnly ? 'Bekleme Listesine Katıl' : 'Kayıt Ol'}</button> : <div className="mt-5 rounded-xl bg-gray-50 p-3 text-center text-sm font-semibold text-gray-500 dark:bg-gray-800">{event.status === 'completed' ? 'Etkinlik tamamlandı' : event.status === 'sold_out' ? 'Kontenjan dolu' : 'Kayıt kapalı'}</div>}
+    </div>
+  </article>;
+}
+
+function ReservationDialog({ event, currentUser, onClose, onReserved }: { event: PublicEvent; currentUser: Props['currentUser']; onClose: () => void; onReserved: () => void }) {
   const [name, setName] = useState(currentUser?.name || currentUser?.displayName || '');
   const [email, setEmail] = useState(currentUser?.email || '');
   const [phone, setPhone] = useState('');
@@ -103,24 +184,31 @@ function ReservationDialog({ event, currentUser, onClose }: { event: any; curren
     e.preventDefault();
     if (busy) return;
     setError('');
+    const phoneDigits = phone.replace(/\D/g, '').length;
+    if (name.trim().length < 2) { setError('Ad soyad alanını doldurun.'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError('Geçerli bir e-posta adresi yazın.'); return; }
+    if (phoneDigits < 7 || phoneDigits > 20) { setError('Telefon numarası 7 ile 20 rakam içermelidir.'); return; }
+    if (!Number.isSafeInteger(guestCount) || guestCount < 1 || guestCount > 20) { setError('Kişi sayısı 1 ile 20 arasında olmalıdır.'); return; }
     try {
       setBusy(true);
-      setResult(await submitEventReservation({ eventReference: event.slug || event.id, guestName: name.trim(), guestEmail: email.trim(), guestPhone: phone.trim(), guestCount, notes: notes.trim(), website }));
+      const next = await submitEventReservation({ eventReference: event.slug || event.id, guestName: name.trim(), guestEmail: email.trim(), guestPhone: phone.trim(), guestCount, notes: notes.trim(), website });
+      setResult(next);
+      onReserved();
     } catch (err: any) { setError(reservationError(String(err?.message || err))); }
     finally { setBusy(false); }
   }
 
-  return <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/70 p-4"><div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="reservation-title" tabIndex={-1} className="mx-auto my-5 max-w-lg rounded-2xl bg-white p-5 text-brand-text shadow-xl outline-none dark:bg-gray-900">
-    <div className="flex items-start justify-between gap-3"><div><h2 id="reservation-title" className="text-xl font-bold">Etkinlik Kaydı</h2><p className="mt-1 text-sm text-gray-500">{event.title}</p></div><button type="button" disabled={busy} onClick={onClose} aria-label="Kayıt penceresini kapat" className="grid min-h-11 min-w-11 place-items-center rounded-full border disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><X aria-hidden="true" className="h-5 w-5" /></button></div>
-    {result ? <div className="mt-5 rounded-xl border border-green-200 bg-green-50 p-4 text-green-900 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-100"><div className="font-bold">Kaydınız alındı.</div><p className="mt-2 text-sm">Kayıt kodu: {result.reservationCode}</p><p className="mt-1 text-sm">Durum: {result.status === 'waitlisted' ? 'Bekleme listesi' : 'İnceleme/onay bekliyor'}</p><button type="button" onClick={onClose} className="mt-4 min-h-11 w-full rounded-xl bg-brand-green font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Tamam</button></div> : <form onSubmit={submit} aria-busy={busy} className="mt-5 space-y-4">
+  return <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/70 p-4"><div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="reservation-title" tabIndex={-1} className="mx-auto my-5 max-w-lg rounded-3xl bg-white p-5 text-brand-text shadow-xl outline-none dark:bg-gray-900">
+    <div className="flex items-start justify-between gap-3"><div><div className="text-xs font-bold uppercase tracking-wide text-brand-gold">Golden Oremar Etkinliği</div><h2 id="reservation-title" className="mt-1 text-xl font-bold">Etkinlik Kaydı</h2><p className="mt-1 text-sm text-gray-500">{event.title}</p></div><button type="button" disabled={busy} onClick={onClose} aria-label="Kayıt penceresini kapat" className="grid min-h-11 min-w-11 place-items-center rounded-full border disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><X aria-hidden="true" className="h-5 w-5" /></button></div>
+    {result ? <div className="mt-5 rounded-2xl border border-green-200 bg-green-50 p-4 text-green-900 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-100"><CheckCircle2 aria-hidden="true" className="h-8 w-8 text-green-600" /><div className="mt-3 font-bold">Kaydınız alındı.</div><p className="mt-2 text-sm">Kayıt kodu: <strong>{String(result.reservationCode || 'Kod doğrulanamadı')}</strong></p><p className="mt-1 text-sm">Durum: {result.status === 'waitlisted' ? 'Bekleme listesi' : 'İnceleme/onay bekliyor'}</p><button type="button" onClick={onClose} className="mt-4 min-h-11 w-full rounded-xl bg-brand-green font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Tamam</button></div> : <form onSubmit={submit} aria-busy={busy} className="mt-5 space-y-4">
       {error ? <div ref={errorRef} role="alert" tabIndex={-1} className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 outline-none dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div> : null}
+      <div className="rounded-2xl bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300"><Calendar aria-hidden="true" className="mr-2 inline h-4 w-4 text-brand-gold" />{formatDate(event.startsAt)}<br /><MapPin aria-hidden="true" className="mr-2 mt-2 inline h-4 w-4 text-brand-gold" />{event.locationName}</div>
       <label className="block"><span className="text-sm font-semibold">Ad Soyad</span><input value={name} minLength={2} maxLength={120} disabled={busy} onChange={e => setName(e.target.value)} autoComplete="name" className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3 disabled:opacity-60" required /></label>
       <label className="block"><span className="text-sm font-semibold">E-posta</span><input type="email" value={email} maxLength={254} disabled={busy} onChange={e => setEmail(e.target.value)} autoComplete="email" className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3 disabled:opacity-60" required /></label>
-      <label className="block"><span className="text-sm font-semibold">Telefon</span><input value={phone} maxLength={32} disabled={busy} onChange={e => setPhone(e.target.value)} autoComplete="tel" inputMode="tel" className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3 disabled:opacity-60" required /></label>
-      <label className="block"><span className="text-sm font-semibold">Kişi Sayısı</span><input type="number" min="1" max="20" value={guestCount} disabled={busy} onChange={e => setGuestCount(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3 disabled:opacity-60" /></label>
+      <label className="block"><span className="text-sm font-semibold">Telefon</span><input value={phone} maxLength={40} disabled={busy} onChange={e => setPhone(e.target.value)} autoComplete="tel" inputMode="tel" className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3 disabled:opacity-60" required /></label>
+      <label className="block"><span className="text-sm font-semibold">Kişi Sayısı</span><input type="number" min="1" max="20" value={guestCount} disabled={busy} onChange={e => { const parsed = Number(e.target.value); setGuestCount(Number.isSafeInteger(parsed) ? Math.max(1, Math.min(20, parsed)) : 1); }} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3 disabled:opacity-60" /></label>
       <label className="block"><span className="text-sm font-semibold">Not (opsiyonel)</span><textarea value={notes} maxLength={1000} disabled={busy} onChange={e => setNotes(e.target.value)} rows={3} className="mt-1 w-full rounded-xl border bg-transparent p-3 disabled:opacity-60" /><span className="mt-1 block text-xs text-gray-500">{notes.length}/1000</span></label>
       <label className="sr-only" aria-hidden="true">Web sitesi<input tabIndex={-1} autoComplete="off" value={website} onChange={e => setWebsite(e.target.value)} /></label>
-      <div className="rounded-xl bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300"><Clock aria-hidden="true" className="mr-2 inline h-4 w-4 text-brand-gold" />Başlangıç: {formatDate(event.startsAt)}</div>
       <button disabled={busy} className="min-h-12 w-full rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{busy ? 'Kaydınız gönderiliyor…' : event.waitlistOnly ? 'Bekleme Listesine Katıl' : 'Kaydı Gönder'}</button>
     </form>}
   </div></div>;
