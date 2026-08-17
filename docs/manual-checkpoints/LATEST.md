@@ -6,57 +6,120 @@ PR: #47
 
 Golden Oremar is an Android/iOS application. React/Vite is the Capacitor UI layer, not a desktop website shell.
 
-Before any new work, read this file together with `PROJECT_STATE.json`, `TEST_REPORT.json`, `docs/manual-checkpoints/2026-08-17-production-hardening.md`, `docs/account-audit/2026-08-17-account-tab-production-audit.md` and `docs/manual-checkpoints/2026-08-17-account-cart-final-polish.md`. Do not rebuild completed blocks.
+Before any new work, read this file together with `PROJECT_STATE.json`, `TEST_REPORT.json`, `docs/manual-checkpoints/2026-08-17-production-hardening.md`, `docs/account-audit/2026-08-17-account-tab-production-audit.md`, `docs/manual-checkpoints/2026-08-17-account-cart-final-polish.md` and `docs/account-audit/2026-08-17-account-complete-surface-pass.md`. Do not rebuild completed blocks.
 
 ## Latest completed application-section audit
 
-The expanded `Hesabım` + `Sepet/Checkout` final manual audit is recorded in:
+The newest full `Hesabım` surface pass is:
 
-`docs/manual-checkpoints/2026-08-17-account-cart-final-polish.md`
+`docs/account-audit/2026-08-17-account-complete-surface-pass.md`
 
-Latest functional code before checkpoint documentation:
+Latest functional frontend head before checkpoint documentation:
 
-`d96e716d2d80ee34bf9d914b752382ec75d57c59`
+`3a43d2cf63fedaaf9ca8f06e26ce32ca6e865819`
 
-## Hesabım final state
+## Hesabım final surface inventory
 
-- The account hub is grouped into mobile-native sections instead of one undifferentiated card list.
-- Profile, orders, reviews, favorites, followed producers, gifts, addresses, payment history, messages, notifications, contact, support, settings, seller and admin capabilities remain reachable according to real role/callback availability.
-- Verified order/favorite/follow/gift counts can be surfaced on account cards; unread notifications use the real red unread badge.
-- A direct `Çıkış Yap` action exists at the bottom of Hesabım and only signs out the current device.
-- Settings keeps the complete session-security surface for current, other and all devices.
+Hesabım is now treated as the complete mobile account hub, including every reachable account-related surface rather than only files under `src/features/account`.
 
-## Support, FAQ and legal/help content
+### Top account hub
 
-- Support center includes secure support conversations and the application contact form.
-- FAQ search is bounded, locale-aware and has explicit clear-search / clear-filter actions.
-- Four canonical help/legal slots are represented: About, Returns & Cancellation, Privacy & Data Processing, Terms of Use.
-- Live Supabase verification found About, Returns and Privacy records published; Terms currently has no verified published record.
-- Missing Terms is not fabricated.
-- The currently published privacy copy identifies itself as pre-live/final-identity-incomplete copy; the application does not relabel it as final legal compliance.
-- Live help records currently carry HTML-like markup in their `markdown` field while `sanitizedHtml` is empty. The account help UI now uses a safe structured renderer instead of displaying raw tags or trusting arbitrary HTML. Unsafe attributes/schemes are discarded and `dangerouslySetInnerHTML` is not used in this account legal/help path.
+- profile identity
+- total order count
+- tappable active-order summary
+- tappable favorite summary
+- tappable address summary
+- tappable real unread-notification summary
+- latest order quick card and direct order-detail access when a verified recent order exists
 
-## Settings and premium preferences
+Malformed counts are not coerced to fake zero.
 
-- Notification preference payloads remain strict real booleans.
-- Newsletter fetch failure does not fabricate `Abone değil`.
-- Password/session/account-closure boundaries and accessible confirmations remain in place.
-- Premium sound wording is native-app oriented rather than browser oriented.
-- Theme changes only appearance; product, price, stock and trust truth do not change.
+### Discover & participate
+
+- `Sağlık & Tarifler`
+- `Etkinlikler & Kayıtlarım`
+
+The event card now reads live event and own-reservation data. The current live event state has 0 upcoming events and 5 completed archived 2024 events. No future event is fabricated.
+
+### Producer & management
+
+- producer verification summary when applicable
+- Store Profile Edit
+- Become a Seller / Seller Panel
+- Admin Panel only for verified admin/super_admin roles
+
+### Shopping & account
+
+- Profile Edit
+- Orders
+- Reviews
+- Favorites
+- Followed Producers
+- Gifts
+- Addresses
+- Payment History
+
+### Messages & support
+
+- Messages
+- Notifications
+- Contact
+- Help & Support
+- FAQ
+- About
+- Returns & Cancellation
+- Privacy & Data Processing
+- Terms of Use slot
+
+Terms remains unpublished when no verified live record exists. No legal copy is fabricated.
+
+### Preferences & security
+
+Settings retains theme, app notification sound, newsletter, push categories, password change, current/other/all device session management and account closure controls.
+
+### Bottom sign-out
+
+A visible `Çıkış Yap` action remains at the bottom of the account hub and signs out only the current device. Other-device/global sign-out remains inside Settings.
+
+## Events & own registrations
+
+`src/features/engagement/api.ts` now validates public event RPC results and event reservation inputs/outputs. `listMyEventReservations()` uses the existing own-user RLS policy on `public.event_reservations` and joins the published event row.
+
+`PublicEventsScreen.tsx` now includes:
+
+- event summary
+- personal event reservation history
+- reservation code
+- reservation status
+- guest count
+- event date/location
+- duplicate active-reservation CTA suppression
+- truthful upcoming/archived event separation
+- refreshed event and personal-reservation state after successful reservation
+
+No customer cancellation button was invented because the current live cancellation RPC is admin-only. A customer cancellation workflow should only be added together with the correct backend capacity/waitlist semantics.
+
+## Health & recipes
+
+`PublicHealthScreen.tsx` now has complete tab semantics and keyboard ownership for Rehberler, Ürün Bilgileri and Tarifler: arrows, Home, End, `aria-selected`, `aria-controls` and `tabpanel` are aligned. Search is bounded to 120 characters, locale-aware, clearable and reports result count without making the whole content grid a noisy live region.
+
+## Contact truthfulness
+
+Live `get_public_contact_config_v1()` currently reports `supportChannelsReady=false`, email null and phone null. The stored `Hakkari, Türkiye` value is therefore not presented as an official support identity.
+
+Direct phone/email/official support address now appears only when `supportChannelsReady === true`. Until then, the secure in-app contact form remains the truthful active contact channel.
 
 ## Cart and checkout final state
 
-- Live Supabase `private.get_customer_cart_snapshot_v1` was inspected: server `itemCount` is `sum(quantity)`, so the app cart badge is total product units, not distinct lines.
-- Live `private.preview_my_checkout_v1` also computes item count from quantity sum.
-- Every cart RPC response is normalized at the client boundary: identifiers, quantities, currency, money, producer data, availability, selected options, stock, expiry and line/subtotal consistency.
-- Client itemCount is recomputed from verified row quantities and therefore cannot be corrupted by a malformed separate count field.
-- Checkout preview validates booleans, money math, country, currency, count, shipping and promotion structures.
-- The live backend's early `cart_empty` preview omits `previewOnly`; the client accepts that exact valid empty-cart contract only, while continuing to require `previewOnly=true` for other preview responses.
-- Manual checkout addresses no longer assume `TR`. A real two-letter country code is required before shipping/preview calculation.
-- Phone, address, coupon and order-item boundaries are validated before mutation.
-- Checkout idempotency key is reset when the checkout intent changes.
-- Shipping quote state resets when cart/destination/coupon changes.
-- Payment readiness remains truthful; no card charge or success is simulated without a real live provider and backend verification.
+The previous cart/checkout final hardening remains in force:
+
+- live cart `itemCount` is total quantity, not line count
+- cart RPC payloads are normalized and line/subtotal integrity checked
+- checkout does not assume TR for a new address
+- country, phone, address, coupon and order-item boundaries are validated
+- checkout intent changes invalidate the idempotency key
+- shipping quote state invalidates when cart/destination/coupon changes
+- no card charge or success is simulated without real provider/backend verification
 
 ## Mobile shell invariants
 
@@ -78,7 +141,7 @@ Latest functional code before checkpoint documentation:
 - Recorded Security Advisor result: 0 lints.
 - Recorded edge functions: `contact-submit` v1, `event-reservation` v2, `push-dispatch` v3.
 
-No schema mutation was needed for this Account/Cart pass. Live function definitions were read to verify cart-count and preview semantics; no gratuitous migration was created.
+No schema mutation was required for this account/events/content/contact pass. Existing live table/RLS/function contracts were read and used rather than creating a gratuitous migration.
 
 ## Release state
 
