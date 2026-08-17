@@ -5,9 +5,9 @@ import { listNotifications } from './api';
 import { getNotificationSoundEnabled, playNotificationSound, primeNotificationAudio } from '../notifications/premiumSounds';
 import { clearNativeDeliveredNotifications, subscribeNativePushReceipts } from '../notifications/nativePush';
 
-function normalizeUnreadCount(value: unknown) {
+function verifiedUnreadCount(value: unknown) {
   const count = Number(value);
-  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+  return Number.isSafeInteger(count) && count >= 0 ? count : null;
 }
 
 export function useUnreadNotificationCount(authenticated: boolean) {
@@ -15,16 +15,23 @@ export function useUnreadNotificationCount(authenticated: boolean) {
   const lastKnownUnread = useRef<number | null>(null);
 
   const commitUnreadCount = useCallback((value: unknown) => {
-    const next = normalizeUnreadCount(value);
+    const verified = verifiedUnreadCount(value);
     const previous = lastKnownUnread.current;
-    lastKnownUnread.current = next;
-    setUnreadCountState(next);
+
+    // A malformed server payload must never erase a previously verified red
+    // badge or clear delivered native notifications as if the count were zero.
+    if (verified === null) {
+      return { next: previous ?? 0, previous, accepted: false };
+    }
+
+    lastKnownUnread.current = verified;
+    setUnreadCountState(verified);
 
     // Supabase is authoritative for unread state. Clear stale delivered native
     // notifications both when unread transitions to zero and when the first
-    // authenticated hydration already reports zero after a cold app launch.
-    if (next === 0 && previous !== 0) void clearNativeDeliveredNotifications();
-    return { next, previous };
+    // authenticated hydration validly reports zero after a cold app launch.
+    if (verified === 0 && previous !== 0) void clearNativeDeliveredNotifications();
+    return { next: verified, previous, accepted: true };
   }, []);
 
   const resetUnreadSession = useCallback((clearDelivered = false) => {
@@ -43,10 +50,11 @@ export function useUnreadNotificationCount(authenticated: boolean) {
       return 0;
     }
     const data = await listNotifications(1);
-    const { next, previous } = commitUnreadCount(data?.unreadCount);
+    const { next, previous, accepted } = commitUnreadCount(data?.unreadCount);
 
-    // The first hydration is only a baseline. Play a signature only when a new unread item arrives.
-    if (previous !== null && next > previous && getNotificationSoundEnabled() && document.visibilityState === 'visible') {
+    // The first valid hydration is only a baseline. Play a signature only when
+    // a newly verified unread count grows while the app is visible.
+    if (accepted && previous !== null && next > previous && getNotificationSoundEnabled() && document.visibilityState === 'visible') {
       void playNotificationSound();
     }
     return next;
