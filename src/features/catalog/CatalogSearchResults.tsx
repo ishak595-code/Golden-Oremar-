@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, PackageSearch } from 'lucide-react';
 import { getProducerFollowMetrics, publicCatalogUrl, searchCatalog, type CatalogItem, type CatalogSearchResponse, type ProducerFollowMetric } from './api';
 import CatalogProductCard from './CatalogProductCard';
+import { buildSearchUrl } from '../navigation/appUrl';
 
 const PAGE_SIZE = 20;
 
@@ -70,6 +71,17 @@ export default function CatalogSearchResults({
       if (requestId.current === current) setLoading(false);
     }
   }
+
+  useEffect(() => {
+    try {
+      const canonical = buildSearchUrl({ query, categorySlug, producerId });
+      if (window.location.href !== canonical) {
+        window.history.replaceState({ ...window.history.state, tab: 'search-results' }, '', canonical);
+      }
+    } catch (urlError) {
+      console.warn('Search route URL could not be canonicalized.', urlError);
+    }
+  }, [query, categorySlug, producerId]);
 
   useEffect(() => { void load(0, false); }, [query, categorySlug, producerId, sort, inStock]);
 
