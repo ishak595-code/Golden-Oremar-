@@ -48,6 +48,7 @@ export default function FavoritesPanel({ onOpenProduct }: { onOpenProduct?: (slu
   return <Panel title="Favorilerim" description="Kaydettiğiniz ürünleri canlı fiyat, üretici doğrulaması ve satış durumu ile yönetin.">
     {error ? <ErrorState message={error} onRetry={() => void load()} /> : null}
     {status ? <div role="status" aria-live="polite" className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{status}</div> : null}
+    <div className="sr-only" role="status" aria-live="polite">{busyId ? 'Favori işlemi yapılıyor.' : ''}</div>
     {!items.length ? <EmptyState title="Favoriniz yok" body="Beğendiğiniz ürünleri kalp düğmesiyle burada toplayabilirsiniz." /> :
       <div className="grid gap-4 sm:grid-cols-2">{items.map(i => {
         const id = String(i.productId || i.slug);
@@ -56,7 +57,7 @@ export default function FavoritesPanel({ onOpenProduct }: { onOpenProduct?: (slu
         const compareMinor = Number(i.variant?.compareAtPriceMinor || 0);
         const priceMinor = Number(i.variant?.priceMinor || 0);
         return <article key={id} aria-busy={busy} className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
-          {i.imagePath ? <img src={catalogPublicUrl(i.imagePath)} alt="" loading="lazy" decoding="async" className="h-40 w-full object-cover" /> : <div className="grid h-40 w-full place-items-center bg-gray-100 text-sm text-gray-500 dark:bg-gray-800">Görsel henüz eklenmedi</div>}
+          {i.imagePath ? <img src={catalogPublicUrl(i.imagePath)} alt={`${i.name || 'Ürün'} görseli`} loading="lazy" decoding="async" className="h-40 w-full object-cover" /> : <div role="img" aria-label={`${i.name || 'Ürün'} için görsel henüz eklenmedi`} className="grid h-40 w-full place-items-center bg-gray-100 text-sm text-gray-500 dark:bg-gray-800">Görsel henüz eklenmedi</div>}
           <div className="p-4">
             <div className="mb-2 flex flex-wrap items-center gap-2 text-xs font-semibold">
               <span className={`rounded-full px-2.5 py-1 ${available ? 'bg-green-50 text-green-800 dark:bg-green-950/40 dark:text-green-200' : 'bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-200'}`}>{available ? 'Satışta' : 'Şu an satışta değil'}</span>
@@ -72,7 +73,7 @@ export default function FavoritesPanel({ onOpenProduct }: { onOpenProduct?: (slu
               {compareMinor > priceMinor ? <div className="text-sm text-gray-400 line-through"><Money minor={compareMinor} currency={i.currency} /></div> : null}
             </div>
             <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
-              <button type="button" onClick={() => onOpenProduct?.(i.slug)} className="min-h-11 rounded-xl bg-brand-green px-3 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Ürünü aç</button>
+              <button type="button" disabled={!onOpenProduct || !i.slug} onClick={() => onOpenProduct?.(i.slug)} className="min-h-11 rounded-xl bg-brand-green px-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Ürünü aç</button>
               <button type="button" disabled={busy} onClick={() => void remove(i)} aria-label={`${i.name} ürününü favorilerden çıkar`} className="min-h-11 rounded-xl border border-gray-200 px-3 font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700">{busy ? 'Çıkarılıyor…' : 'Çıkar'}</button>
             </div>
           </div>
