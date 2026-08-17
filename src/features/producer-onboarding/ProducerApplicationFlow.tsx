@@ -216,6 +216,10 @@ export default function ProducerApplicationFlow({ currentUser, onBack }: { curre
   function addDocument(file?: File) {
     if (!file) return;
     if (documents.length >= 6) { setError('En fazla 6 belge yükleyebilirsiniz.'); return; }
+    const allowedTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
+    if (!allowedTypes.has(file.type)) { setError('Belgeler PDF, JPEG, PNG veya WebP olmalıdır.'); return; }
+    if (file.size <= 0 || file.size > 20 * 1024 * 1024) { setError('Her belge en fazla 20 MB olabilir ve boş dosya yüklenemez.'); return; }
+    setError('');
     setDocuments(previous => [...previous, { file, documentType: businessClass ? 'tax_certificate' : 'identity' }]);
   }
 
