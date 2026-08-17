@@ -16,7 +16,7 @@ type Props={
 type SecondaryAction='favorite'|'share'|'gift'|'like'|null;
 
 export default function CatalogProductCard({product,onClick,onAddToCart,onToggleFavorite,isFavorite=false,onShare,onGift,onLike,isLiked=false}:Props){
- const[quantity,setQuantity]=useState(1);const[busy,setBusy]=useState(false);const[actionBusy,setActionBusy]=useState<SecondaryAction>(null);
+ const[quantity,setQuantity]=useState(1);const[busy,setBusy]=useState(false);const[actionBusy,setActionBusy]=useState<SecondaryAction>(null);const[actionFeedback,setActionFeedback]=useState('');
  const tracked=product?.stockMode==='tracked'||product?.stockMode==='seasonal';
  const numericStock=typeof product?.stock==='number'&&Number.isFinite(product.stock)?Math.max(0,Math.floor(Number(product.stock))):null;
  const soldOut=tracked&&numericStock!==null&&numericStock<=0;
@@ -40,7 +40,25 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
   return list;
  },[numericStock,preorder,product?.is_featured,soldOut,tracked]);
  async function add(){if(soldOut||cardBusy)return;try{setBusy(true);await onAddToCart(product,quantity);}finally{setBusy(false);}}
- async function runAction(kind:Exclude<SecondaryAction,null>,action:(product:any)=>Promise<void>|void){if(cardBusy)return;try{setActionBusy(kind);await action(product);}finally{setActionBusy(null);}}
+ async function runAction(kind:Exclude<SecondaryAction,null>,action:(product:any)=>Promise<void>|void){if(cardBusy)return;try{setActionBusy(kind);setActionFeedback('');await action(product);}finally{setActionBusy(null);}}
+ async function shareProduct(){
+  if(cardBusy)return;
+  try{
+   setActionBusy('share');setActionFeedback('');
+   const shareUrl=typeof window!=='undefined'?window.location.href:'';
+   if(typeof navigator!=='undefined'&&typeof navigator.share==='function'){
+    if(onShare){await onShare(product);}else{await navigator.share({title:productName,text:description||undefined,url:shareUrl||undefined});}
+    setActionFeedback('Paylaşım işlemi tamamlandı.');
+    return;
+   }
+   if(!shareUrl)throw new Error('share_url_unavailable');
+   await copyText(shareUrl);
+   setActionFeedback('Bağlantı panoya kopyalandı.');
+  }catch(error:any){
+   if(error?.name==='AbortError')setActionFeedback('Paylaşım iptal edildi.');
+   else setActionFeedback('Bağlantı paylaşılamadı. Ürün detayını açıp adres çubuğundaki bağlantıyı kopyalayabilirsiniz.');
+  }finally{setActionBusy(null);}
+ }
  function decrease(){setQuantity(current=>Math.max(1,current-1));}
  function increase(){setQuantity(current=>Math.min(maxQuantity,current+1));}
  return <article aria-busy={cardBusy} className="flex h-full flex-col overflow-hidden rounded-3xl border border-brand-gold/10 bg-brand-card shadow-sm transition-shadow hover:shadow-lg">
@@ -51,7 +69,7 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
    {badges.length?<div className="pointer-events-none absolute left-3 top-3 flex max-w-[75%] flex-wrap gap-2">{badges.map(badge=><span key={badge.key} className={`rounded-full px-3 py-1 text-xs font-bold ${badge.className}`}>{badge.label}</span>)}</div>:null}
    <div className="absolute right-3 top-3 flex gap-2">
     {onToggleFavorite?<button type="button" disabled={cardBusy} onClick={event=>{event.stopPropagation();void runAction('favorite',onToggleFavorite);}} aria-label={isFavorite?`${productName} ürününü favorilerden çıkar`:`${productName} ürününü favorilere ekle`} aria-pressed={isFavorite} className={`grid min-h-11 min-w-11 place-items-center rounded-full bg-white/95 shadow-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-900/95 ${focusClass}`}><Heart aria-hidden="true" className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-gray-700 dark:text-gray-200'}`}/></button>:null}
-    {onShare?<button type="button" disabled={cardBusy} onClick={event=>{event.stopPropagation();void runAction('share',onShare);}} aria-label={`${productName} ürününü paylaş`} className={`grid min-h-11 min-w-11 place-items-center rounded-full bg-white/95 shadow-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-900/95 ${focusClass}`}><Share2 aria-hidden="true" className="h-5 w-5"/></button>:null}
+    <button type="button" disabled={cardBusy} onClick={event=>{event.stopPropagation();void shareProduct();}} aria-label={`${productName} ürününü paylaş`} className={`grid min-h-11 min-w-11 place-items-center rounded-full bg-white/95 shadow-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-900/95 ${focusClass}`}><Share2 aria-hidden="true" className="h-5 w-5"/></button>
    </div>
   </div>
 
@@ -79,10 +97,20 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
     {onGift?<button type="button" disabled={cardBusy} onClick={()=>void runAction('gift',onGift)} aria-label={`${productName} ürününü hediye et`} className={`grid min-h-12 min-w-12 place-items-center rounded-xl border disabled:cursor-not-allowed disabled:opacity-60 ${focusClass}`}><Gift aria-hidden="true" className="h-5 w-5 text-brand-gold"/></button>:null}
     {onLike?<button type="button" disabled={cardBusy} onClick={()=>void runAction('like',onLike)} aria-label={isLiked?`${productName} beğenisini kaldır`:`${productName} ürününü beğen`} aria-pressed={isLiked} className={`grid min-h-12 min-w-12 place-items-center rounded-xl border disabled:cursor-not-allowed disabled:opacity-60 ${focusClass}`}><ThumbsUp aria-hidden="true" className={`h-5 w-5 ${isLiked?'fill-brand-gold text-brand-gold':''}`}/></button>:null}
    </div>
+   {actionFeedback?<div role="status" aria-live="polite" className="mt-2 text-xs text-gray-600 dark:text-gray-300">{actionFeedback}</div>:null}
    <div className="sr-only" aria-live="polite">{actionBusy==='favorite'?'Favori işlemi yapılıyor.':actionBusy==='share'?'Paylaşım hazırlanıyor.':actionBusy==='gift'?'Hediye akışı hazırlanıyor.':actionBusy==='like'?'Beğeni işlemi yapılıyor.':busy?'Sepete ekleniyor.':''}</div>
   </div>
  </article>;
 }
 
+async function copyText(value:string){
+ if(typeof navigator!=='undefined'&&navigator.clipboard?.writeText){await navigator.clipboard.writeText(value);return;}
+ if(typeof document==='undefined')throw new Error('clipboard_unavailable');
+ const textarea=document.createElement('textarea');const active=document.activeElement as HTMLElement|null;
+ textarea.value=value;textarea.setAttribute('readonly','');textarea.style.position='fixed';textarea.style.opacity='0';textarea.style.pointerEvents='none';textarea.style.left='-9999px';
+ document.body.appendChild(textarea);textarea.focus();textarea.select();
+ const copied=document.execCommand('copy');document.body.removeChild(textarea);active?.focus?.();
+ if(!copied)throw new Error('clipboard_copy_failed');
+}
 function formatMoney(value:number,currency:string){try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency}).format(Number.isFinite(value)?value:0);}catch{return `${(Number.isFinite(value)?value:0).toFixed(2)} ${currency}`;}}
 function formatNumber(value:number){try{return new Intl.NumberFormat('tr-TR').format(Number.isFinite(value)?value:0);}catch{return String(Math.max(0,Math.floor(value||0)));}}
