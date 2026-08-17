@@ -10,7 +10,7 @@ import{listFavoriteReferences as serverFavoriteReferences,searchCatalog as serve
 import CatalogSearchOverlay from'./features/catalog/CatalogSearchOverlay';
 import{useAuthRecoveryCoordinator}from'./features/auth/useAuthRecoveryCoordinator';
 import{getAdminSessionStatus,signOutCurrentSession}from'./features/auth/api';
-import{getCart as getServerCart,publicCatalogUrl as serverCatalogUrl,removeCartItem as removeServerCartItem,resolveDefaultVariant,setCartItem as setServerCartItem}from'./features/cart/api';
+import{getCart as getServerCart,publicCatalogUrl as serverCatalogUrl,resolveDefaultVariant,setCartItem as setServerCartItem}from'./features/cart/api';
 import{useDeviceTheme}from'./features/appearance/useDeviceTheme';
 import{useConnectivity}from'./features/resilience/useConnectivity';
 import{subscribeNativePushActions}from'./features/notifications/nativePush';
@@ -39,17 +39,20 @@ const SUPPORTED_TABS=new Set<Tab>(['home','categories','cart','account','product
 function RouteLoading({label='Ekran yükleniyor'}:{label?:string}){return<div role="status" aria-live="polite" className="mx-auto flex min-h-40 max-w-7xl items-center justify-center p-6 text-sm font-semibold text-gray-500">{label}</div>;}
 function safeTab(value:unknown):Tab{const candidate=String(value||'home')as Tab;return SUPPORTED_TABS.has(candidate)?candidate:'home';}
 function tabUrl(tab:Tab){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab',tab);return url.toString();}
+function normalizeInitialTab(route:ReturnType<typeof parsePublicRoute>,tab:Tab):Tab{if(tab==='product-detail'&&!route.productReference)return'home';if(tab==='producer-profile'&&!route.producerReference)return'home';return tab;}
+function routeDepthFromState(state:any){const value=Number(state?.goldenOremarDepth);return Number.isSafeInteger(value)&&value>=0?value:0;}
 
 function AppContent(){
  const initialRoute=useRef(parsePublicRoute()).current;
  const initialTab=safeTab(initialRoute.tab);
+ const resolvedInitialTab=normalizeInitialTab(initialRoute,initialTab);
  const {currentUser,setCurrentUser,authReady}=useCustomerSession();
  const{theme:appearanceTheme,setTheme:setAppearanceTheme}=useDeviceTheme();
  const authRecovery=useAuthRecoveryCoordinator();
  const{unreadCount,setUnreadCount,refreshUnreadCount}=useUnreadNotificationCount(!!currentUser);
  const{isOnline,restoreSequence}=useConnectivity();
- const[currentTab,setCurrentTab]=useState<Tab>(()=>initialTab==='product-detail'&&!initialRoute.productReference?'home':initialTab==='producer-profile'&&!initialRoute.producerReference?'home':initialTab);
- const[tabHistory,setTabHistory]=useState<Tab[]>(()=>[initialTab]);
+ const[currentTab,setCurrentTab]=useState<Tab>(resolvedInitialTab);
+ const[routeDepth,setRouteDepth]=useState(0);
  const[accountView,setAccountView]=useState('menu');
  const[selectedProductReference,setSelectedProductReference]=useState<string|null>(initialRoute.productReference);
  const[selectedProducerReference,setSelectedProducerReference]=useState<string|null>(initialRoute.producerReference);
@@ -74,14 +77,29 @@ function AppContent(){
 
  const showToast=useCallback((message:string)=>{setToast({message,visible:true});window.setTimeout(()=>setToast(previous=>({...previous,visible:false})),3200);},[]);
 
+ useEffect(()=>{
+  const normalizedUrl=resolvedInitialTab===initialTab?window.location.href:tabUrl('home');
+  window.history.replaceState({...window.history.state,goldenOremar:true,goldenOremarDepth:0,tab:resolvedInitialTab},'',normalizedUrl);
+  if(resolvedInitialTab!==initialTab){setSelectedProductReference(null);setSelectedProducerReference(null);}
+ },[]);
+
  const pushRoute=useCallback((url:string,tab:Tab)=>{
-  if(window.location.href!==url)window.history.pushState({tab},'',url);
-  setCurrentTab(previous=>{
-   if(previous!==tab)setTabHistory(history=>history[history.length-1]===tab?history:[...history,tab]);
-   return tab;
-  });
+  if(window.location.href!==url){
+   setRouteDepth(depth=>{
+    const next=depth+1;
+    window.history.pushState({goldenOremar:true,goldenOremarDepth:next,tab},'',url);
+    return next;
+   });
+  }
+  setCurrentTab(tab);
   setIsMobileMenuOpen(false);
   window.scrollTo({top:0,behavior:'auto'});
+ },[]);
+
+ const replaceWithHome=useCallback(()=>{
+  const url=tabUrl('home');
+  window.history.replaceState({goldenOremar:true,goldenOremarDepth:0,tab:'home'},'',url);
+  setRouteDepth(0);setCurrentTab('home');setSelectedProductReference(null);setSelectedProducerReference(null);setSearchCategorySlug(null);setSearchProducerId(null);setIsMobileMenuOpen(false);window.scrollTo({top:0,behavior:'auto'});
  },[]);
 
  const navigateToTab=useCallback((tab:Tab)=>{
@@ -97,15 +115,13 @@ function AppContent(){
  const openProduct=useCallback((reference:string)=>{
   const normalized=String(reference||'').trim();
   if(!normalized){showToast('Ürün referansı bulunamadı.');return;}
-  setSelectedProductReference(normalized);
-  pushRoute(buildProductUrl(normalized),'product-detail');
+  try{setSelectedProductReference(normalized);pushRoute(buildProductUrl(normalized),'product-detail');}catch{showToast('Ürün bağlantısı oluşturulamadı.');}
  },[pushRoute,showToast]);
 
  const openProducer=useCallback((reference:string)=>{
   const normalized=String(reference||'').trim();
   if(!normalized){showToast('Üretici referansı bulunamadı.');return;}
-  setSelectedProducerReference(normalized);
-  pushRoute(buildProducerUrl(normalized),'producer-profile');
+  try{setSelectedProducerReference(normalized);pushRoute(buildProducerUrl(normalized),'producer-profile');}catch{showToast('Üretici bağlantısı oluşturulamadı.');}
  },[pushRoute,showToast]);
 
  const openSearch=useCallback((query:string,categorySlug:string|null=null,producerId:string|null=null)=>{
@@ -115,15 +131,14 @@ function AppContent(){
  },[pushRoute]);
 
  useEffect(()=>{
-  const applyLocation=()=>{
+  const applyLocation=(event:PopStateEvent)=>{
    const route=parsePublicRoute();
-   let next=safeTab(route.tab);
+   const next=normalizeInitialTab(route,safeTab(route.tab));
+   setRouteDepth(routeDepthFromState(event.state));
    setSelectedProductReference(route.productReference);
    setSelectedProducerReference(route.producerReference);
    setSearchQuery(route.query);setSearchCategorySlug(route.categorySlug);setSearchProducerId(route.producerId);
-   if(next==='product-detail'&&!route.productReference)next='home';
-   if(next==='producer-profile'&&!route.producerReference)next='home';
-   setCurrentTab(next);setTabHistory(history=>history[history.length-1]===next?history:[...history,next]);
+   setCurrentTab(next);setIsMobileMenuOpen(false);setIsSearchFocused(false);window.scrollTo({top:0,behavior:'auto'});
   };
   window.addEventListener('popstate',applyLocation);return()=>window.removeEventListener('popstate',applyLocation);
  },[]);
@@ -147,8 +162,8 @@ function AppContent(){
  },[currentUser?.id]);
 
  useEffect(()=>{
-  if(currentTab==='admin'&&adminSession.checked&&!adminSession.isAdmin){setAccountView('menu');window.history.replaceState({tab:'account'},'',tabUrl('account'));setCurrentTab('account');showToast('Bu alan için doğrulanmış yönetici yetkisi gerekiyor.');}
- },[currentTab,adminSession.checked,adminSession.isAdmin,showToast]);
+  if(currentTab==='admin'&&adminSession.checked&&!adminSession.isAdmin){setAccountView('menu');window.history.replaceState({goldenOremar:true,goldenOremarDepth:routeDepth,tab:'account'},'',tabUrl('account'));setCurrentTab('account');showToast('Bu alan için doğrulanmış yönetici yetkisi gerekiyor.');}
+ },[currentTab,adminSession.checked,adminSession.isAdmin,routeDepth,showToast]);
 
  useEffect(()=>{
   let active=true;
@@ -204,11 +219,9 @@ function AppContent(){
 
  const goBack=useCallback(()=>{
   if(currentTab==='account'&&accountView!=='menu'){setAccountView('menu');return;}
-  setTabHistory(history=>{
-   if(history.length<=1){window.history.pushState({tab:'home'},'',tabUrl('home'));setCurrentTab('home');return['home'];}
-   const next=[...history];next.pop();const previous=next[next.length-1]||'home';window.history.pushState({tab:previous},'',tabUrl(previous));setCurrentTab(previous);return next;
-  });
- },[currentTab,accountView]);
+  if(routeDepth>0){window.history.back();return;}
+  if(currentTab!=='home')replaceWithHome();
+ },[currentTab,accountView,routeDepth,replaceWithHome]);
 
  function stopVoiceSearch(){try{recognitionRef.current?.abort?.();}catch{}recognitionRef.current=null;setIsListening(false);}
  const processVoiceText=useCallback(async(text:string)=>{
@@ -225,9 +238,9 @@ function AppContent(){
 
  useEffect(()=>{
   if(!Capacitor.isNativePlatform())return;let disposed=false;let handle:{remove:()=>Promise<void>}|undefined;
-  void CapApp.addListener('backButton',()=>{if(authRecovery.recoveryPending)return;if(isListening){stopVoiceSearch();return;}if(isMobileMenuOpen){setIsMobileMenuOpen(false);return;}if(isSearchFocused){setIsSearchFocused(false);return;}if(showGiftModal){setShowGiftModal(false);return;}if(currentTab==='account'&&accountView!=='menu'){setAccountView('menu');return;}if(tabHistory.length>1){goBack();return;}void CapApp.exitApp();}).then(next=>{if(disposed)void next.remove();else handle=next;});
+  void CapApp.addListener('backButton',()=>{if(authRecovery.recoveryPending)return;if(isListening){stopVoiceSearch();return;}if(isMobileMenuOpen){setIsMobileMenuOpen(false);return;}if(isSearchFocused){setIsSearchFocused(false);return;}if(showGiftModal){setShowGiftModal(false);return;}if(currentTab==='account'&&accountView!=='menu'){setAccountView('menu');return;}if(routeDepth>0){window.history.back();return;}if(currentTab!=='home'){replaceWithHome();return;}void CapApp.exitApp();}).then(next=>{if(disposed)void next.remove();else handle=next;});
   return()=>{disposed=true;if(handle)void handle.remove();};
- },[authRecovery.recoveryPending,isListening,isMobileMenuOpen,isSearchFocused,showGiftModal,currentTab,accountView,tabHistory,goBack]);
+ },[authRecovery.recoveryPending,isListening,isMobileMenuOpen,isSearchFocused,showGiftModal,currentTab,accountView,routeDepth,replaceWithHome]);
 
  const renderContent=()=>{
   if(currentTab==='product-detail'&&selectedProductReference)return<ProductDetailScreen reference={selectedProductReference} authenticated={!!currentUser} favoriteReferences={favorites} onFavoriteChanged={(reference,isFavorite)=>setFavorites(previous=>isFavorite?(previous.includes(reference)?previous:[...previous,reference]):previous.filter(item=>item!==reference))} onBack={goBack} onLoginRequired={()=>{showToast('Bu işlem için hesabınıza giriş yapın.');setAccountView('menu');navigateToTab('account');}} onCartChanged={fetchCart} onGift={reference=>openGift({id:reference,slug:reference})} onProducer={(_id,slug)=>openProducer(slug)}/>;
@@ -243,7 +256,7 @@ function AppContent(){
   if(currentTab==='cart'){
    if(!authReady)return<RouteLoading label="Sepet oturumunuz doğrulanıyor"/>;
    if(!currentUser)return<AuthScreen title="Sepetinizi kullanmak için hesabınıza giriş yapın." description="Sepetiniz, stok durumunuz ve siparişiniz hesabınıza güvenli şekilde bağlanır."/>;
-   return<CartCheckoutFlow onBack={()=>navigateToTab('home')} onOpenAddresses={()=>{setAccountView('addresses');navigateToTab('account');}} onOrderCreated={()=>{setCart([]);setAccountView('orders');navigateToTab('account');}}/>;
+   return<CartCheckoutFlow onBack={goBack} onOpenAddresses={()=>{setAccountView('addresses');navigateToTab('account');}} onOrderCreated={()=>{setCart([]);setAccountView('orders');navigateToTab('account');}}/>;
   }
   if(currentTab==='categories')return<CategoryDirectoryScreen onOpenProduct={slug=>openProduct(slug)} onAddToCart={async(item,quantity)=>{await addToCart({id:item.id,slug:item.slug,name:item.name,variantId:item.variant?.id},quantity);}}/>;
   if(currentTab==='events')return<PublicEventsScreen onBack={goBack} currentUser={currentUser}/>;
@@ -255,7 +268,7 @@ function AppContent(){
 
  if(currentTab==='admin'){
   if(!adminSession.checked)return<RouteLoading label="Yönetici yetkisi doğrulanıyor"/>;
-  if(isAdminLoggedIn)return<React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor"/>}><AdminPage currentUser={currentUser} onBack={goBack} onLogout={async()=>{await signOutCurrentSession();setCurrentUser(null);setAdminSession({checked:true,isAdmin:false,roles:[]});navigateToTab('home');}}/></React.Suspense>;
+  if(isAdminLoggedIn)return<React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor"/>}><AdminPage currentUser={currentUser} onBack={goBack} onLogout={async()=>{await signOutCurrentSession();setCurrentUser(null);setAdminSession({checked:true,isAdmin:false,roles:[]});replaceWithHome();}}/></React.Suspense>;
  }
 
  return<div className="min-h-screen bg-brand-main pb-28 font-sans text-brand-text md:pb-0">
