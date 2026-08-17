@@ -198,6 +198,11 @@ nav[aria-label="Ana gezinme"] button > span.relative > span[aria-hidden="true"] 
   font-weight: 800 !important;
 }
 
+/* The software keyboard owns the lower screen area while text entry is active. */
+:root[data-native-keyboard="open"] nav[aria-label="Ana gezinme"] {
+  display: none;
+}
+
 @media (max-width: 420px) {
   header > div > div {
     gap: 0.35rem !important;
