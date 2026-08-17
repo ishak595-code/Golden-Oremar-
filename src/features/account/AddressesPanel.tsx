@@ -6,7 +6,7 @@ import type { Address } from './types';
 import { useAccessibleDialog } from '../accessibility/useAccessibleDialog';
 
 const blank: Address = {
-  label: 'Ev', recipient_name: '', phone: '', country_code: 'TR',
+  label: 'Ev', recipient_name: '', phone: '', country_code: '',
   province: '', district: '', neighborhood: '', address_line: '',
   postal_code: '', delivery_notes: '', is_default: false
 };
@@ -23,21 +23,33 @@ const fields = [
 ] as const;
 
 function validateAddress(address: Address) {
+  const label = String(address.label || '').trim();
   const recipient = String(address.recipient_name || '').trim();
   const phone = String(address.phone || '').trim();
+  const phoneDigits = phone.replace(/\D/g, '');
   const country = String(address.country_code || '').trim().toUpperCase();
   const province = String(address.province || '').trim();
   const district = String(address.district || '').trim();
+  const neighborhood = String(address.neighborhood || '').trim();
+  const postal = String(address.postal_code || '').trim();
   const line = String(address.address_line || '').trim();
-  if (recipient.length < 2) return 'Alıcı adı en az 2 karakter olmalıdır.';
-  if (phone.replace(/[^0-9]/g, '').length < 7) return 'Geçerli bir teslimat telefonu yazın.';
+  if (label.length > 60) return 'Adres etiketi en fazla 60 karakter olabilir.';
+  if (recipient.length < 2 || recipient.length > 120) return 'Alıcı adı 2 ile 120 karakter arasında olmalıdır.';
+  if (!/^[+()0-9 .\-]{5,32}$/.test(phone) || phoneDigits.length < 7 || phoneDigits.length > 20) return 'Geçerli bir teslimat telefonu yazın.';
   if (!/^[A-Z]{2}$/.test(country)) return 'Ülke kodu iki harfli ISO kodu olmalıdır.';
-  if (province.length < 2) return 'İl veya bölge bilgisini yazın.';
-  if (district.length < 2) return 'İlçe veya şehir bilgisini yazın.';
+  if (province.length < 2 || province.length > 120) return 'İl veya bölge bilgisi 2 ile 120 karakter arasında olmalıdır.';
+  if (district.length < 2 || district.length > 120) return 'İlçe veya şehir bilgisi 2 ile 120 karakter arasında olmalıdır.';
+  if (neighborhood.length > 160) return 'Mahalle veya köy bilgisi en fazla 160 karakter olabilir.';
+  if (postal.length > 24) return 'Posta kodu en fazla 24 karakter olabilir.';
   if (line.length < 5) return 'Açık adres en az 5 karakter olmalıdır.';
   if (line.length > 500) return 'Açık adres en fazla 500 karakter olabilir.';
   if (String(address.delivery_notes || '').length > 500) return 'Teslimat notu en fazla 500 karakter olabilir.';
   return '';
+}
+
+function addressKey(address: Address, index: number) {
+  const id = String(address?.id || '').trim();
+  return id || `${String(address?.label || '')}|${String(address?.address_line || '')}|${index}`;
 }
 
 export default function AddressesPanel({ addresses, onChanged }: { addresses: Address[]; onChanged: () => Promise<void> | void }) {
@@ -50,6 +62,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
   const [status, setStatus] = useState('');
   const editDialogRef = useAccessibleDialog<HTMLFormElement>(!!editing, () => { if (!saving) setEditing(null); });
   const deleteDialogRef = useAccessibleDialog<HTMLDivElement>(!!deleteCandidate, () => { if (!deleteBusy) setDeleteCandidate(null); });
+  const safeAddresses = Array.isArray(addresses) ? addresses : [];
 
   function startCreate() {
     setError('');
@@ -78,6 +91,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
     setStatus('');
     const normalized = {
       ...editing,
+      id: String(editing.id || '').trim() || undefined,
       label: String(editing.label || '').trim() || 'Teslimat',
       recipient_name: String(editing.recipient_name || '').trim(),
       phone: String(editing.phone || '').trim(),
@@ -88,13 +102,14 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
       address_line: String(editing.address_line || '').trim(),
       postal_code: String(editing.postal_code || '').trim() || null,
       delivery_notes: String(editing.delivery_notes || '').trim() || null,
+      is_default: editing.is_default === true,
     } as Address;
     const issue = validateAddress(normalized);
     if (issue) { setFormError(issue); return; }
     try {
       setSaving(true);
       await upsertAddress(normalized);
-      const wasEditing = Boolean(editing.id);
+      const wasEditing = Boolean(normalized.id);
       setEditing(null);
       setFormError('');
       await onChanged();
@@ -107,12 +122,13 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
   }
 
   async function confirmRemove() {
-    if (!deleteCandidate?.id || deleteBusy) return;
+    const id = String(deleteCandidate?.id || '').trim();
+    if (!id || deleteBusy) return;
     setError('');
     setStatus('');
     try {
       setDeleteBusy(true);
-      await deleteAddress(deleteCandidate.id);
+      await deleteAddress(id);
       setDeleteCandidate(null);
       await onChanged();
       setStatus('Adres silindi.');
@@ -124,7 +140,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
   }
 
   return (
-    <Panel title="Adreslerim" description="Teslimat adreslerinizi ekleyin ve varsayılan adresinizi seçin.">
+    <Panel title="Adreslerim" description="Türkiye veya yurt dışındaki teslimat adreslerinizi ekleyin ve varsayılan adresinizi seçin.">
       {error ? <ErrorState message={error} /> : null}
       {status ? <div role="status" aria-live="polite" className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{status}</div> : null}
       <button type="button" onClick={startCreate} className="mb-4 min-h-11 rounded-xl bg-brand-green px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
@@ -132,25 +148,28 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
       </button>
 
       <div className="space-y-3">
-        {addresses.length === 0 ? <EmptyState title="Kayıtlı adres yok" body="İlk teslimat adresinizi ekleyebilirsiniz." /> : addresses.map(a => (
-          <article key={a.id} className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+        {safeAddresses.length === 0 ? <EmptyState title="Kayıtlı adres yok" body="İlk teslimat adresinizi ekleyebilirsiniz." /> : safeAddresses.map((a, index) => {
+          const id = String(a?.id || '').trim();
+          const label = String(a?.label || '').trim() || 'Adres etiketi doğrulanamadı';
+          return <article key={addressKey(a,index)} className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
-                <div className="font-bold">{a.label} {a.is_default ? <span className="text-xs text-brand-green">• Varsayılan</span> : null}</div>
-                <p className="mt-1 text-sm">{a.recipient_name} • {a.phone}</p>
-                <p className="mt-1 break-words text-sm text-gray-500">{a.address_line}, {a.neighborhood ? `${a.neighborhood}, ` : ''}{a.district}/{a.province} {a.postal_code || ''} • {a.country_code}</p>
+                <div className="font-bold">{label} {a?.is_default === true ? <span className="text-xs text-brand-green">• Varsayılan</span> : null}</div>
+                <p className="mt-1 text-sm">{String(a?.recipient_name || '').trim() || 'Alıcı doğrulanamadı'} • {String(a?.phone || '').trim() || 'Telefon doğrulanamadı'}</p>
+                <p className="mt-1 break-words text-sm text-gray-500">{String(a?.address_line || '').trim() || 'Açık adres doğrulanamadı'}{a?.neighborhood ? `, ${a.neighborhood}` : ''}{a?.district ? `, ${a.district}` : ''}{a?.province ? `/${a.province}` : ''}{a?.postal_code ? ` ${a.postal_code}` : ''}{a?.country_code ? ` • ${a.country_code}` : ' • Ülke doğrulanamadı'}</p>
+                {!id ? <p className="mt-1 text-xs text-red-700 dark:text-red-300">Adres kimliği doğrulanamadı. Silme işlemi kapalıdır.</p> : null}
               </div>
               <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-col">
                 <button type="button" onClick={() => startEdit(a)} className="min-h-11 rounded-lg border px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Düzenle</button>
-                <button type="button" onClick={() => { setError(''); setStatus(''); setDeleteCandidate(a); }} className="min-h-11 rounded-lg border border-red-200 px-3 text-sm font-semibold text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900 dark:text-red-300">Sil</button>
+                <button type="button" disabled={!id} onClick={() => { setError(''); setStatus(''); setDeleteCandidate(a); }} className="min-h-11 rounded-lg border border-red-200 px-3 text-sm font-semibold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900 dark:text-red-300">Sil</button>
               </div>
             </div>
-          </article>
-        ))}
+          </article>;
+        })}
       </div>
 
       {editing ? (
-        <div className="fixed inset-0 z-[70] overflow-y-auto bg-black/60 p-4" aria-hidden="false">
+        <div className="fixed inset-0 z-[70] overflow-y-auto bg-black/60 p-4">
           <form
             ref={editDialogRef}
             role="dialog"
@@ -164,7 +183,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 id="address-dialog-title" className="text-lg font-bold">{editing.id ? 'Adresi düzenle' : 'Yeni adres'}</h3>
-                <p id="address-dialog-description" className="mt-1 text-sm text-gray-500">Teslimat için gerekli alanları eksiksiz girin.</p>
+                <p id="address-dialog-description" className="mt-1 text-sm text-gray-500">Teslimat için gerekli alanları eksiksiz girin. Ülke kodunu TR, CH, DE gibi iki harfli ISO koduyla yazın.</p>
               </div>
               <button type="button" disabled={saving} onClick={closeEditor} aria-label="Adres penceresini kapat" className="grid min-h-11 min-w-11 place-items-center rounded-xl border disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
                 <X aria-hidden="true" className="h-5 w-5" />
@@ -208,7 +227,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
                 rows={2} className="mt-1 w-full rounded-xl border bg-transparent p-3 disabled:opacity-60" />
             </label>
             <label className="mt-3 flex min-h-11 items-center gap-3 rounded-xl px-1">
-              <input type="checkbox" checked={editing.is_default} disabled={saving} onChange={e => setEditing({ ...editing, is_default: e.target.checked })} className="h-5 w-5" />
+              <input type="checkbox" checked={editing.is_default === true} disabled={saving} onChange={e => setEditing({ ...editing, is_default: e.target.checked })} className="h-5 w-5" />
               <span>Varsayılan teslimat adresim yap</span>
             </label>
             <div aria-live="polite" className="sr-only">{saving ? 'Adres kaydediliyor.' : ''}</div>
@@ -235,13 +254,13 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
               <div aria-hidden="true" className="rounded-xl bg-red-50 p-2 text-red-700 dark:bg-red-950/30 dark:text-red-300"><Trash2 className="h-5 w-5" /></div>
               <div>
                 <h3 id="delete-address-title" className="text-lg font-bold">Adresi silmek istiyor musunuz?</h3>
-                <p id="delete-address-description" className="mt-1 text-sm text-gray-500">“{deleteCandidate.label}” adresi hesabınızdan kaldırılacak. Bu işlem geri alınamaz.</p>
+                <p id="delete-address-description" className="mt-1 text-sm text-gray-500">“{String(deleteCandidate.label || '').trim() || 'Bu adres'}” hesabınızdan kaldırılacak. Bu işlem geri alınamaz.</p>
               </div>
             </div>
             <div aria-live="polite" className="sr-only">{deleteBusy ? 'Adres siliniyor.' : ''}</div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button type="button" disabled={deleteBusy} onClick={() => setDeleteCandidate(null)} className="min-h-11 rounded-xl border font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Vazgeç</button>
-              <button type="button" disabled={deleteBusy} onClick={() => void confirmRemove()} className="min-h-11 rounded-xl bg-red-700 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">{deleteBusy ? 'Siliniyor…' : 'Adresi Sil'}</button>
+              <button type="button" disabled={deleteBusy || !String(deleteCandidate.id || '').trim()} onClick={() => void confirmRemove()} className="min-h-11 rounded-xl bg-red-700 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">{deleteBusy ? 'Siliniyor…' : 'Adresi Sil'}</button>
             </div>
           </div>
         </div>
