@@ -6,28 +6,49 @@ import ReturnRequestDialog from'./ReturnRequestDialog';
 import ReturnDetailDialog from'./ReturnDetailDialog';
 import{useDialogA11y}from'./useDialogA11y';
 
+const PAGE_SIZE=20;
 const statusText:Record<string,string>={pending_payment:'Ödeme bekleniyor',confirmed:'Onaylandı',preparing:'Hazırlanıyor',partially_shipped:'Kısmen gönderildi',shipped:'Kargoda',delivered:'Teslim edildi',completed:'Tamamlandı',cancelled:'İptal edildi'};
 const returnStatusText:Record<string,string>={requested:'Talep alındı',under_review:'İnceleniyor',approved:'Onaylandı',in_transit:'İade kargoda',received:'İade teslim alındı',rejected:'Reddedildi',refunded:'Geri ödeme yapıldı',closed:'Kapandı'};
 const paymentText:Record<string,string>={pending:'Bekliyor',authorized:'Yetkilendirildi',captured:'Ödendi',partially_refunded:'Kısmi geri ödeme',refunded:'Geri ödendi',failed:'Başarısız'};
 
 export default function OrdersPanel({initialOrderId}:{initialOrderId?:string|null}){
- const[page,setPage]=useState<any>(null);const[detail,setDetail]=useState<any>(null);const[error,setError]=useState('');const[listStatus,setListStatus]=useState('');const[loading,setLoading]=useState(true);const[openingId,setOpeningId]=useState<string|null>(null);const[detailError,setDetailError]=useState('');const[detailStatus,setDetailStatus]=useState('');const[returnOrderId,setReturnOrderId]=useState<string|null>(null);const[returnDetailId,setReturnDetailId]=useState<string|null>(null);const[cancelCandidate,setCancelCandidate]=useState<any>(null);const[cancelBusy,setCancelBusy]=useState(false);
+ const[page,setPage]=useState<any>(null);const[detail,setDetail]=useState<any>(null);const[error,setError]=useState('');const[listStatus,setListStatus]=useState('');const[loading,setLoading]=useState(true);const[loadingMore,setLoadingMore]=useState(false);const[openingId,setOpeningId]=useState<string|null>(null);const[detailError,setDetailError]=useState('');const[detailStatus,setDetailStatus]=useState('');const[returnOrderId,setReturnOrderId]=useState<string|null>(null);const[returnDetailId,setReturnDetailId]=useState<string|null>(null);const[cancelCandidate,setCancelCandidate]=useState<any>(null);const[cancelBusy,setCancelBusy]=useState(false);
  const nestedOpen=Boolean(returnOrderId||returnDetailId||cancelCandidate);
  const orderDialogRef=useDialogA11y(()=>setDetail(null),Boolean(detail)&&!nestedOpen);
  const cancelDialogRef=useDialogA11y(()=>{if(!cancelBusy)setCancelCandidate(null);},Boolean(cancelCandidate));
- async function load(){try{setLoading(true);setError('');setPage(await listOrders());}catch(e:any){setError(e?.message||'Siparişler yüklenemedi.');}finally{setLoading(false);}}
- useEffect(()=>{void load();},[]);
+
+ async function load(reset=true){
+  const offset=reset?0:Number(page?.items?.length||0);
+  try{
+   if(reset)setLoading(true);else setLoadingMore(true);
+   setError('');
+   const next=await listOrders(PAGE_SIZE,offset);
+   setPage((previous:any)=>{
+    if(reset||!previous)return next;
+    const unique=new Map<string,any>();
+    [...(previous.items||[]),...(next.items||[])].forEach(item=>unique.set(String(item.id),item));
+    return {...next,offset:0,items:Array.from(unique.values())};
+   });
+  }catch(e:any){setError(e?.message||'Siparişler yüklenemedi.');}
+  finally{if(reset)setLoading(false);else setLoadingMore(false);}
+ }
+ useEffect(()=>{void load(true);},[]);
  useEffect(()=>{if(initialOrderId)void open(initialOrderId);},[initialOrderId]);
  async function open(id:string){if(openingId)return;try{setOpeningId(id);setError('');setListStatus('');setDetailError('');setDetailStatus('');setDetail(await getOrderDetail(id));}catch(e:any){setError(e?.message||'Sipariş detayı yüklenemedi.');}finally{setOpeningId(null);}}
- async function refreshDetail(id:string){try{setDetailError('');setDetailStatus('');setDetail(await getOrderDetail(id));await load();setDetailStatus('Sipariş detayı güncellendi.');}catch(e:any){setDetailError(e?.message||'Sipariş detayı yenilenemedi.');}}
- async function confirmCancel(){const id=cancelCandidate?.id;if(!id||cancelBusy)return;try{setCancelBusy(true);setDetailError('');setDetailStatus('');await cancelOrder(id);setCancelCandidate(null);setDetail(null);await load();setListStatus('Sipariş iptal edildi.');}catch(e:any){setCancelCandidate(null);setDetailError(e?.message||'Sipariş iptal edilemedi.');}finally{setCancelBusy(false);}}
+ async function refreshDetail(id:string){try{setDetailError('');setDetailStatus('');setDetail(await getOrderDetail(id));await load(true);setDetailStatus('Sipariş detayı güncellendi.');}catch(e:any){setDetailError(e?.message||'Sipariş detayı yenilenemedi.');}}
+ async function confirmCancel(){const id=cancelCandidate?.id;if(!id||cancelBusy)return;try{setCancelBusy(true);setDetailError('');setDetailStatus('');await cancelOrder(id);setCancelCandidate(null);setDetail(null);await load(true);setListStatus('Sipariş iptal edildi.');}catch(e:any){setCancelCandidate(null);setDetailError(e?.message||'Sipariş iptal edilemedi.');}finally{setCancelBusy(false);}}
  if(loading)return<LoadingState label="Siparişler yükleniyor"/>;
  const activeReturn=detail?.returns?.find((r:any)=>['requested','under_review','approved','in_transit','received'].includes(r.status));
+ const hasMore=Number(page?.items?.length||0)<Number(page?.total||0);
  return<Panel title="Siparişlerim" description="Sipariş, ödeme, kargo, iade ve geri ödeme durumlarını tek yerden izleyin.">
-  {error?<ErrorState message={error} onRetry={load}/>:null}
+  {error?<ErrorState message={error} onRetry={()=>void load(true)}/>:null}
   {listStatus?<div role="status" aria-live="polite" className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{listStatus}</div>:null}
-  <div className="sr-only" aria-live="polite">{openingId?'Sipariş detayı yükleniyor.':''}</div>
-  {!page?.items?.length?<EmptyState title="Henüz sipariş yok" body="Sipariş verdiğinizde tüm durum geçmişi burada görünecek."/>:<div className="space-y-3">{page.items.map((o:any)=><button type="button" key={o.id} disabled={Boolean(openingId)} aria-busy={openingId===o.id} onClick={()=>void open(o.id)} className="min-h-14 w-full rounded-xl border border-gray-200 p-4 text-left disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700"><div className="flex justify-between gap-3"><div><div className="font-bold">{o.orderNumber}{o.gift?<span className="text-xs text-brand-gold"> • Hediye</span>:null}</div><div className="mt-1 text-sm text-gray-500">{openingId===o.id?'Detay yükleniyor…':`${statusText[o.status]||o.status} • ${o.itemCount} ürün`}</div>{o.trackingNumber?<div className="mt-1 text-xs text-gray-500">Takip: {o.trackingNumber}</div>:null}</div><div className="font-bold"><Money minor={o.totalMinor} currency={o.currency}/></div></div></button>)}</div>}
+  <div className="sr-only" aria-live="polite">{openingId?'Sipariş detayı yükleniyor.':loadingMore?'Daha fazla sipariş yükleniyor.':''}</div>
+  {!page?.items?.length?<EmptyState title="Henüz sipariş yok" body="Sipariş verdiğinizde tüm durum geçmişi burada görünecek."/>:<>
+   <div className="mb-3 text-sm text-gray-500">{page.items.length} / {page.total} sipariş gösteriliyor</div>
+   <div className="space-y-3">{page.items.map((o:any)=><button type="button" key={o.id} disabled={Boolean(openingId)} aria-busy={openingId===o.id} onClick={()=>void open(o.id)} className="min-h-14 w-full rounded-xl border border-gray-200 p-4 text-left disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700"><div className="flex justify-between gap-3"><div><div className="font-bold">{o.orderNumber}{o.gift?<span className="text-xs text-brand-gold"> • Hediye</span>:null}</div><div className="mt-1 text-sm text-gray-500">{openingId===o.id?'Detay yükleniyor…':`${statusText[o.status]||o.status} • ${o.itemCount} ürün`}</div>{o.trackingNumber?<div className="mt-1 text-xs text-gray-500">Takip: {o.trackingNumber}</div>:null}</div><div className="font-bold"><Money minor={o.totalMinor} currency={o.currency}/></div></div></button>)}</div>
+   {hasMore?<div className="mt-5 flex justify-center"><button type="button" disabled={loadingMore} onClick={()=>void load(false)} className="min-h-11 rounded-xl border border-brand-green px-5 font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:text-brand-gold">{loadingMore?'Yükleniyor…':'Daha fazla sipariş göster'}</button></div>:null}
+  </>}
 
   {detail?<div role="dialog" aria-modal="true" aria-labelledby="order-detail-title" className="fixed inset-0 z-50 overflow-y-auto bg-black/60 p-4"><div ref={orderDialogRef} tabIndex={-1} className="mx-auto mt-6 max-w-2xl rounded-2xl bg-white p-5 outline-none dark:bg-gray-900">
    <div className="flex items-start justify-between gap-3"><div><h3 id="order-detail-title" className="text-xl font-bold">{detail.orderNumber}</h3><p className="text-sm text-gray-500">{statusText[detail.status]||detail.status}</p><p className="mt-1 text-xs text-gray-500">Ödeme: {paymentText[detail.paymentStatus]||detail.paymentStatus}</p></div><button type="button" onClick={()=>setDetail(null)} aria-label="Sipariş detayını kapat" className="min-h-11 rounded-lg border px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Kapat</button></div>
