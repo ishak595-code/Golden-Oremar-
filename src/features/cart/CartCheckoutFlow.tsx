@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, CheckCircle2, Minus, Plus, ShieldCheck, ShoppingCart, Trash2 } from 'lucide-react';
 import { useAccessibleDialog } from '../accessibility/useAccessibleDialog';
+import { Money } from '../account/ui';
 import {
   clearCart,
   createOrder,
@@ -15,8 +16,9 @@ import {
   type CheckoutPreview,
 } from './api';
 
-function Money({ minor, currency }: { minor: number; currency: string }) {
-  return <>{new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(Number(minor || 0) / 100)}</>;
+function safeNonNegativeInteger(value: unknown) {
+  const number = Number(value);
+  return Number.isSafeInteger(number) && number >= 0 ? number : null;
 }
 
 function friendlyReason(reason?: string | null) {
@@ -173,7 +175,11 @@ export default function CartCheckoutFlow({
       setRowBusyId(item.cartItemId);
       setError('');
       setActionStatus('');
-      const maxAllowed = item.sellableQuantity != null ? Math.max(0, Number(item.sellableQuantity)) : null;
+      const maxAllowed = item.sellableQuantity != null ? safeNonNegativeInteger(item.sellableQuantity) : null;
+      if (item.sellableQuantity != null && maxAllowed === null) {
+        setError('Bu ürünün güncel stok sınırı doğrulanamadı. Sepeti yenileyip tekrar deneyin.');
+        return;
+      }
       if (maxAllowed != null && nextQuantity > maxAllowed) {
         setError(`Bu ürün için en fazla ${maxAllowed} adet sepete eklenebilir.`);
         return;
@@ -326,6 +332,8 @@ export default function CartCheckoutFlow({
     </section>;
   }
 
+  const discountMinor = preview ? safeNonNegativeInteger(preview.discountMinor) : null;
+
   return <main className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6" aria-labelledby="cart-title">
     <div className="flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
@@ -340,21 +348,22 @@ export default function CartCheckoutFlow({
 
     <section aria-labelledby="cart-items-title" className="rounded-2xl border bg-white dark:bg-gray-900 p-4 sm:p-5">
       <h2 id="cart-items-title" className="sr-only">Sepetteki ürünler</h2>
-      <div className="space-y-4">{cart.items.map(item => { const rowBusy = rowBusyId === item.cartItemId; return <article key={item.cartItemId} aria-busy={rowBusy} className="flex gap-3 border-b pb-4 last:border-b-0 last:pb-0">
+      <div className="space-y-4">{cart.items.map(item => { const rowBusy = rowBusyId === item.cartItemId; const sellableQuantity = item.sellableQuantity != null ? safeNonNegativeInteger(item.sellableQuantity) : null; return <article key={item.cartItemId} aria-busy={rowBusy} className="flex gap-3 border-b pb-4 last:border-b-0 last:pb-0">
         {item.imagePath ? <img src={publicCatalogUrl(item.imagePath)} alt={`${item.productName} ürün görseli`} loading="lazy" decoding="async" className="h-24 w-24 shrink-0 rounded-xl object-cover" /> : <div role="img" aria-label={`${item.productName} için görsel henüz eklenmedi`} className="grid h-24 w-24 shrink-0 place-items-center rounded-xl bg-gray-100 px-2 text-center text-xs text-gray-500 dark:bg-gray-800">Görsel yok</div>}
         <div className="min-w-0 flex-1">
           <h3 className="font-bold">{item.productName}</h3>
           <p className="mt-1 text-sm text-gray-500">{item.variantName} • {item.producer?.name}</p>
           {!item.available ? <p className="mt-1 text-sm font-semibold text-red-700">Bu ürün artık satışa uygun değil.</p> : null}
-          {item.sellableQuantity != null && item.quantity > item.sellableQuantity ? <p className="mt-1 text-sm font-semibold text-red-700">Yeterli stok yok. Satılabilir: {item.sellableQuantity}</p> : null}
+          {item.sellableQuantity != null && sellableQuantity === null ? <p className="mt-1 text-sm font-semibold text-red-700">Stok sınırı doğrulanamadı. Sepeti yenileyin.</p> : null}
+          {sellableQuantity != null && item.quantity > sellableQuantity ? <p className="mt-1 text-sm font-semibold text-red-700">Yeterli stok yok. Satılabilir: {sellableQuantity}</p> : null}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center rounded-xl border" role="group" aria-label={`${item.productName} adet seçimi`}>
               <button type="button" disabled={rowBusy} onClick={() => void updateQuantity(item, item.quantity - 1)} aria-label={`${item.productName} adedini azalt`} className="min-h-11 min-w-11 p-2 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><Minus aria-hidden="true" className="mx-auto h-4 w-4" /></button>
               <span className="min-w-10 text-center font-bold" aria-live="polite" aria-label={`${item.quantity} adet`}>{item.quantity}</span>
-              <button type="button" onClick={() => void updateQuantity(item, item.quantity + 1)} disabled={rowBusy || (!item.available) || (item.sellableQuantity != null && item.quantity >= Number(item.sellableQuantity))} aria-label={`${item.productName} adedini artır`} className="min-h-11 min-w-11 p-2 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><Plus aria-hidden="true" className="mx-auto h-4 w-4" /></button>
+              <button type="button" onClick={() => void updateQuantity(item, item.quantity + 1)} disabled={rowBusy || (!item.available) || (item.sellableQuantity != null && (sellableQuantity === null || item.quantity >= sellableQuantity))} aria-label={`${item.productName} adedini artır`} className="min-h-11 min-w-11 p-2 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><Plus aria-hidden="true" className="mx-auto h-4 w-4" /></button>
             </div>
             <div className="flex items-center gap-3">
-              <strong><Money minor={item.lineTotalMinor} currency={cart.currency} /></strong>
+              <strong><Money minor={Number(item.lineTotalMinor)} currency={cart.currency} /></strong>
               <button type="button" disabled={rowBusy} onClick={() => void remove(item)} aria-label={`${item.productName} ürününü sepetten çıkar`} className="min-h-11 min-w-11 rounded-xl border border-red-200 p-2 text-red-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300"><Trash2 aria-hidden="true" className="mx-auto h-4 w-4" /></button>
             </div>
           </div>
@@ -406,10 +415,10 @@ export default function CartCheckoutFlow({
     <section className="rounded-2xl border bg-white dark:bg-gray-900 p-4 sm:p-5" aria-labelledby="summary-title">
       <div className="flex items-center justify-between gap-3"><h2 id="summary-title" className="text-lg font-bold">Sipariş özeti</h2>{previewBusy ? <span role="status" className="text-sm text-gray-500">Güncelleniyor…</span> : null}</div>
       <div className="mt-4 space-y-2 text-sm">
-        <div className="flex justify-between"><span>Ara toplam</span><strong><Money minor={preview?.subtotalMinor ?? cart.subtotalMinor} currency={cart.currency} /></strong></div>
-        <div className="flex justify-between"><span>Kargo</span><strong>{preview?.shipping?.manualQuoteRequired ? 'Manuel teklif' : <Money minor={preview?.shippingMinor || 0} currency={cart.currency} />}</strong></div>
-        {(preview?.discountMinor || 0) > 0 ? <div className="flex justify-between text-green-700"><span>{preview?.promotion?.title || 'İndirim'}</span><strong>-<Money minor={preview?.discountMinor || 0} currency={cart.currency} /></strong></div> : null}
-        <div className="flex justify-between border-t pt-3 text-lg"><span>Toplam</span><strong><Money minor={preview?.totalMinor ?? cart.subtotalMinor} currency={cart.currency} /></strong></div>
+        <div className="flex justify-between"><span>Ara toplam</span><strong><Money minor={Number(preview?.subtotalMinor ?? cart.subtotalMinor)} currency={cart.currency} /></strong></div>
+        <div className="flex justify-between"><span>Kargo</span><strong>{preview?.shipping?.manualQuoteRequired ? 'Manuel teklif' : preview ? <Money minor={Number(preview.shippingMinor)} currency={cart.currency} /> : <span role="status">Hesaplanıyor…</span>}</strong></div>
+        {discountMinor != null && discountMinor > 0 ? <div className="flex justify-between text-green-700"><span>{preview?.promotion?.title || 'İndirim'}</span><strong>-<Money minor={discountMinor} currency={cart.currency} /></strong></div> : null}
+        <div className="flex justify-between border-t pt-3 text-lg"><span>Toplam</span><strong>{preview ? <Money minor={Number(preview.totalMinor)} currency={cart.currency} /> : <span role="status">Hesaplanıyor…</span>}</strong></div>
       </div>
       {preview?.shipping?.publicNote ? <p className="mt-3 text-xs text-gray-500">{preview.shipping.publicNote}</p> : null}
       {preview && !preview.canCheckout ? <div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{friendlyReason(preview.blockingReason)}</div> : null}
