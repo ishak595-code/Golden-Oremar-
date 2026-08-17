@@ -12,6 +12,7 @@ type Delivery = {
   body: string;
   action_url: string | null;
   metadata: Record<string, unknown> | null;
+  unread_count: number;
 };
 
 type SendResult = { ok: boolean; error?: string; disableToken?: boolean };
@@ -61,6 +62,11 @@ async function signJwt(algorithm: "RS256" | "ES256", privateKeyPem: string, payl
   return `${signingInput}.${base64UrlBytes(new Uint8Array(signature))}`;
 }
 
+function unreadCount(delivery: Delivery) {
+  const value = Number(delivery.unread_count);
+  return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+}
+
 let cachedGoogleToken: { value: string; expiresAt: number } | null = null;
 async function getGoogleAccessToken() {
   if (cachedGoogleToken && cachedGoogleToken.expiresAt > Date.now() + 60_000) return cachedGoogleToken.value;
@@ -102,6 +108,9 @@ async function sendFcm(delivery: Delivery): Promise<SendResult> {
   const projectId = requiredEnv("FCM_PROJECT_ID");
   if (!projectId) return { ok: false, error: "fcm_project_id_missing" };
   const accessToken = await getGoogleAccessToken();
+  const count = unreadCount(delivery);
+  const data = stringMetadata(delivery.metadata, delivery.action_url);
+  data.unread_count = String(count);
   const response = await fetch(FCM_ENDPOINT(projectId), {
     method: "POST",
     headers: { authorization: `Bearer ${accessToken}`, "content-type": "application/json" },
@@ -109,8 +118,14 @@ async function sendFcm(delivery: Delivery): Promise<SendResult> {
       message: {
         token: delivery.push_token,
         notification: { title: delivery.title, body: delivery.body },
-        data: stringMetadata(delivery.metadata, delivery.action_url),
-        android: { priority: "high", notification: { channel_id: "golden-oremar-updates" } },
+        data,
+        android: {
+          priority: "high",
+          notification: {
+            channel_id: "golden-oremar-updates",
+            notification_count: count,
+          },
+        },
       },
     }),
   });
@@ -137,6 +152,7 @@ async function sendApns(delivery: Delivery): Promise<SendResult> {
   const bundleId = requiredEnv("APNS_BUNDLE_ID") || "com.goldenoremar.app";
   const authToken = await getApnsProviderToken();
   const base = delivery.environment === "development" ? APNS_DEVELOPMENT : APNS_PRODUCTION;
+  const count = unreadCount(delivery);
   const response = await fetch(`${base}/3/device/${encodeURIComponent(delivery.push_token)}`, {
     method: "POST",
     headers: {
@@ -147,8 +163,13 @@ async function sendApns(delivery: Delivery): Promise<SendResult> {
       "content-type": "application/json",
     },
     body: JSON.stringify({
-      aps: { alert: { title: delivery.title, body: delivery.body }, sound: "default" },
+      aps: {
+        alert: { title: delivery.title, body: delivery.body },
+        sound: "default",
+        badge: count,
+      },
       action_url: delivery.action_url,
+      unread_count: count,
       metadata: delivery.metadata || {},
     }),
   });
@@ -188,7 +209,7 @@ export default {
     const limit = Number.isFinite(requestedLimit) ? Math.min(MAX_BATCH, Math.max(1, Math.trunc(requestedLimit))) : 50;
     const workerId = `edge:${Deno.env.get("DENO_DEPLOYMENT_ID") || "push-dispatch"}:${crypto.randomUUID()}`.slice(0, 120);
 
-    const { data, error } = await ctx.supabaseAdmin.rpc("claim_push_deliveries_v2", {
+    const { data, error } = await ctx.supabaseAdmin.rpc("claim_push_deliveries_v3", {
       p_limit: limit,
       p_worker_id: workerId,
       p_providers: providers,
