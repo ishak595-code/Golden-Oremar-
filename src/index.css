@@ -43,7 +43,6 @@
   --brand-earth: #7A431F;
 }
 
-/* İnci Beyazı: clean premium ivory with forest typography. */
 :root[data-theme="light"] {
   color-scheme: light;
   --bg-main: #F7F8F6;
@@ -58,7 +57,6 @@
   --brand-earth: #7A431F;
 }
 
-/* Zümrüt Oremar: refined emerald accent without sacrificing reading contrast. */
 :root[data-theme="emerald"] {
   color-scheme: light;
   --bg-main: #F1F6F2;
@@ -73,7 +71,6 @@
   --brand-earth: #765033;
 }
 
-/* Yakut Prestige: pearl surface, ruby accent and warm champagne companion. */
 :root[data-theme="ruby"] {
   color-scheme: light;
   --bg-main: #FBF6F7;
@@ -88,7 +85,6 @@
   --brand-earth: #7B3B37;
 }
 
-/* Obsidyen Gece: deep forest-black surface with warm gold. */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg-main: #060F0C;
@@ -103,7 +99,6 @@
   --brand-earth: #C36A31;
 }
 
-/* Şampanya Altın: warm cream surface with restrained bronze-gold accents. */
 :root[data-theme="champagne"] {
   color-scheme: light;
   --bg-main: #FBF6E9;
@@ -116,6 +111,11 @@
   --brand-gold: #9A7118;
   --brand-green: #705C27;
   --brand-earth: #805338;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -133,6 +133,19 @@ body {
 
 h1, h2, h3, h4, h5, h6, .font-serif {
   font-family: var(--font-serif);
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--brand-gold);
+  outline-offset: 3px;
+}
+
+:where(button, [role="button"], a[href]) {
+  -webkit-touch-callout: none;
+}
+
+[aria-disabled="true"] {
+  cursor: not-allowed;
 }
 
 ::-webkit-scrollbar {
@@ -164,5 +177,20 @@ h1, h2, h3, h4, h5, h6, .font-serif {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 3px solid Highlight;
+  }
+
+  :where(button, [role="button"], input, select, textarea) {
+    forced-color-adjust: auto;
+  }
+
+  [aria-disabled="true"], :disabled {
+    opacity: 1;
+    color: GrayText;
   }
 }
