@@ -37,6 +37,9 @@ const menu=[
  ['settings','Ayarlar',Settings,'Bildirimler, oturum ve hesap yönetimi'],
 ] as const;
 
+function nonNegativeCount(value:unknown){const count=Number(value);return Number.isSafeInteger(count)&&count>=0?count:null;}
+function summaryCount(value:unknown){const count=nonNegativeCount(value);return count===null?'Doğrulanamadı':count;}
+
 export default function AccountCenter({
  requestedView,theme,onThemeChange,onOpenProduct,onOpenProducer,onStartGift,onOpenMessages,onOpenNotificationAction,onUnreadNotificationCountChange,onOpenContact,onOpenHealth,onOpenEvents,onOpenAdmin,onOpenSellerApplication,onOpenSellerProductManager,onBack
 }:{
@@ -49,7 +52,10 @@ export default function AccountCenter({
    setLoading(true);setError('');
    const next=await getAccountOverview();
    setOverview(next);
-   onUnreadNotificationCountChange?.(Number(next?.summary?.unread_notification_count)||0);
+   const unread=nonNegativeCount(next?.summary?.unread_notification_count);
+   // The dedicated notification endpoint remains authoritative. Never erase a
+   // valid red app badge because an overview payload is malformed or stale.
+   if(unread!==null)onUnreadNotificationCountChange?.(unread);
   }catch(e:any){setError(e?.message||'Hesap bilgileri yüklenemedi.');}
   finally{setLoading(false);}
  }
@@ -117,6 +123,7 @@ export default function AccountCenter({
   <div ref={viewContentRef} tabIndex={-1} className="outline-none"><React.Suspense fallback={<LoadingState label="Hesap bölümü yükleniyor"/>}>{body()}</React.Suspense></div>
  </div>;
 
+ const roles=Array.isArray(overview.roles)?overview.roles:[];
  return<section aria-labelledby="account-title" className="space-y-5">
   <div className="rounded-2xl bg-brand-green p-5 text-white">
     <div className="flex items-center justify-between gap-3">
@@ -124,10 +131,10 @@ export default function AccountCenter({
       {onBack?<button type="button" onClick={onBack} className="min-h-11 rounded-xl border border-white/30 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Geri</button>:null}
     </div>
     <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Hesap özeti">
-      <div className="rounded-xl bg-white/10 p-3"><div className="text-xl font-bold">{overview.summary.order_count}</div><div className="text-xs">Sipariş</div></div>
-      <div className="rounded-xl bg-white/10 p-3"><div className="text-xl font-bold">{overview.summary.favorite_count}</div><div className="text-xs">Favori</div></div>
-      <div className="rounded-xl bg-white/10 p-3"><div className="text-xl font-bold">{overview.summary.followed_producer_count}</div><div className="text-xs">Takip</div></div>
-      <div className="rounded-xl bg-white/10 p-3"><div className="text-xl font-bold">{overview.summary.gift_count}</div><div className="text-xs">Hediye</div></div>
+      <div className="rounded-xl bg-white/10 p-3"><div className="text-xl font-bold">{summaryCount(overview.summary.order_count)}</div><div className="text-xs">Sipariş</div></div>
+      <div className="rounded-xl bg-white/10 p-3"><div className="text-xl font-bold">{summaryCount(overview.summary.favorite_count)}</div><div className="text-xs">Favori</div></div>
+      <div className="rounded-xl bg-white/10 p-3"><div className="text-xl font-bold">{summaryCount(overview.summary.followed_producer_count)}</div><div className="text-xs">Takip</div></div>
+      <div className="rounded-xl bg-white/10 p-3"><div className="text-xl font-bold">{summaryCount(overview.summary.gift_count)}</div><div className="text-xs">Hediye</div></div>
     </div>
   </div>
 
@@ -155,7 +162,7 @@ export default function AccountCenter({
      <div className="min-w-0 flex-1"><div className="font-bold">{overview.producer?'Satıcı Paneli':'Satıcı Ol'}</div>
      <div className="text-sm text-gray-500">{overview.producer?'Ürün, stok, lot ve finans yönetimi':'Golden Oremar üretici başvurusu'}</div></div><ChevronRight aria-hidden="true" className="h-5 w-5 text-gray-400"/></div>
    </button>
-   {overview.roles.some(role=>role==='admin'||role==='super_admin')&&onOpenAdmin?(
+   {roles.some(role=>role==='admin'||role==='super_admin')&&onOpenAdmin?(
     <button type="button" onClick={onOpenAdmin} className="min-h-16 w-full rounded-2xl border border-brand-green/30 bg-brand-green/5 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
      <div className="flex items-center gap-3"><div aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2 text-brand-green"><ShieldCheck className="h-5 w-5"/></div>
      <div className="min-w-0 flex-1"><div className="font-bold">Yönetim Paneli</div><div className="text-sm text-gray-500">Golden Oremar yönetimi</div></div><ChevronRight aria-hidden="true" className="h-5 w-5 text-gray-400"/></div>
