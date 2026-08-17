@@ -53,6 +53,7 @@ function AppContent(){
  const{isOnline,restoreSequence}=useConnectivity();
  const[currentTab,setCurrentTab]=useState<Tab>(resolvedInitialTab);
  const[routeDepth,setRouteDepth]=useState(0);
+ const routeDepthRef=useRef(0);
  const[accountView,setAccountView]=useState('menu');
  const[selectedProductReference,setSelectedProductReference]=useState<string|null>(initialRoute.productReference);
  const[selectedProducerReference,setSelectedProducerReference]=useState<string|null>(initialRoute.producerReference);
@@ -79,17 +80,17 @@ function AppContent(){
 
  useEffect(()=>{
   const normalizedUrl=resolvedInitialTab===initialTab?window.location.href:tabUrl('home');
+  routeDepthRef.current=0;
   window.history.replaceState({...window.history.state,goldenOremar:true,goldenOremarDepth:0,tab:resolvedInitialTab},'',normalizedUrl);
   if(resolvedInitialTab!==initialTab){setSelectedProductReference(null);setSelectedProducerReference(null);}
  },[]);
 
  const pushRoute=useCallback((url:string,tab:Tab)=>{
   if(window.location.href!==url){
-   setRouteDepth(depth=>{
-    const next=depth+1;
-    window.history.pushState({goldenOremar:true,goldenOremarDepth:next,tab},'',url);
-    return next;
-   });
+   const next=routeDepthRef.current+1;
+   routeDepthRef.current=next;
+   setRouteDepth(next);
+   window.history.pushState({goldenOremar:true,goldenOremarDepth:next,tab},'',url);
   }
   setCurrentTab(tab);
   setIsMobileMenuOpen(false);
@@ -98,6 +99,7 @@ function AppContent(){
 
  const replaceWithHome=useCallback(()=>{
   const url=tabUrl('home');
+  routeDepthRef.current=0;
   window.history.replaceState({goldenOremar:true,goldenOremarDepth:0,tab:'home'},'',url);
   setRouteDepth(0);setCurrentTab('home');setSelectedProductReference(null);setSelectedProducerReference(null);setSearchCategorySlug(null);setSearchProducerId(null);setIsMobileMenuOpen(false);window.scrollTo({top:0,behavior:'auto'});
  },[]);
@@ -134,7 +136,8 @@ function AppContent(){
   const applyLocation=(event:PopStateEvent)=>{
    const route=parsePublicRoute();
    const next=normalizeInitialTab(route,safeTab(route.tab));
-   setRouteDepth(routeDepthFromState(event.state));
+   const depth=routeDepthFromState(event.state);
+   routeDepthRef.current=depth;setRouteDepth(depth);
    setSelectedProductReference(route.productReference);
    setSelectedProducerReference(route.producerReference);
    setSearchQuery(route.query);setSearchCategorySlug(route.categorySlug);setSearchProducerId(route.producerId);
