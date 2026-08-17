@@ -1,13 +1,14 @@
 {
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "appliedMigrationCount": 126,
-  "latestMigration": "20260816231230_add_public_checkout_payment_readiness_v1",
+  "appliedMigrationCount": 127,
+  "latestMigration": "20260817001643_add_provider_filtered_push_delivery_claim_v2",
   "securityAdvisorLints": 0,
   "performanceBlockingLints": 0,
   "edgeFunctions": {
     "contact-submit": { "status": "ACTIVE", "version": 1 },
-    "event-reservation": { "status": "ACTIVE", "version": 2 }
+    "event-reservation": { "status": "ACTIVE", "version": 2 },
+    "push-dispatch": { "status": "ACTIVE", "version": 1 }
   },
   "completedFrontendBlocks": [
     "account-center",
@@ -65,6 +66,8 @@
     "seller-shipping-weight-integrity",
     "native-push-client-preparation",
     "exact-push-device-unregister-hardened",
+    "push-provider-filtered-queue-claim",
+    "push-dispatch-edge-worker-fcm-apns",
     "storefront-demo-assets-retired",
     "recipe-live-catalog-alignment",
     "admin-section-lazy-splitting-implemented",
@@ -82,5 +85,5 @@
     "production-fcm-apns-provider-configuration",
     "mobile-store-signing-and-release-credentials"
   ],
-  "nextBlock": "push-dispatch-readiness-accessibility-performance-and-release-audit"
+  "nextBlock": "accessibility-performance-release-hardening-and-external-provider-readiness"
 }
