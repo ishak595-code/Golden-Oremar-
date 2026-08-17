@@ -23,14 +23,20 @@ export function useUnreadNotificationCount(authenticated: boolean) {
     return { next, previous };
   }, []);
 
+  const resetUnreadSession = useCallback(() => {
+    const hadUnread = (lastKnownUnread.current || 0) > 0;
+    lastKnownUnread.current = null;
+    setUnreadCountState(0);
+    if (hadUnread && Capacitor.isNativePlatform()) void clearNativeDeliveredNotifications();
+  }, []);
+
   const setUnreadCount = useCallback((value: number) => {
     commitUnreadCount(value);
   }, [commitUnreadCount]);
 
   const refresh = useCallback(async () => {
     if (!authenticated) {
-      lastKnownUnread.current = null;
-      setUnreadCountState(0);
+      resetUnreadSession();
       return 0;
     }
     const data = await listNotifications(1);
@@ -41,12 +47,11 @@ export function useUnreadNotificationCount(authenticated: boolean) {
       void playNotificationSound();
     }
     return next;
-  }, [authenticated, commitUnreadCount]);
+  }, [authenticated, commitUnreadCount, resetUnreadSession]);
 
   useEffect(() => {
     if (!authenticated) {
-      lastKnownUnread.current = null;
-      setUnreadCountState(0);
+      resetUnreadSession();
       return;
     }
 
@@ -90,7 +95,7 @@ export function useUnreadNotificationCount(authenticated: boolean) {
       unsubscribePushReceipt?.();
       if (appStateHandle) void appStateHandle.remove();
     };
-  }, [authenticated, refresh]);
+  }, [authenticated, refresh, resetUnreadSession]);
 
   return { unreadCount, setUnreadCount, refreshUnreadCount: refresh };
 }
