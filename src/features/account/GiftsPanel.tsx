@@ -31,10 +31,12 @@ export default function GiftsPanel({ onStartGift }: { onStartGift?: () => void }
           <div className="min-w-0"><div className="font-bold">Alıcı: {g.recipientName}</div><div className="mt-1 text-sm text-gray-500">{g.orderNumber} • {orderStatusLabel(g.status)}</div>{date?<div className="mt-1 text-xs text-gray-500">{date}</div>:null}</div>
           <div className="font-bold text-brand-green dark:text-brand-gold"><Money minor={g.totalMinor} currency={g.currency}/></div>
         </div>
-        {giftItems.length?<div className="mt-4 space-y-2" aria-label="Hediye ürünleri">{giftItems.map((item:any,index:number)=><div key={`${item.productName}-${item.variantName}-${index}`} className="flex items-center gap-3 rounded-xl bg-gray-50 p-2.5 dark:bg-gray-800">
-          {item.imagePath?<img src={catalogPublicUrl(item.imagePath)} alt="" loading="lazy" decoding="async" className="h-14 w-14 shrink-0 rounded-lg object-cover"/>:<div aria-hidden="true" className="h-14 w-14 shrink-0 rounded-lg bg-gray-200 dark:bg-gray-700"/>}
-          <div className="min-w-0 flex-1"><div className="line-clamp-1 font-semibold">{item.productName}</div><div className="mt-0.5 text-xs text-gray-500">{item.variantName||'Standart'} • {item.quantity} adet</div></div>
-        </div>)}</div>:null}
+        {giftItems.length?<div className="mt-4 space-y-2" aria-label="Hediye ürünleri">{giftItems.map((item:any,index:number)=>{
+          const productName=String(item.productName||'Hediye ürünü');
+          return <div key={`${productName}-${item.variantName}-${index}`} className="flex items-center gap-3 rounded-xl bg-gray-50 p-2.5 dark:bg-gray-800">
+          {item.imagePath?<img src={catalogPublicUrl(item.imagePath)} alt={`${productName} ürün görseli`} loading="lazy" decoding="async" className="h-14 w-14 shrink-0 rounded-lg object-cover"/>:<div role="img" aria-label={`${productName} için görsel henüz eklenmedi`} className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-gray-200 text-[10px] text-gray-500 dark:bg-gray-700"><span aria-hidden="true">Görsel yok</span></div>}
+          <div className="min-w-0 flex-1"><div className="line-clamp-1 font-semibold">{productName}</div><div className="mt-0.5 text-xs text-gray-500">{item.variantName||'Standart'} • {item.quantity} adet</div></div>
+        </div>;})}</div>:null}
         {g.message?<p className="mt-3 rounded-xl bg-gray-50 p-3 text-sm italic text-gray-700 dark:bg-gray-800 dark:text-gray-200">“{g.message}”</p>:null}
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
           {g.senderName?<span>Gönderen adı: {g.senderName}</span>:null}
