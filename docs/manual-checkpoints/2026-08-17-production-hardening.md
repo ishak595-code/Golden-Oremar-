@@ -7,9 +7,9 @@ Product form factor: Android and iOS application. React/Vite is the Capacitor UI
 
 ## Latest functional frontend head
 
-`5ef50968d12198dcbc4f1d5921ec9be41f46bb19`
+`c8bef1cf6019185fcf6ee33ab6fb72bbf6703663`
 
-This is the latest substantive frontend hardening checkpoint. It includes the native app-shell rules, live notification/cart counters, push badge behavior, seller/account truthfulness work and the final targeted admin screen-reader/resilience pass across review moderation, notifications, orders, returns and product review dialogs. State/report-only commits may be newer than this SHA.
+This is the latest substantive frontend hardening checkpoint. It includes the native app-shell rules, live notification/cart counters, push badge behavior, seller/account truthfulness work and the targeted admin screen-reader/resilience pass across vendor review, review moderation, notifications, orders, returns, products, events, categories and content. State/report-only commits may be newer than this SHA.
 
 ## Latest functional backend head
 
@@ -41,7 +41,7 @@ Project: `rmfcziawxjgcnxexbrvw`
 - Browser and Android native back navigation use real route history with StrictMode-safe route-depth tracking.
 - Explicit Home navigation clears stale search query/category/producer state.
 - The app shell has no desktop top navigation or hamburger menu. The repository search design is preserved and phone/tablet navigation remains the bottom app bar.
-- The release audit now fails if a desktop top menu or hamburger main-app navigation returns, if the persistent bottom app navigation disappears, or if live notification/cart badge bindings are broken.
+- The release audit fails if a desktop top menu or hamburger main-app navigation returns, if the persistent bottom app navigation disappears, or if live notification/cart badge bindings are broken.
 - Header notification badge uses the real Supabase unread count and becomes high-contrast red only when unread notifications exist.
 - Header and bottom cart badges use the real server total item count, not the number of distinct cart rows.
 - Checkout quantity changes, removals and clear-cart operations propagate the latest cart snapshot back to the app shell counter.
@@ -57,19 +57,19 @@ Project: `rmfcziawxjgcnxexbrvw`
 - Mobile admin sidebar uses accessible dialog focus management.
 - Seller product entry validates price, compare-at price, stock, shipping weight and image MIME/size/count before mutation; destructive archive uses an accessible confirmation dialog.
 - Producer onboarding RPC boundaries validate UUIDs, enums, country/coordinate/text limits, planned-product quantities, fulfillment/source models and document storage paths before Supabase mutations.
-- Producer onboarding document selection now immediately rejects unsupported MIME types, empty files, files over 20 MB and more than six selected documents before upload.
+- Producer onboarding document selection immediately rejects unsupported MIME types, empty files, files over 20 MB and more than six selected documents before upload.
 - Producer document storage extension is derived from the validated MIME type instead of trusting a filename extension.
 - Producer finance payout history has resilient 20-row pagination, duplicate-safe merge, retry behavior and screen-reader loading/error status.
-- Seller dashboard finance summary no longer invents TRY or zero values when backend money/currency data is invalid.
+- Seller dashboard finance summary does not invent TRY or zero values when backend money/currency data is invalid.
 - Account overview cannot erase a valid live red unread badge with malformed summary data; invalid summary counts render as unverified instead of fake zeroes.
 - Account profile validates name, phone, locale and avatar boundaries. Account security validates password boundaries and uses accessible confirmations for destructive multi-device actions.
 - `CatalogProductCard` does not show a second local share-success message when the parent share handler already owns truthful success/failure feedback.
-- Admin review moderation uses accessible focus containment, Escape handling, focus restore, assertive error delivery and bounded search/reason inputs.
+- Admin vendor review, review moderation, notification audience, order, return and product dialogs use topmost focus containment, Escape handling, focus restoration and active-dialog error delivery.
+- Admin event editor and destructive event/reservation confirmations now use accessible dialog containment. Invalid event dates and malformed guest/count metrics are not silently rendered as plausible values.
+- Admin category editor and archive confirmation now use accessible dialog containment, bounded search, assertive errors and defensive category/count rendering.
+- Admin content editor and archive confirmation now use accessible dialog containment, bounded search, assertive errors and defensive locale/date/count rendering.
 - Admin notification audience count rejects malformed/negative/non-integer server counts and broadcast IDs. Audience-count errors are isolated from general send/load errors so stale alerts cannot silently poison the form.
 - Admin notification specific-user search keeps the already-selected target visible while filtering, and send is disabled whenever audience count cannot be verified.
-- Admin order detail and status-transition dialogs now use nested accessible-dialog containment, backdrop/Escape safety, focus restoration and active-dialog error delivery. Invalid dates are not rendered as fake values.
-- Admin return detail and action dialogs now use nested accessible-dialog containment, focus restoration and active-dialog error delivery. Return/refund dates are defensively rendered and evidence controls have product-specific labels.
-- Admin product detail and publish/reject dialogs now use nested accessible-dialog containment and active-dialog error delivery. Invalid product ratings render as unverified instead of NaN or a fake score.
 - Checkout does not invent payment, shipping or total values before the server preview is verified.
 - Shared money rendering does not turn invalid minor units/currency into a fake zero amount.
 - No fake payment provider, OAuth provider, push credential, store-signing credential or shipping weight was introduced.
