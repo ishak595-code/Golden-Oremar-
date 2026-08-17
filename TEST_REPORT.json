@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T01:33:00+00:00",
+  "generatedAt": "2026-08-17T02:18:00+00:00",
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
   "liveMigrationCount": 127,
@@ -17,6 +17,10 @@
     "supabaseSecurityAdvisor": "PASS_ZERO_LINTS",
     "supabasePerformanceBlockingLints": "PASS_ZERO_BLOCKING_LINTS_INFO_UNUSED_INDEXES_ONLY",
     "categoryDirectoryPagination": "IMPLEMENTED_PENDING_CI_RECHECK",
+    "homeSearchProducerOriginVillageAlignment": "IMPLEMENTED_PENDING_CI_RECHECK",
+    "catalogProductCardActionLockingAccessibility": "IMPLEMENTED_PENDING_CI_RECHECK",
+    "catalogSearchPaginationDedupAccessibility": "IMPLEMENTED_PENDING_CI_RECHECK",
+    "producerStockInputAndChangeRequestActionHardening": "IMPLEMENTED_PENDING_CI_RECHECK",
     "accountOrderPagination": "IMPLEMENTED_PENDING_CI_RECHECK",
     "accountPaymentPagination": "IMPLEMENTED_PENDING_CI_RECHECK",
     "accountNotificationCursorPagination": "IMPLEMENTED_BACKEND_CURSOR_CONTRACT_VERIFIED_PENDING_CI_RECHECK",
@@ -29,7 +33,13 @@
     "verifiedReviewAccessibilityPolish": "IMPLEMENTED_PENDING_CI_RECHECK",
     "androidReleaseBundleBaseline": "PASS",
     "iosSimulatorCompileBaseline": "PASS",
-    "latestUiHardeningCi": "EXTERNAL_BLOCKED_BEFORE_STEPS_STARTED_GITHUB_BILLING"
+    "latestUiHardeningCi": "EXTERNAL_BLOCKED_BEFORE_STEPS_STARTED_GITHUB_BILLING",
+    "latestWorkflowRunId": 31987445129,
+    "latestWorkflowHeadSha": "ea2b17579c30d752c970da9c6c76f58f711cd5c4",
+    "latestWorkflowJobs": {
+      "verify-ios": "FAILURE_WITH_NO_EXECUTED_STEPS",
+      "verify-web-android": "FAILURE_WITH_NO_EXECUTED_STEPS"
+    }
   },
   "truthfulnessChecks": {
     "firebaseDataContextRetired": true,
@@ -37,6 +47,11 @@
     "legacyStaticProductSourceRetired": true,
     "productProducerMetricsDynamic": true,
     "catalogIntegrityMetricsDynamic": true,
+    "homeSearchUsesLiveProducerAndOriginTerms": true,
+    "catalogActionsPreventDuplicateConcurrentMutations": true,
+    "catalogPaginationDeduplicatesOverlappingRows": true,
+    "sellerInventoryDoesNotCoerceClearedInputsToZero": true,
+    "sellerChangeWithdrawalPreventsDuplicateRequests": true,
     "favoriteCardsUseLiveAvailabilityAndProducerVerification": true,
     "followedProducerCardsUseLiveRatingsAndVerification": true,
     "giftHistoryUsesLiveOrderItemData": true,
@@ -57,7 +72,7 @@
     "note": "Missing real shipping weights remain visible for correction and are never fabricated."
   },
   "externalBlockers": {
-    "githubActions": "Jobs do not start any steps because the GitHub account reports a billing or spending-limit problem.",
+    "githubActions": "Jobs still complete as failures before any workflow step is exposed or executed because the GitHub account reports a billing or spending-limit problem; no passing CI result is claimed for the new UI commits.",
     "liveSalesIdentity": "Legal business and support identity are not configured.",
     "paymentProvider": "Production payment provider configuration is external.",
     "nativePushProviders": "Production push provider configuration is external.",
