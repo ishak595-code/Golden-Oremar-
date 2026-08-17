@@ -11,6 +11,8 @@ import {
 } from './api';
 import CatalogProductCard from './CatalogProductCard';
 
+const PAGE_SIZE = 24;
+
 type Props = {
   onOpenProduct: (slug: string) => void;
   onAddToCart: (item: CatalogItem, quantity: number) => Promise<void> | void;
@@ -26,6 +28,7 @@ export default function CategoryDirectoryScreen({ onOpenProduct, onAddToCart }: 
   const [inStock, setInStock] = useState(false);
   const [categoryLoading, setCategoryLoading] = useState(true);
   const [productLoading, setProductLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [categoryError, setCategoryError] = useState('');
   const [productError, setProductError] = useState('');
   const requestId = useRef(0);
@@ -42,12 +45,21 @@ export default function CategoryDirectoryScreen({ onOpenProduct, onAddToCart }: 
     }
   }
 
-  async function loadProducts() {
+  async function loadProducts(append = false) {
     const current = ++requestId.current;
+    const offset = append ? items.length : 0;
     try {
-      setProductLoading(true);
+      if (append) setLoadingMore(true);
+      else setProductLoading(true);
       setProductError('');
-      const result = await searchCatalog({ categorySlug: selected, sort, inStock, limit: 50, offset: 0 });
+
+      const result = await searchCatalog({
+        categorySlug: selected,
+        sort,
+        inStock,
+        limit: PAGE_SIZE,
+        offset,
+      });
       if (requestId.current !== current) return;
 
       const metrics = await getProducerFollowMetrics(result.items.map(item => item.producer.id)).catch(error => {
@@ -56,25 +68,37 @@ export default function CategoryDirectoryScreen({ onOpenProduct, onAddToCart }: 
       });
       if (requestId.current !== current) return;
 
-      setProducerMetrics(Object.fromEntries(metrics.map(metric => [metric.producerId, metric])));
-      setItems(result.items || []);
+      const nextMetrics = Object.fromEntries(metrics.map(metric => [metric.producerId, metric]));
+      setProducerMetrics(previous => append ? { ...previous, ...nextMetrics } : nextMetrics);
+      setItems(previous => {
+        if (!append) return result.items || [];
+        const unique = new Map<string, CatalogItem>();
+        [...previous, ...(result.items || [])].forEach(item => unique.set(`${item.id}:${item.variant.id}`, item));
+        return Array.from(unique.values());
+      });
       setTotal(result.total || 0);
     } catch (err: any) {
       if (requestId.current === current) {
-        setItems([]);
-        setProducerMetrics({});
-        setTotal(0);
+        if (!append) {
+          setItems([]);
+          setProducerMetrics({});
+          setTotal(0);
+        }
         setProductError(err?.message || 'Kategori ürünleri yüklenemedi.');
       }
     } finally {
-      if (requestId.current === current) setProductLoading(false);
+      if (requestId.current === current) {
+        setProductLoading(false);
+        setLoadingMore(false);
+      }
     }
   }
 
   useEffect(() => { void loadCategories(); }, []);
-  useEffect(() => { void loadProducts(); }, [selected, sort, inStock]);
+  useEffect(() => { void loadProducts(false); }, [selected, sort, inStock]);
 
   const selectedCategory = categories.find(item => item.slug === selected);
+  const hasMore = !productLoading && !productError && items.length < total;
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8" aria-labelledby="category-directory-title">
@@ -86,7 +110,7 @@ export default function CategoryDirectoryScreen({ onOpenProduct, onAddToCart }: 
       <div className="sr-only" aria-live="polite">
         {categoryLoading ? 'Kategoriler yükleniyor.' : categoryError ? categoryError : `${categories.length} kategori yüklendi.`}
         {' '}
-        {productLoading ? 'Ürünler yükleniyor.' : productError ? productError : `${total} ürün gösteriliyor.`}
+        {productLoading ? 'Ürünler yükleniyor.' : productError ? productError : `${items.length} ürün gösteriliyor. Toplam ${total} ürün var.`}
       </div>
 
       {categoryError ? (
@@ -129,7 +153,7 @@ export default function CategoryDirectoryScreen({ onOpenProduct, onAddToCart }: 
       <div className="mt-5 rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:flex sm:items-end sm:justify-between sm:gap-4">
         <div className="min-w-0">
           <h2 className="text-xl font-bold text-brand-text">{selectedCategory?.name || 'Tüm Ürünler'}</h2>
-          <p className="mt-1 text-sm text-gray-500">{productLoading ? 'Ürünler güncelleniyor…' : `${total} ürün`}</p>
+          <p className="mt-1 text-sm text-gray-500">{productLoading ? 'Ürünler güncelleniyor…' : `${items.length} / ${total} ürün gösteriliyor`}</p>
         </div>
         <div className="mt-4 grid gap-3 sm:mt-0 sm:grid-cols-[minmax(190px,1fr)_auto]">
           <label className="block">
@@ -152,7 +176,7 @@ export default function CategoryDirectoryScreen({ onOpenProduct, onAddToCart }: 
       {productError ? (
         <div role="alert" className="mt-5 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
           <p>{productError}</p>
-          <button type="button" onClick={() => void loadProducts()} className="mt-3 min-h-11 rounded-xl border border-red-300 px-4 font-semibold dark:border-red-800">Tekrar dene</button>
+          <button type="button" onClick={() => void loadProducts(false)} className="mt-3 min-h-11 rounded-xl border border-red-300 px-4 font-semibold dark:border-red-800">Tekrar dene</button>
         </div>
       ) : null}
 
@@ -209,6 +233,19 @@ export default function CategoryDirectoryScreen({ onOpenProduct, onAddToCart }: 
           );
         })}
       </div>
+
+      {hasMore ? (
+        <div className="mt-7 flex justify-center">
+          <button
+            type="button"
+            disabled={loadingMore}
+            onClick={() => void loadProducts(true)}
+            className="min-h-12 min-w-48 rounded-xl border border-brand-green px-5 font-bold text-brand-green disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:text-brand-gold"
+          >
+            {loadingMore ? 'Daha fazla ürün yükleniyor…' : `Daha fazla ürün göster (${items.length}/${total})`}
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
