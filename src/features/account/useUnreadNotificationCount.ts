@@ -3,7 +3,7 @@ import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { listNotifications } from './api';
 import { getNotificationSoundEnabled, playNotificationSound, primeNotificationAudio } from '../notifications/premiumSounds';
-import { subscribeNativePushReceipts } from '../notifications/nativePush';
+import { clearNativeDeliveredNotifications, subscribeNativePushReceipts } from '../notifications/nativePush';
 
 function normalizeUnreadCount(value: unknown) {
   const count = Number(value);
@@ -14,11 +14,18 @@ export function useUnreadNotificationCount(authenticated: boolean) {
   const [unreadCount, setUnreadCountState] = useState(0);
   const lastKnownUnread = useRef<number | null>(null);
 
-  const setUnreadCount = useCallback((value: number) => {
+  const commitUnreadCount = useCallback((value: unknown) => {
     const next = normalizeUnreadCount(value);
+    const previous = lastKnownUnread.current;
     lastKnownUnread.current = next;
     setUnreadCountState(next);
+    if (previous !== null && previous > 0 && next === 0) void clearNativeDeliveredNotifications();
+    return { next, previous };
   }, []);
+
+  const setUnreadCount = useCallback((value: number) => {
+    commitUnreadCount(value);
+  }, [commitUnreadCount]);
 
   const refresh = useCallback(async () => {
     if (!authenticated) {
@@ -27,17 +34,14 @@ export function useUnreadNotificationCount(authenticated: boolean) {
       return 0;
     }
     const data = await listNotifications(1);
-    const next = normalizeUnreadCount(data?.unreadCount);
-    const previous = lastKnownUnread.current;
-    lastKnownUnread.current = next;
-    setUnreadCountState(next);
+    const { next, previous } = commitUnreadCount(data?.unreadCount);
 
     // The first hydration is only a baseline. Play a signature only when a new unread item arrives.
     if (previous !== null && next > previous && getNotificationSoundEnabled() && document.visibilityState === 'visible') {
       void playNotificationSound();
     }
     return next;
-  }, [authenticated]);
+  }, [authenticated, commitUnreadCount]);
 
   useEffect(() => {
     if (!authenticated) {
