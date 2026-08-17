@@ -10,7 +10,8 @@ const applicationStatus:Record<string,string>={draft:'Taslak',submitted:'İncele
 const changeStatus:Record<string,string>={pending:'Onay bekliyor',approved:'Onaylandı',rejected:'Reddedildi',withdrawn:'Geri çekildi'};
 
 function safeCount(value:unknown){const parsed=Number(value);return Number.isFinite(parsed)&&parsed>=0?Math.floor(parsed):0;}
-function safeMinor(primary:unknown,fallback:unknown){const selected=primary??fallback??0;const parsed=Number(selected);return Number.isFinite(parsed)?Math.trunc(parsed):0;}
+function financeMinor(primary:unknown,fallback:unknown){const selected=primary??fallback;const parsed=Number(selected);return selected!=null&&Number.isSafeInteger(parsed)?parsed:Number.NaN;}
+function financeCurrency(value:unknown){const currency=String(value||'').trim().toUpperCase();return/^[A-Z]{3}$/.test(currency)?currency:'';}
 
 export default function SellerPanel({
  producer,onOpenApplication,onOpenProductManager
@@ -75,7 +76,7 @@ export default function SellerPanel({
 
   <Panel title="Lot Özeti"><div className="grid grid-cols-3 gap-2" aria-label="Lot durum özeti"><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{safeCount(summary.draftBatches)}</div><div className="text-xs">Taslak</div></div><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{safeCount(summary.reviewBatches)}</div><div className="text-xs">İncelemede</div></div><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{safeCount(summary.releasedBatches)}</div><div className="text-xs">Yayınlandı</div></div></div></Panel>
 
-  <Panel title="Finans Özeti">{!dash?.finance?.balances?.length?<p className="text-sm text-gray-500">Henüz finans hareketi yok.</p>:<div className="space-y-2">{dash.finance.balances.map((b:any,index:number)=>{const currency=String(b.currency||'TRY').toUpperCase();return <div key={`${currency}-${index}`} className="rounded-xl border p-3"><div className="text-sm text-gray-500">{currency}</div><div className="font-bold"><Money minor={safeMinor(b.availableMinor,b.availableToPayoutMinor)} currency={currency}/></div></div>;})}</div>}</Panel>
+  <Panel title="Finans Özeti">{!dash?.finance?.balances?.length?<p className="text-sm text-gray-500">Henüz finans hareketi yok.</p>:<div className="space-y-2">{dash.finance.balances.map((b:any,index:number)=>{const currency=financeCurrency(b?.currency);return <div key={`${currency||'unknown'}-${index}`} className="rounded-xl border p-3"><div className="text-sm text-gray-500">{currency||'Para birimi doğrulanamadı'}</div><div className="font-bold"><Money minor={financeMinor(b?.availableMinor,b?.availableToPayoutMinor)} currency={currency}/></div></div>;})}</div>}</Panel>
  </div>;
 }
 
