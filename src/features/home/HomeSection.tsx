@@ -19,6 +19,9 @@ type Props={
 type PriceRange='all'|'0-250'|'250-500'|'500-plus';
 type SortOption='featured'|'rating'|'price-asc'|'price-desc';
 
+function catalogPrice(value:unknown){const number=Number(value);return Number.isFinite(number)&&number>=0?number:null;}
+function catalogRating(value:unknown){const number=Number(value);return Number.isFinite(number)?Math.min(5,Math.max(0,number)):null;}
+
 export default function HomeSection({searchQuery,setSearchQuery,onProductClick,onAddToCart,onToggleFavorite,favorites,onShare,onGift}:Props){
  const{staticContent,homeSections,salesReadiness,error:storefrontConfigError}=usePublicStorefrontConfig('tr');
  const{products,categories:liveCategories,loading:liveCatalogLoading,error:liveCatalogError}=useLiveHomeCatalog();
@@ -38,13 +41,24 @@ export default function HomeSection({searchQuery,setSearchQuery,onProductClick,o
    const matchesSearch=!normalizedQuery||searchable.some(value=>value.includes(normalizedQuery));
    const matchesCategory=!activeFilter||String(product?.categorySlug||'')===activeFilter;
    const matchesOrigin=!activeOrigin||String(product?.origin||'').toLocaleLowerCase('tr-TR').includes(activeOrigin.toLocaleLowerCase('tr-TR'));
-   const price=Number(product?.price||0);
-   const matchesPrice=priceRange==='all'||(priceRange==='0-250'&&price>=0&&price<=250)||(priceRange==='250-500'&&price>250&&price<=500)||(priceRange==='500-plus'&&price>500);
+   const price=catalogPrice(product?.price);
+   const matchesPrice=priceRange==='all'||(price!==null&&((priceRange==='0-250'&&price<=250)||(priceRange==='250-500'&&price>250&&price<=500)||(priceRange==='500-plus'&&price>500)));
    return matchesSearch&&matchesCategory&&matchesOrigin&&matchesPrice;
   }).sort((a:any,b:any)=>{
-   if(sortOption==='price-asc')return Number(a?.price||0)-Number(b?.price||0);
-   if(sortOption==='price-desc')return Number(b?.price||0)-Number(a?.price||0);
-   if(sortOption==='rating')return Number(b?.rating||0)-Number(a?.rating||0);
+   if(sortOption==='price-asc'||sortOption==='price-desc'){
+    const aPrice=catalogPrice(a?.price);const bPrice=catalogPrice(b?.price);
+    if(aPrice===null&&bPrice===null)return 0;
+    if(aPrice===null)return 1;
+    if(bPrice===null)return -1;
+    return sortOption==='price-asc'?aPrice-bPrice:bPrice-aPrice;
+   }
+   if(sortOption==='rating'){
+    const aRating=catalogRating(a?.rating);const bRating=catalogRating(b?.rating);
+    if(aRating===null&&bRating===null)return 0;
+    if(aRating===null)return 1;
+    if(bRating===null)return -1;
+    return bRating-aRating;
+   }
    return Number(b?.is_featured===true)-Number(a?.is_featured===true);
   });
  },[products,searchQuery,activeFilter,activeOrigin,priceRange,sortOption]);
@@ -66,7 +80,7 @@ export default function HomeSection({searchQuery,setSearchQuery,onProductClick,o
  }
  function clearFilters(){setActiveFilter(null);setActiveOrigin(null);setPriceRange('all');}
  function sectionProducts(id:string){
-  const matches=id==='featured'?products.filter((product:any)=>product?.is_featured||product?.homeSection==='featured'):id==='pre_order'?products.filter((product:any)=>product?.preOrder):id==='offers'?products.filter((product:any)=>product?.homeSection==='offers'||Number(product?.originalPrice||0)>Number(product?.price||0)):products.filter((product:any)=>product?.homeSection===id);
+  const matches=id==='featured'?products.filter((product:any)=>product?.is_featured||product?.homeSection==='featured'):id==='pre_order'?products.filter((product:any)=>product?.preOrder):id==='offers'?products.filter((product:any)=>{if(product?.homeSection==='offers')return true;const current=catalogPrice(product?.price);const original=catalogPrice(product?.originalPrice);return current!==null&&original!==null&&original>current;}):products.filter((product:any)=>product?.homeSection===id);
   const unique=new Map<string,any>();matches.forEach((item:any)=>unique.set(String(item.id),item));return Array.from(unique.values()).slice(0,12);
  }
  function favorite(product:any){return favorites.includes(String(product?.legacyId||product?.id));}
