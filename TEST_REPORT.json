@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T02:18:00+00:00",
+  "generatedAt": "2026-08-17T02:26:00+00:00",
   "packageMode": "single-cumulative",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
   "liveMigrationCount": 127,
@@ -24,7 +24,11 @@
     "accountOrderPagination": "IMPLEMENTED_PENDING_CI_RECHECK",
     "accountPaymentPagination": "IMPLEMENTED_PENDING_CI_RECHECK",
     "accountNotificationCursorPagination": "IMPLEMENTED_BACKEND_CURSOR_CONTRACT_VERIFIED_PENDING_CI_RECHECK",
+    "accountNotificationMutationLocking": "IMPLEMENTED_PENDING_CI_RECHECK",
     "accountMessageHistoryPagination": "IMPLEMENTED_BACKEND_CURSOR_CONTRACT_VERIFIED_PENDING_CI_RECHECK",
+    "accountConversationListPagination": "IMPLEMENTED_WITH_POLLING_LIMIT_PRESERVATION_PENDING_CI_RECHECK",
+    "accountAddressValidationNormalization": "IMPLEMENTED_PENDING_CI_RECHECK",
+    "checkoutCartClientBoundaryValidation": "IMPLEMENTED_PENDING_CI_RECHECK",
     "accountPanelLazySplitting": "IMPLEMENTED_PENDING_CI_RECHECK",
     "accountDeepLinkRouting": "IMPLEMENTED_PENDING_CI_RECHECK",
     "favoritesLiveTrustPolish": "IMPLEMENTED_LIVE_RPC_CONTRACT_VERIFIED_PENDING_CI_RECHECK",
@@ -56,7 +60,12 @@
     "followedProducerCardsUseLiveRatingsAndVerification": true,
     "giftHistoryUsesLiveOrderItemData": true,
     "notificationHistoryUsesLiveServerCursor": true,
+    "notificationMutationsPreventConcurrentDuplicateActions": true,
     "messageHistoryUsesLiveServerCursor": true,
+    "conversationListCanLoadBeyondInitialServerLimit": true,
+    "conversationPollingPreservesLoadedHistoryWindow": true,
+    "addressMutationsNormalizeAndValidateClientInput": true,
+    "cartAndCheckoutRpcInputsValidatedAtClientBoundary": true,
     "uiHardeningDoesNotClaimUnexecutedCiAsPassing": true
   },
   "liveCatalogAudit": {
