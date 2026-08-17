@@ -5,6 +5,7 @@ export type PlatformNotificationType = 'order' | 'payment' | 'shipment' | 'retur
 
 const notificationScopes: NotificationTargetScope[] = ['all', 'producer', 'specific'];
 const notificationTypes: PlatformNotificationType[] = ['order', 'payment', 'shipment', 'return', 'campaign', 'system', 'producer'];
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function unwrap<T>(data: T | null, error: any): T {
   if (error) throw error;
@@ -30,14 +31,28 @@ function validateScope(scope: NotificationTargetScope) {
   return scope;
 }
 
+function normalizedTargetUserId(scope: NotificationTargetScope, userId?: string | null) {
+  if (scope !== 'specific') return null;
+  const id = String(userId || '').trim();
+  if (!id) throw new Error('Belirli kullanıcı hedefinde kullanıcı seçilmelidir.');
+  if (!UUID_RE.test(id)) throw new Error('Seçilen kullanıcı kimliği geçersiz.');
+  return id;
+}
+
+function safeAudienceCount(value: unknown) {
+  const count = Number(value);
+  if (!Number.isSafeInteger(count) || count < 0) throw new Error('Bildirim hedef kitle sayısı doğrulanamadı.');
+  return count;
+}
+
 export async function adminNotificationAudienceCount(scope: NotificationTargetScope, userId?: string | null) {
   const targetScope = validateScope(scope);
-  if (targetScope === 'specific' && !String(userId || '').trim()) throw new Error('Belirli kullanıcı hedefinde kullanıcı seçilmelidir.');
+  const targetUserId = normalizedTargetUserId(targetScope, userId);
   const { data, error } = await supabase.rpc('admin_notification_audience_count_v1', {
     p_target_scope: targetScope,
-    p_user_id: targetScope === 'specific' ? String(userId).trim() : null,
+    p_user_id: targetUserId,
   });
-  return Math.max(0, Number(unwrap<number>(data, error) || 0));
+  return safeAudienceCount(unwrap<unknown>(data, error));
 }
 
 export async function adminBroadcastNotification(input: {
@@ -49,22 +64,31 @@ export async function adminBroadcastNotification(input: {
   actionUrl?: string | null;
 }) {
   const scope = validateScope(input.scope);
+  const userId = normalizedTargetUserId(scope, input.userId);
   const title = input.title.trim();
   const message = input.message.trim();
   const actionUrl = normalizeActionUrl(input.actionUrl);
   if (!notificationTypes.includes(input.type)) throw new Error('Bildirim türü geçersiz.');
   if (title.length < 2 || title.length > 160) throw new Error('Bildirim başlığı 2 ile 160 karakter arasında olmalıdır.');
   if (message.length < 2 || message.length > 5000) throw new Error('Bildirim mesajı 2 ile 5000 karakter arasında olmalıdır.');
-  if (scope === 'specific' && !String(input.userId || '').trim()) throw new Error('Belirli kullanıcı hedefinde kullanıcı seçilmelidir.');
   const { data, error } = await supabase.rpc('admin_broadcast_notification_v1', {
     p_target_scope: scope,
-    p_user_id: scope === 'specific' ? String(input.userId).trim() : null,
+    p_user_id: userId,
     p_title: title,
     p_message: message,
     p_type: input.type,
     p_action_url: actionUrl,
   });
-  return unwrap<{ broadcastId: string; recipientCount: number; targetScope: string; type: string }>(data, error);
+  const result = unwrap<any>(data, error);
+  const broadcastId = String(result?.broadcastId || result?.broadcast_id || '').trim();
+  const recipientCount = safeAudienceCount(result?.recipientCount ?? result?.recipient_count);
+  if (!UUID_RE.test(broadcastId)) throw new Error('Bildirim yayın kaydı doğrulanamadı.');
+  return {
+    broadcastId,
+    recipientCount,
+    targetScope: String(result?.targetScope || result?.target_scope || scope),
+    type: String(result?.type || input.type),
+  };
 }
 
 export function notificationAdminErrorMessage(error: unknown, fallback = 'Bildirim işlemi tamamlanamadı.') {
