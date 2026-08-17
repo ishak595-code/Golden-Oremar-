@@ -85,6 +85,16 @@ function requireFile(relative) {
   return fs.readFileSync(file, 'utf8');
 }
 
+const appShell = requireFile('src/App.tsx');
+if (appShell) {
+  if (/aria-label="Üst menü"/.test(appShell)) failures.push('Desktop top navigation must not return to the Android/iOS application shell.');
+  if (/aria-label="Menüyü aç"/.test(appShell)) failures.push('Hamburger navigation must not return to the Android/iOS application shell.');
+  if (!/aria-label="Ana gezinme"/.test(appShell)) failures.push('Persistent native bottom navigation contract is missing from the app shell.');
+  if (!/useUnreadNotificationCount/.test(appShell) || !/badge=\{unreadCount\}/.test(appShell)) failures.push('Header notification badge must remain bound to the live unread notification count.');
+  if (!/cartItemCount/.test(appShell) || !/badge=\{cartItemCount\}/.test(appShell)) failures.push('Cart badges must remain bound to the live total cart item count.');
+  if (/<BottomNavButton\s+icon=\{User\}[^>]*badge=/.test(appShell)) failures.push('Account bottom navigation must not duplicate the notification unread count.');
+}
+
 const androidManifest = requireFile('android/app/src/main/AndroidManifest.xml');
 if (androidManifest) {
   if (!/android:allowBackup="false"/.test(androidManifest)) failures.push('Android backups must remain disabled for release.');
@@ -105,10 +115,10 @@ if (iosInfo) {
 
 const indexHtml = requireFile('index.html');
 if (indexHtml) {
-  if (!/<html lang="tr">/.test(indexHtml)) failures.push('Web document language must remain Turkish.');
+  if (!/<html lang="tr">/.test(indexHtml)) failures.push('Document language must remain Turkish.');
   if (!/name="viewport"[^>]*viewport-fit=cover/.test(indexHtml)) failures.push('Safe-area viewport-fit=cover metadata is required.');
   if (!/name="description"/.test(indexHtml)) failures.push('Production meta description is required.');
-  if (!/property="og:title"/.test(indexHtml) || !/name="twitter:title"/.test(indexHtml)) failures.push('Social sharing metadata is incomplete.');
+  if (!/property="og:title"/.test(indexHtml) || !/name="twitter:title"/.test(indexHtml)) failures.push('Public share metadata is incomplete.');
 }
 
 if (failures.length) {
@@ -117,4 +127,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Golden Oremar release audit passed: retired demo/static data and Firebase residue are absent, and Android/iOS/web release metadata contracts are intact.');
+console.log('Golden Oremar release audit passed: Android/iOS app-shell, retired-runtime and native release metadata contracts are intact.');
