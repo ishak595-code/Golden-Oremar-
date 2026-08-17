@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState}from'react';
-import{ArrowLeft,Bell,Calendar,ChevronRight,Gift,Heart,HelpCircle,Leaf,MapPin,MessageCircle,Package,Settings,ShieldCheck,Store,UserRound,WalletCards}from'lucide-react';
-import{getAccountOverview}from'./api';
+import{ArrowLeft,Bell,Calendar,ChevronRight,Gift,Heart,HelpCircle,Leaf,LogOut,MapPin,MessageCircle,Package,Settings,ShieldCheck,Store,UserRound,WalletCards}from'lucide-react';
+import{getAccountOverview,signOutCurrentDevice}from'./api';
 import type{AccountOverview,AccountView}from'./types';
 import{ErrorState,LoadingState}from'./ui';
 import type{AppTheme}from'../appearance/theme';
@@ -33,63 +33,50 @@ const menu=[
  ['messages','Mesajlarım',MessageCircle,'Destek ve üretici konuşmaları'],
  ['notifications','Bildirimler',Bell,'Sipariş, ödeme, kargo ve sistem bildirimleri'],
  ['contact','İletişim',MessageCircle,'Golden Oremar ile iletişime geçin'],
- ['support','Yardım & Destek',HelpCircle,'Hakkımızda, iade, gizlilik ve destek'],
- ['settings','Ayarlar',Settings,'Bildirimler, oturum ve hesap yönetimi'],
+ ['support','Yardım & Destek',HelpCircle,'SSS, iade, gizlilik, kullanım koşulları ve destek'],
+ ['settings','Ayarlar',Settings,'Tema, bildirimler, güvenlik, oturum ve hesap yönetimi'],
 ] as const;
+
+type MenuItem=(typeof menu)[number];
+type MenuKey=MenuItem[0];
+const menuByKey=new Map<MenuKey,MenuItem>(menu.map(item=>[item[0],item]));
+const groups=[
+ {title:'Alışveriş & Hesap',description:'Siparişlerinizi, kayıtlı bilgilerinizi ve alışveriş geçmişinizi yönetin.',keys:['profile','orders','reviews','favorites','followed-producers','gifts','addresses','payments'] as MenuKey[]},
+ {title:'Mesajlar & Destek',description:'Bildirimler, destek konuşmaları, iletişim, SSS ve yasal bilgilere ulaşın.',keys:['messages','notifications','contact','support'] as MenuKey[]},
+ {title:'Tercihler & Güvenlik',description:'Uygulama tercihleri, bildirim izinleri, şifre, oturumlar ve hesap güvenliği.',keys:['settings'] as MenuKey[]},
+];
 
 const accountRoles=new Set(['user','vendor','admin','super_admin']);
 function nonNegativeCount(value:unknown){const count=Number(value);return Number.isSafeInteger(count)&&count>=0?count:null;}
 function summaryCount(value:unknown){const count=nonNegativeCount(value);return count===null?'Doğrulanamadı':count;}
 function normalizeOverview(value:any):AccountOverview{
  if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('Hesap özeti sunucudan doğrulanamadı.');
- const profile=value.profile;
- const summary=value.summary;
+ const profile=value.profile;const summary=value.summary;
  if(!profile||typeof profile!=='object'||Array.isArray(profile))throw new Error('Hesap profiliniz sunucudan doğrulanamadı.');
  if(!summary||typeof summary!=='object'||Array.isArray(summary))throw new Error('Hesap sayaçları sunucudan doğrulanamadı.');
  const profileId=String(profile.id||'').trim();
  if(!profileId||profileId.length>128||!/^[A-Za-z0-9_-]+$/.test(profileId))throw new Error('Hesap kimliği doğrulanamadı.');
  const producer=value.producer&&typeof value.producer==='object'&&!Array.isArray(value.producer)?value.producer:null;
  const closure=value.account_closure&&typeof value.account_closure==='object'&&!Array.isArray(value.account_closure)?value.account_closure:null;
- return{
-  ...value,
-  profile:{...profile,id:profileId},
-  summary,
-  addresses:Array.isArray(value.addresses)?value.addresses:[],
-  roles:Array.isArray(value.roles)?value.roles.map((role:any)=>String(role||'').trim()).filter((role:string)=>accountRoles.has(role)):[],
-  producer,
-  account_closure:closure,
- } as AccountOverview;
+ return{...value,profile:{...profile,id:profileId},summary,addresses:Array.isArray(value.addresses)?value.addresses:[],roles:Array.isArray(value.roles)?value.roles.map((role:any)=>String(role||'').trim()).filter((role:string)=>accountRoles.has(role)):[],producer,account_closure:closure}as AccountOverview;
 }
+function badgeLabel(value:number){return value>99?'99+':String(value);}
 
 export default function AccountCenter({
  requestedView,theme,onThemeChange,onOpenProduct,onOpenProducer,onStartGift,onOpenMessages,onOpenNotificationAction,onUnreadNotificationCountChange,onOpenContact,onOpenHealth,onOpenEvents,onOpenAdmin,onOpenSellerApplication,onOpenSellerProductManager,onBack
 }:{
- requestedView?:string; theme?:AppTheme; onThemeChange?:(theme:AppTheme)=>void; onOpenProduct?:(slug:string)=>void; onOpenProducer?:(slug:string)=>void; onStartGift?:()=>void; onOpenMessages?:()=>void; onOpenNotificationAction?:(url:string,metadata:any)=>void; onUnreadNotificationCountChange?:(count:number)=>void; onOpenContact?:()=>void; onOpenHealth?:()=>void; onOpenEvents?:()=>void; onOpenAdmin?:()=>void; onOpenSellerApplication?:()=>void; onOpenSellerProductManager?:()=>void; onBack?:()=>void;
+ requestedView?:string;theme?:AppTheme;onThemeChange?:(theme:AppTheme)=>void;onOpenProduct?:(slug:string)=>void;onOpenProducer?:(slug:string)=>void;onStartGift?:()=>void;onOpenMessages?:()=>void;onOpenNotificationAction?:(url:string,metadata:any)=>void;onUnreadNotificationCountChange?:(count:number)=>void;onOpenContact?:()=>void;onOpenHealth?:()=>void;onOpenEvents?:()=>void;onOpenAdmin?:()=>void;onOpenSellerApplication?:()=>void;onOpenSellerProductManager?:()=>void;onBack?:()=>void;
 }){
- const[overview,setOverview]=useState<AccountOverview|null>(null);const[view,setView]=useState<AccountView>('home');const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[refreshError,setRefreshError]=useState('');const[messageConversationId,setMessageConversationId]=useState('');const[orderDetailId,setOrderDetailId]=useState('');
+ const[overview,setOverview]=useState<AccountOverview|null>(null);const[view,setView]=useState<AccountView>('home');const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[refreshError,setRefreshError]=useState('');const[messageConversationId,setMessageConversationId]=useState('');const[orderDetailId,setOrderDetailId]=useState('');const[signOutBusy,setSignOutBusy]=useState(false);const[signOutError,setSignOutError]=useState('');
  const viewContentRef=useRef<HTMLDivElement|null>(null);const homeTitleRef=useRef<HTMLHeadingElement|null>(null);const previousViewRef=useRef<AccountView>('home');
  async function refresh(silent=false){
-  try{
-   if(!silent)setLoading(true);
-   setError('');setRefreshError('');
-   const next=normalizeOverview(await getAccountOverview());
-   setOverview(next);
-   const unread=nonNegativeCount(next.summary?.unread_notification_count);
-   if(unread!==null)onUnreadNotificationCountChange?.(unread);
-  }catch(e:any){
-   const message=e?.message||'Hesap bilgileri yüklenemedi.';
-   if(silent&&overview)setRefreshError(message);else setError(message);
-  }
+  try{if(!silent)setLoading(true);setError('');setRefreshError('');const next=normalizeOverview(await getAccountOverview());setOverview(next);const unread=nonNegativeCount(next.summary?.unread_notification_count);if(unread!==null)onUnreadNotificationCountChange?.(unread);}
+  catch(e:any){const message=e?.message||'Hesap bilgileri yüklenemedi.';if(silent&&overview)setRefreshError(message);else setError(message);}
   finally{if(!silent)setLoading(false);}
  }
  useEffect(()=>{void refresh();},[]);
  useEffect(()=>{
-  const map:Record<string,AccountView>={
-   menu:'home',home:'home',edit_profile:'profile',profile:'profile',orders:'orders',reviews:'reviews',addresses:'addresses',
-   favorites:'favorites','followed-vendors':'followed-producers','followed-producers':'followed-producers',gifts:'gifts',payments:'payments',
-   notifications:'notifications',settings:'settings','vendor-dashboard':'seller',seller:'seller','producer-products':'producer-products',
-   'producer-profile-edit':'producer-profile-edit',support:'support',feedback:'support'
-  };
+  const map:Record<string,AccountView>={menu:'home',home:'home',edit_profile:'profile',profile:'profile',orders:'orders',reviews:'reviews',addresses:'addresses',favorites:'favorites','followed-vendors':'followed-producers','followed-producers':'followed-producers',gifts:'gifts',payments:'payments',notifications:'notifications',settings:'settings','vendor-dashboard':'seller',seller:'seller','producer-products':'producer-products','producer-profile-edit':'producer-profile-edit',support:'support',feedback:'support'};
   if(!requestedView)return;
   if(requestedView.startsWith('orders:')){setOrderDetailId(requestedView.slice('orders:'.length));setView('orders');return;}
   if(requestedView==='orders'){setOrderDetailId('');setView('orders');return;}
@@ -97,28 +84,14 @@ export default function AccountCenter({
   if(requestedView==='messages'){setMessageConversationId('');setView('messages');return;}
   if(requestedView==='contact'){onOpenContact?.();return;}
   if(requestedView==='vendor-apply'){onOpenSellerApplication?.();return;}
-  const next=map[requestedView];
-  if(next)setView(next);
+  const next=map[requestedView];if(next)setView(next);
  },[requestedView,onOpenContact,onOpenSellerApplication]);
  useEffect(()=>{
-  const previous=previousViewRef.current;
-  previousViewRef.current=view;
-  if(previous===view)return;
-  const frame=window.requestAnimationFrame(()=>{
-   if(view==='home'){
-    homeTitleRef.current?.focus({preventScroll:true});
-    return;
-   }
-   const container=viewContentRef.current;
-   if(!container)return;
-   const heading=container.querySelector<HTMLElement>('[data-account-panel-heading],h1,h2,h3');
-   if(heading){
-    if(!heading.hasAttribute('tabindex'))heading.setAttribute('tabindex','-1');
-    heading.focus({preventScroll:true});
-   }else container.focus({preventScroll:true});
-  });
+  const previous=previousViewRef.current;previousViewRef.current=view;if(previous===view)return;
+  const frame=window.requestAnimationFrame(()=>{if(view==='home'){homeTitleRef.current?.focus({preventScroll:true});return;}const container=viewContentRef.current;if(!container)return;const heading=container.querySelector<HTMLElement>('[data-account-panel-heading],h1,h2,h3');if(heading){if(!heading.hasAttribute('tabindex'))heading.setAttribute('tabindex','-1');heading.focus({preventScroll:true});}else container.focus({preventScroll:true});});
   return()=>window.cancelAnimationFrame(frame);
  },[view]);
+ async function signOut(){if(signOutBusy)return;try{setSignOutBusy(true);setSignOutError('');await signOutCurrentDevice();}catch(e:any){setSignOutError(e?.message||'Bu cihazdaki oturum kapatılamadı.');setSignOutBusy(false);}}
  if(loading)return<LoadingState label="Hesabınız yükleniyor"/>;
  if(error||!overview)return<ErrorState message={error||'Hesap bulunamadı.'} onRetry={()=>void refresh()}/>;
 
@@ -133,7 +106,7 @@ export default function AccountCenter({
   if(view==='payments')return<PaymentsPanel/>;
   if(view==='notifications')return<NotificationsPanel onOpenAction={onOpenNotificationAction} onUnreadCountChange={onUnreadNotificationCountChange}/>;
   if(view==='messages')return<MessagesPanel initialConversationId={messageConversationId}/>;
-  if(view==='support')return<SupportPanel locale={overview.profile.locale} onOpenMessages={()=>{if(onOpenMessages)onOpenMessages();else{setMessageConversationId('');setView('messages');}}}/>;
+  if(view==='support')return<SupportPanel locale={overview.profile.locale} onOpenContact={onOpenContact} onOpenMessages={()=>{if(onOpenMessages)onOpenMessages();else{setMessageConversationId('');setView('messages');}}}/>;
   if(view==='seller')return<SellerPanel producer={overview.producer} onOpenApplication={onOpenSellerApplication} onOpenProductManager={()=>{if(onOpenSellerProductManager)onOpenSellerProductManager();else setView('producer-products');}}/>;
   if(view==='producer-products')return<ProducerProductManager onBack={()=>setView('seller')}/>;
   if(view==='producer-profile-edit')return<ProducerProfilePanel onChanged={()=>void refresh(true)}/>;
@@ -147,57 +120,32 @@ export default function AccountCenter({
   <div ref={viewContentRef} tabIndex={-1} className="outline-none"><React.Suspense fallback={<LoadingState label="Hesap bölümü yükleniyor"/>}>{body()}</React.Suspense></div>
  </div>;
 
- const roles=Array.isArray(overview.roles)?overview.roles:[];
- const producerSignals=[overview.producer?.is_verified?'Üretici doğrulandı':'',overview.producer?.origin_verified?'Menşe doğrulandı':''].filter(Boolean);
- return<section aria-labelledby="account-title" className="space-y-5">
+ const roles=Array.isArray(overview.roles)?overview.roles:[];const producerSignals=[overview.producer?.is_verified?'Üretici doğrulandı':'',overview.producer?.origin_verified?'Menşe doğrulandı':''].filter(Boolean);
+ function badgeFor(key:MenuKey){const values:Partial<Record<MenuKey,unknown>>={orders:overview.summary.order_count,favorites:overview.summary.favorite_count,'followed-producers':overview.summary.followed_producer_count,gifts:overview.summary.gift_count,notifications:overview.summary.unread_notification_count};const count=nonNegativeCount(values[key]);return count!==null&&count>0?count:null;}
+ function openMenu(key:MenuKey){if(key==='contact'){onOpenContact?.();return;}if(key==='orders')setOrderDetailId('');if(key==='messages')setMessageConversationId('');setView(key as AccountView);}
+ function renderMenuItem(item:MenuItem){const[key,label,Icon,description]=item;const badge=badgeFor(key);const notificationBadge=key==='notifications';return<button type="button" key={key} onClick={()=>openMenu(key)} disabled={key==='contact'&&!onOpenContact} className="min-h-20 w-full rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition active:scale-[0.995] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-800 dark:bg-gray-900"><span className="flex items-center gap-3"><span aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2.5 text-brand-green"><Icon className="h-5 w-5"/></span><span className="min-w-0 flex-1"><span className="flex items-center gap-2"><span className="font-bold">{label}</span>{badge!==null?<span aria-label={`${badge} kayıt`} className={`inline-grid min-h-6 min-w-6 place-items-center rounded-full px-1.5 text-xs font-bold text-white ${notificationBadge?'bg-red-600':'bg-brand-green'}`}>{badgeLabel(badge)}</span>:null}</span><span className="mt-1 block text-sm leading-5 text-gray-500">{description}</span></span><ChevronRight aria-hidden="true" className="h-5 w-5 shrink-0 text-gray-400"/></span></button>;}
+
+ return<section aria-labelledby="account-title" className="space-y-6">
   {refreshError?<div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">Hesap özeti yenilenemedi. Mevcut bilgiler korunuyor. <button type="button" onClick={()=>void refresh(true)} className="ml-2 min-h-11 rounded-lg border border-amber-300 px-3 font-semibold dark:border-amber-800">Tekrar dene</button></div>:null}
-  <div className="rounded-2xl bg-brand-green p-5 text-white">
-    <div className="flex items-center justify-between gap-3">
-      <div><h1 ref={homeTitleRef} tabIndex={-1} id="account-title" className="text-2xl font-bold outline-none">Hesabım</h1><p className="mt-1 text-sm text-white/80">{overview.profile.display_name || overview.profile.email || 'Hesap bilgisi'}</p></div>
-      {onBack?<button type="button" onClick={onBack} className="min-h-11 rounded-xl border border-white/30 px-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Geri</button>:null}
-    </div>
-    <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Hesap özeti">
-      <div className="rounded-xl bg-white/10 p-3"><div className="text-xl font-bold">{summaryCount(overview.summary.order_count)}</div><div className="text-xs">Sipariş</div></div>
-      <div className="rounded-xl bg-white/10 p-3"><div className="text-xl font-bold">{summaryCount(overview.summary.favorite_count)}</div><div className="text-xs">Favori</div></div>
-      <div className="rounded-xl bg-white/10 p-3"><div className="text-xl font-bold">{summaryCount(overview.summary.followed_producer_count)}</div><div className="text-xs">Takip</div></div>
-      <div className="rounded-xl bg-white/10 p-3"><div className="text-xl font-bold">{summaryCount(overview.summary.gift_count)}</div><div className="text-xs">Hediye</div></div>
-    </div>
+  <div className="overflow-hidden rounded-3xl bg-brand-green text-white shadow-sm">
+    <div className="p-5 sm:p-6"><div className="flex items-center justify-between gap-3"><div><h1 ref={homeTitleRef} tabIndex={-1} id="account-title" className="text-2xl font-bold outline-none">Hesabım</h1><p className="mt-1 break-all text-sm text-white/80">{overview.profile.display_name||overview.profile.email||'Hesap bilgisi'}</p></div>{onBack?<button type="button" onClick={onBack} className="min-h-11 rounded-xl border border-white/30 px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Geri</button>:null}</div>
+    <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="Hesap özeti"><div className="rounded-2xl bg-white/10 p-3"><div className="text-xl font-bold">{summaryCount(overview.summary.order_count)}</div><div className="text-xs text-white/80">Sipariş</div></div><div className="rounded-2xl bg-white/10 p-3"><div className="text-xl font-bold">{summaryCount(overview.summary.favorite_count)}</div><div className="text-xs text-white/80">Favori</div></div><div className="rounded-2xl bg-white/10 p-3"><div className="text-xl font-bold">{summaryCount(overview.summary.followed_producer_count)}</div><div className="text-xs text-white/80">Takip</div></div><div className="rounded-2xl bg-white/10 p-3"><div className="text-xl font-bold">{summaryCount(overview.summary.gift_count)}</div><div className="text-xs text-white/80">Hediye</div></div></div></div>
   </div>
 
-  {overview.producer?<div className="rounded-2xl border border-brand-gold/30 bg-brand-gold/5 p-4">
-    <div className="font-bold">{overview.producer.display_name || 'Üretici hesabı'}</div>
-    {producerSignals.length?<div className="mt-1 text-sm text-gray-600 dark:text-gray-300">{producerSignals.join(' • ')}</div>:null}
-  </div>:null}
+  <section aria-labelledby="discover-title"><div className="mb-3"><h2 id="discover-title" className="text-lg font-bold">Keşfet & Katıl</h2><p className="mt-1 text-sm text-gray-500">İçerik, etkinlik ve üretici araçlarına hesabınızdan hızlı erişin.</p></div><div className="grid gap-3 sm:grid-cols-2">
+    <button type="button" onClick={onOpenHealth} disabled={!onOpenHealth} className="min-h-20 rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-800 dark:bg-gray-900"><span className="flex items-center gap-3"><span aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2.5 text-brand-green"><Leaf className="h-5 w-5"/></span><span><span className="block font-bold">Sağlık & Tarifler</span><span className="mt-1 block text-sm text-gray-500">Yayınlanmış tarifler ve ürün içerikleri</span></span></span></button>
+    <button type="button" onClick={onOpenEvents} disabled={!onOpenEvents} className="min-h-20 rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-800 dark:bg-gray-900"><span className="flex items-center gap-3"><span aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2.5 text-brand-green"><Calendar className="h-5 w-5"/></span><span><span className="block font-bold">Etkinlikler</span><span className="mt-1 block text-sm text-gray-500">Golden Oremar etkinlikleri ve rezervasyonlar</span></span></span></button>
+  </div></section>
 
-  <div className="grid gap-3">
-   <div className="grid gap-3 sm:grid-cols-2">
-    <button type="button" onClick={onOpenHealth} disabled={!onOpenHealth} className="min-h-16 rounded-2xl border border-gray-200 bg-white p-4 text-left disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-800 dark:bg-gray-900">
-     <div className="flex items-center gap-3"><div aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2 text-brand-green"><Leaf className="h-5 w-5"/></div>
-     <div><div className="font-bold">Sağlık & Tarifler</div><div className="text-sm text-gray-500">Tarifler ve ürün içerikleri</div></div></div>
-    </button>
-    <button type="button" onClick={onOpenEvents} disabled={!onOpenEvents} className="min-h-16 rounded-2xl border border-gray-200 bg-white p-4 text-left disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-800 dark:bg-gray-900">
-     <div className="flex items-center gap-3"><div aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2 text-brand-green"><Calendar className="h-5 w-5"/></div>
-     <div><div className="font-bold">Etkinlikler</div><div className="text-sm text-gray-500">Golden Oremar etkinlikleri</div></div></div>
-    </button>
-   </div>
+  <section aria-labelledby="seller-access-title"><div className="mb-3"><h2 id="seller-access-title" className="text-lg font-bold">Üretici & Yönetim</h2><p className="mt-1 text-sm text-gray-500">Yetkinize göre üretici ve yönetim araçları gösterilir.</p></div><div className="grid gap-3">
+   {overview.producer?<div className="rounded-2xl border border-brand-gold/30 bg-brand-gold/5 p-4"><div className="font-bold">{overview.producer.display_name||'Üretici hesabı'}</div>{producerSignals.length?<div className="mt-1 text-sm text-gray-600 dark:text-gray-300">{producerSignals.join(' • ')}</div>:<div className="mt-1 text-sm text-gray-500">Doğrulama durumu için yalnız sunucudaki yayınlanmış bilgiler gösterilir.</div>}</div>:null}
+   {overview.producer?<button type="button" onClick={()=>setView('producer-profile-edit')} className="min-h-20 w-full rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-800 dark:bg-gray-900"><span className="flex items-center gap-3"><span aria-hidden="true" className="rounded-xl bg-brand-gold/10 p-2.5 text-brand-gold"><Store className="h-5 w-5"/></span><span className="min-w-0 flex-1"><span className="block font-bold">Mağaza Profilini Düzenle</span><span className="mt-1 block text-sm text-gray-500">Hikâye, görseller ve doğrulanmış menşe değişiklik talebi</span></span><ChevronRight aria-hidden="true" className="h-5 w-5 text-gray-400"/></span></button>:null}
+   <button type="button" onClick={()=>setView('seller')} className="min-h-20 w-full rounded-2xl border border-brand-gold/30 bg-brand-gold/5 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span className="flex items-center gap-3"><span aria-hidden="true" className="rounded-xl bg-brand-gold/10 p-2.5 text-brand-gold"><Store className="h-5 w-5"/></span><span className="min-w-0 flex-1"><span className="block font-bold">{overview.producer?'Satıcı Paneli':'Satıcı Ol'}</span><span className="mt-1 block text-sm text-gray-500">{overview.producer?'Ürün, stok, lot, sipariş ve finans yönetimi':'Golden Oremar üretici başvurusu'}</span></span><ChevronRight aria-hidden="true" className="h-5 w-5 text-gray-400"/></span></button>
+   {roles.some(role=>role==='admin'||role==='super_admin')&&onOpenAdmin?<button type="button" onClick={onOpenAdmin} className="min-h-20 w-full rounded-2xl border border-brand-green/30 bg-brand-green/5 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span className="flex items-center gap-3"><span aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2.5 text-brand-green"><ShieldCheck className="h-5 w-5"/></span><span className="min-w-0 flex-1"><span className="block font-bold">Yönetim Paneli</span><span className="mt-1 block text-sm text-gray-500">Golden Oremar yönetim operasyonları</span></span><ChevronRight aria-hidden="true" className="h-5 w-5 text-gray-400"/></span></button>:null}
+  </div></section>
 
-   {overview.producer ? <button type="button" onClick={()=>setView('producer-profile-edit')} className="min-h-16 w-full rounded-2xl border border-gray-200 bg-white p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-800 dark:bg-gray-900"><div className="flex items-center gap-3"><div aria-hidden="true" className="rounded-xl bg-brand-gold/10 p-2 text-brand-gold"><Store className="h-5 w-5"/></div><div className="min-w-0 flex-1"><div className="font-bold">Mağaza Profilini Düzenle</div><div className="text-sm text-gray-500">Hikâye, görseller ve doğrulanmış menşe değişiklik talebi</div></div><ChevronRight aria-hidden="true" className="h-5 w-5 text-gray-400"/></div></button> : null}
+  {groups.map(group=><section key={group.title} aria-labelledby={`account-group-${group.title.replace(/[^A-Za-z0-9]+/g,'-').toLowerCase()}`}><div className="mb-3"><h2 id={`account-group-${group.title.replace(/[^A-Za-z0-9]+/g,'-').toLowerCase()}`} className="text-lg font-bold">{group.title}</h2><p className="mt-1 text-sm text-gray-500">{group.description}</p></div><div className="grid gap-3">{group.keys.map(key=>{const item=menuByKey.get(key);return item?renderMenuItem(item):null;})}</div></section>)}
 
-   <button type="button" onClick={()=>setView('seller')} className="min-h-16 w-full rounded-2xl border border-brand-gold/30 bg-brand-gold/5 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
-     <div className="flex items-center gap-3"><div aria-hidden="true" className="rounded-xl bg-brand-gold/10 p-2 text-brand-gold"><Store className="h-5 w-5"/></div>
-     <div className="min-w-0 flex-1"><div className="font-bold">{overview.producer?'Satıcı Paneli':'Satıcı Ol'}</div>
-     <div className="text-sm text-gray-500">{overview.producer?'Ürün, stok, lot ve finans yönetimi':'Golden Oremar üretici başvurusu'}</div></div><ChevronRight aria-hidden="true" className="h-5 w-5 text-gray-400"/></div>
-   </button>
-   {roles.some(role=>role==='admin'||role==='super_admin')&&onOpenAdmin?(
-    <button type="button" onClick={onOpenAdmin} className="min-h-16 w-full rounded-2xl border border-brand-green/30 bg-brand-green/5 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
-     <div className="flex items-center gap-3"><div aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2 text-brand-green"><ShieldCheck className="h-5 w-5"/></div>
-     <div className="min-w-0 flex-1"><div className="font-bold">Yönetim Paneli</div><div className="text-sm text-gray-500">Golden Oremar yönetimi</div></div><ChevronRight aria-hidden="true" className="h-5 w-5 text-gray-400"/></div>
-    </button>
-   ):null}
-   {menu.map(([key,label,Icon,description])=><button type="button" key={key} onClick={()=>{if(key==='contact'){onOpenContact?.();return;}if(key==='orders')setOrderDetailId('');if(key==='messages')setMessageConversationId('');setView(key as AccountView);}} disabled={key==='contact'&&!onOpenContact} className="min-h-16 w-full rounded-2xl border border-gray-200 bg-white p-4 text-left disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-800 dark:bg-gray-900">
-     <div className="flex items-center gap-3"><div aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2 text-brand-green"><Icon className="h-5 w-5"/></div>
-     <div className="min-w-0 flex-1"><div className="font-bold">{label}</div><div className="text-sm text-gray-500">{description}</div></div><ChevronRight aria-hidden="true" className="h-5 w-5 text-gray-400"/></div>
-   </button>)}
-  </div>
+  <section aria-labelledby="account-session-title" className="rounded-3xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-5"><div className="flex items-start gap-3"><span aria-hidden="true" className="rounded-xl bg-red-50 p-2.5 text-red-700 dark:bg-red-950/30 dark:text-red-300"><LogOut className="h-5 w-5"/></span><div className="min-w-0 flex-1"><h2 id="account-session-title" className="font-bold">Bu cihazdaki oturum</h2><p className="mt-1 text-sm text-gray-500">Yalnız bu cihazdan çıkış yapar. Diğer cihazları ve tüm oturumları Ayarlar içindeki Oturum ve Güvenlik bölümünden yönetebilirsiniz.</p></div></div>{signOutError?<div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{signOutError}</div>:null}<button type="button" disabled={signOutBusy} aria-busy={signOutBusy} onClick={()=>void signOut()} className="mt-4 min-h-12 w-full rounded-xl border border-red-300 font-bold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900 dark:text-red-300">{signOutBusy?'Çıkış yapılıyor…':'Çıkış Yap'}</button></section>
  </section>;
 }
