@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { syncNativeAppearance } from '../../native';
-import { applyThemeToDocument, resolveInitialTheme, setPersonalTheme, type AppTheme } from './theme';
+import { applyThemeToDocument, resolveInitialTheme, setPersonalTheme, subscribePersonalTheme, type AppTheme } from './theme';
 
 export function useDeviceTheme() {
   const [theme, setThemeState] = useState<AppTheme>(() => resolveInitialTheme());
+
+  useEffect(() => subscribePersonalTheme(nextTheme => {
+    setThemeState(previous => previous === nextTheme ? previous : nextTheme);
+  }), []);
 
   useEffect(() => {
     applyThemeToDocument(theme);
@@ -14,7 +18,6 @@ export function useDeviceTheme() {
 
   const setTheme = useCallback((nextTheme: AppTheme) => {
     setPersonalTheme(nextTheme);
-    setThemeState(nextTheme);
   }, []);
 
   return { theme, setTheme };
