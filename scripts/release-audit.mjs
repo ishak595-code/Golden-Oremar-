@@ -95,6 +95,12 @@ if (appShell) {
   if (/<BottomNavButton\s+icon=\{User\}[^>]*badge=/.test(appShell)) failures.push('Account bottom navigation must not duplicate the notification unread count.');
 }
 
+const appStyles = requireFile('src/index.css');
+if (appStyles) {
+  if (/fonts\.googleapis\.com|fonts\.gstatic\.com/i.test(appStyles)) failures.push('Android/iOS application typography must not depend on Google Fonts network delivery.');
+  if (/@import\s+url\(\s*['"]?https?:\/\//i.test(appStyles)) failures.push('Native app stylesheet must not import remote CSS at runtime.');
+}
+
 const androidManifest = requireFile('android/app/src/main/AndroidManifest.xml');
 if (androidManifest) {
   if (!/android:allowBackup="false"/.test(androidManifest)) failures.push('Android backups must remain disabled for release.');
