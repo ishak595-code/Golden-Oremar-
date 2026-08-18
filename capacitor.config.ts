@@ -7,6 +7,9 @@ const config: CapacitorConfig = {
   appName: 'Golden Oremar',
   webDir: 'dist',
   plugins: {
+    SystemBars: {
+      insetsHandling: 'css',
+    },
     SplashScreen: {
       launchShowDuration: 2000,
       backgroundColor: "#16A34A",
