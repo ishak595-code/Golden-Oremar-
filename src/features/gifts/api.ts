@@ -161,7 +161,7 @@ export async function createGiftOrder(input: {
   const currency = normalizedCurrency(result.currency);
   const subtotalMinor = safeInteger(result.subtotalMinor, 'Ara toplam');
   const shippingMinor = safeInteger(result.shippingMinor, 'Kargo tutarı');
-  const discountMinor = safeInteger(result.discountMinor ?? 0, 'İndirim tutarı');
+  const discountMinor = safeInteger(result.discountMinor, 'İndirim tutarı');
   const totalMinor = safeInteger(result.totalMinor, 'Sipariş toplamı');
   if (totalMinor !== subtotalMinor + shippingMinor - discountMinor) throw new Error('Hediye siparişi toplamı bileşenleriyle eşleşmiyor.');
   const responseCountry = normalizedCountryCode(result.shippingCountryCode);
