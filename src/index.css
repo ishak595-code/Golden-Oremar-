@@ -181,6 +181,14 @@ header button[aria-label^="Bildirimler,"] {
   background: rgb(127 29 29 / 0.28);
 }
 
+/* Android/iOS packages do not ship a native speech-recognition implementation or
+   microphone permission contract yet. Keep the Web Speech affordance on supported
+   browser surfaces, but do not advertise an incomplete microphone feature inside
+   the native application. Search remains fully usable through text/keyboard. */
+:root[data-native-platform] header button[aria-label="Sesli arama"] {
+  display: none;
+}
+
 /* Count pills are intentionally high contrast and large enough to read on phone
    and tablet screens. Values above 99 render as 99+ in the React shell. */
 header button[aria-label^="Bildirimler"] > span[aria-hidden="true"],
