@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useState}from'react';
+import React,{useEffect,useState}from'react';
 import{CreditCard,Pencil,Plus,ShieldCheck,Star,Trash2,X}from'lucide-react';
 import{listPaymentActivity}from'./api';
 import{EmptyState,ErrorState,LoadingState,Money,Panel}from'./ui';
@@ -131,7 +131,7 @@ export default function PaymentsPanel(){
  const hasMore=total!==null&&shown<total;
  const activeMethods=methods.filter(method=>method.status==='active');
  const cardEnrollmentReady=readiness?.liveCardPaymentsEnabled===true&&readiness?.savedPaymentMethodsSupported===true&&Boolean(readiness.provider);
- const defaultMethod=useMemo(()=>activeMethods.find(method=>method.isDefault)||null,[activeMethods]);
+ const defaultMethod=activeMethods.find(method=>method.isDefault)||null;
 
  return<Panel title="Ödeme Yöntemleri ve İşlemler" description="Kayıtlı kartlarınızı, kart rumuzlarını ve doğrulanmış ödeme hareketlerinizi yönetin.">
   {error?<ErrorState message={error} onRetry={()=>void load(true)}/>:null}
