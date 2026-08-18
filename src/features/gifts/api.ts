@@ -1,5 +1,26 @@
 import { supabase } from '../../lib/supabase';
 import { getProductDetail, publicCatalogUrl } from '../catalog/api';
+import { getCheckoutPaymentReadiness } from '../cart/api';
+import { listMyPaymentMethods, type SavedPaymentMethod } from '../payments/api';
+
+export type GiftOccasion = 'just_because' | 'birthday' | 'love' | 'thank_you' | 'celebration' | 'get_well' | 'new_home' | 'new_baby';
+export type GiftPresentationStyle = 'oremar_gold' | 'mountain_warmth' | 'minimal_elegance';
+
+export type GiftSavedAddress = {
+  id: string;
+  label: string;
+  recipientName: string;
+  phone: string;
+  countryCode: string;
+  administrativeArea: string;
+  city: string;
+  locality: string;
+  addressLine1: string;
+  addressLine2: string;
+  postalCode: string;
+  deliveryNotes: string;
+  isDefault: boolean;
+};
 
 function unwrap<T>(data: T | null, error: any): T {
   if (error) throw error;
@@ -66,14 +87,49 @@ function safeUuid(value: unknown, label: string) {
   return uuid;
 }
 
+function normalizeSavedAddress(value: unknown, index: number): GiftSavedAddress {
+  if (!isRecord(value)) throw new Error(`${index + 1}. kayıtlı adres doğrulanamadı.`);
+  const countryCode = normalizedCountryCode(value.country_code);
+  const province = optionalText(value.province, 160) || '';
+  const district = optionalText(value.district, 160) || '';
+  const city = district || province;
+  if (!city) throw new Error(`${index + 1}. kayıtlı adresin şehir bilgisi doğrulanamadı.`);
+  if (typeof value.is_default !== 'boolean') throw new Error(`${index + 1}. kayıtlı adresin varsayılan durumu doğrulanamadı.`);
+  return {
+    id: safeUuid(value.id, 'Adres kimliği'),
+    label: optionalText(value.label, 60) || 'Teslimat',
+    recipientName: requiredText(value.recipient_name, 'Adres alıcı adı', 120),
+    phone: normalizedPhone(value.phone, 'Adres telefonu'),
+    countryCode,
+    administrativeArea: province,
+    city,
+    locality: optionalText(value.neighborhood, 160) || '',
+    addressLine1: requiredText(value.address_line, 'Açık adres', 1000),
+    addressLine2: '',
+    postalCode: optionalText(value.postal_code, 30) || '',
+    deliveryNotes: optionalText(value.delivery_notes, 500) || '',
+    isDefault: value.is_default,
+  };
+}
+
 export async function getGiftProduct(reference: string) {
   return getProductDetail(requiredText(reference, 'Ürün referansı', 220));
 }
 
-export async function getGiftAccountOverview() {
-  const { data, error } = await supabase.rpc('get_my_account_overview_v1');
+export async function getGiftAccountOverview(): Promise<{
+  profile: { id: string; display_name: string; phone: string | null };
+  addresses: GiftSavedAddress[];
+  paymentMethods: SavedPaymentMethod[];
+  paymentReadiness: Awaited<ReturnType<typeof getCheckoutPaymentReadiness>>;
+}> {
+  const [{ data, error }, paymentMethods, paymentReadiness] = await Promise.all([
+    supabase.rpc('get_my_account_overview_v1'),
+    listMyPaymentMethods(),
+    getCheckoutPaymentReadiness(),
+  ]);
   const result = unwrap<unknown>(data, error);
-  if (!isRecord(result) || !isRecord(result.profile)) throw new Error('Hediye gönderen hesap bilgisi doğrulanamadı.');
+  if (!isRecord(result) || !isRecord(result.profile) || !Array.isArray(result.addresses)) throw new Error('Hediye gönderen hesap bilgisi doğrulanamadı.');
+  if (result.addresses.length > 50) throw new Error('Kayıtlı adres sayısı desteklenen sınırı aşıyor.');
   const profile = result.profile;
   return {
     profile: {
@@ -81,6 +137,9 @@ export async function getGiftAccountOverview() {
       display_name: requiredText(profile.display_name, 'Hesap adı', 120),
       phone: profile.phone == null || String(profile.phone).trim() === '' ? null : normalizedPhone(profile.phone, 'Hesap telefonu'),
     },
+    addresses: result.addresses.map(normalizeSavedAddress),
+    paymentMethods,
+    paymentReadiness,
   };
 }
 
@@ -98,6 +157,9 @@ export async function createGiftOrder(input: {
     message?: string | null;
     senderName?: string | null;
     hidePrice: boolean;
+    occasion: GiftOccasion;
+    presentationStyle: GiftPresentationStyle;
+    cardTitle?: string | null;
   };
 }) {
   const productReference = requiredText(input.productReference, 'Ürün referansı', 220);
@@ -122,6 +184,12 @@ export async function createGiftOrder(input: {
   const giftMessage = optionalText(input.gift?.message, 1000);
   const senderName = optionalText(input.gift?.senderName, 120);
   if (typeof input.gift?.hidePrice !== 'boolean') throw new Error('Hediye fiyat görünürlüğü doğrulanamadı.');
+  const occasion = input.gift?.occasion;
+  if (!['just_because','birthday','love','thank_you','celebration','get_well','new_home','new_baby'].includes(occasion)) throw new Error('Hediye özel gün seçimi doğrulanamadı.');
+  const presentationStyle = input.gift?.presentationStyle;
+  if (!['oremar_gold','mountain_warmth','minimal_elegance'].includes(presentationStyle)) throw new Error('Hediye kartı stili doğrulanamadı.');
+  const cardTitle = optionalText(input.gift?.cardTitle, 100);
+  if (cardTitle && cardTitle.length < 2) throw new Error('Hediye kartı başlığı en az 2 karakter olmalıdır.');
   const couponCode = normalizedCoupon(input.couponCode);
   const idempotencyKey = `gift_${crypto.randomUUID().replaceAll('-', '')}`;
 
@@ -149,6 +217,9 @@ export async function createGiftOrder(input: {
       message: giftMessage,
       senderName,
       hidePrice: input.gift.hidePrice,
+      occasion,
+      presentationStyle,
+      cardTitle,
     },
     p_idempotency_key: idempotencyKey,
   });
@@ -166,6 +237,8 @@ export async function createGiftOrder(input: {
   if (totalMinor !== subtotalMinor + shippingMinor - discountMinor) throw new Error('Hediye siparişi toplamı bileşenleriyle eşleşmiyor.');
   const responseCountry = normalizedCountryCode(result.shippingCountryCode);
   if (responseCountry !== countryCode) throw new Error('Hediye teslimat ülkesi istekle eşleşmiyor.');
+  if (requiredText(result.giftOccasion, 'Hediye özel günü', 40) !== occasion) throw new Error('Hediye özel gün kaydı istekle eşleşmiyor.');
+  if (requiredText(result.giftPresentationStyle, 'Hediye sunum stili', 40) !== presentationStyle) throw new Error('Hediye sunum stili istekle eşleşmiyor.');
   const reservationExpiresAt = requiredText(result.reservationExpiresAt, 'Stok rezervasyon süresi', 80);
   if (Number.isNaN(Date.parse(reservationExpiresAt))) throw new Error('Stok rezervasyon süresi doğrulanamadı.');
   return {
