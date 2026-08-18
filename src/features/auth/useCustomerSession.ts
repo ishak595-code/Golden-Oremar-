@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
+import { setPersonalTheme } from '../appearance/theme';
+import { setNotificationSound, setNotificationSoundEnabled } from '../notifications/premiumSounds';
+import { getMyAppPreferences } from '../preferences/api';
 import { NETWORK_RESTORED_EVENT } from '../resilience/useConnectivity';
 import { buildCurrentUserFromSession } from './api';
 
@@ -21,6 +24,20 @@ export function useCustomerSession() {
     let active = true;
     let hydrationSequence = 0;
 
+    const hydratePreferences = async (sequence: number) => {
+      try {
+        const preferences = await getMyAppPreferences();
+        if (!active || sequence !== hydrationSequence) return;
+        if (preferences.theme) setPersonalTheme(preferences.theme);
+        setNotificationSound(preferences.notificationSound);
+        setNotificationSoundEnabled(preferences.notificationSoundEnabled);
+      } catch (error) {
+        // Preferences are deliberately non-blocking. Authentication remains valid and
+        // the device's last safe local preference remains active until the next retry.
+        console.error('Supabase app preference hydration failed', error);
+      }
+    };
+
     const hydrate = async (session: Session | null) => {
       const sequence = ++hydrationSequence;
       if (!session?.user) {
@@ -37,6 +54,7 @@ export function useCustomerSession() {
           verifiedUserRef.current = nextUser;
           setCurrentUserState(nextUser);
           setAuthReady(true);
+          void hydratePreferences(sequence);
         }
       } catch (error) {
         console.error('Supabase customer session hydration failed', error);
