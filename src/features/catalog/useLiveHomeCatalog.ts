@@ -11,15 +11,15 @@ export type LegacyHomeProduct = {
   shortDescription: string;
   category: string;
   categorySlug: string;
-  price: number;
+  price: number | null;
   originalPrice?: number | null;
-  currency: string;
+  currency: string | null;
   image: string;
   origin?: string | null;
   unit?: string | null;
   tags: string[];
-  rating: number;
-  reviewCount: number;
+  rating: number | null;
+  reviewCount: number | null;
   stock?: number | null;
   stockMode: string;
   is_approved: true;
@@ -47,12 +47,28 @@ export type LegacyHomeCategory = {
   sortOrder: number;
 };
 
+function isRecord(value: unknown): value is Record<string, any> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+function safeText(value: unknown, max = 300) {
+  return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+function safeInteger(value: unknown) {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+function safeRating(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 5 ? value : null;
+}
+function safeCurrency(value: unknown) {
+  const currency = safeText(value, 3).toUpperCase();
+  return /^[A-Z]{3}$/.test(currency) ? currency : null;
+}
 function compactSearchTerms(values: unknown[]) {
   return Array.from(new Set(
     values
-      .flatMap(value => String(value ?? '').split(/[\s,;/|]+/g))
+      .flatMap(value => typeof value === 'string' ? value.split(/[\s,;/|]+/g) : [])
       .map(value => value.trim())
-      .filter(value => value.length > 1)
+      .filter(value => value.length > 1 && value.length <= 120)
   ));
 }
 
@@ -81,81 +97,103 @@ export function useLiveHomeCatalog() {
         ]);
         if (!active) return;
 
-        const catalogItems = Array.isArray(catalog?.items) ? catalog.items : [];
-        const producerIds: string[] = Array.from(new Set<string>(catalogItems.map((item: any) => String(item?.producer?.id || '')).filter((value: string) => Boolean(value))));
-        const metrics = await getProducerFollowMetrics(producerIds).catch(error => {
-          console.warn('Producer metrics hydration failed; catalog remains usable without trust badges.', error);
+        if (!isRecord(catalog) || !Array.isArray(catalog.items)) throw new Error('Ana katalog ürünleri sunucudan doğrulanamadı.');
+        const catalogItems = catalog.items;
+        const coreInvalid = catalogItems.some((item: any) => !isRecord(item) || !safeText(item.id,160) || !safeText(item.slug,220) || !safeText(item.name,300) || !isRecord(item.category) || !safeText(item.category.slug,220) || !safeText(item.category.name,160) || !isRecord(item.producer) || !safeText(item.producer.id,160) || !safeText(item.producer.name,240) || !isRecord(item.variant) || !safeText(item.variant.id,160) || !safeText(item.variant.name,240));
+        if (coreInvalid) throw new Error('Ana katalogda kimliği doğrulanamayan ürün bulundu. Liste güvenli şekilde gösterilemedi.');
+
+        const producerIds: string[] = Array.from(new Set<string>(catalogItems.map((item: any) => safeText(item.producer.id,160)).filter(Boolean)));
+        const metrics = await getProducerFollowMetrics(producerIds).catch(metricsError => {
+          console.warn('Producer metrics hydration failed; catalog remains usable without trust badges.', metricsError);
           return [];
         });
         if (!active) return;
         const metricByProducer = new Map(metrics.map(metric => [metric.producerId, metric] as const));
 
         setProducts(catalogItems.map((item: any) => {
-          const producerId = String(item?.producer?.id || '');
+          const producerId = safeText(item.producer.id,160);
           const producerMetric = metricByProducer.get(producerId);
-          const origin = item.origin || [item.producer?.village, item.producer?.district, item.producer?.province].filter(Boolean).join(', ') || null;
+          const origin = safeText(item.origin,240) || null;
+          const priceMinor = safeInteger(item.variant.priceMinor);
+          const compareAtMinor = safeInteger(item.variant.compareAtPriceMinor);
+          const currency = safeCurrency(item.currency);
+          const availableQuantity = item.availableQuantity == null ? null : safeInteger(item.availableQuantity);
+          const stockMode = safeText(item.stockMode,80);
+          const rating = safeRating(item.averageRating);
+          const reviewCount = safeInteger(item.reviewCount);
           const tags = compactSearchTerms([
-            item.name,
-            item.category?.name,
-            item.category?.slug,
-            item.producer?.name,
-            item.producer?.village,
-            item.producer?.district,
-            item.producer?.province,
+            safeText(item.name,300),
+            safeText(item.category.name,160),
+            safeText(item.category.slug,220),
+            safeText(item.producer.name,240),
+            safeText(item.producer.village,160),
+            safeText(item.producer.district,160),
+            safeText(item.producer.province,160),
             origin,
-            item.unitLabel,
-            item.variant?.name,
+            safeText(item.unitLabel,120),
+            safeText(item.variant.name,240),
           ]);
           return {
-            id: item.id,
-            legacyId: item.legacyId ?? null,
-            slug: item.slug,
-            name: item.name,
-            description: item.shortDescription || '',
-            shortDescription: item.shortDescription || '',
-            category: item.category.name,
-            categorySlug: item.category.slug,
-            price: Number(item.variant.priceMinor || 0) / 100,
-            originalPrice: item.variant.compareAtPriceMinor ? Number(item.variant.compareAtPriceMinor) / 100 : null,
-            currency: String(item.currency || 'TRY').toUpperCase(),
+            id: safeText(item.id,160),
+            legacyId: safeText(item.legacyId,160) || null,
+            slug: safeText(item.slug,220),
+            name: safeText(item.name,300),
+            description: safeText(item.shortDescription,1000),
+            shortDescription: safeText(item.shortDescription,1000),
+            category: safeText(item.category.name,160),
+            categorySlug: safeText(item.category.slug,220),
+            price: priceMinor === null ? null : priceMinor / 100,
+            originalPrice: compareAtMinor === null ? null : compareAtMinor / 100,
+            currency,
             image: publicCatalogUrl(item.imagePath),
             origin,
-            unit: item.unitLabel || item.variant.name,
+            unit: safeText(item.unitLabel,120) || safeText(item.variant.name,120) || null,
             tags,
-            rating: Number(item.averageRating || 0),
-            reviewCount: Number(item.reviewCount || 0),
-            stock: item.availableQuantity ?? null,
-            stockMode: item.stockMode,
+            rating,
+            reviewCount,
+            stock: availableQuantity,
+            stockMode,
             is_approved: true as const,
-            is_featured: !!item.featured,
-            homeSection: item.homeSection || (item.featured ? 'featured' : 'regular'),
-            preOrder: item.stockMode === 'preorder',
-            variantId: item.variant.id,
-            variantName: item.variant.name,
+            is_featured: item.featured === true,
+            homeSection: safeText(item.homeSection,80) || (item.featured === true ? 'featured' : 'regular'),
+            preOrder: stockMode === 'preorder',
+            variantId: safeText(item.variant.id,160),
+            variantName: safeText(item.variant.name,240),
             vendor_id: producerId,
             producerId,
-            producerName: item.producer.name,
+            producerName: safeText(item.producer.name,240),
             producerFollowerCount: producerMetric ? producerMetric.followerCount : null,
             producerVerified: producerMetric?.verified === true,
             producerOriginVerified: producerMetric?.originVerified === true,
           };
         }));
 
-        setCategories((categoryRows || [])
-          .map(category => ({
-            id: category.slug,
-            databaseId: category.id,
-            name: category.name,
-            description: category.description || '',
-            icon: category.icon || null,
+        if (!Array.isArray(categoryRows)) throw new Error('Kategori listesi sunucudan doğrulanamadı.');
+        const normalizedCategories = categoryRows.map(category => {
+          if (!isRecord(category)) throw new Error('Kategori kaydı doğrulanamadı.');
+          const id = safeText(category.slug,220);
+          const databaseId = safeText(category.id,160);
+          const name = safeText(category.name,160);
+          const productCount = safeInteger(category.productCount);
+          const sortOrder = safeInteger(category.sortOrder);
+          if (!id || !databaseId || !name || productCount === null || sortOrder === null) throw new Error('Kategori kimliği veya sayacı doğrulanamadı.');
+          return {
+            id,
+            databaseId,
+            name,
+            description: safeText(category.description,1000),
+            icon: safeText(category.icon,120) || null,
             image: publicCatalogUrl(category.imagePath),
-            productCount: Number(category.productCount || 0),
-            sortOrder: Number(category.sortOrder || 0),
-          }))
-          .sort((a, b) => a.sortOrder - b.sortOrder || b.productCount - a.productCount || a.name.localeCompare(b.name, 'tr')));
+            productCount,
+            sortOrder,
+          };
+        });
+        setCategories(normalizedCategories.sort((a, b) => a.sortOrder - b.sortOrder || b.productCount - a.productCount || a.name.localeCompare(b.name, 'tr')));
       } catch (err: any) {
         if (active) {
           setError(err?.message || 'Canlı katalog yüklenemedi.');
+          setProducts([]);
+          setCategories([]);
         }
       } finally {
         if (active) setLoading(false);
