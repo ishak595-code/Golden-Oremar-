@@ -93,18 +93,21 @@ if (appShell) {
   if (!/useUnreadNotificationCount/.test(appShell) || !/badge=\{unreadCount\}/.test(appShell)) failures.push('Header notification badge must remain bound to the live unread notification count.');
   if (!/cartItemCount/.test(appShell) || !/badge=\{cartItemCount\}/.test(appShell)) failures.push('Cart badges must remain bound to the live total cart item count.');
   if (/<BottomNavButton\s+icon=\{User\}[^>]*badge=/.test(appShell)) failures.push('Account bottom navigation must not duplicate the notification unread count.');
+  if (!/aria-label="Sesli arama"/.test(appShell)) failures.push('Voice-search control is missing from the application header.');
 }
 
 const nativeRuntime = requireFile('src/native.ts');
-if (nativeRuntime && !/dataset\.nativePlatform/.test(nativeRuntime)) {
-  failures.push('Native runtime platform marker is required for capability-specific Android/iOS UI behavior.');
+if (nativeRuntime) {
+  if (!/dataset\.nativePlatform/.test(nativeRuntime)) failures.push('Native runtime platform marker is required for Android/iOS behavior.');
+  if (!/registerPlugin<NativeSpeechBridge>\(['"]NativeSpeech['"]\)/.test(nativeRuntime)) failures.push('Native speech JavaScript bridge registration is missing.');
+  if (!/SpeechRecognition\s*=\s*NativeSpeechRecognitionAdapter/.test(nativeRuntime)) failures.push('Native speech must remain connected to the existing voice-search UX.');
 }
 
 const appStyles = requireFile('src/index.css');
 if (appStyles) {
   if (/fonts\.googleapis\.com|fonts\.gstatic\.com/i.test(appStyles)) failures.push('Android/iOS application typography must not depend on Google Fonts network delivery.');
   if (/@import\s+url\(\s*['"]?https?:\/\//i.test(appStyles)) failures.push('Native app stylesheet must not import remote CSS at runtime.');
-  if (!/:root\[data-native-platform\][\s\S]*button\[aria-label="Sesli arama"\][\s\S]*display:\s*none/.test(appStyles)) failures.push('Native app must not advertise browser-only voice search before a real Android/iOS speech permission and implementation contract exists.');
+  if (/:root\[data-native-platform\][\s\S]*button\[aria-label="Sesli arama"\][\s\S]*display:\s*none/.test(appStyles)) failures.push('Real native voice search must not be hidden from Android/iOS users.');
 }
 
 const androidManifest = requireFile('android/app/src/main/AndroidManifest.xml');
@@ -113,9 +116,17 @@ if (androidManifest) {
   if (!/android:usesCleartextTraffic="false"/.test(androidManifest)) failures.push('Android cleartext traffic must remain disabled.');
   if (!/android\.permission\.INTERNET/.test(androidManifest)) failures.push('Android INTERNET permission is required.');
   if (!/android\.permission\.POST_NOTIFICATIONS/.test(androidManifest)) failures.push('Android 13+ notification permission must be declared.');
+  if (!/android\.permission\.RECORD_AUDIO/.test(androidManifest)) failures.push('Android native voice search requires RECORD_AUDIO permission.');
   if (!/android:scheme="com\.goldenoremar\.app"/.test(androidManifest) || !/android:host="auth"/.test(androidManifest)) {
     failures.push('Android auth callback deep link contract is missing.');
   }
+}
+
+const androidMain = requireFile('android/app/src/main/java/com/goldenoremar/app/MainActivity.kt');
+if (androidMain) {
+  if (!/@CapacitorPlugin\([\s\S]*name\s*=\s*"NativeSpeech"/.test(androidMain)) failures.push('Android NativeSpeech Capacitor plugin is missing.');
+  if (!/SpeechRecognizer\.createSpeechRecognizer/.test(androidMain)) failures.push('Android NativeSpeech must use the platform SpeechRecognizer.');
+  if (!/registerPlugin\(NativeSpeechPlugin::class\.java\)/.test(androidMain)) failures.push('Android NativeSpeech plugin registration is missing.');
 }
 
 const iosInfo = requireFile('ios/App/App/Info.plist');
@@ -123,6 +134,15 @@ if (iosInfo) {
   if (!/<key>CFBundleDevelopmentRegion<\/key>\s*<string>tr<\/string>/.test(iosInfo)) failures.push('iOS development region must remain Turkish.');
   if (!/<key>ITSAppUsesNonExemptEncryption<\/key>\s*<false\/>/.test(iosInfo)) failures.push('iOS export-compliance metadata is missing.');
   if (!/<string>com\.goldenoremar\.app<\/string>/.test(iosInfo)) failures.push('iOS auth callback URL scheme is missing.');
+  if (!/<key>NSMicrophoneUsageDescription<\/key>\s*<string>[^<]+<\/string>/.test(iosInfo)) failures.push('iOS microphone usage description is required for native voice search.');
+  if (!/<key>NSSpeechRecognitionUsageDescription<\/key>\s*<string>[^<]+<\/string>/.test(iosInfo)) failures.push('iOS speech-recognition usage description is required.');
+}
+
+const iosScene = requireFile('ios/App/App/SceneDelegate.swift');
+if (iosScene) {
+  if (!/class NativeSpeechPlugin: CAPPlugin, CAPBridgedPlugin/.test(iosScene)) failures.push('iOS NativeSpeech Capacitor plugin is missing.');
+  if (!/SFSpeechRecognizer/.test(iosScene) || !/AVAudioEngine/.test(iosScene)) failures.push('iOS NativeSpeech must use native speech and audio frameworks.');
+  if (!/registerPluginInstance\(NativeSpeechPlugin\(\)\)/.test(iosScene)) failures.push('iOS NativeSpeech plugin registration is missing.');
 }
 
 const indexHtml = requireFile('index.html');
@@ -139,4 +159,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Golden Oremar release audit passed: Android/iOS app-shell, retired-runtime and native release metadata contracts are intact.');
+console.log('Golden Oremar release audit passed: Android/iOS app-shell, native speech, retired-runtime and native release metadata contracts are intact.');
