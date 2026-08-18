@@ -22,6 +22,28 @@ export type GiftSavedAddress = {
   isDefault: boolean;
 };
 
+export type GiftCheckoutPreview = {
+  canCheckout: boolean;
+  blockingReason: string | null;
+  countryCode: string;
+  currency: string;
+  productId: string;
+  productSlug: string;
+  variantId: string;
+  quantity: number;
+  subtotalMinor: number;
+  shippingMinor: number;
+  discountMinor: number;
+  totalMinor: number;
+  totalWeightGrams: number;
+  shippingWeightGrams: number;
+  missingWeightQuantity: number;
+  availableQuantity: number | null;
+  shipping: Record<string, any>;
+  promotion: Record<string, any>;
+  previewOnly: true;
+};
+
 function unwrap<T>(data: T | null, error: any): T {
   if (error) throw error;
   return data as T;
@@ -81,6 +103,11 @@ function safeInteger(value: unknown, label: string, min = 0, max = Number.MAX_SA
   return value;
 }
 
+function optionalSafeInteger(value: unknown, label: string, min = 0, max = Number.MAX_SAFE_INTEGER) {
+  if (value == null) return null;
+  return safeInteger(value, label, min, max);
+}
+
 function safeUuid(value: unknown, label: string) {
   const uuid = requiredText(value, label, 160);
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid)) throw new Error(`${label} doğrulanamadı.`);
@@ -109,6 +136,43 @@ function normalizeSavedAddress(value: unknown, index: number): GiftSavedAddress 
     postalCode: optionalText(value.postal_code, 30) || '',
     deliveryNotes: optionalText(value.delivery_notes, 500) || '',
     isDefault: value.is_default,
+  };
+}
+
+function normalizeGiftPreview(value: unknown, expected: { productReference: string; variantReference: string; quantity: number; countryCode: string }): GiftCheckoutPreview {
+  if (!isRecord(value) || value.previewOnly !== true) throw new Error('Hediye sipariş özeti sunucudan doğrulanamadı.');
+  if (typeof value.canCheckout !== 'boolean' || !isRecord(value.shipping) || !isRecord(value.promotion)) throw new Error('Hediye checkout durumu doğrulanamadı.');
+  const quantity = safeInteger(value.quantity, 'Hediye ürün adedi', 1, 20);
+  if (quantity !== expected.quantity) throw new Error('Hediye checkout adedi istekle eşleşmiyor.');
+  const countryCode = normalizedCountryCode(value.countryCode);
+  if (countryCode !== expected.countryCode) throw new Error('Hediye checkout ülkesi istekle eşleşmiyor.');
+  const variantId = safeUuid(value.variantId, 'Varyant kimliği');
+  if (variantId !== expected.variantReference) throw new Error('Hediye checkout varyantı istekle eşleşmiyor.');
+  const subtotalMinor = safeInteger(value.subtotalMinor, 'Hediye ara toplamı');
+  const shippingMinor = safeInteger(value.shippingMinor, 'Hediye kargo tutarı');
+  const discountMinor = safeInteger(value.discountMinor, 'Hediye indirim tutarı');
+  const totalMinor = safeInteger(value.totalMinor, 'Hediye toplamı');
+  if (totalMinor !== subtotalMinor + shippingMinor - discountMinor) throw new Error('Hediye checkout toplamı bileşenleriyle eşleşmiyor.');
+  return {
+    canCheckout: value.canCheckout,
+    blockingReason: optionalText(value.blockingReason, 200),
+    countryCode,
+    currency: normalizedCurrency(value.currency),
+    productId: safeUuid(value.productId, 'Ürün kimliği'),
+    productSlug: requiredText(value.productSlug, 'Ürün bağlantısı', 220),
+    variantId,
+    quantity,
+    subtotalMinor,
+    shippingMinor,
+    discountMinor,
+    totalMinor,
+    totalWeightGrams: safeInteger(value.totalWeightGrams, 'Toplam ağırlık'),
+    shippingWeightGrams: safeInteger(value.shippingWeightGrams, 'Kargo ağırlığı'),
+    missingWeightQuantity: safeInteger(value.missingWeightQuantity, 'Eksik ağırlık adedi', 0, 20),
+    availableQuantity: optionalSafeInteger(value.availableQuantity, 'Satılabilir stok', 0, 999999999),
+    shipping: value.shipping,
+    promotion: value.promotion,
+    previewOnly: true,
   };
 }
 
@@ -141,6 +205,35 @@ export async function getGiftAccountOverview(): Promise<{
     paymentMethods,
     paymentReadiness,
   };
+}
+
+export async function previewGiftCheckout(input: {
+  productReference: string;
+  variantReference: string;
+  quantity: number;
+  countryCode: string;
+  couponCode?: string | null;
+}): Promise<GiftCheckoutPreview> {
+  const productReference = requiredText(input.productReference, 'Ürün referansı', 220);
+  const variantReference = safeUuid(input.variantReference, 'Varyant kimliği');
+  const quantity = safeInteger(input.quantity, 'Hediye ürün adedi', 1, 20);
+  const countryCode = normalizedCountryCode(input.countryCode);
+  const couponCode = normalizedCoupon(input.couponCode);
+  const { data, error } = await supabase.rpc('preview_gift_checkout_v1', {
+    p_product_reference: productReference,
+    p_variant_reference: variantReference,
+    p_quantity: quantity,
+    p_country_code: countryCode,
+    p_coupon_code: couponCode,
+  });
+  const preview = normalizeGiftPreview(unwrap<unknown>(data, error), { productReference, variantReference, quantity, countryCode });
+  if (preview.productSlug !== productReference && preview.productId !== productReference) {
+    // Product references may be slug, UUID or legacy ID. The server-authoritative
+    // product identity above is still required, but legacy references cannot be
+    // compared directly without re-reading the product.
+    if (!productReference || productReference.length > 220) throw new Error('Hediye checkout ürün kimliği istekle eşleşmiyor.');
+  }
+  return preview;
 }
 
 export async function createGiftOrder(input: {
