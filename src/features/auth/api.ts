@@ -24,7 +24,7 @@ export type AdminSessionStatus = {
 };
 
 const SUPPORTED_LOCALES = new Set(['tr', 'en', 'de', 'fr', 'ku', 'ar']);
-const KNOWN_ROLES = new Set(['user', 'producer', 'admin', 'super_admin']);
+const KNOWN_ROLES = new Set(['customer', 'producer', 'support', 'content_editor', 'operations', 'admin', 'super_admin', 'user', 'vendor']);
 
 function isRecord(value: unknown): value is Record<string, any> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -262,9 +262,10 @@ export async function getCustomerSessionStatus(): Promise<CustomerSessionStatus 
   const userId = safeUserId(data.user_id);
   if (!userId) throw new Error('Müşteri kimliği sunucudan doğrulanamadı.');
   const email = normalizeEmail(data.email);
-  const displayName = normalizeDisplayName(data.display_name || email.split('@')[0]);
+  const displayName = normalizeDisplayName(data.display_name);
   const phone = data.phone == null || String(data.phone).trim() === '' ? null : normalizePhone(data.phone) || null;
-  const locale = normalizeLocale(data.locale);
+  const locale = normalizeLocale(data.locale, '');
+  if (!locale) throw new Error('Müşteri dil tercihi doğrulanamadı.');
   const status = typeof data.status === 'string' ? data.status.trim() : '';
   if (!status || status.length > 80) throw new Error('Müşteri hesap durumu doğrulanamadı.');
   const roles = Array.isArray(data.roles) ? [...new Set(data.roles.map((role: unknown) => typeof role === 'string' ? role.trim() : '').filter((role: string) => KNOWN_ROLES.has(role)))] : [];
@@ -290,7 +291,7 @@ export async function signOutCurrentSession() {
 export function roleForLegacyCompatibility(roles: string[]) {
   if (roles.includes('super_admin')) return 'super_admin';
   if (roles.includes('admin')) return 'admin';
-  if (roles.includes('producer')) return 'vendor';
+  if (roles.includes('producer') || roles.includes('vendor')) return 'vendor';
   return 'user';
 }
 
