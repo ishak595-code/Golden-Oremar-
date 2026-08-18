@@ -95,10 +95,16 @@ if (appShell) {
   if (/<BottomNavButton\s+icon=\{User\}[^>]*badge=/.test(appShell)) failures.push('Account bottom navigation must not duplicate the notification unread count.');
 }
 
+const nativeRuntime = requireFile('src/native.ts');
+if (nativeRuntime && !/dataset\.nativePlatform/.test(nativeRuntime)) {
+  failures.push('Native runtime platform marker is required for capability-specific Android/iOS UI behavior.');
+}
+
 const appStyles = requireFile('src/index.css');
 if (appStyles) {
   if (/fonts\.googleapis\.com|fonts\.gstatic\.com/i.test(appStyles)) failures.push('Android/iOS application typography must not depend on Google Fonts network delivery.');
   if (/@import\s+url\(\s*['"]?https?:\/\//i.test(appStyles)) failures.push('Native app stylesheet must not import remote CSS at runtime.');
+  if (!/:root\[data-native-platform\][\s\S]*button\[aria-label="Sesli arama"\][\s\S]*display:\s*none/.test(appStyles)) failures.push('Native app must not advertise browser-only voice search before a real Android/iOS speech permission and implementation contract exists.');
 }
 
 const androidManifest = requireFile('android/app/src/main/AndroidManifest.xml');
