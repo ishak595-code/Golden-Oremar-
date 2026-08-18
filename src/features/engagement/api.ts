@@ -209,13 +209,9 @@ export async function listPublicEvents(includePast = true): Promise<PublicEvents
 
 export async function listMyEventReservations(limit = 30): Promise<MyEventReservation[]> {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error('Etkinlik kayıt liste sınırı geçersiz.');
-  const { data, error } = await supabase
-    .from('event_reservations')
-    .select('id,event_id,reservation_code,guest_name,guest_count,status,created_at,updated_at,event:events(id,slug,title,starts_at,ends_at,location_name,status,image_path)')
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  const rows = unwrap<any[]>(data, error);
-  if (!Array.isArray(rows)) throw new Error('Etkinlik kayıtlarınız sunucudan doğrulanamadı.');
+  const { data, error } = await supabase.rpc('list_my_event_reservations_v1', { p_limit: limit });
+  const rows = unwrap<unknown>(data, error);
+  if (!Array.isArray(rows) || rows.length > limit) throw new Error('Etkinlik kayıtlarınız sunucudan doğrulanamadı.');
   return rows.map(normalizeReservation).filter((item): item is MyEventReservation => Boolean(item));
 }
 
@@ -249,8 +245,13 @@ export async function submitEventReservation(input: {
 }
 
 export function publicContentUrl(path?: string | null) {
-  if (!path) return '';
-  if (/^https:\/\//i.test(path)) return path;
-  if (/^http:\/\//i.test(path)) return '';
-  return supabase.storage.from('content-public').getPublicUrl(path.replace(/^\/+/, '')).data.publicUrl;
+  const raw = typeof path === 'string' ? path.trim() : '';
+  if (!raw || /[\u0000-\u001F\u007F]/.test(raw)) return '';
+  if (/^https:\/\//i.test(raw)) {
+    try { return new URL(raw).toString(); } catch { return ''; }
+  }
+  if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return '';
+  const normalized = raw.replace(/^\/+/, '');
+  if (!normalized || normalized.split('/').some(part => part === '..' || part === '.' || !part)) return '';
+  return supabase.storage.from('content-public').getPublicUrl(normalized).data.publicUrl;
 }
