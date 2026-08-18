@@ -1,116 +1,104 @@
 # Golden Oremar latest checkpoint
 
-Date: 2026-08-18
+Date: 2026-08-19
 Branch: `agent/admin-supabase-retire-node`
 PR: #47
 
 Golden Oremar is an Android/iOS application. React/Vite is the Capacitor UI layer, not a desktop website shell.
 
-Before new work, read this file together with `PROJECT_STATE.json`, `TEST_REPORT.json` and the latest detailed checkpoint:
+Before new work, read this file together with `PROJECT_STATE.json`, `TEST_REPORT.json` and:
 
-`docs/manual-checkpoints/2026-08-18-catalog-auth-gift-native-hardening.md`
+`docs/manual-checkpoints/2026-08-19-payment-storage-preferences-reconciliation.md`
 
-Older full-account checkpoints remain valid and should not be repeated:
+Older detailed checkpoints remain valid in Git history and must not be repeated or overwritten.
 
-- `docs/account-audit/2026-08-17-account-tab-production-audit.md`
-- `docs/manual-checkpoints/2026-08-17-account-cart-final-polish.md`
-- `docs/account-audit/2026-08-17-account-complete-surface-pass.md`
+## Current source of truth
 
-## Latest functional code checkpoint
+Latest functional application code checkpoint before state/report documentation commits:
 
-Latest functional code head before state/report/checkpoint documentation commits:
+`983d6c1350e4e46259c68cf948edb7956ebb519e`
 
-`b74aa36719b71bd6f984a292dbe203f8ce73054f`
+The previous `PROJECT_STATE.json` and `TEST_REPORT.json` snapshots are preserved by Git history and their prior blob SHAs are recorded inside the new state/report files. Do not restore the old 130-migration/v4 values over the current state.
 
-The newest completed hardening pass covers:
+## Backend reconciliation
 
-- central strict live catalog response validation;
-- product/card/search/category/home/producer price, currency, stock, rating and origin truthfulness;
-- purchase locking when price/currency/variant/tracked stock cannot be verified;
-- authentication input/session/live-role boundary validation;
-- accessible registration/login tabs and password confirmation;
-- preservation of a previously verified session snapshot across transient hydration failures with network-restored revalidation;
-- gift order removal of fake phone/default-country behavior;
-- explicit shipping country required both client-side and server-side;
-- retirement of legacy authenticated customer-order RPC entrypoints;
-- gift-order response financial completeness checks;
-- removal of runtime Google Fonts dependency from the Android/iOS app shell;
-- release-audit guard against remote stylesheet/font regressions.
+- Supabase project: `rmfcziawxjgcnxexbrvw`
+- live migration count: **151**
+- latest migration: `20260818232517_verify_producer_product_gallery_assets`
+- the current hardening-series migration files are present in `supabase/migrations` on this branch
+- Security Advisor: **0 lints** after migration 151
+- current customer order entrypoint: `create_customer_order_v5`, authenticated only
+- `create_customer_order`, v2, v3 and v4 have no authenticated or anon execute privilege
+- Edge Functions: `contact-submit` v1, `event-reservation` v2, `push-dispatch` v3, `payment-method-vault` v1
+- `payment-method-vault` requires JWT and its source is present under `supabase/functions/payment-method-vault`
+
+## Payment, gift and preference checkpoint
+
+- saved card/payment-method metadata is persisted server-side without exposing reusable provider secrets to the client or admin order snapshot
+- checkout and gift order paths use order v5 with the selected saved payment method when supplied
+- payment card enrollment is implemented through the live `payment-method-vault` Edge Function and remains fail-closed until real merchant/provider configuration is present
+- gift note, occasion, presentation style, sender/recipient and price-hiding metadata persist with the order
+- admin order operations can see gift instructions and only masked payment metadata
+- theme and notification-sound preferences persist to the user account; local storage is only the fast-start copy
+- runtime theme changes synchronize React/native UI state through the device-theme event path
+
+## Real asset integrity checkpoint
+
+Live storage observation at this checkpoint:
+
+- `catalog-public`: 0 objects
+- `content-public`: 0 objects
+
+Database image paths therefore do **not** count as real assets. The application now fails closed:
+
+- public catalog/search/category/home/product-detail/producer-profile RPCs do not return a catalog image path unless the object exists in `catalog-public`
+- content/event public RPCs do not return image paths unless the object exists in `content-public`
+- admin product approval requires a real primary catalog object, not only a `product_images` row
+- producer product gallery returns only real existing storage objects
+- producer catalog uploads require the authenticated owner of a verified active producer and the `{producerId}/products/...` prefix
+- producer overwrite/update access for existing public objects is removed
+- producer delete is limited to the producer's own unused object
+
+Do not invent or generate replacement product/content photographs merely to clear this blocker. Real approved assets must be supplied or intentionally sourced under a separate approved content workflow.
 
 ## Mobile shell invariants
 
-These are non-negotiable unless the user explicitly changes the product direction:
-
-- no desktop top navigation;
-- no main-app hamburger menu;
-- preserve product/producer/village search in the header;
-- persistent phone/tablet bottom navigation;
-- unread notification bell uses real Supabase unread count and becomes red when nonzero;
-- malformed unread payload cannot erase a previously verified badge;
-- cart badge uses total item quantity, not line count;
-- checkout/cart mutations keep app-shell count synchronized;
-- keyboard temporarily owns the lower screen and bottom navigation hides while open;
-- no fake price, stock, rating, location, currency, payment provider, legal text, support identity or credentials.
-
-## Catalog truthfulness invariants
-
-- missing price never becomes 0;
-- missing currency never becomes TRY;
-- invalid tracked/seasonal stock locks purchase;
-- invalid rating/review count does not become 0;
-- product origin is never inferred from producer village/district/province;
-- price filters use verified catalog currency or are disabled;
-- only HTTPS external assets or safe storage paths are accepted;
-- malformed pagination totals/rows fail safely.
-
-## Authentication invariants
-
-- e-mail, password, display name, phone and locale are bounded before auth mutations;
-- live role contract includes `customer`, `producer`, `support`, `content_editor`, `operations`, `admin`, `super_admin`;
-- only admin/super_admin can satisfy app admin mode;
-- server profile user ID must match the Supabase auth session user ID;
-- malformed live locale does not silently become Turkish;
-- an already verified user is not visually logged out only because a later profile hydration request failed transiently;
-- network restore retries session verification.
-
-## Gift and checkout invariants
-
-- gift delivery country starts blank and must be explicit two-letter ISO;
-- gift delivery phone is real and required, no generated fallback number;
-- gift purchase requires valid variant, price, currency, availability and tracked stock;
-- missing order financial fields are rejected, not replaced with zero;
-- payment verification pending is never displayed as paid;
-- current authenticated public customer-order entrypoint is `create_customer_order_v4` only;
-- legacy `create_customer_order`, v2 and v3 are not externally executable by authenticated/anon/public roles.
-
-## Backend checkpoint
-
-- Supabase project: `rmfcziawxjgcnxexbrvw`
-- live migration count: 130
-- latest migration: `20260818211654_retire_legacy_customer_order_rpc_entrypoints`
-- latest two migrations are recorded in the repo and live history
-- Security Advisor after migration 130: 0 lints
-- recorded edge functions: `contact-submit` v1, `event-reservation` v2, `push-dispatch` v3
-- 14 active perishable variants still require real shipping weights; do not fabricate them
-
-## Native offline checkpoint
-
-The application stylesheet no longer imports Google Fonts. System font stacks are used so native startup typography does not require a remote CSS/font request. `release-audit.mjs` blocks Google Fonts and remote stylesheet imports from returning.
-
-The app does not currently include a native speech-recognition plugin. Existing voice-search code checks runtime Web Speech support and reports unsupported devices. Do not claim universal Android/iOS voice recognition until a real native implementation is intentionally added and tested.
+- no desktop top navigation
+- no main-app hamburger menu
+- preserve product/producer/village search in the header
+- persistent phone/tablet bottom navigation
+- unread notification bell uses the real Supabase unread count and becomes red when nonzero
+- cart badge uses total quantity, not line count
+- keyboard hides bottom navigation while it owns the lower screen
+- no fake price, stock, rating, location, currency, payment state, legal copy, support identity or credentials
 
 ## Release state
 
 Do not call the newest head CI-green.
 
-GitHub Actions runner allocation is still blocked by the account billing/minute/spending-limit condition. No new Actions run was intentionally triggered during this hardening pass.
+GitHub Actions runner allocation remains blocked by the account billing/minute/spending-limit condition. No new Actions run should be triggered while this condition persists.
 
-Last recorded blocked run: `32029478472`, with `verify-ios` and `verify-web-android` receiving no executed steps/no runner.
+Last recorded blocked run: `32029478472`.
 
-Previous Android release-bundle and iOS Simulator compilation baselines were green, but they predate the newest functional head.
+Previous Android release-bundle and iOS Simulator compilation baselines were green, but they predate the current functional head.
 
-When runner allocation is restored, run exactly one meaningful current-head mobile quality gate: release audit, TypeScript, production build, Capacitor sync reproducibility, Android release bundle and iOS Simulator compile.
+When runner allocation is restored, run exactly one current-head mobile quality gate covering release audit, TypeScript, production build, Capacitor sync reproducibility, Android release bundle and iOS Simulator compile.
 
-Do not merge PR #47 until reachable release gates are green and the user explicitly authorizes merge.
+Do not merge PR #47 until reachable current-head release gates are green and the user explicitly authorizes merge.
 
-External production values must not be fabricated: legal business/support identity, final applicable legal copy, payment merchant/provider credentials, Google/Facebook production OAuth configuration, FCM/APNs credentials, store signing/release credentials, real public HTTPS share origin and remaining real product shipping weights.
+## External production blockers
+
+- real `catalog-public` product assets
+- real `content-public` content/event assets
+- legal business/support identity
+- final applicable legal copy
+- production payment merchant/provider credentials
+- production Google/Facebook OAuth configuration
+- production FCM/APNs credentials
+- Play Store/App Store signing and release configuration
+- real public HTTPS share origin
+- fourteen active perishable-variant real shipping weights
+
+## Next safe block
+
+Continue the manual account/seller/admin production accessibility and data-contract scan from the current branch. Do not repeat completed work, do not create an automation, and do not trigger GitHub Actions while runner allocation remains blocked.
