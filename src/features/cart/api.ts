@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { getPaymentReadiness, listMyPaymentMethods, type PaymentReadiness, type SavedPaymentMethod } from '../payments/api';
 
 export type CartSnapshot = {
   cartId: string | null;
@@ -48,14 +49,8 @@ export type CheckoutPreview = {
   previewOnly: true;
 };
 
-export type CheckoutPaymentReadiness = {
-  mode: 'manual_confirmation' | 'provider_checkout' | string;
-  liveCardPaymentsEnabled: boolean;
-  provider: string | null;
-  requiresProviderConfiguration: boolean;
-  paymentVerificationRequired: boolean;
-  storesProviderSecretsClientSide: boolean;
-};
+export type CheckoutPaymentReadiness = PaymentReadiness;
+export type CheckoutSavedPaymentMethod = SavedPaymentMethod;
 
 function unwrap<T>(data: T | null, error: any): T {
   if (error) throw error;
@@ -107,6 +102,13 @@ function normalizedCoupon(value?: string | null) {
   if (coupon.length > 64) throw new Error('Kupon kodu en fazla 64 karakter olabilir.');
   if (coupon && !/^[A-Z0-9_-]+$/.test(coupon)) throw new Error('Kupon kodu yalnız harf, rakam, tire ve alt çizgi içerebilir.');
   return coupon || null;
+}
+
+function optionalUuid(value: unknown, label: string) {
+  if (value == null || String(value).trim() === '') return null;
+  const id = String(value).trim();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id)) throw new Error(`${label} doğrulanamadı.`);
+  return id;
 }
 
 function normalizeCartSnapshot(value: unknown): CartSnapshot {
@@ -231,6 +233,7 @@ export async function createOrder(input: {
   shippingAddress: Record<string, any>;
   customerNote?: string | null;
   couponCode?: string | null;
+  paymentMethodId?: string | null;
   idempotencyKey: string;
 }) {
   if (!Array.isArray(input.items) || !input.items.length) throw new Error('Sipariş için sepet boş olamaz.');
@@ -272,12 +275,14 @@ export async function createOrder(input: {
     return { productReference, variantReference, quantity };
   });
 
-  const { data, error } = await supabase.rpc('create_customer_order_v4', {
+  const paymentMethodId = optionalUuid(input.paymentMethodId, 'Ödeme yöntemi kimliği');
+  const { data, error } = await supabase.rpc('create_customer_order_v5', {
     p_items: orderItems,
     p_shipping_address: shippingAddress,
     p_customer_note: customerNote || null,
     p_coupon_code: normalizedCoupon(input.couponCode),
     p_gift: null,
+    p_payment_method_id: paymentMethodId,
     p_idempotency_key: idempotencyKey,
   });
   return unwrap<any>(data, error);
@@ -317,18 +322,17 @@ export async function startShippingQuoteSupport(input: {
 }
 
 export async function getCheckoutPaymentReadiness(): Promise<CheckoutPaymentReadiness> {
-  const { data, error } = await supabase.rpc('get_checkout_payment_readiness_v1');
-  const readiness = unwrap<CheckoutPaymentReadiness | null>(data, error);
-  if (!readiness) {
-    return { mode: 'manual_confirmation', liveCardPaymentsEnabled: false, provider: null, requiresProviderConfiguration: true, paymentVerificationRequired: true, storesProviderSecretsClientSide: false };
-  }
-  return readiness;
+  return getPaymentReadiness();
 }
 
 export async function getCheckoutAccountOverview() {
-  const [{ data, error }, paymentReadiness] = await Promise.all([supabase.rpc('get_my_account_overview_v1'), getCheckoutPaymentReadiness()]);
+  const [{ data, error }, paymentReadiness, paymentMethods] = await Promise.all([
+    supabase.rpc('get_my_account_overview_v1'),
+    getPaymentReadiness(),
+    listMyPaymentMethods(),
+  ]);
   const overview = unwrap<any>(data, error) || {};
-  return { ...overview, paymentReadiness };
+  return { ...overview, paymentReadiness, paymentMethods };
 }
 
 export async function resolveDefaultVariant(productReference: string) {
