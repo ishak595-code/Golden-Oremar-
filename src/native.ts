@@ -14,6 +14,12 @@ function resolveNativeTheme(theme?: string): NativeTheme {
   return 'light';
 }
 
+function markNativePlatform() {
+  if (!Capacitor.isNativePlatform()) return;
+  const platform = Capacitor.getPlatform();
+  document.documentElement.dataset.nativePlatform = platform === 'android' || platform === 'ios' ? platform : 'native';
+}
+
 async function initNativeKeyboardSignals() {
   if (keyboardSignalsReady || !Capacitor.isNativePlatform()) return;
   keyboardSignalsReady = true;
@@ -38,6 +44,7 @@ export const syncNativeAppearance = async (theme?: string) => {
 
 export const initNativeFeatures = async (theme?: string) => {
   if (!Capacitor.isNativePlatform()) return;
+  markNativePlatform();
   try {
     await Promise.all([
       syncNativeAppearance(theme),
