@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Money } from '../account/ui';
 import { useAccessibleDialog } from '../accessibility/useAccessibleDialog';
+import { saveCustomerAddress } from '../addresses/api';
 import { paymentMethodLabel } from '../payments/api';
 import GiftCardPreview, { giftOccasions, giftStyles } from './GiftCardPreview';
 import {
@@ -308,9 +309,13 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
     setStatus(normalized ? 'Kupon sunucuda kontrol ediliyor.' : 'Kupon kaldırıldı.');
   }
 
-  async function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (submitting) return;
+    const formData = new FormData(event.currentTarget);
+    const shouldSaveAddress = useManualAddress && formData.get('save_address') === 'on';
+    const makeDefaultAddress = shouldSaveAddress && formData.get('make_default_address') === 'on';
+    const addressLabel = safeText(formData.get('address_label'), 60) || 'Hediye Teslimatı';
     const issue = validate();
     if (issue) { setError(issue); return; }
     try {
@@ -327,6 +332,25 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
       setPreview(finalPreview);
       if (!finalPreview.canCheckout) throw new Error(friendlyBlockingReason(finalPreview.blockingReason) || 'Hediye siparişi şu anda oluşturulamıyor.');
       if (!effectiveAddress) throw new Error('Teslimat adresi doğrulanamadı.');
+
+      if (shouldSaveAddress) {
+        setStatus('Yeni teslimat adresi hesabınıza kaydediliyor.');
+        await saveCustomerAddress({
+          label: addressLabel,
+          recipientName: recipientName.trim(),
+          phone: recipientPhone.trim(),
+          countryCode,
+          administrativeArea: effectiveAddress.administrative_area.trim() || null,
+          city: effectiveAddress.city.trim(),
+          locality: effectiveAddress.locality.trim() || null,
+          addressLine1: effectiveAddress.address_line1.trim(),
+          addressLine2: effectiveAddress.address_line2.trim() || null,
+          postalCode: effectiveAddress.postal_code.trim() || null,
+          deliveryNotes: effectiveAddress.delivery_notes.trim() || null,
+          isDefault: makeDefaultAddress,
+        });
+        setStatus('Adres kaydedildi. Hediye siparişi oluşturuluyor.');
+      }
 
       const result = await createGiftOrder({
         productReference: canonicalProductReference,
@@ -369,7 +393,8 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
         : raw.includes('shipping_not_available') ? 'Seçilen ülkeye otomatik gönderim henüz açık değil.'
         : raw.includes('insufficient_stock') ? 'Seçtiğiniz ürün için yeterli stok kalmadı.'
         : raw.includes('authentication_required') ? 'Hediye siparişi oluşturmak için giriş yapmalısınız.'
-        : raw.includes('invalid_shipping_address') ? 'Teslimat adresi veya telefonu doğrulanamadı.'
+        : raw.includes('invalid_shipping_address') || raw.includes('invalid_address') ? 'Teslimat adresi veya telefonu doğrulanamadı.'
+        : raw.includes('address_limit_exceeded') ? 'Hesabınıza en fazla 20 teslimat adresi kaydedebilirsiniz.'
         : raw;
       setError(friendly);
     } finally {
@@ -454,7 +479,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
 
           {useManualAddress ? <fieldset className="mt-4 grid gap-3 sm:grid-cols-2"><legend className="sr-only">Yeni hediye teslimat adresi</legend>
             <label htmlFor="gift-country"><span className="text-sm font-semibold">Ülke kodu</span><input id="gift-country" value={manualAddress.country_code} onChange={event => setManualAddress({ ...manualAddress, country_code: event.target.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 2) })} maxLength={2} autoComplete="country" required disabled={submitting} className="mt-1 min-h-12 w-full rounded-xl border bg-transparent px-3" /></label>
-            <label htmlFor="gift-admin-area"><span className="text-sm font-semibold">İl / bölge</span><input id="gift-admin-area" value={manualAddress.administrative_area} onChange={event => setManualAddress({ ...manualAddress, administrative_area: event.target.value.slice(0, 160) })} maxLength={160} autoComplete="address-level1" disabled={submitting} className="mt-1 min-h-12 w-full rounded-xl border bg-transparent px-3" /></label>
+            <label htmlFor="gift-admin-area"><span className="text-sm font-semibold">İl / bölge <span className="font-normal text-gray-500">(opsiyonel)</span></span><input id="gift-admin-area" value={manualAddress.administrative_area} onChange={event => setManualAddress({ ...manualAddress, administrative_area: event.target.value.slice(0, 160) })} maxLength={160} autoComplete="address-level1" disabled={submitting} className="mt-1 min-h-12 w-full rounded-xl border bg-transparent px-3" /></label>
             <label htmlFor="gift-city"><span className="text-sm font-semibold">Şehir / ilçe</span><input id="gift-city" value={manualAddress.city} onChange={event => setManualAddress({ ...manualAddress, city: event.target.value.slice(0, 160) })} maxLength={160} autoComplete="address-level2" required disabled={submitting} className="mt-1 min-h-12 w-full rounded-xl border bg-transparent px-3" /></label>
             <label htmlFor="gift-locality"><span className="text-sm font-semibold">Mahalle / köy</span><input id="gift-locality" value={manualAddress.locality} onChange={event => setManualAddress({ ...manualAddress, locality: event.target.value.slice(0, 160) })} maxLength={160} autoComplete="address-level3" disabled={submitting} className="mt-1 min-h-12 w-full rounded-xl border bg-transparent px-3" /></label>
             <label htmlFor="gift-postal-code"><span className="text-sm font-semibold">Posta kodu</span><input id="gift-postal-code" value={manualAddress.postal_code} onChange={event => setManualAddress({ ...manualAddress, postal_code: event.target.value.slice(0, 30) })} maxLength={30} autoComplete="postal-code" disabled={submitting} className="mt-1 min-h-12 w-full rounded-xl border bg-transparent px-3" /></label>
@@ -462,6 +487,11 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
             <label htmlFor="gift-address-line1" className="sm:col-span-2"><span className="text-sm font-semibold">Açık adres</span><textarea id="gift-address-line1" value={manualAddress.address_line1} onChange={event => setManualAddress({ ...manualAddress, address_line1: event.target.value.slice(0, 1000) })} maxLength={1000} autoComplete="street-address" rows={3} required disabled={submitting} className="mt-1 w-full rounded-xl border bg-transparent p-3" /></label>
             <label htmlFor="gift-address-line2" className="sm:col-span-2"><span className="text-sm font-semibold">Adres devamı <span className="font-normal text-gray-500">(opsiyonel)</span></span><input id="gift-address-line2" value={manualAddress.address_line2} onChange={event => setManualAddress({ ...manualAddress, address_line2: event.target.value.slice(0, 500) })} maxLength={500} disabled={submitting} className="mt-1 min-h-12 w-full rounded-xl border bg-transparent px-3" /></label>
             <label htmlFor="gift-delivery-notes" className="sm:col-span-2"><span className="text-sm font-semibold">Teslimat notu</span><textarea id="gift-delivery-notes" value={manualAddress.delivery_notes} onChange={event => setManualAddress({ ...manualAddress, delivery_notes: event.target.value.slice(0, 500) })} maxLength={500} rows={2} disabled={submitting} className="mt-1 w-full rounded-xl border bg-transparent p-3" /></label>
+            <div className="sm:col-span-2 rounded-2xl border border-brand-green/20 bg-brand-green/5 p-4">
+              <label className="flex min-h-11 items-start gap-3"><input type="checkbox" name="save_address" disabled={submitting} className="mt-1 h-5 w-5" /><span><span className="block font-semibold">Bu adresi hesabıma kaydet</span><span className="mt-1 block text-xs text-gray-500">Hediye tamamlandıktan sonra da Adreslerim bölümünde kullanabilirsiniz.</span></span></label>
+              <label className="mt-3 block" htmlFor="gift-address-label"><span className="text-sm font-semibold">Adres etiketi</span><input id="gift-address-label" name="address_label" defaultValue="Hediye Teslimatı" maxLength={60} disabled={submitting} className="mt-1 min-h-11 w-full rounded-xl border bg-white px-3 dark:bg-gray-950" /></label>
+              <label className="mt-3 flex min-h-11 items-center gap-3"><input type="checkbox" name="make_default_address" disabled={submitting} className="h-5 w-5" /><span className="text-sm font-semibold">Kaydedersem varsayılan teslimat adresim yap</span></label>
+            </div>
           </fieldset> : null}
           {!validCountry ? <div role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">Kargo ve toplam hesaplanabilmesi için gerçek iki harfli ülke kodu gerekiyor.</div> : null}
         </section>
@@ -469,7 +499,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
         <section aria-labelledby="gift-payment-title" className="rounded-3xl border border-gray-200 p-4 dark:border-gray-800 sm:p-5">
           <div className="flex items-start justify-between gap-3"><div><h3 id="gift-payment-title" className="text-lg font-bold">Ödeme yöntemi</h3><p className="mt-1 text-sm text-gray-500">Kart bilgileri Golden Oremar veritabanında ham olarak saklanmaz. Yalnız ödeme sağlayıcısının doğruladığı maskeli yöntem metadatası tutulabilir.</p></div><CreditCard aria-hidden="true" className="h-5 w-5 text-brand-green" /></div>
           {paymentMethods.length ? <div className="mt-4 space-y-2">{paymentMethods.map((method: any) => <div key={method.id} className="flex items-center justify-between gap-3 rounded-xl border p-3"><div><div className="font-semibold">{paymentMethodLabel(method)}</div><div className="mt-1 text-xs text-gray-500">{method.isDefault ? 'Varsayılan ödeme yöntemi' : 'Kayıtlı ödeme yöntemi'} • {method.status === 'expired' ? 'Süresi dolmuş' : 'Aktif'}</div></div>{method.isDefault ? <span className="rounded-full bg-brand-green/10 px-2 py-1 text-xs font-bold text-brand-green">Varsayılan</span> : null}</div>)}</div> : <div className="mt-4 rounded-xl bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">Hesabınızda doğrulanmış kayıtlı ödeme yöntemi yok.</div>}
-          <div className={`mt-3 rounded-xl border p-3 text-sm ${livePayments ? 'border-green-200 bg-green-50 text-green-900 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-100' : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100'}`}>{livePayments ? `Canlı ödeme sağlayıcısı ${provider} hazır görünüyor. Yine de ödeme yalnız backend tarafından gerçekten doğrulandığında başarılı sayılır.` : 'Canlı kart ödeme sağlayıcısı henüz yapılandırılmadı. Bu ekran karttan para çekmez ve sahte ödeme başarısı göstermez. Provider bağlandığında kart ekleme/güncelleme işlemi onun güvenli ekranından yapılacaktır.'}</div>
+          <div className={`mt-3 rounded-xl border p-3 text-sm ${livePayments ? 'border-green-200 bg-green-50 text-green-900 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-100' : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100'}`}>{livePayments ? `Canlı ödeme sağlayıcısı ${provider} hazır görünüyor. Kart kaydetme işlemi sağlayıcının güvenli ödeme ekranında yapılır; Golden Oremar yalnız doğrulanmış token ve maskeli kart bilgisini saklar.` : 'Canlı kart ödeme sağlayıcısı henüz yapılandırılmadı. Bu ekran karttan para çekmez ve sahte ödeme başarısı göstermez. Provider bağlandığında kart ekleme ve “bu kartı kaydet” seçeneği onun güvenli ekranından yapılacaktır.'}</div>
         </section>
 
         <section aria-labelledby="gift-summary-title" className="rounded-3xl border border-gray-200 p-4 dark:border-gray-800 sm:p-5">
