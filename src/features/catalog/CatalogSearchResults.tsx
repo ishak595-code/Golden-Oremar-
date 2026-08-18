@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, PackageSearch } from 'lucide-react';
 import { getProducerFollowMetrics, publicCatalogUrl, searchCatalog, type CatalogItem, type CatalogSearchResponse, type ProducerFollowMetric } from './api';
 import CatalogProductCard from './CatalogProductCard';
@@ -15,9 +15,33 @@ type Props = {
   onAddToCart: (item: CatalogItem, quantity: number) => Promise<void> | void;
 };
 
+function safeText(value: unknown, max = 300) {
+  return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+function safeInteger(value: unknown) {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+function safeRating(value: unknown) {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 5 ? value : null;
+}
+function safeCurrency(value: unknown) {
+  const currency = safeText(value, 3).toUpperCase();
+  return /^[A-Z]{3}$/.test(currency) ? currency : null;
+}
+function renderableItem(value: unknown): value is CatalogItem {
+  const item = value as any;
+  return Boolean(
+    item && typeof item === 'object' && !Array.isArray(item) &&
+    safeText(item.id, 160) && safeText(item.slug, 220) && safeText(item.name, 300) &&
+    item.variant && typeof item.variant === 'object' && !Array.isArray(item.variant) && safeText(item.variant.id, 160) && safeText(item.variant.name, 240) &&
+    item.producer && typeof item.producer === 'object' && !Array.isArray(item.producer) && safeText(item.producer.id, 160) && safeText(item.producer.name, 240) &&
+    item.category && typeof item.category === 'object' && !Array.isArray(item.category) && safeText(item.category.name, 160)
+  );
+}
+
 function mergeCatalogItems(previous: CatalogItem[], incoming: CatalogItem[]) {
   const unique = new Map<string, CatalogItem>();
-  [...previous, ...incoming].forEach(item => unique.set(`${item.id}:${item.variant?.id || ''}`, item));
+  [...previous, ...incoming].filter(renderableItem).forEach(item => unique.set(`${item.id}:${item.variant.id}`, item));
   return Array.from(unique.values());
 }
 
@@ -53,8 +77,14 @@ export default function CatalogSearchResults({
         offset: nextOffset,
       });
       if (requestId.current !== current) return;
+      if (!Array.isArray(next.items)) throw new Error('Arama sonucu ürünleri doğrulanamadı.');
+      const validItems = next.items.filter(renderableItem);
+      if (validItems.length !== next.items.length) throw new Error('Arama sonuçlarından biri doğrulanamadı. Liste güvenli şekilde gösterilemedi.');
+      const total = safeInteger(next.total);
+      if (total === null || total < validItems.length) throw new Error('Arama sonucu toplamı doğrulanamadı.');
+      const safeNext: CatalogSearchResponse = { ...next, total, items: validItems };
 
-      const metrics = await getProducerFollowMetrics(next.items.map(item => item.producer.id)).catch(metricsError => {
+      const metrics = await getProducerFollowMetrics(validItems.map(item => item.producer.id)).catch(metricsError => {
         console.warn('Producer metrics unavailable for catalog search.', metricsError);
         return [];
       });
@@ -63,8 +93,8 @@ export default function CatalogSearchResults({
       setProducerMetrics(previous => append ? { ...previous, ...nextMetrics } : nextMetrics);
       setOffset(nextOffset);
       setResult(previous => append && previous
-        ? { ...next, items: mergeCatalogItems(previous.items, next.items), offset: 0, limit: previous.items.length + next.items.length }
-        : next);
+        ? { ...safeNext, items: mergeCatalogItems(previous.items, safeNext.items), offset: 0, limit: previous.items.length + safeNext.items.length }
+        : safeNext);
     } catch (err: any) {
       if (requestId.current === current) setError(err?.message || 'Katalog sonuçları yüklenemedi.');
     } finally {
@@ -85,9 +115,10 @@ export default function CatalogSearchResults({
 
   useEffect(() => { void load(0, false); }, [query, categorySlug, producerId, sort, inStock]);
 
-  const items = result?.items || [];
-  const canLoadMore = !!result && items.length < result.total;
-  const resultLabel = result ? `${result.total} gerçek katalog sonucu` : 'Katalog aranıyor';
+  const items = useMemo(() => Array.isArray(result?.items) ? result!.items.filter(renderableItem) : [], [result]);
+  const total = result ? safeInteger(result.total) : null;
+  const canLoadMore = total !== null && items.length < total;
+  const resultLabel = result && total !== null ? `${total} gerçek katalog sonucu` : result ? 'Sonuç sayısı doğrulanamadı' : 'Katalog aranıyor';
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-6 sm:py-8" aria-labelledby="catalog-results-title" aria-busy={loading}>
@@ -97,7 +128,7 @@ export default function CatalogSearchResults({
         </button>
         <div className="min-w-0">
           <h1 id="catalog-results-title" className="truncate text-2xl font-bold text-brand-green dark:text-brand-gold">
-            {query.trim() ? `“${query.trim()}” sonuçları` : 'Katalog'}
+            {query.trim() ? `“${query.trim().slice(0, 160)}” sonuçları` : 'Katalog'}
           </h1>
           <p className="text-sm text-gray-500" aria-live="polite">{resultLabel}</p>
         </div>
@@ -121,7 +152,7 @@ export default function CatalogSearchResults({
       </div>
 
       <div className="sr-only" aria-live="polite" aria-atomic="true">
-        {loading ? (offset > 0 ? 'Daha fazla katalog sonucu yükleniyor' : 'Katalog sonuçları yükleniyor') : error ? error : `${result?.total || 0} sonuç bulundu, ${items.length} sonuç gösteriliyor`}
+        {loading ? (offset > 0 ? 'Daha fazla katalog sonucu yükleniyor' : 'Katalog sonuçları yükleniyor') : error ? error : total === null ? 'Sonuç sayısı doğrulanamadı' : `${total} sonuç bulundu, ${items.length} sonuç gösteriliyor`}
       </div>
 
       {error ? (
@@ -142,34 +173,39 @@ export default function CatalogSearchResults({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map(item => {
           const metric = producerMetrics[item.producer.id];
-          const origin = item.origin || [item.producer.village, item.producer.district, item.producer.province].filter(Boolean).join(', ') || null;
+          const priceMinor = safeInteger(item.variant.priceMinor);
+          const compareAtMinor = safeInteger(item.variant.compareAtPriceMinor);
+          const currency = safeCurrency(item.currency);
+          const rating = safeRating(item.averageRating);
+          const reviewCount = safeInteger(item.reviewCount);
+          const stock = item.availableQuantity == null ? null : safeInteger(item.availableQuantity);
           const cardProduct = {
             id: item.id,
             legacyId: item.legacyId ?? null,
             slug: item.slug,
             name: item.name,
-            description: item.shortDescription || '',
-            shortDescription: item.shortDescription || '',
+            description: safeText(item.shortDescription, 1000),
+            shortDescription: safeText(item.shortDescription, 1000),
             category: item.category.name,
-            price: Number(item.variant.priceMinor || 0) / 100,
-            originalPrice: item.variant.compareAtPriceMinor ? Number(item.variant.compareAtPriceMinor) / 100 : null,
-            currency: item.currency,
+            price: priceMinor === null ? null : priceMinor / 100,
+            originalPrice: compareAtMinor === null ? null : compareAtMinor / 100,
+            currency,
             image: publicCatalogUrl(item.imagePath),
-            origin,
-            unit: item.unitLabel || item.variant.name,
-            rating: Number(item.averageRating || 0),
-            reviewCount: Number(item.reviewCount || 0),
-            stock: item.availableQuantity ?? null,
-            stockMode: item.stockMode,
-            is_featured: !!item.featured,
+            origin: safeText(item.origin, 240) || null,
+            unit: safeText(item.unitLabel, 120) || safeText(item.variant.name, 120) || null,
+            rating,
+            reviewCount,
+            stock,
+            stockMode: safeText(item.stockMode, 80),
+            is_featured: item.featured === true,
             preOrder: item.stockMode === 'preorder',
             variantId: item.variant.id,
             variantName: item.variant.name,
             vendor_id: item.producer.id,
             producerName: item.producer.name,
             producerFollowerCount: metric?.followerCount ?? null,
-            producerVerified: metric?.verified ?? false,
-            producerOriginVerified: metric?.originVerified ?? false,
+            producerVerified: metric?.verified === true,
+            producerOriginVerified: metric?.originVerified === true,
           };
           return <CatalogProductCard
             key={`${item.id}:${item.variant.id}`}
