@@ -38,11 +38,16 @@ const forbiddenRepoArtifacts = [
   'metadata.json',
   'src/data.ts',
   'src/data/healthData.ts',
+  'migration-tools',
+  '.github/workflows/admin-delta-typecheck.yml',
+  '.github/workflows/audit-legacy-admin-residue.yml',
+  '.github/workflows/seller-traceability-finance-integrate.yml',
+  '.github/workflows/verify-seller-feature.yml',
 ];
 
 for (const relative of forbiddenRepoArtifacts) {
   if (fs.existsSync(path.join(root, relative))) {
-    failures.push(`Obsolete static/demo artifact must not exist: ${relative}`);
+    failures.push(`Obsolete static/demo/transitional artifact must not exist: ${relative}`);
   }
 }
 
@@ -56,6 +61,7 @@ const forbiddenRuntimePatterns = [
   { re: /firebase\/(?:app|auth|firestore|storage)/i, label: 'Firebase runtime import' },
   { re: /from\s+['"][^'"]*firebase[^'"]*['"]/i, label: 'Firebase package import' },
   { re: /(?:from|import\()\s*['"][^'"]*(?:\/|^)data(?:\/healthData)?(?:\.[cm]?[jt]sx?)?['"]/i, label: 'legacy static data import' },
+  { re: /supabase\.rpc\(\s*['"]create_customer_order(?:_v[1-4])?['"]/i, label: 'retired customer order RPC runtime call' },
 ];
 
 function walk(directory) {
@@ -94,6 +100,16 @@ if (appShell) {
   if (!/cartItemCount/.test(appShell) || !/badge=\{cartItemCount\}/.test(appShell)) failures.push('Cart badges must remain bound to the live total cart item count.');
   if (/<BottomNavButton\s+icon=\{User\}[^>]*badge=/.test(appShell)) failures.push('Account bottom navigation must not duplicate the notification unread count.');
   if (!/aria-label="Sesli arama"/.test(appShell)) failures.push('Voice-search control is missing from the application header.');
+}
+
+const cartApi = requireFile('src/features/cart/api.ts');
+if (cartApi && !/supabase\.rpc\(\s*['"]create_customer_order_v5['"]/.test(cartApi)) {
+  failures.push('Cart checkout must remain on create_customer_order_v5.');
+}
+
+const giftApi = requireFile('src/features/gifts/api.ts');
+if (giftApi && !/supabase\.rpc\(\s*['"]create_customer_order_v5['"]/.test(giftApi)) {
+  failures.push('Gift checkout must remain on create_customer_order_v5.');
 }
 
 const nativeRuntime = requireFile('src/native.ts');
