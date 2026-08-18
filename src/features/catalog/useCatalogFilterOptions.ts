@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { getPublicHomeCatalog, listPublicCategories } from './api';
 import { NETWORK_RESTORED_EVENT } from '../resilience/useConnectivity';
 
+function safeText(value: unknown, max = 240) {
+  return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+
 export function useCatalogFilterOptions() {
   const [categories, setCategories] = useState<Array<{ id: string; name: string }>>([]);
   const [origins, setOrigins] = useState<string[]>([]);
@@ -23,12 +27,20 @@ export function useCatalogFilterOptions() {
         setError('');
         const [categoryRows, home] = await Promise.all([listPublicCategories(), getPublicHomeCatalog()]);
         if (!active) return;
-        setCategories((categoryRows || []).map(item => ({ id: item.slug, name: item.name })));
-        const values: string[] = Array.from(new Set<string>(
-          (home?.items || [])
-            .map((item: any) => String(item.origin || '').trim())
-            .filter((value: string) => value.length > 0)
+        if (!Array.isArray(categoryRows)) throw new Error('Kategori filtreleri doğrulanamadı.');
+        const safeCategories = categoryRows.map(item => {
+          const id = safeText(item?.slug, 220);
+          const name = safeText(item?.name, 160);
+          if (!id || !name) throw new Error('Kategori filtresi kimliği doğrulanamadı.');
+          return { id, name };
+        });
+        if (!home || typeof home !== 'object' || Array.isArray(home) || !Array.isArray((home as any).items)) throw new Error('Menşe filtreleri doğrulanamadı.');
+        const values = Array.from(new Set<string>(
+          (home as any).items
+            .map((item: any) => safeText(item?.origin, 240))
+            .filter(Boolean)
         )).sort((a, b) => a.localeCompare(b, 'tr'));
+        setCategories(safeCategories);
         setOrigins(values);
       } catch (err: any) {
         if (active) {
