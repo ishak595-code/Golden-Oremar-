@@ -54,6 +54,7 @@ export const APP_THEME_OPTIONS: AppThemeOption[] = [
 
 const STORAGE_KEY = 'golden-oremar:appearance-theme:v2';
 const LEGACY_STORAGE_KEY = 'golden-oremar:appearance-theme:v1';
+const THEME_EVENT = 'golden-oremar:appearance-theme-change';
 
 export function isTheme(value: unknown): value is AppTheme {
   return value === 'light' || value === 'dark' || value === 'emerald' || value === 'ruby' || value === 'champagne';
@@ -102,7 +103,24 @@ export function persistTheme(theme: AppTheme) {
   }
 }
 
+function emitThemeChange(theme: AppTheme) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent<AppTheme>(THEME_EVENT, { detail: theme }));
+}
+
+export function subscribePersonalTheme(listener: (theme: AppTheme) => void) {
+  if (typeof window === 'undefined') return () => {};
+  const handler = (event: Event) => {
+    const next = (event as CustomEvent<unknown>).detail;
+    if (isTheme(next)) listener(next);
+  };
+  window.addEventListener(THEME_EVENT, handler);
+  return () => window.removeEventListener(THEME_EVENT, handler);
+}
+
 export function setPersonalTheme(theme: AppTheme) {
+  if (!isTheme(theme)) return;
   persistTheme(theme);
   applyThemeToDocument(theme);
+  emitThemeChange(theme);
 }
