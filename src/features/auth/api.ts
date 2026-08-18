@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase';
 
 export const NATIVE_AUTH_CALLBACK_URL = 'com.goldenoremar.app://auth/callback';
 
-export type SocialAuthProvider = 'google' | 'facebook';
+export type SocialAuthProvider = 'google' | 'facebook' | 'apple';
 
 export type CustomerSessionStatus = {
   is_authenticated: boolean;
@@ -25,6 +25,7 @@ export type AdminSessionStatus = {
 
 const SUPPORTED_LOCALES = new Set(['tr', 'en', 'de', 'fr', 'ku', 'ar']);
 const KNOWN_ROLES = new Set(['customer', 'producer', 'support', 'content_editor', 'operations', 'admin', 'super_admin', 'user', 'vendor']);
+const SOCIAL_PROVIDERS = new Set<SocialAuthProvider>(['google', 'facebook', 'apple']);
 
 function isRecord(value: unknown): value is Record<string, any> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -70,14 +71,30 @@ function safeUserId(value: unknown) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id) ? id : '';
 }
 
+function boundedCallbackValue(value: string | null, label: string, max: number) {
+  if (value == null) return null;
+  const normalized = value.trim();
+  if (!normalized || normalized.length > max || /[\u0000-\u001F\u007F\s]/.test(normalized)) throw new Error(`${label} doğrulanamadı.`);
+  return normalized;
+}
+
+function callbackErrorMessage(value: string | null) {
+  if (!value) return '';
+  const normalized = value.replace(/\+/g, ' ').trim();
+  if (!normalized || normalized.length > 1000 || /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(normalized)) return 'Kimlik doğrulama sağlayıcısı güvenli bir hata açıklaması döndürmedi.';
+  return normalized;
+}
+
 export function getSocialAuthAvailability() {
   return {
     google: envEnabled(import.meta.env.VITE_GOOGLE_AUTH_ENABLED),
     facebook: envEnabled(import.meta.env.VITE_FACEBOOK_AUTH_ENABLED),
+    apple: envEnabled(import.meta.env.VITE_APPLE_AUTH_ENABLED),
   } satisfies Record<SocialAuthProvider, boolean>;
 }
 
 function authCallbackParams(url: string) {
+  if (typeof url !== 'string' || !url.trim() || url.length > 32768 || /[\u0000-\u001F\u007F]/.test(url)) throw new Error('Kimlik doğrulama dönüş bağlantısı doğrulanamadı.');
   const parsed = new URL(url);
   const params = new URLSearchParams(parsed.search);
   const hash = new URLSearchParams(parsed.hash.replace(/^#/, ''));
@@ -98,7 +115,7 @@ export function isNativeAuthCallbackUrl(url: string) {
 
 export function isPasswordRecoveryCallbackUrl(url: string) {
   try {
-    return authCallbackParams(url).params.get('type') === 'recovery';
+    return isNativeAuthCallbackUrl(url) && authCallbackParams(url).params.get('type') === 'recovery';
   } catch {
     return false;
   }
@@ -110,7 +127,15 @@ export function getConfiguredAuthRedirectUrl(): string | undefined {
   if (Capacitor.isNativePlatform()) {
     return nativeConfigured === NATIVE_AUTH_CALLBACK_URL ? nativeConfigured : undefined;
   }
-  if (webConfigured) return webConfigured;
+  if (webConfigured) {
+    try {
+      const parsed = new URL(webConfigured);
+      if (parsed.protocol === 'https:' || (parsed.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(parsed.hostname))) return parsed.toString();
+    } catch {
+      return undefined;
+    }
+    return undefined;
+  }
   if (typeof window !== 'undefined' && window.location?.origin && window.location.origin !== 'null') {
     return `${window.location.origin}/?tab=account`;
   }
@@ -121,7 +146,7 @@ export function clearBrowserAuthCallbackArtifacts() {
   if (Capacitor.isNativePlatform() || typeof window === 'undefined') return;
   try {
     const url = new URL(window.location.href);
-    ['code', 'error', 'error_code', 'error_description', 'type'].forEach(key => url.searchParams.delete(key));
+    ['code', 'error', 'error_code', 'error_description', 'type', 'access_token', 'refresh_token'].forEach(key => url.searchParams.delete(key));
     url.hash = '';
     window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`);
   } catch {
@@ -137,26 +162,31 @@ export async function consumeNativeAuthCallbackUrl(url: string): Promise<{
   if (!isNativeAuthCallbackUrl(url)) return { handled: false, recovery: false, session: null };
 
   const { params } = authCallbackParams(url);
-  const errorDescription = params.get('error_description') || params.get('error');
-  if (errorDescription) throw new Error(errorDescription.replace(/\+/g, ' '));
+  const providerError = callbackErrorMessage(params.get('error_description') || params.get('error'));
+  if (providerError) throw new Error(providerError);
 
-  const recovery = params.get('type') === 'recovery';
-  const code = params.get('code');
-  const accessToken = params.get('access_token');
-  const refreshToken = params.get('refresh_token');
+  const type = params.get('type');
+  if (type && !['recovery', 'signup', 'magiclink', 'invite', 'email_change'].includes(type)) throw new Error('Kimlik doğrulama dönüş türü doğrulanamadı.');
+  const recovery = type === 'recovery';
+  const code = boundedCallbackValue(params.get('code'), 'Yetkilendirme kodu', 4096);
+  const accessToken = boundedCallbackValue(params.get('access_token'), 'Erişim belirteci', 16384);
+  const refreshToken = boundedCallbackValue(params.get('refresh_token'), 'Yenileme belirteci', 16384);
 
   if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) throw error;
+    if (!data.session?.user?.id) throw new Error('Kimlik doğrulama oturumu oluşturulamadı.');
     return { handled: true, recovery, session: data.session };
   }
 
-  if (accessToken && refreshToken) {
+  if (accessToken || refreshToken) {
+    if (!accessToken || !refreshToken) throw new Error('Kimlik doğrulama bağlantısındaki oturum belirteçleri eksik.');
     const { data, error } = await supabase.auth.setSession({
       access_token: accessToken,
       refresh_token: refreshToken,
     });
     if (error) throw error;
+    if (!data.session?.user?.id) throw new Error('Kimlik doğrulama oturumu doğrulanamadı.');
     return { handled: true, recovery, session: data.session };
   }
 
@@ -202,7 +232,7 @@ export async function signUpWithEmail(input: {
 }
 
 export async function startSocialAuth(provider: SocialAuthProvider) {
-  if (provider !== 'google' && provider !== 'facebook') throw new Error('social_provider_not_configured');
+  if (!SOCIAL_PROVIDERS.has(provider)) throw new Error('social_provider_not_configured');
   const available = getSocialAuthAvailability();
   if (!available[provider]) throw new Error(`social_provider_not_configured:${provider}`);
 
@@ -220,7 +250,7 @@ export async function startSocialAuth(provider: SocialAuthProvider) {
   if (error) throw error;
 
   if (native) {
-    if (!data.url) throw new Error('social_auth_authorization_url_missing');
+    if (!data.url || !/^https:\/\//i.test(data.url)) throw new Error('social_auth_authorization_url_missing');
     await Browser.open({ url: data.url, presentationStyle: 'popover' });
   }
   return data;
