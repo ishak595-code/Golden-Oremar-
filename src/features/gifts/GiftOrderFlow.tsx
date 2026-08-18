@@ -31,6 +31,7 @@ type Props = {
   productReference: string;
   onClose: () => void;
   onCreated?: (order: any) => void;
+  onOpenPayments?: () => void;
 };
 
 type GiftAddress = {
@@ -103,6 +104,10 @@ function friendlyBlockingReason(reason?: string | null) {
     case 'shipping_zone_not_configured': return 'Bu ülkeye gönderim bölgesi henüz tanımlanmadı.';
     case 'coupon_invalid_or_unavailable': return 'Kupon kodu geçersiz veya artık kullanılamıyor.';
     case 'coupon_not_applicable': return 'Kupon bu ürün veya sipariş koşullarına uygulanamıyor.';
+    case 'payment_method_required': return 'Canlı ödeme için aktif bir kart seçin.';
+    case 'payment_method_not_found': return 'Seçilen kayıtlı kart artık kullanılamıyor.';
+    case 'payment_method_expired': return 'Seçilen kartın süresi dolmuş. Başka bir kart seçin.';
+    case 'payment_method_provider_mismatch': return 'Seçilen kart mevcut ödeme sağlayıcısıyla eşleşmiyor. Kartı yeniden doğrulayın.';
     default: return reason ? `Hediye checkout şu anda tamamlanamıyor: ${reason}` : '';
   }
 }
@@ -115,7 +120,7 @@ function variantSelectable(product: any, variant: any) {
   return stock !== null && stock > 0;
 }
 
-export default function GiftOrderFlow({ productReference, onClose, onCreated }: Props) {
+export default function GiftOrderFlow({ productReference, onClose, onCreated, onOpenPayments }: Props) {
   const [product, setProduct] = useState<any>(null);
   const [account, setAccount] = useState<any>(null);
   const [variantId, setVariantId] = useState('');
@@ -132,6 +137,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
   const [couponInput, setCouponInput] = useState('');
   const [appliedCoupon, setAppliedCoupon] = useState('');
   const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState('');
   const [useManualAddress, setUseManualAddress] = useState(true);
   const [manualAddress, setManualAddress] = useState<GiftAddress>(blankAddress);
   const [preview, setPreview] = useState<GiftCheckoutPreview | null>(null);
@@ -164,6 +170,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
         setMessage('');
         setCouponInput('');
         setAppliedCoupon('');
+        setSelectedPaymentMethodId('');
         setQuantity(1);
         setOccasion('just_because');
         setPresentationStyle('oremar_gold');
@@ -192,6 +199,11 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
           setSelectedAddressId('');
           setUseManualAddress(true);
         }
+
+        const methods = Array.isArray(overview?.paymentMethods) ? overview.paymentMethods : [];
+        const defaultPayment = methods.find((method: any) => method?.status === 'active' && method?.isDefault === true)
+          || methods.find((method: any) => method?.status === 'active');
+        setSelectedPaymentMethodId(safeText(defaultPayment?.id, 160));
       } catch (e: any) {
         if (active) setError(e?.message || 'Hediye bilgileri yüklenemedi.');
       } finally {
@@ -206,6 +218,11 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
   }, [error]);
 
   const addresses: GiftSavedAddress[] = Array.isArray(account?.addresses) ? account.addresses : [];
+  const paymentMethods = Array.isArray(account?.paymentMethods) ? account.paymentMethods : [];
+  const paymentReadiness = account?.paymentReadiness && typeof account.paymentReadiness === 'object' ? account.paymentReadiness : null;
+  const provider = safeText(paymentReadiness?.provider, 40);
+  const livePayments = paymentReadiness?.liveCardPaymentsEnabled === true && Boolean(provider);
+  const selectedPaymentMethod = paymentMethods.find((method: any) => safeText(method?.id, 160) === selectedPaymentMethodId && method?.status === 'active') || null;
   const selectedSavedAddress = useMemo(() => addresses.find(address => address.id === selectedAddressId) || null, [addresses, selectedAddressId]);
   const effectiveAddress = useMemo(() => useManualAddress ? manualAddress : selectedSavedAddress ? addressFromSaved(selectedSavedAddress) : null, [useManualAddress, manualAddress, selectedSavedAddress]);
   const countryCode = safeText(effectiveAddress?.country_code, 2).toUpperCase();
@@ -294,6 +311,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
     if (effectiveAddress.postal_code.trim().length > 30) return 'Posta kodu en fazla 30 karakter olabilir.';
     if (effectiveAddress.delivery_notes.trim().length > 500) return 'Teslimat notu en fazla 500 karakter olabilir.';
     if (appliedCoupon && !/^[A-Z0-9_-]{1,64}$/.test(appliedCoupon)) return 'Kupon kodu doğrulanamadı.';
+    if (livePayments && !selectedPaymentMethod) return 'Canlı ödeme için aktif bir kayıtlı kart seçin veya yeni kart ekleyin.';
     if (!preview) return 'Sipariş toplamı henüz sunucudan doğrulanmadı.';
     if (!preview.canCheckout) return friendlyBlockingReason(preview.blockingReason) || 'Hediye siparişi şu anda oluşturulamıyor.';
     return '';
@@ -332,6 +350,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
       setPreview(finalPreview);
       if (!finalPreview.canCheckout) throw new Error(friendlyBlockingReason(finalPreview.blockingReason) || 'Hediye siparişi şu anda oluşturulamıyor.');
       if (!effectiveAddress) throw new Error('Teslimat adresi doğrulanamadı.');
+      if (livePayments && !selectedPaymentMethod) throw new Error('payment_method_required');
 
       if (shouldSaveAddress) {
         setStatus('Yeni teslimat adresi hesabınıza kaydediliyor.');
@@ -370,6 +389,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
           delivery_notes: effectiveAddress.delivery_notes.trim() || null,
         },
         couponCode: appliedCoupon || null,
+        paymentMethodId: selectedPaymentMethod?.id || null,
         gift: {
           recipientName: recipientName.trim(),
           recipientPhone: recipientPhone.trim(),
@@ -387,6 +407,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
       onCreated?.(result);
     } catch (e: any) {
       const raw = String(e?.message || 'Hediye siparişi oluşturulamadı.');
+      const code = raw.split(':')[0];
       const friendly = raw.includes('invalid_shipping_country') ? 'Teslimat ülkesi açıkça seçilmelidir. Ülke bilgisi varsayılan olarak atanmaz.'
         : raw.includes('international_shipping_weight_missing') ? 'Bu ürünün uluslararası kargo ağırlığı henüz doğrulanmadığı için yurt dışı hediye siparişi açılamıyor.'
         : raw.includes('manual_shipping_quote_required') ? 'Bu ülke için otomatik kargo fiyatı henüz tanımlı değil.'
@@ -395,7 +416,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
         : raw.includes('authentication_required') ? 'Hediye siparişi oluşturmak için giriş yapmalısınız.'
         : raw.includes('invalid_shipping_address') || raw.includes('invalid_address') ? 'Teslimat adresi veya telefonu doğrulanamadı.'
         : raw.includes('address_limit_exceeded') ? 'Hesabınıza en fazla 20 teslimat adresi kaydedebilirsiniz.'
-        : raw;
+        : friendlyBlockingReason(code) || raw;
       setError(friendly);
     } finally {
       setSubmitting(false);
@@ -413,6 +434,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
         <h2 id="gift-success-title" className="mt-1 text-2xl font-bold">{recipientName.trim()} için hediyeniz kaydedildi</h2>
         <p className="mt-2 text-sm text-gray-500">Sipariş no: <strong>{safeText(created.orderNumber, 120) || 'Doğrulanamadı'}</strong></p>
         <p id="gift-success-description" className="mt-4 text-sm leading-6 text-gray-600 dark:text-gray-300">Ürün, teslimat bilgileri ve hazırladığınız hediye kartı siparişle birlikte güvenli biçimde kaydedildi. Ödeme gerçekten doğrulanmadan sipariş ödendi olarak gösterilmeyecek.</p>
+        {created?.paymentMethod ? <p className="mt-2 text-sm text-gray-500">Seçilen ödeme yöntemi: {safeText(created.paymentMethod.nickname, 40) || safeText(created.paymentMethod.brand, 40)} •••• {safeText(created.paymentMethod.last4, 4)}</p> : null}
         {message.trim() ? <div className="mt-4 rounded-2xl bg-brand-gold/5 p-4 text-left"><p className="text-sm italic leading-6">“{message.trim()}”</p><p className="mt-2 text-right text-xs font-bold">{senderName.trim()}</p></div> : null}
         <button type="button" onClick={onClose} className="mt-5 min-h-12 w-full rounded-xl bg-brand-green font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Tamam</button>
       </div>
@@ -422,10 +444,6 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
   const productName = safeText(product?.name, 300) || 'Ürün';
   const imageUrl = publicCatalogUrl(image?.path);
   const trustLabels = Array.isArray(product?.trustBadges) ? product.trustBadges.filter((badge: any) => badge?.active === true && safeText(badge?.label, 120)).map((badge: any) => safeText(badge.label, 120)) : [];
-  const paymentMethods = Array.isArray(account?.paymentMethods) ? account.paymentMethods : [];
-  const paymentReadiness = account?.paymentReadiness && typeof account.paymentReadiness === 'object' ? account.paymentReadiness : null;
-  const provider = safeText(paymentReadiness?.provider, 40);
-  const livePayments = paymentReadiness?.liveCardPaymentsEnabled === true && Boolean(provider);
 
   return <div className="fixed inset-0 z-[90] overflow-y-auto bg-black/70 p-3 sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget && !submitting) onClose(); }}>
     <div ref={formDialogRef} role="dialog" aria-modal="true" aria-labelledby="gift-title" aria-describedby="gift-description" tabIndex={-1} className="mx-auto my-2 w-full max-w-4xl rounded-3xl bg-white text-brand-text outline-none shadow-2xl dark:bg-gray-900 sm:my-4">
@@ -497,9 +515,11 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
         </section>
 
         <section aria-labelledby="gift-payment-title" className="rounded-3xl border border-gray-200 p-4 dark:border-gray-800 sm:p-5">
-          <div className="flex items-start justify-between gap-3"><div><h3 id="gift-payment-title" className="text-lg font-bold">Ödeme yöntemi</h3><p className="mt-1 text-sm text-gray-500">Kart bilgileri Golden Oremar veritabanında ham olarak saklanmaz. Yalnız ödeme sağlayıcısının doğruladığı maskeli yöntem metadatası tutulabilir.</p></div><CreditCard aria-hidden="true" className="h-5 w-5 text-brand-green" /></div>
-          {paymentMethods.length ? <div className="mt-4 space-y-2">{paymentMethods.map((method: any) => <div key={method.id} className="flex items-center justify-between gap-3 rounded-xl border p-3"><div><div className="font-semibold">{paymentMethodLabel(method)}</div><div className="mt-1 text-xs text-gray-500">{method.isDefault ? 'Varsayılan ödeme yöntemi' : 'Kayıtlı ödeme yöntemi'} • {method.status === 'expired' ? 'Süresi dolmuş' : 'Aktif'}</div></div>{method.isDefault ? <span className="rounded-full bg-brand-green/10 px-2 py-1 text-xs font-bold text-brand-green">Varsayılan</span> : null}</div>)}</div> : <div className="mt-4 rounded-xl bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">Hesabınızda doğrulanmış kayıtlı ödeme yöntemi yok.</div>}
-          <div className={`mt-3 rounded-xl border p-3 text-sm ${livePayments ? 'border-green-200 bg-green-50 text-green-900 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-100' : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100'}`}>{livePayments ? `Canlı ödeme sağlayıcısı ${provider} hazır görünüyor. Kart kaydetme işlemi sağlayıcının güvenli ödeme ekranında yapılır; Golden Oremar yalnız doğrulanmış token ve maskeli kart bilgisini saklar.` : 'Canlı kart ödeme sağlayıcısı henüz yapılandırılmadı. Bu ekran karttan para çekmez ve sahte ödeme başarısı göstermez. Provider bağlandığında kart ekleme ve “bu kartı kaydet” seçeneği onun güvenli ekranından yapılacaktır.'}</div>
+          <div className="flex items-start justify-between gap-3"><div><h3 id="gift-payment-title" className="text-lg font-bold">Ödeme yöntemi</h3><p className="mt-1 text-sm text-gray-500">Kayıtlı kartınızı seçin. Kart numarası yalnız maskeli son dört haneyle gösterilir; CVC saklanmaz.</p></div><CreditCard aria-hidden="true" className="h-5 w-5 text-brand-green" /></div>
+          {paymentMethods.length ? <fieldset className="mt-4 space-y-2"><legend className="sr-only">Hediye için ödeme yöntemi seçin</legend>{paymentMethods.map((method: any) => { const id=safeText(method.id,160); const active=method.status==='active'; return <label key={id} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border p-3 ${selectedPaymentMethodId===id?'border-brand-gold bg-brand-gold/10':'border-gray-200 dark:border-gray-700'} ${active?'':'cursor-not-allowed opacity-60'}`}><input type="radio" name="gift-payment-method" value={id} checked={selectedPaymentMethodId===id} disabled={!active||submitting} onChange={()=>setSelectedPaymentMethodId(id)} className="h-5 w-5"/><span className="min-w-0 flex-1"><span className="block font-semibold">{paymentMethodLabel(method)}</span><span className="mt-1 block text-xs text-gray-500">{method.isDefault ? 'Varsayılan ödeme yöntemi' : 'Kayıtlı ödeme yöntemi'}{active?'':' • Süresi dolmuş veya kullanılamıyor'}</span></span></label>; })}</fieldset> : <div className="mt-4 rounded-xl bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">Hesabınızda doğrulanmış kayıtlı ödeme yöntemi yok.</div>}
+          {onOpenPayments ? <button type="button" onClick={onOpenPayments} disabled={submitting} className="mt-3 min-h-11 rounded-xl border border-brand-green px-4 text-sm font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:text-brand-gold">Kartlarımı yönet / yeni kart ekle</button> : null}
+          <div className={`mt-3 rounded-xl border p-3 text-sm ${livePayments ? 'border-green-200 bg-green-50 text-green-900 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-100' : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100'}`}>{livePayments ? `Canlı ödeme sağlayıcısı ${provider} etkin. Seçilen aktif kart sipariş v5 ile sunucuda siparişe bağlanır; ödeme sonucu yalnız backend doğrulamasıyla kabul edilir.` : 'Canlı kart tahsilatı henüz etkin değil. Kayıtlı kart tercihi siparişe bağlanabilir, ancak bu ekran karttan para çekmez veya sahte ödeme başarısı göstermez.'}</div>
+          {livePayments && !selectedPaymentMethod ? <div role="alert" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">Canlı ödeme için aktif bir kart seçmeniz veya yeni kart eklemeniz gerekiyor.</div> : null}
         </section>
 
         <section aria-labelledby="gift-summary-title" className="rounded-3xl border border-gray-200 p-4 dark:border-gray-800 sm:p-5">
@@ -510,8 +530,8 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated }: 
           <div className="mt-4 space-y-2 text-sm"><div className="flex justify-between gap-3"><span>Ara toplam</span><strong>{preview ? <Money minor={preview.subtotalMinor} currency={preview.currency} /> : 'Doğrulanıyor…'}</strong></div><div className="flex justify-between gap-3"><span>Kargo</span><strong>{preview ? <Money minor={preview.shippingMinor} currency={preview.currency} /> : validCountry ? 'Doğrulanıyor…' : 'Ülke gerekli'}</strong></div>{preview && preview.discountMinor > 0 ? <div className="flex justify-between gap-3 text-green-700 dark:text-green-300"><span>{safeText(preview.promotion?.title, 160) || 'İndirim'}</span><strong>-<Money minor={preview.discountMinor} currency={preview.currency} /></strong></div> : null}<div className="flex justify-between gap-3 border-t pt-3 text-lg"><span>Toplam</span><strong>{preview ? <Money minor={preview.totalMinor} currency={preview.currency} /> : 'Doğrulanmadı'}</strong></div></div>
           {preview && !preview.canCheckout ? <div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">{friendlyBlockingReason(preview.blockingReason) || 'Hediye checkout uygunluğu doğrulanamadı.'}</div> : null}
           {safeText(preview?.shipping?.publicNote, 800) ? <p className="mt-3 text-xs text-gray-500">{safeText(preview?.shipping?.publicNote, 800)}</p> : null}
-          <div className="mt-4 flex gap-2 rounded-2xl bg-gray-50 p-3 text-sm dark:bg-gray-800"><ShieldCheck aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-green" /><div>Ürün, varyant, stok, kargo, kampanya ve toplam sipariş gönderilmeden hemen önce yeniden doğrulanır. Hediye notu ve kart tercihi siparişle birlikte veritabanında saklanır.</div></div>
-          <button type="submit" disabled={submitting || previewBusy || !purchaseReady || !preview?.canCheckout || !validCountry} className="mt-5 min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{submitting ? 'Hediye siparişi doğrulanıyor…' : 'Hediye Siparişini Oluştur'}</button>
+          <div className="mt-4 flex gap-2 rounded-2xl bg-gray-50 p-3 text-sm dark:bg-gray-800"><ShieldCheck aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-green" /><div>Ürün, varyant, stok, kargo, kampanya ve toplam sipariş gönderilmeden hemen önce yeniden doğrulanır. Hediye notu, kart tercihi ve seçilen ödeme yöntemi siparişle birlikte veritabanında saklanır.</div></div>
+          <button type="submit" disabled={submitting || previewBusy || !purchaseReady || !preview?.canCheckout || !validCountry || (livePayments && !selectedPaymentMethod)} className="mt-5 min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{submitting ? 'Hediye siparişi doğrulanıyor…' : 'Hediye Siparişini Oluştur'}</button>
         </section>
       </form>
     </div>
