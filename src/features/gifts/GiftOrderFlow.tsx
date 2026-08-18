@@ -13,6 +13,7 @@ import {
 import { Money } from '../account/ui';
 import { useAccessibleDialog } from '../accessibility/useAccessibleDialog';
 import { saveCustomerAddress } from '../addresses/api';
+import PaymentMethodEnrollmentDialog from '../payments/PaymentMethodEnrollmentDialog';
 import { paymentMethodLabel } from '../payments/api';
 import GiftCardPreview, { giftOccasions, giftStyles } from './GiftCardPreview';
 import {
@@ -138,6 +139,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
   const [appliedCoupon, setAppliedCoupon] = useState('');
   const [selectedAddressId, setSelectedAddressId] = useState('');
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState('');
+  const [paymentEnrollmentOpen, setPaymentEnrollmentOpen] = useState(false);
   const [useManualAddress, setUseManualAddress] = useState(true);
   const [manualAddress, setManualAddress] = useState<GiftAddress>(blankAddress);
   const [preview, setPreview] = useState<GiftCheckoutPreview | null>(null);
@@ -171,6 +173,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
         setCouponInput('');
         setAppliedCoupon('');
         setSelectedPaymentMethodId('');
+        setPaymentEnrollmentOpen(false);
         setQuantity(1);
         setOccasion('just_because');
         setPresentationStyle('oremar_gold');
@@ -287,6 +290,11 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
     setUseManualAddress(false);
     setRecipientName(saved.recipientName);
     setRecipientPhone(saved.phone);
+  }
+
+  async function acceptEnrolledPaymentMethod(method:any){
+    setAccount((previous:any)=>({...previous,paymentMethods:[method,...(Array.isArray(previous?.paymentMethods)?previous.paymentMethods.filter((item:any)=>safeText(item?.id,160)!==method.id):[])]}));
+    setSelectedPaymentMethodId(safeText(method.id,160));setStatus(`${method.nickname||method.brand||'Yeni kart'} kaydedildi ve bu hediye için seçildi.`);
   }
 
   function validate() {
@@ -515,10 +523,10 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
         </section>
 
         <section aria-labelledby="gift-payment-title" className="rounded-3xl border border-gray-200 p-4 dark:border-gray-800 sm:p-5">
-          <div className="flex items-start justify-between gap-3"><div><h3 id="gift-payment-title" className="text-lg font-bold">Ödeme yöntemi</h3><p className="mt-1 text-sm text-gray-500">Kayıtlı kartınızı seçin. Kart numarası yalnız maskeli son dört haneyle gösterilir; CVC saklanmaz.</p></div><CreditCard aria-hidden="true" className="h-5 w-5 text-brand-green" /></div>
+          <div className="flex items-start justify-between gap-3"><div><h3 id="gift-payment-title" className="text-lg font-bold">Ödeme yöntemi</h3><p className="mt-1 text-sm text-gray-500">Kayıtlı kartınızı seçin veya hediye akışından ayrılmadan yeni kart ekleyin.</p></div><CreditCard aria-hidden="true" className="h-5 w-5 text-brand-green" /></div>
           {paymentMethods.length ? <fieldset className="mt-4 space-y-2"><legend className="sr-only">Hediye için ödeme yöntemi seçin</legend>{paymentMethods.map((method: any) => { const id=safeText(method.id,160); const active=method.status==='active'; return <label key={id} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border p-3 ${selectedPaymentMethodId===id?'border-brand-gold bg-brand-gold/10':'border-gray-200 dark:border-gray-700'} ${active?'':'cursor-not-allowed opacity-60'}`}><input type="radio" name="gift-payment-method" value={id} checked={selectedPaymentMethodId===id} disabled={!active||submitting} onChange={()=>setSelectedPaymentMethodId(id)} className="h-5 w-5"/><span className="min-w-0 flex-1"><span className="block font-semibold">{paymentMethodLabel(method)}</span><span className="mt-1 block text-xs text-gray-500">{method.isDefault ? 'Varsayılan ödeme yöntemi' : 'Kayıtlı ödeme yöntemi'}{active?'':' • Süresi dolmuş veya kullanılamıyor'}</span></span></label>; })}</fieldset> : <div className="mt-4 rounded-xl bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">Hesabınızda doğrulanmış kayıtlı ödeme yöntemi yok.</div>}
-          {onOpenPayments ? <button type="button" onClick={onOpenPayments} disabled={submitting} className="mt-3 min-h-11 rounded-xl border border-brand-green px-4 text-sm font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:text-brand-gold">Kartlarımı yönet / yeni kart ekle</button> : null}
-          <div className={`mt-3 rounded-xl border p-3 text-sm ${livePayments ? 'border-green-200 bg-green-50 text-green-900 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-100' : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100'}`}>{livePayments ? `Canlı ödeme sağlayıcısı ${provider} etkin. Seçilen aktif kart sipariş v5 ile sunucuda siparişe bağlanır; ödeme sonucu yalnız backend doğrulamasıyla kabul edilir.` : 'Canlı kart tahsilatı henüz etkin değil. Kayıtlı kart tercihi siparişe bağlanabilir, ancak bu ekran karttan para çekmez veya sahte ödeme başarısı göstermez.'}</div>
+          <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={()=>setPaymentEnrollmentOpen(true)} disabled={submitting} className="min-h-11 rounded-xl bg-brand-green px-4 text-sm font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Yeni kart ekle</button>{onOpenPayments ? <button type="button" onClick={onOpenPayments} disabled={submitting} className="min-h-11 rounded-xl border border-brand-green px-4 text-sm font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:text-brand-gold">Kartlarımı yönet</button> : null}</div>
+          <div className={`mt-3 rounded-xl border p-3 text-sm ${livePayments ? 'border-green-200 bg-green-50 text-green-900 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-100' : 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100'}`}>{livePayments ? `Canlı ödeme sağlayıcısı ${provider} etkin. Seçilen aktif kart sipariş v5 ile sunucuda siparişe bağlanır; ödeme sonucu yalnız backend doğrulamasıyla kabul edilir.` : 'Canlı kart tahsilatı henüz etkin değil. Kart kasası ve seçim altyapısı hazır olsa da gerçek merchant yapılandırması olmadan tahsilat yapılmaz.'}</div>
           {livePayments && !selectedPaymentMethod ? <div role="alert" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">Canlı ödeme için aktif bir kart seçmeniz veya yeni kart eklemeniz gerekiyor.</div> : null}
         </section>
 
@@ -535,5 +543,6 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
         </section>
       </form>
     </div>
+    <PaymentMethodEnrollmentDialog open={paymentEnrollmentOpen} readiness={paymentReadiness as any} onClose={()=>setPaymentEnrollmentOpen(false)} onSaved={acceptEnrolledPaymentMethod}/>
   </div>;
 }
