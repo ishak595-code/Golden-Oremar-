@@ -11,6 +11,12 @@ import {
 
 type Mode = 'login' | 'register' | 'forgot';
 
+const providerLabels: Record<SocialAuthProvider, string> = {
+  google: 'Google',
+  facebook: 'Facebook',
+  apple: 'Apple',
+};
+
 function authErrorMessage(raw: string) {
   const value = raw.toLowerCase();
   if (value.includes('native_auth_redirect_not_configured')) return 'Mobil şifre sıfırlama bağlantısı henüz güvenli dönüş adresine bağlanmamış. Lütfen destek ile iletişime geçin.';
@@ -37,6 +43,27 @@ function validOptionalPhone(value: string) {
   return digits >= 7 && digits <= 20;
 }
 
+function SocialProviderButton({
+  provider,
+  busy,
+  interactionBusy,
+  focusClass,
+  onClick,
+}: {
+  provider: SocialAuthProvider;
+  busy: boolean;
+  interactionBusy: boolean;
+  focusClass: string;
+  onClick: () => void;
+}) {
+  const label = providerLabels[provider];
+  const mark = provider === 'google' ? 'G' : provider === 'facebook' ? 'f' : 'A';
+  return <button type="button" disabled={interactionBusy} onClick={onClick} aria-label={`${label} ile güvenli giriş yap`} className={`flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white px-4 font-bold text-gray-900 shadow-sm transition hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:hover:bg-gray-900 ${focusClass}`}>
+    <span aria-hidden="true" className={`grid h-7 w-7 place-items-center text-sm font-black ${provider === 'apple' ? 'rounded-lg bg-gray-950 text-white dark:bg-white dark:text-gray-950' : 'rounded-full border'}`}>{mark}</span>
+    {busy ? `${label} açılıyor…` : `${label} ile devam et`}
+  </button>;
+}
+
 export default function AuthScreen({
   onAuthenticated,
   title = 'Golden Oremar Hesabı',
@@ -47,7 +74,7 @@ export default function AuthScreen({
   description?: string;
 }) {
   const socialAvailability = getSocialAuthAvailability();
-  const hasSocialAuth = socialAvailability.google || socialAvailability.facebook;
+  const hasSocialAuth = socialAvailability.google || socialAvailability.facebook || socialAvailability.apple;
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -88,7 +115,7 @@ export default function AuthScreen({
     try {
       setSocialBusy(provider);
       await startSocialAuth(provider);
-      setMessage(`${provider === 'google' ? 'Google' : 'Facebook'} güvenli giriş penceresi açıldı. İşlemi tamamladıktan sonra Golden Oremar'a geri döneceksiniz.`);
+      setMessage(`${providerLabels[provider]} güvenli giriş penceresi açıldı. İşlemi tamamladıktan sonra Golden Oremar'a geri döneceksiniz.`);
     } catch (e: any) {
       setError(authErrorMessage(String(e?.message || e)));
       queueMicrotask(() => errorRef.current?.focus());
@@ -168,14 +195,9 @@ export default function AuthScreen({
       </div> : null}
 
       {mode !== 'forgot' && hasSocialAuth ? <div className="mt-5 space-y-3" aria-label="Sosyal hesap ile devam et">
-        {socialAvailability.google ? <button type="button" disabled={interactionBusy} onClick={() => void socialSignIn('google')} className={`flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white px-4 font-bold text-gray-900 shadow-sm transition hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:hover:bg-gray-900 ${focusClass}`}>
-          <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-full border text-sm font-black">G</span>
-          {socialBusy === 'google' ? 'Google açılıyor…' : 'Google ile devam et'}
-        </button> : null}
-        {socialAvailability.facebook ? <button type="button" disabled={interactionBusy} onClick={() => void socialSignIn('facebook')} className={`flex min-h-12 w-full items-center justify-center gap-3 rounded-xl border border-gray-300 bg-white px-4 font-bold text-gray-900 shadow-sm transition hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-950 dark:text-white dark:hover:bg-gray-900 ${focusClass}`}>
-          <span aria-hidden="true" className="grid h-7 w-7 place-items-center rounded-full border text-sm font-black">f</span>
-          {socialBusy === 'facebook' ? 'Facebook açılıyor…' : 'Facebook ile devam et'}
-        </button> : null}
+        {socialAvailability.google ? <SocialProviderButton provider="google" busy={socialBusy === 'google'} interactionBusy={interactionBusy} focusClass={focusClass} onClick={() => void socialSignIn('google')} /> : null}
+        {socialAvailability.facebook ? <SocialProviderButton provider="facebook" busy={socialBusy === 'facebook'} interactionBusy={interactionBusy} focusClass={focusClass} onClick={() => void socialSignIn('facebook')} /> : null}
+        {socialAvailability.apple ? <SocialProviderButton provider="apple" busy={socialBusy === 'apple'} interactionBusy={interactionBusy} focusClass={focusClass} onClick={() => void socialSignIn('apple')} /> : null}
         <div className="flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /><span className="text-xs font-semibold text-gray-400">veya e-posta ile</span><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /></div>
       </div> : null}
 
@@ -203,7 +225,7 @@ export default function AuthScreen({
         {mode === 'login' ? <button type="button" disabled={interactionBusy} onClick={() => switchMode('forgot')} className={`min-h-11 px-3 text-sm font-semibold text-brand-green disabled:opacity-50 ${focusClass}`}>Şifremi unuttum</button> : mode === 'forgot' ? <button type="button" disabled={interactionBusy} onClick={() => switchMode('login')} className={`min-h-11 px-3 text-sm font-semibold text-brand-green disabled:opacity-50 ${focusClass}`}>Giriş ekranına dön</button> : null}
       </div>
 
-      {!hasSocialAuth ? <div className="mt-5 rounded-xl bg-gray-50 p-3 text-xs leading-5 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Google ve Facebook girişleri yalnız ilgili sağlayıcılar Golden Oremar için gerçekten yapılandırıldığında otomatik olarak görünür. Bu sürüm sahte sosyal giriş butonu göstermez.</div> : null}
+      {!hasSocialAuth ? <div className="mt-5 rounded-xl bg-gray-50 p-3 text-xs leading-5 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Google, Facebook ve Apple girişleri yalnız ilgili sağlayıcı Golden Oremar için gerçekten yapılandırıldığında görünür. Bu sürüm çalışmayan sosyal giriş butonu göstermez.</div> : null}
     </section>
   </main>;
 }
