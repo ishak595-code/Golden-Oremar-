@@ -114,6 +114,11 @@ function safeUuid(value: unknown, label: string) {
   return uuid;
 }
 
+function optionalUuid(value: unknown, label: string) {
+  if (value == null || String(value).trim() === '') return null;
+  return safeUuid(value, label);
+}
+
 function normalizeSavedAddress(value: unknown, index: number): GiftSavedAddress {
   if (!isRecord(value)) throw new Error(`${index + 1}. kayıtlı adres doğrulanamadı.`);
   const countryCode = normalizedCountryCode(value.country_code);
@@ -228,9 +233,6 @@ export async function previewGiftCheckout(input: {
   });
   const preview = normalizeGiftPreview(unwrap<unknown>(data, error), { productReference, variantReference, quantity, countryCode });
   if (preview.productSlug !== productReference && preview.productId !== productReference) {
-    // Product references may be slug, UUID or legacy ID. The server-authoritative
-    // product identity above is still required, but legacy references cannot be
-    // compared directly without re-reading the product.
     if (!productReference || productReference.length > 220) throw new Error('Hediye checkout ürün kimliği istekle eşleşmiyor.');
   }
   return preview;
@@ -243,6 +245,7 @@ export async function createGiftOrder(input: {
   shippingAddress: Record<string, any>;
   customerNote?: string | null;
   couponCode?: string | null;
+  paymentMethodId?: string | null;
   gift: {
     recipientName: string;
     recipientPhone?: string | null;
@@ -284,9 +287,10 @@ export async function createGiftOrder(input: {
   const cardTitle = optionalText(input.gift?.cardTitle, 100);
   if (cardTitle && cardTitle.length < 2) throw new Error('Hediye kartı başlığı en az 2 karakter olmalıdır.');
   const couponCode = normalizedCoupon(input.couponCode);
+  const paymentMethodId = optionalUuid(input.paymentMethodId, 'Ödeme yöntemi kimliği');
   const idempotencyKey = `gift_${crypto.randomUUID().replaceAll('-', '')}`;
 
-  const { data, error } = await supabase.rpc('create_customer_order_v4', {
+  const { data, error } = await supabase.rpc('create_customer_order_v5', {
     p_items: [{ productReference, variantReference, quantity }],
     p_shipping_address: {
       label: 'Hediye Teslimatı',
@@ -314,6 +318,7 @@ export async function createGiftOrder(input: {
       presentationStyle,
       cardTitle,
     },
+    p_payment_method_id: paymentMethodId,
     p_idempotency_key: idempotencyKey,
   });
   const result = unwrap<unknown>(data, error);
