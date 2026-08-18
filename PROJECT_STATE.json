@@ -4,8 +4,8 @@
   "branch": "agent/admin-supabase-retire-node",
   "pullRequest": 47,
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "latestFunctionalHead": "983d6c1350e4e46259c68cf948edb7956ebb519e",
-  "stateRecordedAt": "2026-08-19T01:35:00+02:00",
+  "latestFunctionalHead": "953da641498311c23c519759643579549dae699d",
+  "stateRecordedAt": "2026-08-19T02:05:00+02:00",
   "applicationShell": {
     "desktopTopMenu": false,
     "hamburgerMenu": false,
@@ -14,7 +14,14 @@
     "headerNotificationBadge": "live-server-unread-count-high-contrast-red",
     "headerCartBadge": "live-server-total-item-quantity-high-contrast-red",
     "bottomNavigationHiddenWhileNativeKeyboardOpen": true,
-    "remoteRuntimeFontDependency": false
+    "remoteRuntimeFontDependency": false,
+    "nativeSpeech": {
+      "javascriptBridge": "src/native.ts NativeSpeech adapter",
+      "android": "platform SpeechRecognizer via NativeSpeechPlugin",
+      "ios": "SFSpeechRecognizer and AVAudioEngine via NativeSpeechPlugin",
+      "headerMicrophoneUsesExistingSpeechRecognitionUx": true,
+      "externalSpeechPluginDependency": false
+    }
   },
   "backend": {
     "liveMigrationCount": 151,
@@ -67,7 +74,14 @@
     "producer-product-gallery-real-object-verification",
     "producer-product-management-response-and-asset-path-validation",
     "event-personal-reservations-safe-rpc-image-path",
-    "admin-order-gift-and-masked-payment-operational-visibility"
+    "admin-order-gift-and-masked-payment-operational-visibility",
+    "native-speech-android-ios-bridge-verified-present",
+    "obsolete-account-and-producer-service-duplicates-removed",
+    "unused-account-dialog-wrapper-removed",
+    "obsolete-one-time-migration-patch-tooling-removed",
+    "duplicate-transitional-github-workflows-retired",
+    "mobile-quality-gate-paused-to-manual-dispatch-while-runner-allocation-blocked",
+    "release-audit-guards-retired-order-rpc-and-transitional-artifact-regressions"
   ],
   "truthfulnessInvariants": [
     "no-fake-price-stock-rating-location-currency-payment-provider-legal-copy-support-identity-or-credentials",
@@ -80,15 +94,21 @@
     "cart-badge-uses-total-quantity-not-line-count",
     "notification-badge-uses-server-authoritative-unread-count",
     "no-desktop-top-navigation-or-main-hamburger-menu",
+    "runtime-customer-order-rpc-v1-through-v4-must-not-return",
+    "obsolete-one-time-integration-patch-tooling-must-not-return",
+    "duplicate-transition-workflows-must-not-return",
     "newest-head-is-not-claimed-ci-green"
   ],
   "releaseValidation": {
     "latestHeadCi": "NOT_EXECUTED_GITHUB_ACTIONS_RUNNER_ALLOCATION_BILLING_OR_SPENDING_LIMIT_BLOCKER",
+    "automaticWorkflowRunsPaused": true,
+    "mobileQualityTrigger": "workflow_dispatch-only-until-runner-allocation-restored",
+    "workflowRunsObservedForHead953da": 0,
     "lastRecordedBlockedRun": 32029478472,
     "previousAndroidReleaseBundleBaseline": "PASS_PREVIOUS_BASELINE_NOT_CURRENT_HEAD",
     "previousIosSimulatorCompileBaseline": "PASS_PREVIOUS_BASELINE_NOT_CURRENT_HEAD",
     "mergeAllowed": false,
-    "mergeRule": "Run one current-head mobile quality gate after runner allocation is restored, require reachable gates green, then require explicit user authorization."
+    "mergeRule": "Restore or manually invoke one current-head mobile quality gate after runner allocation is restored, require reachable gates green, then require explicit user authorization."
   },
   "externalBlockers": [
     "github-actions-billing-or-spending-limit",
@@ -106,12 +126,7 @@
   "historicalStatePreservation": {
     "gitHistoryPreservesPriorVersions": true,
     "previousProjectStateBlob": "5a1207a7677edd552e2fb24f8c35467735c72d58",
-    "previousDetailedAccountCheckpointsRemainValid": [
-      "docs/account-audit/2026-08-17-account-tab-production-audit.md",
-      "docs/manual-checkpoints/2026-08-17-account-cart-final-polish.md",
-      "docs/account-audit/2026-08-17-account-complete-surface-pass.md",
-      "docs/manual-checkpoints/2026-08-18-catalog-auth-gift-native-hardening.md"
-    ]
+    "note": "Applied Supabase migration history is retained for reproducibility; obsolete active runtime and one-time integration duplicates are removed instead of preserved in the working tree."
   },
-  "nextBlock": "continue-native-account-seller-admin-production-a11y-and-data-contract-scan-without-repeating-completed-blocks-and-without-triggering-actions"
+  "nextBlock": "continue-strict-runtime-fallback-duplicate-and-account-seller-admin-data-contract-scan-without-repeating-completed-work"
 }
