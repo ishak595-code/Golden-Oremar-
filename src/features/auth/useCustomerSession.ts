@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import { NETWORK_RESTORED_EVENT } from '../resilience/useConnectivity';
@@ -9,13 +9,13 @@ export function useCustomerSession() {
   const [authReady, setAuthReady] = useState(false);
   const verifiedUserRef = useRef<any>(null);
 
-  const setCurrentUser = (next: any) => {
+  const setCurrentUser = useCallback((next: any) => {
     setCurrentUserState(previous => {
       const resolved = typeof next === 'function' ? next(previous) : next;
       verifiedUserRef.current = resolved;
       return resolved;
     });
-  };
+  }, []);
 
   useEffect(() => {
     let active = true;
