@@ -1,159 +1,117 @@
 {
   "packageMode": "single-cumulative",
   "productFormFactor": "android-ios-application",
+  "branch": "agent/admin-supabase-retire-node",
+  "pullRequest": 47,
+  "supabaseProject": "rmfcziawxjgcnxexbrvw",
+  "latestFunctionalHead": "983d6c1350e4e46259c68cf948edb7956ebb519e",
+  "stateRecordedAt": "2026-08-19T01:35:00+02:00",
   "applicationShell": {
     "desktopTopMenu": false,
     "hamburgerMenu": false,
     "repositorySearchDesignPreserved": true,
     "persistentBottomNavigationPhoneAndTablet": true,
     "headerNotificationBadge": "live-server-unread-count-high-contrast-red",
-    "headerCartBadge": "live-server-total-item-count-high-contrast-red",
-    "accountBottomNavDoesNotDuplicateUnreadBadge": true,
+    "headerCartBadge": "live-server-total-item-quantity-high-contrast-red",
     "bottomNavigationHiddenWhileNativeKeyboardOpen": true,
-    "nativeLauncherBadgePayload": "server-authoritative-unread-count-for-apns-and-supported-android-launchers",
-    "deliveredNotificationsClearedOnZeroUnreadAndSignedOutSession": true,
     "remoteRuntimeFontDependency": false
   },
-  "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "appliedMigrationCount": 130,
-  "latestMigration": "20260818211654_retire_legacy_customer_order_rpc_entrypoints",
-  "migrationReconciliation": {
-    "status": "aligned",
-    "reconciledAt": "2026-08-18",
-    "note": "The two newest checkout hardening migrations were applied through Supabase migration tooling and recorded in the repository. The current feature branch migration set includes both explicit shipping-country enforcement for order v4 and retirement of legacy customer-order RPC entrypoints."
-  },
-  "securityAdvisorLints": 0,
-  "performanceBlockingLints": 0,
-  "securityRecheck": {
-    "projectStatus": "ACTIVE_HEALTHY",
-    "publicTablesWithoutRls": 0,
-    "publicSecurityDefinerFunctionsWithPublicOrAnonExecute": 0,
-    "publicOrStoragePoliciesUsingLegacyAuthRole": 0,
-    "checkoutLegacyAuthenticatedEntrypoints": 0,
-    "checkoutCurrentAuthenticatedEntrypoints": ["create_customer_order_v4"],
-    "checkedAt": "2026-08-18-after-migration-130"
-  },
-  "edgeFunctions": {
-    "contact-submit": { "status": "ACTIVE", "version": 1 },
-    "event-reservation": { "status": "ACTIVE", "version": 2 },
-    "push-dispatch": { "status": "ACTIVE", "version": 3 }
-  },
-  "accountTabAudit": {
-    "status": "complete-expanded-account-support-legal-settings-logout-cart-events-health-contact-audit-awaiting-ci-runner-allocation",
-    "document": "docs/account-audit/2026-08-17-account-tab-production-audit.md",
-    "finalPolishDocument": "docs/manual-checkpoints/2026-08-17-account-cart-final-polish.md",
-    "completeSurfaceDocument": "docs/account-audit/2026-08-17-account-complete-surface-pass.md",
-    "functionalHead": "3a43d2cf63fedaaf9ca8f06e26ce32ca6e865819",
-    "actionsRunTriggered": false,
-    "surfaceInventory": [
-      "account-interactive-summary",
-      "recent-order-quick-access",
-      "profile",
-      "orders-returns-refunds",
-      "reviews",
-      "favorites",
-      "followed-producers",
-      "gifts",
-      "addresses",
-      "payment-history",
-      "messages",
-      "notifications",
-      "contact",
-      "help-support-faq-legal",
-      "settings-security-newsletter-push",
-      "health-guides-product-info-recipes",
-      "events-own-reservations",
-      "seller-producer-profile-management",
-      "admin-role-entry",
-      "current-device-signout"
-    ],
-    "invariants": [
-      "malformed-unread-payload-cannot-clear-last-verified-red-badge",
-      "account-money-never-defaults-missing-currency-to-try",
-      "malformed-seller-stock-never-initializes-editable-zero",
-      "missing-or-malformed-account-identifiers-block-mutations",
-      "no-fake-payment-provider-card-stock-price-rating-or-location-data",
-      "account-help-legal-content-never-fabricates-missing-terms",
-      "account-help-html-like-markdown-is-structured-without-dangerous-html-injection",
-      "account-direct-logout-only-signs-out-current-device",
-      "cart-item-count-is-total-verified-quantity-not-line-count",
-      "checkout-does-not-assume-default-country",
-      "checkout-intent-change-invalidates-idempotency-key",
-      "cart-and-preview-rpc-payloads-are-client-boundary-validated",
-      "events-never-fabricate-future-records",
-      "own-event-reservations-use-live-rls-protected-data",
-      "contact-address-phone-email-hidden-until-support-channels-ready",
-      "health-content-tabs-have-complete-keyboard-and-aria-contract"
-    ]
-  },
-  "latestSurfacePass": {
-    "functionalHead": "3a43d2cf63fedaaf9ca8f06e26ce32ca6e865819",
-    "accountHubInteractiveSummary": true,
-    "accountRecentOrderQuickAccess": true,
-    "accountEventLiveSummary": true,
-    "eventPersonalReservations": true,
-    "eventApiBoundaryValidation": true,
-    "eventLiveUpcomingCountObserved": 0,
-    "eventLiveArchivedCountObserved": 5,
-    "customerEventCancellationInvented": false,
-    "healthAccessibleTabsAndBoundedSearch": true,
-    "contactSupportIdentityTruthfulness": true,
-    "liveSupportChannelsReadyObserved": false,
-    "officialContactDetailsShownWhenNotReady": false
-  },
-  "latestProductionHardening": {
-    "functionalHead": "b74aa36719b71bd6f984a292dbe203f8ce73054f",
-    "catalog": {
-      "strictCentralResponseValidation": true,
-      "priceMissingNeverBecomesZero": true,
-      "currencyMissingNeverBecomesTry": true,
-      "trackedStockInvalidLocksPurchase": true,
-      "productOriginNeverBorrowedFromProducerLocation": true,
-      "invalidRatingAndReviewCountsNeverBecomeZero": true,
-      "searchPaginationZeroTotalEdgeClosed": true,
-      "publicStoragePathAndExternalSchemeValidation": true,
-      "homePriceFilterUsesVerifiedCatalogCurrency": true
+  "backend": {
+    "liveMigrationCount": 151,
+    "latestMigration": "20260818232517_verify_producer_product_gallery_assets",
+    "migrationReconciliation": "LIVE_HISTORY_AND_FEATURE_BRANCH_FILES_ALIGNED_FOR_CURRENT_HARDENING_SERIES",
+    "securityAdvisorLints": 0,
+    "checkout": {
+      "currentAuthenticatedEntrypoint": "create_customer_order_v5",
+      "retiredAuthenticatedEntrypoints": [
+        "create_customer_order",
+        "create_customer_order_v2",
+        "create_customer_order_v3",
+        "create_customer_order_v4"
+      ],
+      "anonEntrypoints": []
     },
-    "authentication": {
-      "emailPasswordNamePhoneBoundaries": true,
-      "registerPasswordConfirmation": true,
-      "accessibleLoginRegisterTabs": true,
-      "liveRoleContractAligned": ["customer", "producer", "support", "content_editor", "operations", "admin", "super_admin"],
-      "sessionUserIdMustMatchServerProfile": true,
-      "invalidLiveLocaleDoesNotSilentlyBecomeTurkish": true,
-      "previouslyVerifiedUserPreservedAcrossTransientHydrationFailure": true,
-      "networkRestoreRetriesSessionVerification": true
+    "edgeFunctions": {
+      "contact-submit": { "status": "ACTIVE", "version": 1 },
+      "event-reservation": { "status": "ACTIVE", "version": 2 },
+      "push-dispatch": { "status": "ACTIVE", "version": 3 },
+      "payment-method-vault": { "status": "ACTIVE", "version": 1, "verifyJwt": true, "sourceRecordedInRepository": true }
     },
-    "giftCheckout": {
-      "defaultCountryRemoved": true,
-      "fakeFallbackPhoneRemoved": true,
-      "realDeliveryPhoneRequired": true,
-      "stockPriceCurrencyVariantRequired": true,
-      "explicitCountryRequiredClientAndServer": true,
-      "responseFinancialFieldsMustAllExist": true,
-      "accessibleDialogLifecycle": true,
-      "paymentSuccessNeverFabricated": true
-    },
-    "checkoutBackend": {
-      "currentAuthenticatedEntrypoint": "create_customer_order_v4",
-      "legacyAuthenticatedEntrypointsRetired": ["create_customer_order", "create_customer_order_v2", "create_customer_order_v3"],
-      "explicitShippingCountryRequiredBeforeLegacyInternalCore": true,
-      "securityAdvisorAfterChanges": "PASS_ZERO_LINTS"
-    },
-    "nativeOffline": {
-      "googleFontsRuntimeImportRemoved": true,
-      "systemFontStackUsed": true,
-      "releaseAuditBlocksRemoteStylesheetAndGoogleFontRegression": true
+    "publicAssetStorage": {
+      "catalog-public": { "objectCountObserved": 0, "missingObjectsFailClosed": true },
+      "content-public": { "objectCountObserved": 0, "missingObjectsFailClosed": true },
+      "adminProductApprovalRequiresRealCatalogObject": true,
+      "producerGalleryReturnsOnlyExistingObjects": true,
+      "producerStorageInsertRequiresVerifiedActiveProducer": true,
+      "producerStorageDeleteRequiresUnusedOwnObject": true,
+      "producerStorageOverwriteUpdateDisabled": true
     }
   },
-  "completedFrontendBlocks": [
-    "account-center","gift-order-flow","server-cart-checkout","supabase-auth-session","server-catalog-search","public-product-detail","public-producer-profile","category-directory","category-directory-pagination","category-directory-reconnect-and-pagination-error-preservation","category-directory-live-image-and-description-polish","live-home-catalog","home-search-producer-origin-village-alignment","server-product-favorites","live-catalog-filter-options","catalog-filter-connectivity-resilience","catalog-product-card-action-locking-accessibility","catalog-search-pagination-dedup-accessibility","no-fake-voice-search","public-contact","public-events","authenticated-event-linking","account-newsletter","public-health-content","public-content-api-boundary-validation","product-safety-api-boundary-validation","customer-content-favorites","public-storefront-config","public-about-and-help-content","account-panel-lazy-splitting","account-deep-link-routing-complete","account-order-history-pagination","account-payment-history-pagination","account-payment-history-reconnect-and-pagination-error-preservation","account-payment-history-defensive-total-amount-and-currency-rendering","account-notification-cursor-pagination","account-notification-mutation-locking","account-notification-action-truthfulness-and-date-resilience","account-notification-reconnect-and-pagination-error-preservation","account-message-history-pagination","account-conversation-list-pagination","account-messaging-api-input-hardening","account-favorites-live-trust-polish","account-favorites-media-accessibility","account-followed-producer-live-trust-rating-polish","account-followed-producer-media-accessibility","account-followed-producer-defensive-trust-metric-rendering","account-gift-history-live-product-polish","account-gift-history-media-accessibility","account-address-validation-normalization","account-address-modal-error-accessibility","account-help-faq-reconnect-resilience","public-faq-response-boundary-hardening","verified-review-center-accessibility-polish","producer-onboarding-v4-ui","producer-product-management","producer-profile-edit","producer-location-change-request","producer-stock-input-and-change-request-action-hardening","producer-finance-zero-value-and-dashboard-metric-correctness","producer-inventory-safe-integer-and-version-validation","verified-purchase-review-center","dynamic-product-producer-metrics","product-safety-detail","faq-help-center","checkout-cart-client-boundary-validation","checkout-form-autofill-semantic-and-media-accessibility-hardening","admin-dashboard-supabase-rpc","admin-products-supabase-rpc","admin-orders-supabase-rpc","admin-stock-supabase-rpc","admin-returns-supabase-rpc","admin-categories-supabase-rpc","admin-category-input-boundary-hardening","admin-events-supabase-rpc","admin-notifications-supabase-rpc","admin-notification-safe-target-and-action-url-validation","admin-producer-document-path-hardening","admin-content-supabase-rpc","admin-settings-supabase-rpc","admin-campaigns-supabase-rpc","admin-finance-supabase-rpc","admin-finance-csv-formula-injection-hardening","admin-review-moderation-supabase-rpc","admin-users-supabase-rpc","admin-vendors-supabase-rpc","admin-vendor-applications-supabase-rpc","firebase-datacontext-runtime-retired","firebase-package-retired","legacy-node-sqlite-runtime-retired","legacy-source-mutators-retired","legacy-static-catalog-data-retired","metadata-microphone-residue-retired","release-architecture-audit","admin-catalog-integrity-readiness","seller-shipping-weight-integrity","native-push-client-preparation","exact-push-device-unregister-hardened","push-provider-filtered-queue-claim","push-dispatch-edge-worker-fcm-apns","storefront-demo-assets-retired","recipe-live-catalog-alignment","admin-section-lazy-splitting-implemented","production-bundle-budget-implemented","checkout-payment-readiness-contract","react19-types-aligned","cross-platform-mobile-quality-gate-baseline-green","dialog-background-inert-and-focus-trap-hardening","global-keyboard-high-contrast-and-text-scaling-hardening","android-post-notification-release-permission-explicit","ios-release-metadata-and-turkish-development-region","cross-platform-release-metadata-audit-expanded","catalog-product-canonical-share-fallback","product-detail-canonical-share-and-copy-resilience","canonical-public-product-producer-search-deep-links","home-category-slug-filter-correctness","home-search-product-producer-origin-village-alignment","home-live-configurable-hero-and-trust-metrics","legacy-home-local-placeholder-interactions-retired","app-shell-deep-link-navigation-refactor","browser-native-history-route-integrity","strictmode-safe-route-history","catalog-search-overlay-position-and-category-route-correctness","admin-mobile-navigation-accessibility-dialog-hardening","producer-product-numeric-media-boundary-hardening","producer-product-accessible-archive-confirmation","account-profile-input-avatar-boundary-hardening","account-security-session-confirmation-and-password-boundary-hardening","capacitor-safe-public-share-origin-contract","native-app-shell-desktop-top-menu-retired","native-app-shell-hamburger-menu-retired","native-phone-tablet-persistent-bottom-navigation","native-header-live-unread-notification-badge","native-header-live-total-cart-item-badge","native-checkout-app-wide-cart-count-synchronization","native-foreground-push-unread-refresh","native-keyboard-bottom-navigation-coordination","native-keyboard-resize-backdrop-configuration","native-server-authoritative-launcher-badge-count","push-dispatch-v3-fcm-apns-badge-payload","producer-onboarding-rpc-boundary-hardening","producer-document-storage-path-hardening","native-coarse-pointer-touch-target-floor","nested-accessible-dialog-stack-containment","native-zero-unread-delivered-notification-cold-start-sync","notification-read-server-authoritative-count-resync","catalog-product-parent-share-feedback-ownership","search-results-canonical-url-on-header-query-change","native-signed-out-delivered-notification-cleanup","native-push-listener-initialization-concurrency-hardening","native-pending-push-action-queue-preservation","nested-dialog-topmost-focus-and-escape-containment","admin-vendor-review-modal-error-accessibility","admin-vendor-sensitive-kyc-label-and-description-accessibility","catalog-search-truthful-keyboard-list-semantics","catalog-product-invalid-price-purchase-lock","catalog-product-invalid-rating-truthfulness","shared-money-invalid-value-truthfulness","producer-finance-invalid-money-currency-date-truthfulness","checkout-server-summary-money-truthfulness","checkout-invalid-stock-limit-mutation-lock","home-invalid-price-filter-sort-truthfulness","home-offer-price-comparison-truthfulness","producer-document-mime-derived-storage-extension","native-app-shell-release-audit-regression-guard","producer-onboarding-client-document-selection-validation","producer-finance-payout-history-pagination","seller-dashboard-finance-summary-truthfulness","account-overview-unread-badge-malformed-summary-guard","account-overview-summary-count-truthfulness","admin-review-moderation-nested-dialog-accessibility","admin-notification-audience-count-boundary-hardening","admin-notification-audience-resilience-accessibility","admin-order-nested-dialog-accessibility","admin-return-nested-dialog-accessibility","admin-product-nested-dialog-accessibility","admin-product-rating-truthfulness","admin-event-editor-confirmation-dialog-accessibility","admin-event-date-count-truthfulness","admin-category-editor-archive-dialog-accessibility","admin-category-count-sort-truthfulness","admin-content-editor-archive-dialog-accessibility","admin-content-date-locale-count-truthfulness","account-overview-runtime-boundary-validation","account-money-currency-truthfulness","account-notification-malformed-unread-preserves-red-badge","account-message-thread-polling-and-storage-boundaries","account-orders-returns-review-destructive-flow-hardening","account-seller-stock-source-value-integrity","account-producer-profile-media-location-lifecycle","account-settings-newsletter-state-truthfulness","account-tab-production-audit-consolidated","account-hub-mobile-section-hierarchy","account-direct-current-device-signout","account-support-contact-channel-integration","account-help-legal-four-slot-truthfulness","account-help-safe-structured-html-like-markdown-rendering","account-faq-locale-aware-search-polish","account-premium-native-copy-alignment","shared-money-no-type-coercion","cart-live-total-quantity-contract-verified","cart-rpc-response-boundary-normalization","cart-subtotal-line-integrity-check","checkout-preview-response-boundary-normalization","checkout-cart-empty-preview-legacy-contract-alignment","checkout-no-default-country","checkout-address-phone-boundary-hardening","checkout-intent-idempotency-reset","checkout-shipping-quote-state-invalidation","checkout-payment-readiness-truthful-presentation","account-cart-final-production-polish","account-hub-interactive-summary","account-recent-order-quick-access","account-live-event-summary","event-personal-reservation-history","event-api-boundary-validation","event-duplicate-active-reservation-cta-suppression","health-content-complete-tab-keyboard-contract","health-content-bounded-locale-aware-search","contact-support-identity-readiness-truthfulness","contact-form-boundary-hardening","account-complete-surface-audit","catalog-central-strict-response-validation","catalog-no-fake-zero-price-currency-rating-or-stock","catalog-product-origin-not-inferred-from-producer-location","catalog-search-and-category-pagination-truthfulness","home-catalog-verified-currency-price-filtering","auth-input-session-and-live-role-boundary-hardening","auth-accessible-register-password-confirmation","auth-transient-session-hydration-resilience","gift-global-address-and-real-phone-hardening","gift-financial-response-completeness","native-runtime-remote-font-dependency-retired","native-remote-font-release-audit-guard"
+  "completedCurrentHardening": [
+    "social-auth-profile-bootstrap-hardening",
+    "secure-customer-payment-method-vault",
+    "saved-payment-method-nickname-metadata-default-management",
+    "customer-order-v5-saved-payment-method-binding",
+    "payment-method-vault-edge-function-live-and-repository-recorded",
+    "persistent-gift-presentation-metadata",
+    "server-authoritative-gift-checkout-preview",
+    "international-customer-address-upsert-v2",
+    "management-order-gift-and-masked-payment-snapshot-v2",
+    "customer-theme-and-notification-sound-account-persistence",
+    "theme-runtime-event-synchronization",
+    "storefront-config-client-boundary-validation-without-silent-copy-fallback",
+    "catalog-assets-fail-closed-against-real-storage-objects",
+    "content-and-event-assets-fail-closed-against-real-storage-objects",
+    "admin-product-readiness-real-storage-object-enforcement",
+    "producer-catalog-storage-policy-hardening",
+    "producer-product-gallery-real-object-verification",
+    "producer-product-management-response-and-asset-path-validation",
+    "event-personal-reservations-safe-rpc-image-path",
+    "admin-order-gift-and-masked-payment-operational-visibility"
   ],
-  "integrationEntryPoint": "frontend/integration/apply-all-current.mjs",
-  "latestFrontendHead": "b74aa36719b71bd6f984a292dbe203f8ce73054f",
-  "latestBackendHead": "b74aa36719b71bd6f984a292dbe203f8ce73054f",
-  "latestFrontendValidation": "implemented-catalog-auth-gift-native-offline-hardening-awaiting-real-mobile-quality-runner-allocation-github-billing-blocker",
-  "latestBackendValidation": "active-healthy-130-migrations-security-advisor-zero-explicit-order-country-and-legacy-checkout-entrypoints-retired",
-  "externalBlockers": ["github-actions-billing-or-spending-limit","business-and-support-identity-required-for-live-sales","final-applicable-legal-copy-required-before-live-sales","production-payment-provider-and-merchant-credentials","production-oauth-provider-configuration","production-fcm-apns-provider-configuration","mobile-store-signing-and-release-credentials","production-public-web-origin-required-for-native-share-links","perishable-active-variant-real-shipping-weights-required"],
-  "nextBlock": "continue-next-user-facing-mobile-surface-audit-without-repeating-account-catalog-auth-gift-work-then-run-one-latest-head-mobile-quality-gate-when-runner-allocation-restored"
+  "truthfulnessInvariants": [
+    "no-fake-price-stock-rating-location-currency-payment-provider-legal-copy-support-identity-or-credentials",
+    "missing-catalog-or-content-storage-object-never-produces-a-broken-public-image-url",
+    "database-image-path-alone-does-not-count-as-a-real-asset",
+    "new-product-admin-approval-requires-real-catalog-public-object",
+    "payment-provider-secrets-and-reusable-provider-card-references-never-exposed-to-client-or-admin-snapshots",
+    "saved-card-ui-shows-only-safe-masked-metadata",
+    "theme-and-notification-sound-preferences-persist-to-account-with-local-fast-start-copy",
+    "cart-badge-uses-total-quantity-not-line-count",
+    "notification-badge-uses-server-authoritative-unread-count",
+    "no-desktop-top-navigation-or-main-hamburger-menu",
+    "newest-head-is-not-claimed-ci-green"
+  ],
+  "releaseValidation": {
+    "latestHeadCi": "NOT_EXECUTED_GITHUB_ACTIONS_RUNNER_ALLOCATION_BILLING_OR_SPENDING_LIMIT_BLOCKER",
+    "lastRecordedBlockedRun": 32029478472,
+    "previousAndroidReleaseBundleBaseline": "PASS_PREVIOUS_BASELINE_NOT_CURRENT_HEAD",
+    "previousIosSimulatorCompileBaseline": "PASS_PREVIOUS_BASELINE_NOT_CURRENT_HEAD",
+    "mergeAllowed": false,
+    "mergeRule": "Run one current-head mobile quality gate after runner allocation is restored, require reachable gates green, then require explicit user authorization."
+  },
+  "externalBlockers": [
+    "github-actions-billing-or-spending-limit",
+    "catalog-public-real-product-assets-missing",
+    "content-public-real-content-assets-missing",
+    "business-and-support-identity",
+    "final-applicable-legal-copy",
+    "production-payment-merchant-provider-credentials",
+    "production-google-facebook-oauth-configuration",
+    "production-fcm-apns-provider-credentials",
+    "play-store-app-store-signing-release-configuration",
+    "real-public-https-share-origin",
+    "fourteen-active-perishable-variant-real-shipping-weights"
+  ],
+  "historicalStatePreservation": {
+    "gitHistoryPreservesPriorVersions": true,
+    "previousProjectStateBlob": "5a1207a7677edd552e2fb24f8c35467735c72d58",
+    "previousDetailedAccountCheckpointsRemainValid": [
+      "docs/account-audit/2026-08-17-account-tab-production-audit.md",
+      "docs/manual-checkpoints/2026-08-17-account-cart-final-polish.md",
+      "docs/account-audit/2026-08-17-account-complete-surface-pass.md",
+      "docs/manual-checkpoints/2026-08-18-catalog-auth-gift-native-hardening.md"
+    ]
+  },
+  "nextBlock": "continue-native-account-seller-admin-production-a11y-and-data-contract-scan-without-repeating-completed-blocks-and-without-triggering-actions"
 }
