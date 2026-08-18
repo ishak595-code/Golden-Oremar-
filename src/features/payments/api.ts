@@ -21,11 +21,15 @@ export type PaymentReadiness = {
   liveCardPaymentsEnabled: boolean;
   provider: string | null;
   savedPaymentMethodsSupported: boolean;
-  providerHostedCardEntryRequired: true;
+  cardEnrollmentEnabled: boolean;
+  cardEnrollmentMode: 'provider_card_storage_api' | 'provider_tokenization' | string;
+  vaultEdgeFunction: 'payment-method-vault';
+  providerHostedCardEntryRequired: false;
   requiresProviderConfiguration: boolean;
   paymentVerificationRequired: true;
   storesProviderSecretsClientSide: false;
   storesRawCardData: false;
+  storesCvv: false;
 };
 
 export type PaymentMethodEditableMetadata = {
@@ -33,6 +37,17 @@ export type PaymentMethodEditableMetadata = {
   billingName?: string | null;
   billingCountryCode?: string | null;
   billingPostalCode?: string | null;
+};
+
+export type CardEnrollmentInput = {
+  cardNumber: string;
+  cardHolderName: string;
+  expMonth: number;
+  expYear: number;
+  nickname?: string | null;
+  billingCountryCode?: string | null;
+  billingPostalCode?: string | null;
+  makeDefault?: boolean;
 };
 
 function isRecord(value: unknown): value is Record<string, any> {
@@ -69,6 +84,27 @@ function optionalInteger(value: unknown, label: string, min: number, max: number
   return value;
 }
 
+function luhn(cardNumber: string) {
+  let sum = 0;
+  let doubleDigit = false;
+  for (let index = cardNumber.length - 1; index >= 0; index -= 1) {
+    let digit = Number(cardNumber[index]);
+    if (doubleDigit) {
+      digit *= 2;
+      if (digit > 9) digit -= 9;
+    }
+    sum += digit;
+    doubleDigit = !doubleDigit;
+  }
+  return sum % 10 === 0;
+}
+
+function normalizedCardNumber(value: unknown) {
+  const digits = typeof value === 'string' ? value.replace(/[^0-9]/g, '') : '';
+  if (digits.length < 12 || digits.length > 19 || !luhn(digits)) throw new Error('Kart numarası doğrulanamadı.');
+  return digits;
+}
+
 function normalizeMethod(value: unknown, index: number): SavedPaymentMethod {
   if (!isRecord(value)) throw new Error(`${index + 1}. ödeme yöntemi doğrulanamadı.`);
   const status = requiredText(value.status, 'Ödeme yöntemi durumu', 20);
@@ -102,28 +138,49 @@ function normalizeReadiness(value: unknown): PaymentReadiness {
   const provider = value.provider == null ? null : requiredText(value.provider, 'Ödeme sağlayıcısı', 40).toLowerCase();
   if (provider && !/^[a-z0-9_-]{2,40}$/.test(provider)) throw new Error('Ödeme sağlayıcısı doğrulanamadı.');
   const mode = requiredText(value.mode, 'Ödeme modu', 60);
+  const cardEnrollmentMode = requiredText(value.cardEnrollmentMode, 'Kart kayıt modu', 80);
+  const vaultEdgeFunction = requiredText(value.vaultEdgeFunction, 'Kart kasası fonksiyonu', 80);
+  if (vaultEdgeFunction !== 'payment-method-vault') throw new Error('Kart kasası fonksiyonu doğrulanamadı.');
   if (typeof value.liveCardPaymentsEnabled !== 'boolean'
       || typeof value.savedPaymentMethodsSupported !== 'boolean'
-      || value.providerHostedCardEntryRequired !== true
+      || typeof value.cardEnrollmentEnabled !== 'boolean'
+      || value.providerHostedCardEntryRequired !== false
       || typeof value.requiresProviderConfiguration !== 'boolean'
       || value.paymentVerificationRequired !== true
       || value.storesProviderSecretsClientSide !== false
-      || value.storesRawCardData !== false) {
+      || value.storesRawCardData !== false
+      || value.storesCvv !== false) {
     throw new Error('Ödeme güvenlik sözleşmesi doğrulanamadı.');
   }
-  if (value.liveCardPaymentsEnabled && !provider) throw new Error('Canlı ödeme açıkken sağlayıcı kimliği eksik.');
-  if (value.savedPaymentMethodsSupported && !value.liveCardPaymentsEnabled) throw new Error('Kayıtlı kart desteği canlı ödeme olmadan açılamaz.');
+  if ((value.liveCardPaymentsEnabled || value.cardEnrollmentEnabled) && !provider) throw new Error('Ödeme sağlayıcısı açıkken sağlayıcı kimliği eksik.');
+  if (value.cardEnrollmentEnabled && !value.savedPaymentMethodsSupported) throw new Error('Kart kayıt özelliği kayıtlı ödeme yöntemi desteği olmadan açılamaz.');
   return {
     mode,
     liveCardPaymentsEnabled: value.liveCardPaymentsEnabled,
     provider,
     savedPaymentMethodsSupported: value.savedPaymentMethodsSupported,
-    providerHostedCardEntryRequired: true,
+    cardEnrollmentEnabled: value.cardEnrollmentEnabled,
+    cardEnrollmentMode,
+    vaultEdgeFunction: 'payment-method-vault',
+    providerHostedCardEntryRequired: false,
     requiresProviderConfiguration: value.requiresProviderConfiguration,
     paymentVerificationRequired: true,
     storesProviderSecretsClientSide: false,
     storesRawCardData: false,
+    storesCvv: false,
   };
+}
+
+function providerError(error: any, data: unknown, fallback: string) {
+  const detail = isRecord(data) && typeof data.error === 'string' ? data.error : '';
+  const raw = detail || String(error?.message || fallback);
+  if (raw.includes('payment_provider_not_configured') || raw.includes('credentials_missing')) return new Error('Ödeme sağlayıcısı kart kaydı için henüz yapılandırılmadı.');
+  if (raw.includes('invalid_card_number')) return new Error('Kart numarası doğrulanamadı.');
+  if (raw.includes('card_expired')) return new Error('Kartın son kullanma tarihi geçmiş.');
+  if (raw.includes('invalid_card_holder_name')) return new Error('Kart sahibi adı doğrulanamadı.');
+  if (raw.includes('payment_method_not_found')) return new Error('Kayıtlı kart bulunamadı veya artık kullanılamıyor.');
+  if (raw.includes('payment_provider_error')) return new Error('Ödeme sağlayıcısı kart işlemini kabul etmedi. Kart bilgilerini kontrol edin veya başka bir kart deneyin.');
+  return new Error(fallback);
 }
 
 export async function listMyPaymentMethods(): Promise<SavedPaymentMethod[]> {
@@ -134,9 +191,40 @@ export async function listMyPaymentMethods(): Promise<SavedPaymentMethod[]> {
 }
 
 export async function getPaymentReadiness(): Promise<PaymentReadiness> {
-  const { data, error } = await supabase.rpc('get_checkout_payment_readiness_v2');
+  const { data, error } = await supabase.rpc('get_checkout_payment_readiness_v3');
   if (error) throw error;
   return normalizeReadiness(data);
+}
+
+export async function enrollMyPaymentMethod(input: CardEnrollmentInput): Promise<SavedPaymentMethod> {
+  const cardNumber = normalizedCardNumber(input.cardNumber);
+  const cardHolderName = requiredText(input.cardHolderName, 'Kart sahibi adı', 120);
+  if (cardHolderName.length < 2) throw new Error('Kart sahibi adı en az 2 karakter olmalıdır.');
+  if (!Number.isSafeInteger(input.expMonth) || input.expMonth < 1 || input.expMonth > 12) throw new Error('Son kullanma ayı doğrulanamadı.');
+  const currentYear = new Date().getUTCFullYear();
+  if (!Number.isSafeInteger(input.expYear) || input.expYear < currentYear || input.expYear > 2200) throw new Error('Son kullanma yılı doğrulanamadı.');
+  const nickname = optionalText(input.nickname, 40);
+  const billingCountryCode = optionalCountryCode(input.billingCountryCode);
+  const billingPostalCode = optionalText(input.billingPostalCode, 30);
+  const { data, error } = await supabase.functions.invoke('payment-method-vault', {
+    body: {
+      action: 'add',
+      cardNumber,
+      cardHolderName,
+      expMonth: input.expMonth,
+      expYear: input.expYear,
+      nickname,
+      billingCountryCode,
+      billingPostalCode,
+      makeDefault: input.makeDefault === true,
+    },
+  });
+  if (error || !isRecord(data) || data.ok !== true || !isRecord(data.method)) throw providerError(error, data, 'Kart güvenli şekilde kaydedilemedi.');
+  const methodId = uuid(data.method.id, 'Ödeme yöntemi kimliği');
+  const methods = await listMyPaymentMethods();
+  const saved = methods.find(method => method.id === methodId);
+  if (!saved) throw new Error('Kart sağlayıcıda kaydedildi ancak hesap listesinden doğrulanamadı.');
+  return saved;
 }
 
 export async function setMyDefaultPaymentMethod(paymentMethodId: string) {
@@ -174,11 +262,14 @@ export async function updateMyPaymentMethodMetadata(paymentMethodId: string, inp
 
 export async function removeMyPaymentMethod(paymentMethodId: string) {
   const id = uuid(paymentMethodId, 'Ödeme yöntemi kimliği');
-  const { data, error } = await supabase.rpc('remove_my_payment_method_v1', { p_payment_method_id: id });
-  if (error) throw error;
-  if (!isRecord(data) || data.ok !== true || uuid(data.removedId, 'Silinen ödeme yöntemi kimliği') !== id) throw new Error('Ödeme yöntemi kaldırma sonucu doğrulanamadı.');
+  const { data, error } = await supabase.functions.invoke('payment-method-vault', {
+    body: { action: 'remove', paymentMethodId: id },
+  });
+  if (error || !isRecord(data) || data.ok !== true) throw providerError(error, data, 'Kayıtlı kart güvenli şekilde kaldırılamadı.');
+  const removedId = uuid(data.removedId, 'Silinen ödeme yöntemi kimliği');
+  if (removedId !== id) throw new Error('Silinen ödeme yöntemi sonucu istekle eşleşmiyor.');
   const newDefaultId = data.newDefaultId == null ? null : uuid(data.newDefaultId, 'Yeni varsayılan ödeme yöntemi kimliği');
-  return { ok: true as const, removedId: id, newDefaultId };
+  return { ok: true as const, removedId, newDefaultId };
 }
 
 export function paymentMethodLabel(method: SavedPaymentMethod) {
