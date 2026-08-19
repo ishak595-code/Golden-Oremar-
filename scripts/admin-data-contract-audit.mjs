@@ -63,6 +63,18 @@ if (notificationUi) {
   requirePattern(notificationUi, /const readAt=await markNotificationRead\(item\.id\)/, 'Notification UI must use the server-returned read timestamp.');
 }
 
+const paymentUi = requireFile('src/features/account/PaymentsPanel.tsx');
+if (paymentUi) {
+  forbid(paymentUi, /fallback:\$\{/, 'Payment history keys must not fall back to synthetic record identities.');
+  forbid(paymentUi, /processedAt/, 'Payment history must not read fields outside the strict payment activity contract.');
+  forbid(paymentUi, /Sipariş numarası doğrulanamadı|Tutar doğrulanamadı/, 'Payment history must not invent fallback content after strict API normalization.');
+  requirePattern(paymentUi, /PaymentActivityItem,PaymentActivityPage/, 'Payment history UI must consume strict payment activity types.');
+  requirePattern(paymentUi, /useState<PaymentActivityPage\|null>/, 'Payment history state must keep the strict page type.');
+  requirePattern(paymentUi, /new Map<string,PaymentActivityItem>\(\)/, 'Payment history pagination must deduplicate by validated payment ids.');
+  requirePattern(paymentUi, /key=\{p\.id\}/, 'Payment history rows must use the validated payment id directly.');
+  requirePattern(paymentUi, /<Money minor=\{p\.amountMinor\} currency=\{p\.currency\}\/>/, 'Payment history money display must use validated server amount and currency directly.');
+}
+
 const categoryApi = requireFile('src/admin/categoryAdminApi.ts');
 if (categoryApi) {
   forbid(categoryApi, /İsimsiz kategori/, 'Category admin API must not invent missing category names.');
@@ -159,4 +171,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Golden Oremar data contract audit passed: canonical customer account, notification, migration, category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
+console.log('Golden Oremar data contract audit passed: canonical customer account, notification, payment, migration, category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
