@@ -5,7 +5,7 @@
 @theme {
   --font-serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
-  
+
   --color-gray-50: #F4F7F5;
   --color-gray-100: #E5EBE7;
   --color-gray-200: #D5DDD8;
@@ -16,11 +16,13 @@
   --color-gray-700: #35483F;
   --color-gray-800: #24332D;
   --color-gray-900: #121C18;
-  
+
   --color-brand-gold: var(--brand-gold);
   --color-brand-green: var(--brand-green);
   --color-brand-earth: var(--brand-earth);
-  
+  --color-brand-on-gold: var(--text-on-gold);
+  --color-brand-on-green: var(--text-on-green);
+
   --color-brand-main: var(--bg-main);
   --color-brand-card: var(--bg-card);
   --color-brand-text: var(--text-main);
@@ -40,6 +42,8 @@
   --brand-gold: #8A6810;
   --brand-green: #145A32;
   --brand-earth: #7A431F;
+  --text-on-gold: #FFFFFF;
+  --text-on-green: #FFFFFF;
 }
 
 :root[data-theme="light"] {
@@ -54,6 +58,8 @@
   --brand-gold: #8A6810;
   --brand-green: #145A32;
   --brand-earth: #7A431F;
+  --text-on-gold: #FFFFFF;
+  --text-on-green: #FFFFFF;
 }
 
 :root[data-theme="emerald"] {
@@ -65,9 +71,11 @@
   --text-muted-darker: #2B5141;
   --border-main: #C8DDD2;
   --border-light: #E1ECE6;
-  --brand-gold: #A87D19;
+  --brand-gold: #8A6614;
   --brand-green: #087A55;
   --brand-earth: #765033;
+  --text-on-gold: #FFFFFF;
+  --text-on-green: #FFFFFF;
 }
 
 :root[data-theme="ruby"] {
@@ -79,9 +87,11 @@
   --text-muted-darker: #5D3442;
   --border-main: #E7D3D9;
   --border-light: #F2E4E8;
-  --brand-gold: #A77C30;
+  --brand-gold: #8A641F;
   --brand-green: #8F1D3B;
   --brand-earth: #7B3B37;
+  --text-on-gold: #FFFFFF;
+  --text-on-green: #FFFFFF;
 }
 
 :root[data-theme="dark"] {
@@ -96,6 +106,8 @@
   --brand-gold: #EDC967;
   --brand-green: #27AE60;
   --brand-earth: #C36A31;
+  --text-on-gold: #10251B;
+  --text-on-green: #06100C;
 }
 
 :root[data-theme="champagne"] {
@@ -107,9 +119,11 @@
   --text-muted-darker: #51462F;
   --border-main: #E5D8B8;
   --border-light: #F0E7D1;
-  --brand-gold: #9A7118;
+  --brand-gold: #85600F;
   --brand-green: #705C27;
   --brand-earth: #805338;
+  --text-on-gold: #FFFFFF;
+  --text-on-green: #FFFFFF;
 }
 
 html {
@@ -152,6 +166,7 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   height: 6px;
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--brand-gold);
   border-radius: 6px;
@@ -164,6 +179,7 @@ h1, h2, h3, h4, h5, h6, .font-serif {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -252,6 +268,7 @@ nav[aria-label="Ana gezinme"] button > span.relative > span[aria-hidden="true"] 
 
 @media (prefers-reduced-motion: reduce) {
   html:focus-within { scroll-behavior: auto; }
+
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
