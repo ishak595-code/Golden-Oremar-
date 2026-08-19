@@ -4,8 +4,8 @@
   "branch": "agent/admin-supabase-retire-node",
   "pullRequest": 47,
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "latestFunctionalHead": "953da641498311c23c519759643579549dae699d",
-  "stateRecordedAt": "2026-08-19T02:05:00+02:00",
+  "latestFunctionalHead": "9c5c263f450da93dc4b761b267ef03b47163885b",
+  "stateRecordedAt": "2026-08-19T02:47:00+02:00",
   "applicationShell": {
     "desktopTopMenu": false,
     "hamburgerMenu": false,
@@ -20,7 +20,8 @@
       "android": "platform SpeechRecognizer via NativeSpeechPlugin",
       "ios": "SFSpeechRecognizer and AVAudioEngine via NativeSpeechPlugin",
       "headerMicrophoneUsesExistingSpeechRecognitionUx": true,
-      "externalSpeechPluginDependency": false
+      "externalSpeechPluginDependency": false,
+      "duplicateSpeechPathCreated": false
     }
   },
   "backend": {
@@ -81,8 +82,27 @@
     "obsolete-one-time-migration-patch-tooling-removed",
     "duplicate-transitional-github-workflows-retired",
     "mobile-quality-gate-paused-to-manual-dispatch-while-runner-allocation-blocked",
-    "release-audit-guards-retired-order-rpc-and-transitional-artifact-regressions"
+    "release-audit-guards-retired-order-rpc-and-transitional-artifact-regressions",
+    "home-storefront-strict-dynamic-server-copy-and-asset-state",
+    "home-storefront-no-arbitrary-featured-product-fallback",
+    "theme-accent-contrast-semantic-foreground-tokens",
+    "theme-legacy-accent-pair-compatibility-bridge",
+    "seller-panel-canonical-accessible-dialog-hook",
+    "seller-panel-deleted-dialog-wrapper-reference-removed",
+    "admin-page-producer-path-removed",
+    "admin-layout-producer-menu-path-removed",
+    "legacy-admin-entry-wrapper-removed",
+    "app-direct-canonical-admin-page-lazy-import",
+    "release-audit-canonical-seller-admin-storefront-theme-guards"
   ],
+  "canonicalRuntimePaths": {
+    "seller": "AccountCenter -> SellerPanel -> producer feature modules",
+    "admin": "App server-verified admin gate -> AdminPage -> AdminLayout/admin modules",
+    "dialog": "src/features/accessibility/useAccessibleDialog.ts",
+    "voiceSearch": "App header SpeechRecognition UX -> src/native.ts adapter on Android/iOS",
+    "storefront": "Supabase public storefront config + live catalog -> HomeSection",
+    "checkout": "src/features/cart/api.ts -> create_customer_order_v5"
+  },
   "truthfulnessInvariants": [
     "no-fake-price-stock-rating-location-currency-payment-provider-legal-copy-support-identity-or-credentials",
     "missing-catalog-or-content-storage-object-never-produces-a-broken-public-image-url",
@@ -97,13 +117,17 @@
     "runtime-customer-order-rpc-v1-through-v4-must-not-return",
     "obsolete-one-time-integration-patch-tooling-must-not-return",
     "duplicate-transition-workflows-must-not-return",
+    "legacy-admin-entry-wrapper-must-not-return",
+    "removed-account-dialog-wrapper-must-not-return",
+    "admin-must-not-contain-a-second-producer-runtime-path",
+    "home-storefront-must-not-hide-server-failure-with-hardcoded-merchandising-copy",
+    "theme-accent-backgrounds-must-use-theme-aware-foreground-contrast",
     "newest-head-is-not-claimed-ci-green"
   ],
   "releaseValidation": {
     "latestHeadCi": "NOT_EXECUTED_GITHUB_ACTIONS_RUNNER_ALLOCATION_BILLING_OR_SPENDING_LIMIT_BLOCKER",
     "automaticWorkflowRunsPaused": true,
     "mobileQualityTrigger": "workflow_dispatch-only-until-runner-allocation-restored",
-    "workflowRunsObservedForHead953da": 0,
     "lastRecordedBlockedRun": 32029478472,
     "previousAndroidReleaseBundleBaseline": "PASS_PREVIOUS_BASELINE_NOT_CURRENT_HEAD",
     "previousIosSimulatorCompileBaseline": "PASS_PREVIOUS_BASELINE_NOT_CURRENT_HEAD",
@@ -125,8 +149,8 @@
   ],
   "historicalStatePreservation": {
     "gitHistoryPreservesPriorVersions": true,
-    "previousProjectStateBlob": "5a1207a7677edd552e2fb24f8c35467735c72d58",
-    "note": "Applied Supabase migration history is retained for reproducibility; obsolete active runtime and one-time integration duplicates are removed instead of preserved in the working tree."
+    "previousProjectStateBlob": "20c2cdad2fc7c2f6afb52138cc26a8834f476115",
+    "note": "Applied Supabase migration history is retained for reproducibility. Obsolete active runtime, wrappers and one-time integration duplicates are removed instead of preserved in the working tree."
   },
-  "nextBlock": "continue-strict-runtime-fallback-duplicate-and-account-seller-admin-data-contract-scan-without-repeating-completed-work"
+  "nextBlock": "continue-current-branch-account-catalog-card-admin-data-contract-and-ui-scan-without-repeating-completed-work"
 }
