@@ -42,6 +42,14 @@ if (accountApi) {
   requirePattern(accountApi, /return normalizeAccountOverview\(unwrap<unknown>\(data,error\)\)/, 'Account overview must pass through the canonical strict normalizer.');
   requirePattern(accountApi, /return normalizeOrdersPage\(unwrap<unknown>\(data,error\)\)/, 'Customer order list must remain strictly normalized.');
   requirePattern(accountApi, /return normalizeOrderDetail\(unwrap<unknown>\(data,error\)\)/, 'Customer order detail must remain strictly normalized.');
+  requirePattern(accountApi, /return normalizeFavorites\(unwrap<unknown>\(data,error\)\)/, 'Favorites must remain strictly normalized.');
+  requirePattern(accountApi, /return normalizeFollowedProducers\(unwrap<unknown>\(data,error\)\)/, 'Followed producers must remain strictly normalized.');
+  requirePattern(accountApi, /return normalizeGiftOrders\(unwrap<unknown>\(data,error\)\)/, 'Gift orders must remain strictly normalized.');
+  requirePattern(accountApi, /lineTotalMinor!==unitPriceMinor\*quantity-itemDiscount\+itemTax/, 'Order item totals must remain arithmetically verified at the account API boundary.');
+  requirePattern(accountApi, /ORDER_ITEM_FULFILLMENT_STATUSES/, 'Order item fulfillment statuses must remain bound to the live database lifecycle.');
+  requirePattern(accountApi, /SHIPMENT_STATUSES/, 'Shipment statuses must remain bound to the live database lifecycle.');
+  requirePattern(accountApi, /RETURN_STATUSES/, 'Return statuses must remain bound to the live database lifecycle.');
+  requirePattern(accountApi, /REFUND_STATUSES/, 'Refund statuses must remain bound to the live database lifecycle.');
   requirePattern(accountApi, /return normalizePaymentActivity\(unwrap<unknown>\(data,error\)\)/, 'Customer payment activity must remain strictly normalized.');
   requirePattern(accountApi, /return normalizeNotifications\(unwrap<unknown>\(data,error\)\)/, 'Customer notification list must remain strictly normalized.');
   requirePattern(accountApi, /return dateTime\(unwrap<unknown>\(data,error\),['"]Bildirim okunma tarihi['"]\)/, 'Notification read mutation must keep the server timestamp authoritative.');
@@ -84,6 +92,30 @@ if (orderUi) {
   requirePattern(orderUi, /key=\{o\.id\}/, 'Order rows must use validated order ids directly.');
   requirePattern(orderUi, /<Money minor=\{o\.totalMinor\} currency=\{o\.currency\}\/>/, 'Order list money display must use validated amount and currency directly.');
   requirePattern(orderUi, /new Map<string,OrdersPageData\['items'\]\[number\]>\(\)/, 'Order pagination must deduplicate by validated order ids.');
+}
+
+const favoritesUi = requireFile('src/features/account/FavoritesPanel.tsx');
+if (favoritesUi) {
+  forbid(favoritesUi, /useState<any\[\]>|Fiyat doğrulanamadı|displayName\s*=.*\|\|\s*['"]Ürün['"]|favorite-\$\{/, 'Favorites UI must not rebuild strict product truth with any or synthetic fallback data.');
+  requirePattern(favoritesUi, /useState<FavoriteItem\[\] \| null>/, 'Favorites UI must consume the strict FavoriteItem contract.');
+  requirePattern(favoritesUi, /key=\{i\.productId\}/, 'Favorite cards must use the validated product id directly.');
+  requirePattern(favoritesUi, /if \(result\.isFavorite\) throw new Error/, 'Favorite removal must verify the server mutation result.');
+}
+
+const followedUi = requireFile('src/features/account/FollowedProducersPanel.tsx');
+if (followedUi) {
+  forbid(followedUi, /useState<any\[\]>|Puan bilgisi doğrulanamadı|\|\|['"]Üretici['"]|producer['"]\}-\$\{index/, 'Followed producer UI must not invent identities, names, or rating fallback data.');
+  requirePattern(followedUi, /useState<FollowedProducerItem\[\]\|null>/, 'Followed producer UI must consume the strict FollowedProducerItem contract.');
+  requirePattern(followedUi, /key=\{p\.id\}/, 'Followed producer cards must use the validated producer id directly.');
+  requirePattern(followedUi, /if\(result\.following\)throw new Error/, 'Unfollow must verify the server mutation result.');
+}
+
+const giftUi = requireFile('src/features/account/GiftsPanel.tsx');
+if (giftUi) {
+  forbid(giftUi, /useState<any\[\]>|fallback:\$\{|Alıcı bilgisi doğrulanamadı|Sipariş numarası doğrulanamadı|['"]Standart['"]/, 'Gift UI must not invent gift identity, recipient, order, or variant data.');
+  requirePattern(giftUi, /useState<GiftOrder\[\]\|null>/, 'Gift UI must consume the strict GiftOrder contract.');
+  requirePattern(giftUi, /key=\{g\.orderId\}/, 'Gift cards must use the validated order id directly.');
+  requirePattern(giftUi, /<Money minor=\{g\.totalMinor\} currency=\{g\.currency\}\/>/, 'Gift money display must use validated server amount and currency directly.');
 }
 
 const categoryApi = requireFile('src/admin/categoryAdminApi.ts');
@@ -182,4 +214,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Golden Oremar data contract audit passed: canonical customer account, notification, payment, order, migration, category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
+console.log('Golden Oremar data contract audit passed: canonical customer account, notification, payment, order, favorite, followed-producer, gift, migration, category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
