@@ -8,14 +8,14 @@ The linked live Supabase project is the execution source of truth for the comple
 
 Verified on 2026-08-19:
 
-- Applied live migrations: **154**
-- Latest live migration: `20260819055617_extend_admin_producer_application_location_snapshot`
+- Applied live migrations: **157**
+- Latest live migration: `20260819083519_harden_message_attachment_update_scope`
 - Current application branch: `agent/admin-supabase-retire-node`
 - Pull request: `#47`
 - Latest Security Advisor check after current DDL changes: **0 security lints**
 - Current hardening reconciliation: **all live DDL created during this active hardening continuation is recorded under `supabase/migrations/`**
 
-Do not infer from the 154 live migration count that the repository contains 154 historical SQL files. The live `supabase_migrations.schema_migrations` table is the authoritative complete applied history and stores each migration version/name plus its SQL statement array. The repository contains the current source-controlled hardening history and recovered historical migration bodies, but older live history may predate full repository reconciliation.
+Do not infer from the 157 live migration count that the repository contains 157 historical SQL files. The live `supabase_migrations.schema_migrations` table is the authoritative complete applied history and stores each migration version/name plus its SQL statement array. The repository contains the current source-controlled hardening history and recovered historical migration bodies, but older live history may predate full repository reconciliation.
 
 This distinction is intentional and truthful. A previous version of this document manually duplicated counts and claimed both 78 and 90 migrations while live history had already advanced. The documentation no longer maintains a third hand-copied full migration list.
 
@@ -66,6 +66,20 @@ Recent production-hardening migrations include:
 - `20260819000204_harden_producer_traceability_country_and_review_status`
 - `20260819055042_fix_admin_inventory_variant_filter`
 - `20260819055617_extend_admin_producer_application_location_snapshot`
+- `20260819082925_add_super_admin_message_moderation`
+- `20260819083413_harden_message_attachment_upload_scope`
+- `20260819083519_harden_message_attachment_update_scope`
+
+## Marketplace messaging hardening
+
+The current messaging migrations add one private, server-authoritative policy for marketplace conversations instead of client-side hardcoded filters:
+
+- Super Admin controls email, phone, external messaging apps, external links, social handles, bank/IBAN, external payments, QR/karekod and custom blocked phrases.
+- The default policy applies to producer/customer marketplace conversations. Support conversations remain outside the trade-circumvention filter unless Super Admin explicitly enables it.
+- Image/PDF attachment permission, maximum attachment count and maximum attachment MB are policy-controlled.
+- `message-attachments` remains private and bucket-level MIME/20 MB caps provide the absolute upper boundary.
+- Storage INSERT and unused-object UPDATE require the uploader to be a participant in the open conversation encoded in the canonical `{userId}/{conversationId}/...` path.
+- Message insertion revalidates attachment ownership/context and rejects off-platform trade content at the database boundary.
 
 ## Migration invariants
 
@@ -76,4 +90,7 @@ Recent production-hardening migrations include:
 - Client code must not depend on a schema field that is absent from the live project.
 - Admin inventory must not reference the nonexistent `product_variants.deleted_at` column.
 - Producer application admin snapshots must preserve structured country, province, district and village provenance.
+- Marketplace message moderation must remain server-authoritative and Super Admin configurable rather than duplicated as client regex policy.
+- Seller customer questions must remain on the same canonical conversation system used by the customer account.
+- Message attachment paths must remain scoped to authenticated open-conversation participation.
 - `backend/live-migrations/` must not return as a second migration source.
