@@ -98,8 +98,7 @@ async function handleRegistration(token: Token) {
       token: value,
       environment: pushEnvironment(),
     });
-    const deviceId = String(registered?.id || '').trim();
-    if (!deviceId) throw new Error('Cihaz bildirim kaydı doğrulanamadı.');
+    const deviceId = registered.id;
     window.localStorage.setItem(DEVICE_ID_KEY, deviceId);
     settleRegistration(undefined, { status: 'registered', deviceId });
   } catch (error) {
@@ -115,11 +114,9 @@ export async function initNativePushListeners() {
     const handles = await Promise.all([
       PushNotifications.addListener('registration', token => { void handleRegistration(token); }),
       PushNotifications.addListener('registrationError', event => {
-        settleRegistration(new Error(String(event?.error || 'Cihaz push kaydı başarısız oldu.')));
+        settleRegistration(new Error(String(event?.error || 'Cihaz push kaydı başarısız oldu.'));
       }),
       PushNotifications.addListener('pushNotificationReceived', () => {
-        // A foreground push updates the in-app unread badge without forcing navigation.
-        // The unread total remains server-authoritative.
         emitReceipt();
       }),
       PushNotifications.addListener('pushNotificationActionPerformed', event => {
