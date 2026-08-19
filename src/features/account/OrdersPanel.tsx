@@ -4,7 +4,7 @@ import{cancelOrder,getOrderDetail,listOrders}from'./api';
 import{EmptyState,ErrorState,LoadingState,Money,Panel}from'./ui';
 import ReturnRequestDialog from'./ReturnRequestDialog';
 import ReturnDetailDialog from'./ReturnDetailDialog';
-import{useDialogA11y}from'./useDialogA11y';
+import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 
 const PAGE_SIZE=20;
 const statusText:Record<string,string>={pending_payment:'Ödeme bekleniyor',confirmed:'Onaylandı',preparing:'Hazırlanıyor',partially_shipped:'Kısmen gönderildi',shipped:'Kargoda',delivered:'Teslim edildi',completed:'Tamamlandı',cancelled:'İptal edildi'};
@@ -17,8 +17,8 @@ function orderKey(item:any,index:number){const id=String(item?.id||'').trim();re
 export default function OrdersPanel({initialOrderId}:{initialOrderId?:string|null}){
  const[page,setPage]=useState<any>(null);const[detail,setDetail]=useState<any>(null);const[error,setError]=useState('');const[listStatus,setListStatus]=useState('');const[loading,setLoading]=useState(true);const[loadingMore,setLoadingMore]=useState(false);const[openingId,setOpeningId]=useState<string|null>(null);const[detailError,setDetailError]=useState('');const[detailStatus,setDetailStatus]=useState('');const[returnOrderId,setReturnOrderId]=useState<string|null>(null);const[returnDetailId,setReturnDetailId]=useState<string|null>(null);const[cancelCandidate,setCancelCandidate]=useState<any>(null);const[cancelBusy,setCancelBusy]=useState(false);
  const nestedOpen=Boolean(returnOrderId||returnDetailId||cancelCandidate);
- const orderDialogRef=useDialogA11y(()=>setDetail(null),Boolean(detail)&&!nestedOpen);
- const cancelDialogRef=useDialogA11y(()=>{if(!cancelBusy)setCancelCandidate(null);},Boolean(cancelCandidate));
+ const orderDialogRef=useAccessibleDialog<HTMLDivElement>(Boolean(detail)&&!nestedOpen,()=>setDetail(null));
+ const cancelDialogRef=useAccessibleDialog<HTMLDivElement>(Boolean(cancelCandidate),()=>{if(!cancelBusy)setCancelCandidate(null);});
 
  async function load(reset=true){
   const currentItems=Array.isArray(page?.items)?page.items:[];const offset=reset?0:currentItems.length;
@@ -71,7 +71,7 @@ export default function OrdersPanel({initialOrderId}:{initialOrderId?:string|nul
 
    {Array.isArray(detail?.refunds)&&detail.refunds.length?<section className="mt-5" aria-labelledby="refunds-title"><h4 id="refunds-title" className="font-bold">Geri ödemeler</h4><div className="mt-2 space-y-2">{detail.refunds.map((r:any,index:number)=><div key={String(r?.id||'').trim()||`refund-${index}`} className="rounded-xl border p-3"><div className="flex justify-between gap-3"><span className="font-semibold">{String(r?.status||'').trim()||'Durum doğrulanamadı'}</span><Money minor={r?.amountMinor} currency={r?.currency}/></div>{r?.processedAt?<div className="mt-1 text-xs text-gray-500">{formatDate(r.processedAt)}</div>:null}</div>)}</div></section>:null}
 
-   <div className="mt-5 rounded-xl bg-gray-50 p-4 dark:bg-gray-800"><div className="flex justify-between"><span>Ara toplam</span><Money minor={detail?.subtotalMinor} currency={detail?.currency}/></div><div className="mt-1 flex justify-between"><span>İndirim</span><Money minor={negativeMinor(detail?.discountMinor)} currency={detail?.currency}/></div><div className="mt-1 flex justify-between"><span>Kargo</span><Money minor={detail?.shippingMinor} currency={detail?.currency}/></div><div className="mt-2 flex justify-between border-t pt-2 font-bold"><span>Toplam</span><Money minor={detail?.totalMinor} currency={detail?.currency}/></div></div>
+   <div className="mt-5 rounded-xl bg-gray-50 p-4 dark:bg-gray-800"><div className="flex justify-between"><span>Ara toplam</span><Money minor={detail?.subtotalMinor} currency={detail?.currency}/></div><div className="mt-1 flex justify-between"><span>İndirim</span><Money minor={negativeMinor(detail?.discountMinor)} currency={detail?.currency}/></div><div className="mt-1 flex justify-between"><span>Kargo</span><Money minor={detail?.shippingMinor} currency={detail?.currency}/></div><div className="mt-1 flex justify-between"><span>Vergi</span><Money minor={detail?.taxMinor} currency={detail?.currency}/></div><div className="mt-2 flex justify-between border-t pt-2 font-bold"><span>Toplam</span><Money minor={detail?.totalMinor} currency={detail?.currency}/></div></div>
 
    {detail?.status==='pending_payment'?<button type="button" disabled={!String(detail?.id||'').trim()} onClick={()=>{setDetailError('');setDetailStatus('');setCancelCandidate({id:detail.id,orderNumber:detail.orderNumber});}} className="mt-5 min-h-11 w-full rounded-xl border border-red-300 font-bold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Siparişi iptal et</button>:null}
    {['delivered','completed'].includes(detail?.status)?<div className="mt-4">{activeReturn?<div role="status" className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/20 dark:text-amber-100">Açık iade talebi: <button type="button" disabled={!String(activeReturn?.id||'').trim()} onClick={()=>setReturnDetailId(String(activeReturn.id))} className="min-h-11 font-bold underline">{String(activeReturn?.returnNumber||'').trim()||'İade'} - {returnStatusText[String(activeReturn?.status||'')]||String(activeReturn?.status||'').trim()||'Durum doğrulanamadı'}</button></div>:<button type="button" disabled={!String(detail?.id||'').trim()} onClick={()=>setReturnOrderId(String(detail.id))} className="min-h-12 w-full rounded-xl border border-brand-green font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><RotateCcw aria-hidden="true" className="mr-2 inline h-4 w-4"/>İade / sorun bildir</button>}</div>:null}
@@ -83,5 +83,6 @@ export default function OrdersPanel({initialOrderId}:{initialOrderId?:string|nul
   {returnDetailId?<ReturnDetailDialog returnId={returnDetailId} onClose={()=>setReturnDetailId(null)}/>:null}
  </Panel>;
 }
-function safeUrl(value?:string|null){if(!value)return'';try{const url=new URL(value);return url.protocol==='https:'?url.toString():'';}catch{return'';}}
-function formatDate(value?:string|null){const raw=String(value||'').trim();if(!raw)return'Tarih doğrulanamadı';const date=new Date(raw);if(Number.isNaN(date.getTime()))return'Tarih doğrulanamadı';try{return new Intl.DateTimeFormat('tr-TR',{dateStyle:'medium',timeStyle:'short'}).format(date);}catch{return'Tarih doğrulanamadı';}}
+
+function safeUrl(value:unknown){const raw=String(value||'').trim();if(!raw)return'';try{const url=new URL(raw);return url.protocol==='https:'?url.toString():'';}catch{return'';}}
+function formatDate(value:unknown){const raw=String(value||'').trim();const date=raw?new Date(raw):null;return date&&!Number.isNaN(date.getTime())?date.toLocaleString('tr-TR'):'Tarih doğrulanamadı';}
