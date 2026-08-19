@@ -4,8 +4,8 @@
   "branch": "agent/admin-supabase-retire-node",
   "pullRequest": 47,
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "latestFunctionalHead": "a5750854a6f85ff1ebdd8e12ddde85aac917f67f",
-  "stateRecordedAt": "2026-08-19T10:37:13+02:00",
+  "latestFunctionalHead": "c11c44dede1775266c944ddc07d3e012c976c3f3",
+  "stateRecordedAt": "2026-08-19T11:26:07+02:00",
   "applicationShell": {
     "desktopTopMenu": false,
     "hamburgerMenu": false,
@@ -25,10 +25,11 @@
     }
   },
   "backend": {
-    "liveMigrationCount": 157,
-    "latestMigration": "20260819083519_harden_message_attachment_update_scope",
+    "liveMigrationCount": 161,
+    "latestMigration": "20260819092107_add_super_admin_home_interface_management",
     "migrationReconciliation": "LIVE_HISTORY_AND_FEATURE_BRANCH_FILES_ALIGNED_FOR_CURRENT_HARDENING_SERIES",
     "securityAdvisorLints": 0,
+    "performanceAdvisor": "INFO_ONLY_EXISTING_UNUSED_INDEX_NOTICES_NO_INDEXES_REMOVED_WITHOUT_USAGE_EVIDENCE",
     "checkout": {
       "currentAuthenticatedEntrypoint": "create_customer_order_v5",
       "retiredAuthenticatedEntrypoints": [
@@ -52,16 +53,49 @@
       "producerGalleryReturnsOnlyExistingObjects": true,
       "producerStorageInsertRequiresVerifiedActiveProducer": true,
       "producerStorageDeleteRequiresUnusedOwnObject": true,
-      "producerStorageOverwriteUpdateDisabled": true
+      "producerStorageOverwriteUpdateDisabled": true,
+      "legacyUnbackedHomeHeroAssetsCleaned": true,
+      "heroCategoryAssetPathDatabaseGuard": true,
+      "homeCollectionFallsBackToLiveCatalogAsset": true
     },
     "adminContractHardening": {
       "category": "strict-no-invented-name-sort-or-count",
-      "event": "strict-event-and-reservation-contracts",
+      "event": "strict-event-and-reservation-contracts-with-full-lifecycle-v2",
       "return": "strict-money-status-item-and-refund-contracts",
       "inventory": "strict-stock-currency-producer-lifecycle-contracts",
       "producer": "full-pending-active-suspended-rejected-closed-lifecycle",
       "producerApplication": "strict-kyc-document-organic-commitment-and-structured-location-contracts",
       "privateDocumentPreview": "validated-private-storage-path-and-https-signed-url"
+    },
+    "eventExperience": {
+      "canonicalAdminMutation": "management_upsert_event_v2",
+      "fullLifecycleAdminV2": true,
+      "explicitFields": ["startsAt", "endsAt", "capacity", "reservationDeadline", "status"],
+      "newEventDefault": "draft-unless-explicitly-selected",
+      "homeSpotlightSuperAdminManaged": true,
+      "homeSpotlightMutation": "admin_update_event_spotlight_v1",
+      "placements": ["after_hero", "after_categories", "before_products"],
+      "featuredEventFailClosedNoSilentSubstitution": true,
+      "shareDeepLinkCountdownWaitlistCapacity": true
+    },
+    "homeExperience": {
+      "heroCopySuperAdminManaged": true,
+      "heroCopyMutation": "admin_update_home_interface_v1",
+      "collectionOrderAdminManaged": true,
+      "productSectionOrderAdminManaged": true,
+      "eventPlacementAdminManaged": true,
+      "premiumNonDiscountLanguage": true,
+      "duplicateStandaloneFeaturedBlockRemoved": true,
+      "legacyUnbackedHeroAssetsCleaned": true,
+      "heroAssetDatabaseGuard": true,
+      "collectionAssetFallback": "verified-live-catalog-product-image",
+      "managedCopy": {
+        "heroTitle": "Doğallığın seçkin hali.",
+        "heroButtonText": "Seçkiyi Keşfet",
+        "categoriesTitle": "Koleksiyonlar",
+        "offersTitle": "Golden Oremar Ayrıcalıkları",
+        "eventsTitle": "Golden Oremar Davetleri"
+      }
     },
     "marketplaceMessaging": {
       "canonicalConversationBackend": true,
@@ -127,6 +161,18 @@
     "release-audit-guards-retired-order-rpc-and-transitional-artifact-regressions",
     "home-storefront-strict-dynamic-server-copy-and-asset-state",
     "home-storefront-no-arbitrary-featured-product-fallback",
+    "home-legacy-unbacked-hero-asset-cleanup-and-guard",
+    "home-hero-super-admin-copy-management",
+    "home-collection-order-super-admin-management",
+    "home-product-section-order-super-admin-management",
+    "home-premium-collection-language",
+    "home-duplicate-featured-block-removed",
+    "home-product-card-premium-non-discount-framing",
+    "home-experience-contract-audit-wired-into-release-audit",
+    "admin-event-full-lifecycle-v2",
+    "super-admin-home-event-spotlight-management",
+    "home-event-share-countdown-capacity-deep-link",
+    "security-advisor-zero-after-home-event-ddl",
     "theme-accent-contrast-semantic-foreground-tokens",
     "theme-legacy-accent-pair-compatibility-bridge",
     "seller-panel-canonical-accessible-dialog-hook",
@@ -178,12 +224,15 @@
     "admin": "App server-verified admin gate -> AdminPage -> AdminLayout/admin modules",
     "dialog": "src/features/accessibility/useAccessibleDialog.ts",
     "voiceSearch": "App header SpeechRecognition UX -> src/native.ts adapter on Android/iOS",
-    "storefront": "Supabase public storefront config + live catalog -> HomeSection",
+    "storefront": "Supabase get_public_storefront_config_v1 + live catalog -> HomeSection",
+    "homeManagement": "Super Admin/AdminSettings/Ana Sayfa Vitrini -> admin_update_home_interface_v1 + admin_update_event_spotlight_v1 + brand public_config heroCategories/homeSections",
+    "eventManagement": "AdminEvents -> management_upsert_event_v2",
+    "eventSpotlight": "get_public_storefront_config_v1 -> HomeSection configured placement -> HomeEventsSpotlight -> list_public_events_v1",
     "checkout": "src/features/cart/api.ts -> create_customer_order_v5",
     "customerMessaging": "product/order Soru sor -> start_producer_conversation_v1 -> AccountCenter/MessagesPanel",
     "sellerMessaging": "SellerPanel/Müşteri Soruları -> same MessagesPanel scope=producer -> list_my_producer_conversations_v1",
     "messageModeration": "Super Admin/AdminSettings -> admin_update_message_moderation_v1 -> private.message_moderation_settings -> server message insert validation",
-    "adminReleaseAudit": "npm run audit:release -> release-audit.mjs -> admin-data-contract-audit.mjs -> customer-return-contract-audit.mjs -> message-commerce-contract-audit.mjs"
+    "adminReleaseAudit": "npm run audit:release -> release-audit.mjs -> admin-data-contract-audit.mjs -> customer-return-contract-audit.mjs -> message-commerce-contract-audit.mjs -> customer-review-contract-audit.mjs -> customer-event-contract-audit.mjs -> home-experience-contract-audit.mjs"
   },
   "truthfulnessInvariants": [
     "no-fake-price-stock-rating-location-currency-payment-provider-legal-copy-support-identity-or-credentials",
@@ -203,6 +252,11 @@
     "removed-account-dialog-wrapper-must-not-return",
     "admin-must-not-contain-a-second-producer-runtime-path",
     "home-storefront-must-not-hide-server-failure-with-hardcoded-merchandising-copy",
+    "home-managed-collection-and-section-array-order-is-the-public-display-order",
+    "home-must-not-reintroduce-duplicate-standalone-featured-product-block",
+    "home-product-cards-must-not-reintroduce-struck-through-discount-framing-or-aggressive-last-units-copy",
+    "configured-featured-event-must-not-silently-substitute-another-event-when-unavailable",
+    "event-home-spotlight-and-home-hero-critical-writes-remain-super-admin-authorized-server-side",
     "theme-accent-backgrounds-must-use-theme-aware-foreground-contrast",
     "admin-category-event-return-inventory-producer-and-producer-application-data-must-fail-closed",
     "producer-pending-rejected-or-closed-status-must-never-be-presented-as-active-or-suspended",
@@ -242,8 +296,8 @@
   ],
   "historicalStatePreservation": {
     "gitHistoryPreservesPriorVersions": true,
-    "previousProjectStateBlob": "82028d42490bab773ba953fc22d7c4558b69c3a6",
+    "previousProjectStateBlob": "c6ff84fe32b9ecf6261b08eeb6f39b81a1fa1481",
     "note": "Applied Supabase migration history is retained for reproducibility. Obsolete active runtime, wrappers and one-time integration duplicates are removed instead of preserved in the working tree."
   },
-  "nextBlock": "continue-current-branch-remaining-account-seller-admin-runtime-contract-and-mobile-ui-quality-scan-without-repeating-completed-return-or-marketplace-messaging-work"
+  "nextBlock": "continue-current-branch-remaining-account-seller-admin-runtime-contract-and-mobile-ui-quality-scan-without-repeating-completed-return-marketplace-messaging-event-home-or-premium-storefront-work"
 }
