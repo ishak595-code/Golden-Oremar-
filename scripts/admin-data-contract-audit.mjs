@@ -40,6 +40,9 @@ if (accountApi) {
   requirePattern(accountApi, /customer['"],\s*['"]producer['"],\s*['"]support['"],\s*['"]content_editor['"],\s*['"]operations['"],\s*['"]admin['"],\s*['"]super_admin/, 'Customer account role contract must preserve the full live role lifecycle.');
   forbid(accountApi, /ACCOUNT_ROLES[^\n]*(?:['"]user['"]|['"]vendor['"])/, 'Customer account API must not reintroduce retired user/vendor role aliases.');
   requirePattern(accountApi, /return normalizeAccountOverview\(unwrap<unknown>\(data,error\)\)/, 'Account overview must pass through the canonical strict normalizer.');
+  requirePattern(accountApi, /return normalizeProfileUpdate\(unwrap<unknown>\(data,error\),expected\)/, 'Profile mutations must verify the server result against the requested change.');
+  requirePattern(accountApi, /const normalized=normalizeAddressInput\(address\)/, 'Address mutations must validate request data at the account API boundary.');
+  requirePattern(accountApi, /const result=normalizeAddress\(unwrap<unknown>\(data,error\),0\)/, 'Address mutations must validate the returned canonical address record.');
   requirePattern(accountApi, /return normalizeOrdersPage\(unwrap<unknown>\(data,error\)\)/, 'Customer order list must remain strictly normalized.');
   requirePattern(accountApi, /return normalizeOrderDetail\(unwrap<unknown>\(data,error\)\)/, 'Customer order detail must remain strictly normalized.');
   requirePattern(accountApi, /return normalizeFavorites\(unwrap<unknown>\(data,error\)\)/, 'Favorites must remain strictly normalized.');
@@ -53,6 +56,14 @@ if (accountApi) {
   requirePattern(accountApi, /return normalizePaymentActivity\(unwrap<unknown>\(data,error\)\)/, 'Customer payment activity must remain strictly normalized.');
   requirePattern(accountApi, /return normalizeNotifications\(unwrap<unknown>\(data,error\)\)/, 'Customer notification list must remain strictly normalized.');
   requirePattern(accountApi, /return dateTime\(unwrap<unknown>\(data,error\),['"]Bildirim okunma tarihi['"]\)/, 'Notification read mutation must keep the server timestamp authoritative.');
+  requirePattern(accountApi, /return normalizeClosureRequest\(unwrap<unknown>\(data,error\)\)/, 'Account closure requests must validate the server lifecycle result.');
+  requirePattern(accountApi, /return normalizeClosureCancel\(unwrap<unknown>\(data,error\)\)/, 'Account closure cancellation must validate the server result.');
+  requirePattern(accountApi, /return normalizeNewsletterSummary\(unwrap<unknown>\(data,error\)\)/, 'Newsletter status must use the canonical strict normalizer.');
+  requirePattern(accountApi, /bounced['"],\s*['"]complained/, 'Newsletter contract must preserve bounced and complained lifecycle states.');
+  requirePattern(accountApi, /return normalizePushRegistration\(unwrap<unknown>\(data,error\),input\)/, 'Native push registration must verify the exact server result.');
+  requirePattern(accountApi, /return normalizeHelpContent\(unwrap<unknown>\(data,error\)\)/, 'Account help content must use the strict published-content normalizer.');
+  forbid(accountApi, /getAccountHelpContent[^\n]*unwrap<any>/, 'Account help content must not return raw any payloads.');
+  forbid(accountApi, /getMyNewsletterStatus[^\n]*unwrap<any>|registerNativePushToken[^\n]*unwrap<any>/, 'Newsletter and native push account APIs must not return raw any payloads.');
 }
 
 const accountCenter = requireFile('src/features/account/AccountCenter.tsx');
@@ -116,6 +127,47 @@ if (giftUi) {
   requirePattern(giftUi, /useState<GiftOrder\[\]\|null>/, 'Gift UI must consume the strict GiftOrder contract.');
   requirePattern(giftUi, /key=\{g\.orderId\}/, 'Gift cards must use the validated order id directly.');
   requirePattern(giftUi, /<Money minor=\{g\.totalMinor\} currency=\{g\.currency\}\/>/, 'Gift money display must use validated server amount and currency directly.');
+}
+
+const settingsUi = requireFile('src/features/account/SettingsPanel.tsx');
+if (settingsUi) {
+  forbid(settingsUi, /function normalizeNewsletter\(/, 'Settings UI must not create a second newsletter data normalizer.');
+  forbid(settingsUi, /under_review|approved|scheduled/, 'Account closure UI must not reintroduce statuses that do not exist in the live closure lifecycle.');
+  requirePattern(settingsUi, /requested['"],\s*['"]processing['"],\s*['"]ready_for_auth_deletion/, 'Settings must preserve the live active account-closure lifecycle.');
+  requirePattern(settingsUi, /bounced/, 'Settings must expose bounced newsletter status truthfully.');
+  requirePattern(settingsUi, /complained/, 'Settings must expose complained newsletter status truthfully.');
+  requirePattern(settingsUi, /setNewsletter\(await getMyNewsletterStatus\(\)\)/, 'Settings must consume the canonical strict newsletter status directly.');
+  requirePattern(settingsUi, /setPrefs\(await getNotificationPreferences\(\)\)/, 'Settings must consume strict notification preferences directly.');
+}
+
+const profileUi = requireFile('src/features/account/ProfilePanel.tsx');
+if (profileUi) {
+  requirePattern(profileUi, /phoneDigits\.length < 10 \|\| phoneDigits\.length > 15/, 'Profile phone validation must match the live 10-15 digit backend constraint.');
+  forbid(profileUi, /5-20 rakam|5 ile 20 rakam/, 'Profile UI must not reintroduce the retired 5-20 digit phone rule.');
+  requirePattern(profileUi, /setLocale\(p\.locale\)/, 'Profile locale must come from the validated account profile without silent locale fallback.');
+}
+
+const addressUi = requireFile('src/features/account/AddressesPanel.tsx');
+if (addressUi) {
+  forbid(addressUi, /Alıcı doğrulanamadı|Ülke doğrulanamadı|address-\$\{index\}|label:\s*String\([^\n]*\)\s*\|\|\s*['"]Teslimat['"]/, 'Address UI must not invent server data, synthetic identities, or labels.');
+  requirePattern(addressUi, /phoneDigits\.length < 10 \|\| phoneDigits\.length > 15/, 'Address phone validation must match the live 10-15 digit backend constraint.');
+  requirePattern(addressUi, /line\.length < 10 \|\| line\.length > 1000/, 'Address line validation must match the live 10-1000 character backend constraint.');
+  requirePattern(addressUi, /postal\.length > 20/, 'Address postal-code validation must match the live 20-character backend limit.');
+  requirePattern(addressUi, /key=\{a\.id\}/, 'Saved address rows must use validated server ids directly.');
+}
+
+const supportUi = requireFile('src/features/account/SupportPanel.tsx');
+if (supportUi) {
+  forbid(supportUi, /function publishedItem\(|useState<any>/, 'Support UI must not create a second raw help-content normalizer.');
+  requirePattern(supportUi, /AccountHelpContent/, 'Support UI must consume the strict AccountHelpContent contract.');
+  requirePattern(supportUi, /setDocs\(await getAccountHelpContent\(locale\)\)/, 'Support UI must consume canonical published help content directly.');
+  requirePattern(supportUi, /Geçici veya uydurma hukuki metin gösterilmiyor/, 'Support UI must keep the fail-closed no-invented-legal-copy state.');
+}
+
+const nativePush = requireFile('src/features/notifications/nativePush.ts');
+if (nativePush) {
+  forbid(nativePush, /String\(registered\?\.id\s*\|\|\s*['"]['"]\)/, 'Native push adapter must not re-normalize a strict registration id.');
+  requirePattern(nativePush, /const deviceId = registered\.id;/, 'Native push adapter must consume the validated registration id directly.');
 }
 
 const categoryApi = requireFile('src/admin/categoryAdminApi.ts');
@@ -214,4 +266,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Golden Oremar data contract audit passed: canonical customer account, notification, payment, order, favorite, followed-producer, gift, migration, category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
+console.log('Golden Oremar data contract audit passed: canonical customer account, profile, address, support, notification, payment, order, favorite, followed-producer, gift, newsletter, closure, native-push, migration, category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
