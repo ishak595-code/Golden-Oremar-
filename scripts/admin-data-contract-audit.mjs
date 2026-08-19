@@ -35,6 +35,34 @@ const consolidatedMigrationFiles = [
 ];
 for (const relative of consolidatedMigrationFiles) requireFile(relative);
 
+const accountApi = requireFile('src/features/account/api.ts');
+if (accountApi) {
+  requirePattern(accountApi, /customer['"],\s*['"]producer['"],\s*['"]support['"],\s*['"]content_editor['"],\s*['"]operations['"],\s*['"]admin['"],\s*['"]super_admin/, 'Customer account role contract must preserve the full live role lifecycle.');
+  forbid(accountApi, /ACCOUNT_ROLES[^\n]*(?:['"]user['"]|['"]vendor['"])/, 'Customer account API must not reintroduce retired user/vendor role aliases.');
+  requirePattern(accountApi, /return normalizeAccountOverview\(unwrap<unknown>\(data,error\)\)/, 'Account overview must pass through the canonical strict normalizer.');
+  requirePattern(accountApi, /return normalizeOrdersPage\(unwrap<unknown>\(data,error\)\)/, 'Customer order list must remain strictly normalized.');
+  requirePattern(accountApi, /return normalizeOrderDetail\(unwrap<unknown>\(data,error\)\)/, 'Customer order detail must remain strictly normalized.');
+  requirePattern(accountApi, /return normalizePaymentActivity\(unwrap<unknown>\(data,error\)\)/, 'Customer payment activity must remain strictly normalized.');
+  requirePattern(accountApi, /return normalizeNotifications\(unwrap<unknown>\(data,error\)\)/, 'Customer notification list must remain strictly normalized.');
+  requirePattern(accountApi, /return dateTime\(unwrap<unknown>\(data,error\),['"]Bildirim okunma tarihi['"]\)/, 'Notification read mutation must keep the server timestamp authoritative.');
+}
+
+const accountCenter = requireFile('src/features/account/AccountCenter.tsx');
+if (accountCenter) {
+  forbid(accountCenter, /function normalizeOverview\(/, 'AccountCenter must not create a second account overview normalizer.');
+  forbid(accountCenter, /const accountRoles=new Set\(\[['"]user['"],['"]vendor['"]/, 'AccountCenter must not filter live roles through retired user/vendor aliases.');
+  requirePattern(accountCenter, /const next=await getAccountOverview\(\);setOverview\(next\)/, 'AccountCenter must consume the canonical account API result directly.');
+  requirePattern(accountCenter, /const roles=overview\.roles/, 'AccountCenter authorization UI must use the validated server role set directly.');
+}
+
+const notificationUi = requireFile('src/features/account/NotificationsPanel.tsx');
+if (notificationUi) {
+  forbid(notificationUi, /Başlıksız bildirim|Bildirim içeriği doğrulanamadı/, 'Notification UI must not invent missing title or message content.');
+  forbid(notificationUi, /fallback:\$\{/, 'Notification UI keys must not fall back to synthetic record identities.');
+  requirePattern(notificationUi, /AccountNotification,NotificationsPage/, 'Notification UI must consume strict account notification types.');
+  requirePattern(notificationUi, /const readAt=await markNotificationRead\(item\.id\)/, 'Notification UI must use the server-returned read timestamp.');
+}
+
 const categoryApi = requireFile('src/admin/categoryAdminApi.ts');
 if (categoryApi) {
   forbid(categoryApi, /İsimsiz kategori/, 'Category admin API must not invent missing category names.');
@@ -131,4 +159,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Golden Oremar admin data contract audit passed: canonical migration storage and category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
+console.log('Golden Oremar data contract audit passed: canonical customer account, notification, migration, category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
