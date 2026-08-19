@@ -6,13 +6,14 @@ import './index.css';
 import { initNativeFeatures } from './native';
 import { initNativePushListeners } from './features/notifications/nativePush';
 import { applyThemeToDocument, resolveInitialTheme } from './features/appearance/theme';
+import { installGlobalErrorTelemetry, sendClientError } from './lib/errorTelemetry';
 
 const initialTheme = resolveInitialTheme();
 applyThemeToDocument(initialTheme);
+installGlobalErrorTelemetry();
 
-// Initialize native specific behavior (StatusBar, Splash, etc.) with the same first-paint theme.
-void initNativeFeatures(initialTheme);
-void initNativePushListeners().catch(error => console.warn('Native push listener init failed:', error));
+void initNativeFeatures(initialTheme).catch(error=>sendClientError('native.init',error,'warning'));
+void initNativePushListeners().catch(error=>sendClientError('native.push.init',error,'warning'));
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
