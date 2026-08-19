@@ -1,19 +1,8 @@
-import React,{useMemo,useState}from'react';
+import React,{useEffect,useMemo,useState}from'react';
 import{Calendar,CheckCircle2,Gift,Heart,Minus,Plus,Share2,ShoppingCart,Star,ThumbsUp,Users}from'lucide-react';
 import{buildProductUrl,shareOrCopy}from'../navigation/appUrl';
 
-type Props={
- product:any;
- onClick:()=>void;
- onAddToCart:(product:any,quantity:number)=>Promise<void>|void;
- onToggleFavorite?:(product:any)=>Promise<void>|void;
- isFavorite?:boolean;
- onShare?:(product:any)=>Promise<void>|void;
- onGift?:(product:any)=>Promise<void>|void;
- onLike?:(product:any)=>Promise<void>|void;
- isLiked?:boolean;
-};
-
+type Props={product:any;onClick:()=>void;onAddToCart:(product:any,quantity:number)=>Promise<void>|void;onToggleFavorite?:(product:any)=>Promise<void>|void;isFavorite?:boolean;onShare?:(product:any)=>Promise<void>|void;onGift?:(product:any)=>Promise<void>|void;onLike?:(product:any)=>Promise<void>|void;isLiked?:boolean;};
 type SecondaryAction='favorite'|'share'|'gift'|'like'|null;
 
 function safeNonNegativeNumber(value:unknown){return typeof value==='number'&&Number.isFinite(value)&&value>=0?value:null;}
@@ -21,96 +10,29 @@ function safeNonNegativeInteger(value:unknown){return typeof value==='number'&&N
 function safeRating(value:unknown){return typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=5?value:null;}
 function safeCurrency(value:unknown){const currency=typeof value==='string'?value.trim().toUpperCase():'';return/^[A-Z]{3}$/.test(currency)?currency:null;}
 function safeReference(value:unknown){const reference=typeof value==='string'?value.trim():'';return reference&&reference.length<=220?reference:null;}
+function messageOf(error:unknown,fallback:string){return error instanceof Error&&error.message.trim()?error.message:fallback;}
 
 export default function CatalogProductCard({product,onClick,onAddToCart,onToggleFavorite,isFavorite=false,onShare,onGift,onLike,isLiked=false}:Props){
  const[quantity,setQuantity]=useState(1);const[busy,setBusy]=useState(false);const[actionBusy,setActionBusy]=useState<SecondaryAction>(null);const[actionFeedback,setActionFeedback]=useState('');
- const tracked=product?.stockMode==='tracked'||product?.stockMode==='seasonal';
- const numericStock=safeNonNegativeInteger(product?.stock);
- const stockReady=!tracked||numericStock!==null;
- const soldOut=tracked&&numericStock!==null&&numericStock<=0;
- const maxQuantity=tracked&&numericStock!==null?Math.max(1,Math.min(99,numericStock)):99;
- const preorder=product?.preOrder===true||product?.stockMode==='preorder';
- const price=safeNonNegativeNumber(product?.price);const compare=safeNonNegativeNumber(product?.originalPrice);
- const currency=safeCurrency(product?.currency);
- const description=typeof product?.shortDescription==='string'?product.shortDescription.trim():typeof product?.description==='string'?product.description.trim():'';
- const productName=typeof product?.name==='string'&&product.name.trim()?product.name.trim():'Ürün';
- const followerCount=safeNonNegativeInteger(product?.producerFollowerCount);
- const reviewCount=safeNonNegativeInteger(product?.reviewCount);
- const rating=safeRating(product?.rating);
- const producerVerified=product?.producerVerified===true;
- const producerOriginVerified=product?.producerOriginVerified===true;
- const variantReference=safeReference(product?.variantId);
- const priceReady=price!==null&&currency!==null;
- const purchaseReady=priceReady&&stockReady&&variantReference!==null&&!soldOut;
- const cardBusy=busy||actionBusy!==null;
- const focusClass='focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900';
- const badges=useMemo(()=>{
-  const list:Array<{key:string;label:string;className:string}>=[];
-  if(preorder)list.push({key:'preorder',label:'Ön Sipariş',className:'bg-brand-green text-white'});
-  if(product?.is_featured===true||product?.featured===true)list.push({key:'featured',label:'Öne Çıkan',className:'bg-brand-gold text-brand-main'});
-  if(tracked&&numericStock!==null&&numericStock>0&&numericStock<=5)list.push({key:'low-stock',label:`Son ${numericStock} adet`,className:'bg-red-600 text-white'});
-  if(soldOut)list.push({key:'sold-out',label:'Tükendi',className:'bg-gray-800 text-white'});
-  return list;
- },[numericStock,preorder,product?.is_featured,product?.featured,soldOut,tracked]);
- async function add(){if(cardBusy||!purchaseReady)return;try{setBusy(true);await onAddToCart(product,quantity);}finally{setBusy(false);}}
- async function runAction(kind:Exclude<SecondaryAction,null>,action:(product:any)=>Promise<void>|void){if(cardBusy)return;try{setActionBusy(kind);setActionFeedback('');await action(product);}finally{setActionBusy(null);}}
- async function shareProduct(){
-  if(cardBusy)return;
-  try{
-   setActionBusy('share');setActionFeedback('');
-   if(onShare){await onShare(product);return;}
-   const reference=safeReference(product?.slug)||safeReference(product?.legacyId)||safeReference(product?.id);
-   if(!reference)throw new Error('invalid_product_reference');
-   const result=await shareOrCopy({title:productName,text:description,url:buildProductUrl(reference)});
-   setActionFeedback(result==='copied'?'Ürün bağlantısı panoya kopyalandı.':result==='shared'?'Paylaşım işlemi tamamlandı.':'Paylaşım iptal edildi.');
-  }catch{
-   setActionFeedback('Ürün bağlantısı paylaşılamadı. Ürün detayını açıp tekrar deneyebilirsiniz.');
-  }finally{setActionBusy(null);}
- }
- function decrease(){setQuantity(current=>Math.max(1,current-1));}
- function increase(){setQuantity(current=>Math.min(maxQuantity,current+1));}
+ const tracked=product?.stockMode==='tracked'||product?.stockMode==='seasonal';const numericStock=safeNonNegativeInteger(product?.stock);const stockReady=!tracked||numericStock!==null;const soldOut=tracked&&numericStock!==null&&numericStock<=0;const maxQuantity=tracked&&numericStock!==null?Math.max(1,Math.min(99,numericStock)):99;const preorder=product?.preOrder===true||product?.stockMode==='preorder';const price=safeNonNegativeNumber(product?.price);const compare=safeNonNegativeNumber(product?.originalPrice);const currency=safeCurrency(product?.currency);const description=typeof product?.shortDescription==='string'?product.shortDescription.trim():typeof product?.description==='string'?product.description.trim():'';const productName=typeof product?.name==='string'&&product.name.trim()?product.name.trim():'Ürün';const followerCount=safeNonNegativeInteger(product?.producerFollowerCount);const reviewCount=safeNonNegativeInteger(product?.reviewCount);const rating=safeRating(product?.rating);const producerVerified=product?.producerVerified===true;const producerOriginVerified=product?.producerOriginVerified===true;const variantReference=safeReference(product?.variantId);const priceReady=price!==null&&currency!==null;const purchaseReady=priceReady&&stockReady&&variantReference!==null&&!soldOut;const cardBusy=busy||actionBusy!==null;const focusClass='focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900';
+ useEffect(()=>{setQuantity(current=>Math.min(Math.max(1,current),maxQuantity));},[maxQuantity]);
+ const badges=useMemo(()=>{const list:Array<{key:string;label:string;className:string}>=[];if(preorder)list.push({key:'preorder',label:'Ön Sipariş',className:'bg-brand-green text-brand-on-green'});if(product?.is_featured===true||product?.featured===true)list.push({key:'featured',label:'Öne Çıkan',className:'bg-brand-gold text-brand-on-gold'});if(tracked&&numericStock!==null&&numericStock>0&&numericStock<=5)list.push({key:'low-stock',label:`Son ${numericStock} adet`,className:'bg-red-600 text-white'});if(soldOut)list.push({key:'sold-out',label:'Tükendi',className:'bg-gray-800 text-white'});return list;},[numericStock,preorder,product?.is_featured,product?.featured,soldOut,tracked]);
+ async function add(){if(cardBusy||!purchaseReady)return;try{setBusy(true);setActionFeedback('');await onAddToCart(product,quantity);}catch(error:unknown){setActionFeedback(messageOf(error,'Ürün sepete eklenemedi.'));}finally{setBusy(false);}}
+ async function runAction(kind:Exclude<SecondaryAction,null>,action:(product:any)=>Promise<void>|void){if(cardBusy)return;try{setActionBusy(kind);setActionFeedback('');await action(product);}catch(error:unknown){setActionFeedback(messageOf(error,kind==='favorite'?'Favori işlemi tamamlanamadı.':kind==='gift'?'Hediye işlemi başlatılamadı.':kind==='like'?'Beğeni işlemi tamamlanamadı.':'İşlem tamamlanamadı.'));}finally{setActionBusy(null);}}
+ async function shareProduct(){if(cardBusy)return;try{setActionBusy('share');setActionFeedback('');if(onShare){await onShare(product);return;}const reference=safeReference(product?.slug)||safeReference(product?.legacyId)||safeReference(product?.id);if(!reference)throw new Error('invalid_product_reference');const result=await shareOrCopy({title:productName,text:description,url:buildProductUrl(reference)});setActionFeedback(result==='copied'?'Ürün bağlantısı panoya kopyalandı.':result==='shared'?'Paylaşım işlemi tamamlandı.':'Paylaşım iptal edildi.');}catch{setActionFeedback('Ürün bağlantısı paylaşılamadı. Ürün detayını açıp tekrar deneyebilirsiniz.');}finally{setActionBusy(null);}}
+ function decrease(){setQuantity(current=>Math.max(1,current-1));}function increase(){setQuantity(current=>Math.min(maxQuantity,current+1));}
  const purchaseIssue=!priceReady?'Fiyat doğrulanamadı':!stockReady?'Stok doğrulanamadı':!variantReference?'Ürün seçeneği doğrulanamadı':soldOut?'Stokta yok':'';
  return <article aria-busy={cardBusy} className="flex h-full flex-col overflow-hidden rounded-3xl border border-brand-gold/10 bg-brand-card shadow-sm transition-shadow hover:shadow-lg">
-  <div className="relative aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-800">
-   <button type="button" onClick={onClick} className={`block h-full w-full ${focusClass} focus-visible:ring-inset focus-visible:ring-offset-0`} aria-label={`${productName} detayını aç`}>
-    {product?.image?<img src={product.image} alt={`${productName} ürün görseli`} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 motion-safe:hover:scale-[1.03]"/>:<div role="img" aria-label={`${productName} için görsel henüz eklenmedi`} className="grid h-full place-items-center text-sm text-gray-500">Görsel henüz eklenmedi</div>}
-   </button>
-   {badges.length?<div className="pointer-events-none absolute left-3 top-3 flex max-w-[75%] flex-wrap gap-2">{badges.map(badge=><span key={badge.key} className={`rounded-full px-3 py-1 text-xs font-bold ${badge.className}`}>{badge.label}</span>)}</div>:null}
-   <div className="absolute right-3 top-3 flex gap-2">
-    {onToggleFavorite?<button type="button" disabled={cardBusy} onClick={event=>{event.stopPropagation();void runAction('favorite',onToggleFavorite);}} aria-label={isFavorite?`${productName} ürününü favorilerden çıkar`:`${productName} ürününü favorilere ekle`} aria-pressed={isFavorite} className={`grid min-h-11 min-w-11 place-items-center rounded-full bg-white/95 shadow-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-900/95 ${focusClass}`}><Heart aria-hidden="true" className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-gray-700 dark:text-gray-200'}`}/></button>:null}
-    <button type="button" disabled={cardBusy} onClick={event=>{event.stopPropagation();void shareProduct();}} aria-label={`${productName} ürününü paylaş`} className={`grid min-h-11 min-w-11 place-items-center rounded-full bg-white/95 shadow-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-900/95 ${focusClass}`}><Share2 aria-hidden="true" className="h-5 w-5"/></button>
-   </div>
-  </div>
-
-  <div className="flex flex-1 flex-col p-4">
-   <div className="text-xs font-bold uppercase tracking-wide text-brand-gold">{typeof product?.category==='string'&&product.category.trim()?product.category:'Ürün'}</div>
-   <button type="button" onClick={onClick} className={`mt-1 min-h-11 text-left focus-visible:rounded-lg ${focusClass}`}><h3 className="line-clamp-2 text-lg font-bold text-brand-text">{productName}</h3></button>
-   {description?<p className="mt-1 line-clamp-2 text-sm leading-5 text-gray-600 dark:text-gray-300">{description}</p>:null}
-
-   {product?.producerName?<div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
-    <span className="inline-flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-200">{product.producerName}{producerVerified?<><CheckCircle2 aria-hidden="true" className="h-4 w-4 text-brand-green"/><span className="sr-only">Üretici doğrulandı</span></>:null}</span>
-    {followerCount!==null?<span className="inline-flex items-center gap-1" aria-label={`${formatNumber(followerCount)} takipçi`}><Users aria-hidden="true" className="h-4 w-4"/>{formatNumber(followerCount)} takipçi</span>:null}
-   </div>:null}
+  <div className="relative aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-800"><button type="button" onClick={onClick} className={`block h-full w-full ${focusClass} focus-visible:ring-inset focus-visible:ring-offset-0`} aria-label={`${productName} detayını aç`}>{product?.image?<img src={product.image} alt={`${productName} ürün görseli`} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 motion-safe:hover:scale-[1.03]"/>:<div role="img" aria-label={`${productName} için doğrulanmış görsel henüz yayınlanmadı`} className="grid h-full place-items-center px-4 text-center text-sm text-gray-500">Doğrulanmış görsel henüz yayınlanmadı</div>}</button>{badges.length?<div className="pointer-events-none absolute left-3 top-3 flex max-w-[75%] flex-wrap gap-2">{badges.map(badge=><span key={badge.key} className={`rounded-full px-3 py-1 text-xs font-bold ${badge.className}`}>{badge.label}</span>)}</div>:null}<div className="absolute right-3 top-3 flex gap-2">{onToggleFavorite?<button type="button" disabled={cardBusy} onClick={event=>{event.stopPropagation();void runAction('favorite',onToggleFavorite);}} aria-label={isFavorite?`${productName} ürününü favorilerden çıkar`:`${productName} ürününü favorilere ekle`} aria-pressed={isFavorite} className={`grid min-h-11 min-w-11 place-items-center rounded-full bg-white/95 shadow-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-900/95 ${focusClass}`}><Heart aria-hidden="true" className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-gray-700 dark:text-gray-200'}`}/></button>:null}<button type="button" disabled={cardBusy} onClick={event=>{event.stopPropagation();void shareProduct();}} aria-label={`${productName} ürününü paylaş`} className={`grid min-h-11 min-w-11 place-items-center rounded-full bg-white/95 shadow-sm disabled:cursor-not-allowed disabled:opacity-60 dark:bg-gray-900/95 ${focusClass}`}><Share2 aria-hidden="true" className="h-5 w-5"/></button></div></div>
+  <div className="flex flex-1 flex-col p-4"><div className="text-xs font-bold uppercase tracking-wide text-brand-gold">{typeof product?.category==='string'&&product.category.trim()?product.category:'Ürün'}</div><button type="button" onClick={onClick} className={`mt-1 min-h-11 text-left focus-visible:rounded-lg ${focusClass}`}><h3 className="line-clamp-2 text-lg font-bold text-brand-text">{productName}</h3></button>{description?<p className="mt-1 line-clamp-2 text-sm leading-5 text-gray-600 dark:text-gray-300">{description}</p>:null}
+   {product?.producerName?<div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500"><span className="inline-flex items-center gap-1 font-semibold text-gray-700 dark:text-gray-200">{product.producerName}{producerVerified?<><CheckCircle2 aria-hidden="true" className="h-4 w-4 text-brand-green"/><span className="sr-only">Üretici doğrulandı</span></>:null}</span>{followerCount!==null?<span className="inline-flex items-center gap-1" aria-label={`${formatNumber(followerCount)} takipçi`}><Users aria-hidden="true" className="h-4 w-4"/>{formatNumber(followerCount)} takipçi</span>:null}</div>:null}
    {product?.origin?<p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-gray-500"><span className="line-clamp-1">Menşe: {product.origin}</span>{producerOriginVerified?<span className="inline-flex items-center gap-1 font-semibold text-brand-green"><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5"/>Doğrulandı</span>:null}</p>:null}
    {reviewCount===null?<div className="mt-2 text-xs text-amber-700 dark:text-amber-300">Değerlendirme sayısı doğrulanamadı</div>:reviewCount>0?<div className="mt-2 flex items-center gap-1 text-sm">{rating!==null?<><Star aria-hidden="true" className="h-4 w-4 fill-brand-gold text-brand-gold"/><span className="font-semibold">{rating.toFixed(1)}</span></>:<span className="font-semibold text-amber-700 dark:text-amber-300">Puan doğrulanamadı</span>}<span className="text-gray-500">({formatNumber(reviewCount)} değerlendirme)</span></div>:<div className="mt-2 text-xs text-gray-500">Henüz yayınlanmış değerlendirme yok</div>}
-
-   <div className="mt-3 flex items-end justify-between gap-3">
-    <div>{priceReady?<><div className="text-xl font-bold text-brand-green dark:text-brand-gold">{formatMoney(price,currency)}</div>{compare!==null&&compare>price?<div className="text-sm text-gray-400 line-through">{formatMoney(compare,currency)}</div>:null}</>:<div role="status" className="text-sm font-semibold text-red-700 dark:text-red-300">Fiyat doğrulanamadı</div>}{product?.unit?<div className="mt-0.5 text-xs text-gray-500">{product.unit}</div>:null}</div>
-    {tracked?<div className={`text-xs font-semibold ${!stockReady||soldOut?'text-red-700':'text-green-700'}`}>{!stockReady?'Stok doğrulanamadı':soldOut?'Stokta yok':`${formatNumber(numericStock as number)} adet stokta`}</div>:preorder?<div className="text-xs font-semibold text-brand-green">Siparişe açık</div>:null}
-   </div>
-
+   <div className="mt-3 flex items-end justify-between gap-3"><div>{priceReady?<><div className="text-xl font-bold text-brand-green dark:text-brand-gold">{formatMoney(price,currency)}</div>{compare!==null&&compare>price?<div className="text-sm text-gray-400 line-through">{formatMoney(compare,currency)}</div>:null}</>:<div role="status" className="text-sm font-semibold text-red-700 dark:text-red-300">Fiyat doğrulanamadı</div>}{product?.unit?<div className="mt-0.5 text-xs text-gray-500">{product.unit}</div>:null}</div>{tracked?<div className={`text-xs font-semibold ${!stockReady||soldOut?'text-red-700 dark:text-red-300':'text-green-700 dark:text-green-300'}`}>{!stockReady?'Stok doğrulanamadı':soldOut?'Stokta yok':`${formatNumber(numericStock as number)} adet stokta`}</div>:preorder?<div className="text-xs font-semibold text-brand-green">Siparişe açık</div>:null}</div>
    {purchaseReady?<div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-gray-50 p-2 dark:bg-gray-800"><span className="text-xs font-semibold text-gray-500">Adet</span><div className="flex items-center gap-1" role="group" aria-label={`${productName} adet seçimi`}><button type="button" onClick={decrease} disabled={quantity<=1||cardBusy} aria-label={`${productName} miktarını azalt`} className={`grid min-h-11 min-w-11 place-items-center rounded-lg border disabled:opacity-40 ${focusClass}`}><Minus aria-hidden="true" className="h-4 w-4"/></button><span aria-live="polite" aria-label={`${quantity} adet`} className="min-w-10 text-center font-bold">{quantity}</span><button type="button" onClick={increase} disabled={quantity>=maxQuantity||cardBusy} aria-label={`${productName} miktarını artır`} className={`grid min-h-11 min-w-11 place-items-center rounded-lg border disabled:opacity-40 ${focusClass}`}><Plus aria-hidden="true" className="h-4 w-4"/></button></div></div>:purchaseIssue?<div role="status" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">{purchaseIssue}. Satın alma doğrulama tamamlanana kadar kapalıdır.</div>:null}
-
-   <div className="mt-4 grid grid-cols-[1fr_auto_auto] gap-2">
-    <button type="button" onClick={()=>void add()} disabled={cardBusy||!purchaseReady} aria-label={!purchaseReady?`${productName} ${purchaseIssue.toLocaleLowerCase('tr-TR')} olduğu için sepete eklenemez`:preorder?`${productName} ürününü ${quantity} adet ön siparişe ekle`:`${productName} ürününü ${quantity} adet sepete ekle`} className={`min-h-12 rounded-xl bg-brand-green px-3 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 ${focusClass}`}>{preorder?<Calendar aria-hidden="true" className="mr-2 inline h-4 w-4"/>:<ShoppingCart aria-hidden="true" className="mr-2 inline h-4 w-4"/>}{busy?'Ekleniyor…':!purchaseReady?purchaseIssue:preorder?'Ön Siparişe Ekle':'Sepete Ekle'}</button>
-    {onGift?<button type="button" disabled={cardBusy||!priceReady||!variantReference} onClick={()=>void runAction('gift',onGift)} aria-label={`${productName} ürününü hediye et`} className={`grid min-h-12 min-w-12 place-items-center rounded-xl border disabled:cursor-not-allowed disabled:opacity-60 ${focusClass}`}><Gift aria-hidden="true" className="h-5 w-5 text-brand-gold"/></button>:null}
-    {onLike?<button type="button" disabled={cardBusy} onClick={()=>void runAction('like',onLike)} aria-label={isLiked?`${productName} beğenisini kaldır`:`${productName} ürününü beğen`} aria-pressed={isLiked} className={`grid min-h-12 min-w-12 place-items-center rounded-xl border disabled:cursor-not-allowed disabled:opacity-60 ${focusClass}`}><ThumbsUp aria-hidden="true" className={`h-5 w-5 ${isLiked?'fill-brand-gold text-brand-gold':''}`}/></button>:null}
-   </div>
-   {actionFeedback?<div role="status" aria-live="polite" className="mt-2 text-xs text-gray-600 dark:text-gray-300">{actionFeedback}</div>:null}
-   <div className="sr-only" aria-live="polite">{actionBusy==='favorite'?'Favori işlemi yapılıyor.':actionBusy==='share'?'Paylaşım hazırlanıyor.':actionBusy==='gift'?'Hediye akışı hazırlanıyor.':actionBusy==='like'?'Beğeni işlemi yapılıyor.':busy?'Sepete ekleniyor.':''}</div>
+   <div className="mt-4 grid grid-cols-[1fr_auto_auto] gap-2"><button type="button" onClick={()=>void add()} disabled={cardBusy||!purchaseReady} aria-label={!purchaseReady?`${productName} ${purchaseIssue.toLocaleLowerCase('tr-TR')} olduğu için sepete eklenemez`:preorder?`${productName} ürününü ${quantity} adet ön siparişe ekle`:`${productName} ürününü ${quantity} adet sepete ekle`} className={`min-h-12 rounded-xl bg-brand-green px-3 font-bold text-brand-on-green disabled:cursor-not-allowed disabled:opacity-50 ${focusClass}`}>{preorder?<Calendar aria-hidden="true" className="mr-2 inline h-4 w-4"/>:<ShoppingCart aria-hidden="true" className="mr-2 inline h-4 w-4"/>}{busy?'Ekleniyor…':!purchaseReady?purchaseIssue:preorder?'Ön Siparişe Ekle':'Sepete Ekle'}</button>{onGift?<button type="button" disabled={cardBusy||!purchaseReady} onClick={()=>void runAction('gift',onGift)} aria-label={`${productName} ürününü hediye et`} className={`grid min-h-12 min-w-12 place-items-center rounded-xl border disabled:cursor-not-allowed disabled:opacity-60 ${focusClass}`}><Gift aria-hidden="true" className="h-5 w-5 text-brand-gold"/></button>:null}{onLike?<button type="button" disabled={cardBusy} onClick={()=>void runAction('like',onLike)} aria-label={isLiked?`${productName} beğenisini kaldır`:`${productName} ürününü beğen`} aria-pressed={isLiked} className={`grid min-h-12 min-w-12 place-items-center rounded-xl border disabled:cursor-not-allowed disabled:opacity-60 ${focusClass}`}><ThumbsUp aria-hidden="true" className={`h-5 w-5 ${isLiked?'fill-brand-gold text-brand-gold':''}`}/></button>:null}</div>{actionFeedback?<div role="status" aria-live="polite" className="mt-2 text-xs text-gray-600 dark:text-gray-300">{actionFeedback}</div>:null}<div className="sr-only" aria-live="polite">{actionBusy==='favorite'?'Favori işlemi yapılıyor.':actionBusy==='share'?'Paylaşım hazırlanıyor.':actionBusy==='gift'?'Hediye akışı hazırlanıyor.':actionBusy==='like'?'Beğeni işlemi yapılıyor.':busy?'Sepete ekleniyor.':''}</div>
   </div>
  </article>;
 }
-
 function formatMoney(value:number,currency:string){try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency}).format(value);}catch{return `${value.toFixed(2)} ${currency}`;}}
 function formatNumber(value:number){if(!Number.isFinite(value)||value<0)return'Doğrulanamadı';try{return new Intl.NumberFormat('tr-TR').format(value);}catch{return String(Math.floor(value));}}
