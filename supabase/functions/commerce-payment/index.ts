@@ -18,6 +18,7 @@ const PAYMENT_CURRENCIES = new Set(["TRY", "USD", "EUR", "GBP", "NOK", "CHF"]);
 
 type RecordValue = Record<string, unknown>;
 type PaymentState = "captured" | "authorized" | "failed";
+type BuyerIdentityType = "tc_identity" | "passport";
 
 function json(status: number, body: RecordValue) {
   return new Response(JSON.stringify(body), {
@@ -113,9 +114,15 @@ function validTurkishIdentity(value: string) {
   return tenth === digits[9] && eleventh === digits[10];
 }
 
-function buyerIdentity(value: unknown, countryCode: string) {
+function identityType(value: unknown): BuyerIdentityType {
+  const normalized = text(value, 30).toLowerCase();
+  if (normalized === "tc_identity" || normalized === "passport") return normalized;
+  throw new Error("buyer_identity_type_required");
+}
+
+function buyerIdentity(value: unknown, type: BuyerIdentityType) {
   const normalized = text(value, 40).replace(/\s+/g, "").toUpperCase();
-  if (countryCode === "TR") {
+  if (type === "tc_identity") {
     if (!validTurkishIdentity(normalized)) throw new Error("payment_turkish_identity_invalid");
     return normalized;
   }
@@ -218,7 +225,7 @@ function verifyProviderResponse(data: IyzicoJson, context: RecordValue, intentId
   if (text(data.basketId, 180) !== orderNumber) throw new Error("payment_basket_mismatch");
   if (text(data.currency, 3).toUpperCase() !== currency) throw new Error("payment_currency_mismatch");
   if (decimalToMinor(data.price) !== priceMinor || decimalToMinor(data.paidPrice) !== amountMinor) throw new Error("payment_amount_mismatch");
-  const paymentId = text(data.paymentId, 220);
+  const paymentId = typeof data.paymentId === "number" ? String(data.paymentId) : text(data.paymentId, 220);
   if (!paymentId) throw new Error("payment_provider_reference_missing");
   return paymentId;
 }
@@ -257,7 +264,6 @@ async function reconcile(service: any, context: RecordValue) {
   try {
     providerResponse = await iyzicoRequest("/payment/detail", "POST", {
       locale: "tr",
-      conversationId: intentId,
       paymentConversationId: intentId,
     });
   } catch {
@@ -282,7 +288,7 @@ function publicError(error: unknown) {
   const code = raw.split(":")[0].trim();
   const allowed = new Set([
     "authentication_required", "invalid_request", "unsupported_action", "order_id_required",
-    "invalid_payment_idempotency_key", "buyer_identity_required", "payment_turkish_identity_invalid",
+    "invalid_payment_idempotency_key", "buyer_identity_type_required", "payment_turkish_identity_invalid",
     "payment_passport_invalid", "payment_profile_full_name_required", "payment_postal_code_required",
     "payment_request_ip_required", "payment_provider_not_configured", "payment_method_required",
     "payment_method_not_found", "payment_method_expired", "payment_method_provider_mismatch",
@@ -359,7 +365,7 @@ Deno.serve(async (req: Request) => {
     const phone = validPhone(buyer.phone);
     if (!email) throw new Error("payment_buyer_email_invalid");
     if (!phone) throw new Error("payment_buyer_phone_invalid");
-    const identityNumber = buyerIdentity(body.buyerIdentityNumber, shipping.countryCode);
+    const identityNumber = buyerIdentity(body.buyerIdentityNumber, identityType(body.buyerIdentityType));
     const providerCustomerRef = text(prepared.providerCustomerRef, 500);
     const providerPaymentMethodRef = text(prepared.providerPaymentMethodRef, 500);
     const orderNumber = text(prepared.orderNumber, 180);
