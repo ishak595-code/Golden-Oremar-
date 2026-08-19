@@ -113,6 +113,12 @@ export async function verifyIyzicoCheckoutRetrieveSignature(data: IyzicoJson) {
   ]);
 }
 
+export async function verifyIyzicoRefundResponseSignature(data: IyzicoJson) {
+  return verifyResponseSignature(data, [
+    { key: "paymentId" }, { key: "price", decimal: true }, { key: "currency" }, { key: "conversationId" },
+  ]);
+}
+
 export async function verifyIyzicoWebhookV3Direct(data: IyzicoJson, signatureHeader: string | null) {
   const received = scalarText(signatureHeader, 256).toLowerCase();
   if (!received) return false;
