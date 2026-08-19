@@ -3,8 +3,11 @@ import { supabase } from '../../lib/supabase';
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PUBLIC_EVENT_STATUSES=new Set<PublicEvent['status']>(['published','sold_out','completed']);
 const EVENT_STATUSES=new Set<EventLifecycleStatus>(['draft','published','sold_out','cancelled','completed']);
-const RESERVATION_STATUSES=new Set<MyEventReservation['status']>(['pending','confirmed','waitlisted','cancelled','attended','no_show']);
+const RESERVATION_STATUSES=new Set<MyEventReservation['status']>(['pending_payment','pending','confirmed','waitlisted','cancelled','attended','no_show']);
+const PAYMENT_STATUSES=new Set<EventPaymentStatus>(['not_required','pending','authorized','paid','failed','expired','refund_required','refunded']);
+const SALE_MODES=new Set<PublicEvent['saleMode']>(['reservation','ticketed']);
 
+type EventPaymentStatus='not_required'|'pending'|'authorized'|'paid'|'failed'|'expired'|'refund_required'|'refunded';
 export type PublicEvent = {
   id: string;
   legacyId: string | null;
@@ -21,6 +24,10 @@ export type PublicEvent = {
   status: 'published' | 'sold_out' | 'completed';
   reservable: boolean;
   waitlistOnly: boolean;
+  ticketPriceMinor:number;
+  currency:string;
+  isPaid:boolean;
+  saleMode:'reservation'|'ticketed';
 };
 
 type EventLifecycleStatus='draft'|'published'|'sold_out'|'cancelled'|'completed';
@@ -31,9 +38,10 @@ export type MyEventReservation = {
   reservationCode: string;
   guestName: string;
   guestCount: number;
-  status: 'pending' | 'confirmed' | 'waitlisted' | 'cancelled' | 'attended' | 'no_show';
+  status: 'pending_payment'|'pending' | 'confirmed' | 'waitlisted' | 'cancelled' | 'attended' | 'no_show';
   createdAt: string;
   updatedAt: string;
+  payment:{status:EventPaymentStatus;requiresPayment:boolean;amountMinor:number;currency:string;expiresAt:string|null;};
   event: {
     id: string;
     slug: string;
@@ -43,9 +51,11 @@ export type MyEventReservation = {
     locationName: string;
     status: EventLifecycleStatus;
     imagePath: string | null;
+    ticketPriceMinor:number;
+    currency:string;
   };
 };
-export type EventReservationResult={ok:true;reservationId:string;reservationCode:string;status:'pending'|'waitlisted'};
+export type EventReservationResult={ok:true;reservationId:string;reservationCode:string;status:'pending_payment'|'pending'|'waitlisted';requiresPayment:boolean;amountMinor:number;currency:string;paymentExpiresAt:string|null;};
 
 function unwrap<T>(data:T|null,error:unknown):T{if(error)throw error;return data as T;}
 function isRecord(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
@@ -58,6 +68,7 @@ function optionalDate(value:unknown,label:string){if(value==null||value==='')ret
 function integer(value:unknown,label:string,min=0,max=Number.MAX_SAFE_INTEGER){const parsed=typeof value==='number'?value:Number(value);if(!Number.isSafeInteger(parsed)||parsed<min||parsed>max)throw new Error(`${label} doğrulanamadı.`);return parsed;}
 function bool(value:unknown,label:string){if(typeof value!=='boolean')throw new Error(`${label} doğrulanamadı.`);return value;}
 function enumValue<T extends string>(value:unknown,label:string,allowed:Set<T>){if(typeof value!=='string'||!allowed.has(value as T))throw new Error(`${label} doğrulanamadı.`);return value as T;}
+function currency(value:unknown,label:string){const normalized=requiredText(value,label,3).toUpperCase();if(!/^[A-Z]{3}$/.test(normalized))throw new Error(`${label} doğrulanamadı.`);return normalized;}
 
 function normalizePublicEvent(value:unknown,index:number):PublicEvent{
   if(!isRecord(value))throw new Error(`${index+1}. etkinlik doğrulanamadı.`);
@@ -72,7 +83,10 @@ function normalizePublicEvent(value:unknown,index:number):PublicEvent{
   const status=enumValue(value.status,`${index+1}. etkinlik durumu`,PUBLIC_EVENT_STATUSES),reservable=bool(value.reservable,`${index+1}. kayıt uygunluğu`),waitlistOnly=bool(value.waitlistOnly,`${index+1}. bekleme listesi durumu`);
   if(status==='completed'&&(reservable||waitlistOnly))throw new Error(`${index+1}. tamamlanmış etkinlik kayıt kabul edemez.`);
   if(status==='sold_out'&&!waitlistOnly)throw new Error(`${index+1}. dolu etkinlik bekleme listesi durumuyla tutarsız.`);
-  return{id:uuid(value.id,`${index+1}. etkinlik`),legacyId:optionalText(value.legacyId,`${index+1}. eski etkinlik referansı`,160),slug:requiredText(value.slug,`${index+1}. etkinlik bağlantısı`,220),title:requiredText(value.title,`${index+1}. etkinlik başlığı`,240),description:requiredText(value.description,`${index+1}. etkinlik açıklaması`,5000),imagePath:optionalText(value.imagePath,`${index+1}. etkinlik görseli`,1000),locationName:requiredText(value.locationName,`${index+1}. etkinlik konumu`,300),startsAt,endsAt,capacity,remainingCapacity,reservationDeadline,status,reservable,waitlistOnly};
+  const ticketPriceMinor=integer(value.ticketPriceMinor,`${index+1}. bilet fiyatı`,0),eventCurrency=currency(value.currency,`${index+1}. para birimi`),isPaid=bool(value.isPaid,`${index+1}. ücret durumu`),saleMode=enumValue(value.saleMode,`${index+1}. satış modu`,SALE_MODES);
+  if(isPaid!==(ticketPriceMinor>0))throw new Error(`${index+1}. etkinlik ücret bilgisi tutarsız.`);
+  if((saleMode==='ticketed')!==isPaid)throw new Error(`${index+1}. etkinlik satış modu ücret bilgisiyle tutarsız.`);
+  return{id:uuid(value.id,`${index+1}. etkinlik`),legacyId:optionalText(value.legacyId,`${index+1}. eski etkinlik referansı`,160),slug:requiredText(value.slug,`${index+1}. etkinlik bağlantısı`,220),title:requiredText(value.title,`${index+1}. etkinlik başlığı`,240),description:requiredText(value.description,`${index+1}. etkinlik açıklaması`,5000),imagePath:optionalText(value.imagePath,`${index+1}. etkinlik görseli`,1000),locationName:requiredText(value.locationName,`${index+1}. etkinlik konumu`,300),startsAt,endsAt,capacity,remainingCapacity,reservationDeadline,status,reservable,waitlistOnly,ticketPriceMinor,currency:eventCurrency,isPaid,saleMode};
 }
 function normalizePublicEvents(value:unknown):PublicEventsResult{
   if(!isRecord(value)||!Array.isArray(value.items)||value.items.length>200)throw new Error('Etkinlik listesi sunucudan doğrulanamadı.');
@@ -80,6 +94,7 @@ function normalizePublicEvents(value:unknown):PublicEventsResult{
   if(upcomingCount+pastCount!==items.length)throw new Error('Etkinlik özet sayaçları listeyle tutarsız.');
   return{items,upcomingCount,pastCount};
 }
+function normalizePayment(value:unknown,index:number){if(!isRecord(value))throw new Error(`${index+1}. etkinlik ödeme bilgisi doğrulanamadı.`);const status=enumValue(value.status,`${index+1}. ödeme durumu`,PAYMENT_STATUSES),requiresPayment=bool(value.requiresPayment,`${index+1}. ödeme gereksinimi`),amountMinor=integer(value.amountMinor,`${index+1}. ödeme tutarı`,0),paymentCurrency=currency(value.currency,`${index+1}. ödeme para birimi`),expiresAt=optionalDate(value.expiresAt,`${index+1}. ödeme son tarihi`);if(status==='not_required'&&(requiresPayment||amountMinor!==0))throw new Error(`${index+1}. ücretsiz etkinlik ödeme bilgisi tutarsız.`);if(requiresPayment&&(status!=='pending'||amountMinor<=0||!expiresAt))throw new Error(`${index+1}. bekleyen etkinlik ödeme bilgisi tutarsız.`);return{status,requiresPayment,amountMinor,currency:paymentCurrency,expiresAt};}
 function normalizeReservation(value:unknown,index:number):MyEventReservation{
   if(!isRecord(value))throw new Error(`${index+1}. etkinlik kaydı doğrulanamadı.`);
   const rawEvent=Array.isArray(value.event)?value.event[0]:value.event;
@@ -87,9 +102,10 @@ function normalizeReservation(value:unknown,index:number):MyEventReservation{
   const startsAt=safeDate(rawEvent.starts_at,`${index+1}. etkinlik başlangıç tarihi`),endsAt=safeDate(rawEvent.ends_at,`${index+1}. etkinlik bitiş tarihi`);
   if(Date.parse(endsAt)<=Date.parse(startsAt))throw new Error(`${index+1}. etkinlik tarih aralığı tutarsız.`);
   const eventId=uuid(value.event_id,`${index+1}. etkinlik`),nestedEventId=uuid(rawEvent.id,`${index+1}. bağlı etkinlik`);if(eventId!==nestedEventId)throw new Error(`${index+1}. etkinlik kaydı başka etkinlik detayıyla eşleşiyor.`);
-  return{id:uuid(value.id,`${index+1}. etkinlik kaydı`),eventId,reservationCode:requiredText(value.reservation_code,`${index+1}. etkinlik kayıt kodu`,120),guestName:requiredText(value.guest_name,`${index+1}. etkinlik kayıt sahibi`,120),guestCount:integer(value.guest_count,`${index+1}. kişi sayısı`,1,20),status:enumValue(value.status,`${index+1}. etkinlik kayıt durumu`,RESERVATION_STATUSES),createdAt:safeDate(value.created_at,`${index+1}. etkinlik kayıt tarihi`),updatedAt:safeDate(value.updated_at,`${index+1}. etkinlik güncelleme tarihi`),event:{id:nestedEventId,slug:requiredText(rawEvent.slug,`${index+1}. etkinlik bağlantısı`,220),title:requiredText(rawEvent.title,`${index+1}. etkinlik başlığı`,240),startsAt,endsAt,locationName:requiredText(rawEvent.location_name,`${index+1}. etkinlik konumu`,300),status:enumValue(rawEvent.status,`${index+1}. etkinlik durumu`,EVENT_STATUSES),imagePath:optionalText(rawEvent.image_path,`${index+1}. etkinlik görseli`,1000)}};
+  const eventTicketPrice=integer(rawEvent.ticket_price_minor,`${index+1}. etkinlik bilet fiyatı`,0),eventCurrency=currency(rawEvent.currency,`${index+1}. etkinlik para birimi`),payment=normalizePayment(value.payment,index);
+  return{id:uuid(value.id,`${index+1}. etkinlik kaydı`),eventId,reservationCode:requiredText(value.reservation_code,`${index+1}. etkinlik kayıt kodu`,120),guestName:requiredText(value.guest_name,`${index+1}. etkinlik kayıt sahibi`,120),guestCount:integer(value.guest_count,`${index+1}. kişi sayısı`,1,20),status:enumValue(value.status,`${index+1}. etkinlik kayıt durumu`,RESERVATION_STATUSES),createdAt:safeDate(value.created_at,`${index+1}. etkinlik kayıt tarihi`),updatedAt:safeDate(value.updated_at,`${index+1}. etkinlik güncelleme tarihi`),payment,event:{id:nestedEventId,slug:requiredText(rawEvent.slug,`${index+1}. etkinlik bağlantısı`,220),title:requiredText(rawEvent.title,`${index+1}. etkinlik başlığı`,240),startsAt,endsAt,locationName:requiredText(rawEvent.location_name,`${index+1}. etkinlik konumu`,300),status:enumValue(rawEvent.status,`${index+1}. etkinlik durumu`,EVENT_STATUSES),imagePath:optionalText(rawEvent.image_path,`${index+1}. etkinlik görseli`,1000),ticketPriceMinor:eventTicketPrice,currency:eventCurrency}};
 }
-function normalizeReservationResult(value:unknown):EventReservationResult{if(!isRecord(value)||value.ok!==true)throw new Error('Etkinlik kayıt sonucu doğrulanamadı.');const status=value.status;if(status!=='pending'&&status!=='waitlisted')throw new Error('Etkinlik kayıt başlangıç durumu doğrulanamadı.');return{ok:true,reservationId:uuid(value.reservationId,'Etkinlik kaydı'),reservationCode:requiredText(value.reservationCode,'Etkinlik kayıt kodu',120),status};}
+function normalizeReservationResult(value:unknown):EventReservationResult{if(!isRecord(value)||value.ok!==true)throw new Error('Etkinlik kayıt sonucu doğrulanamadı.');const status=value.status;if(status!=='pending_payment'&&status!=='pending'&&status!=='waitlisted')throw new Error('Etkinlik kayıt başlangıç durumu doğrulanamadı.');const requiresPayment=bool(value.requiresPayment,'Etkinlik ödeme gereksinimi'),amountMinor=integer(value.amountMinor,'Etkinlik ödeme tutarı',0),resultCurrency=currency(value.currency,'Etkinlik para birimi'),paymentExpiresAt=optionalDate(value.paymentExpiresAt,'Etkinlik ödeme bitiş zamanı');if((status==='pending_payment')!==requiresPayment)throw new Error('Etkinlik ödeme gereksinimi kayıt durumuyla tutarsız.');if(requiresPayment&&(amountMinor<=0||!paymentExpiresAt))throw new Error('Ücretli etkinlik ödeme bilgisi eksik.');if(!requiresPayment&&amountMinor!==0)throw new Error('Ücretsiz etkinlik ödeme tutarı sıfır olmalıdır.');return{ok:true,reservationId:uuid(value.reservationId,'Etkinlik kaydı'),reservationCode:requiredText(value.reservationCode,'Etkinlik kayıt kodu',120),status,requiresPayment,amountMinor,currency:resultCurrency,paymentExpiresAt};}
 function idempotencyKey(scope:string){if(typeof globalThis.crypto?.randomUUID!=='function')throw new Error('Güvenli istek kimliği üretilemedi.');return`${scope}_${Date.now()}_${globalThis.crypto.randomUUID().replaceAll('-','')}`;}
 
 export async function getPublicContactConfig(){const{data,error}=await supabase.rpc('get_public_contact_config_v1');return unwrap<any>(data,error);}
