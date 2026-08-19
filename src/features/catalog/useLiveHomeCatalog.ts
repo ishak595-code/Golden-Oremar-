@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { getProducerFollowMetrics, getPublicHomeCatalog, listPublicCategories, publicCatalogUrl } from './api';
+import { getPublicHomeCatalog, listPublicCategories, publicCatalogUrl } from './api';
+import { getProducerStoreMetrics } from './producerMetricsApi';
 import { NETWORK_RESTORED_EVENT } from '../resilience/useConnectivity';
 
 export type LegacyHomeProduct = {
@@ -34,6 +35,9 @@ export type LegacyHomeProduct = {
   producerFollowerCount: number | null;
   producerVerified: boolean;
   producerOriginVerified: boolean;
+  producerStoreKind: 'official'|'independent'|null;
+  producerBadgeTone: 'emerald'|'blue'|null;
+  producerStorefrontTier: 'standard'|'verified'|'signature'|null;
 };
 
 export type LegacyHomeCategory = {
@@ -103,8 +107,8 @@ export function useLiveHomeCatalog() {
         if (coreInvalid) throw new Error('Ana katalogda kimliği doğrulanamayan ürün bulundu. Liste güvenli şekilde gösterilemedi.');
 
         const producerIds: string[] = Array.from(new Set<string>(catalogItems.map((item: any) => safeText(item.producer.id,160)).filter(Boolean)));
-        const metrics = await getProducerFollowMetrics(producerIds).catch(metricsError => {
-          console.warn('Producer metrics hydration failed; catalog remains usable without trust badges.', metricsError);
+        const metrics = await getProducerStoreMetrics(producerIds).catch(metricsError => {
+          console.warn('Storefront metrics hydration failed; catalog remains usable without trust badges.', metricsError);
           return [];
         });
         if (!active) return;
@@ -165,6 +169,9 @@ export function useLiveHomeCatalog() {
             producerFollowerCount: producerMetric ? producerMetric.followerCount : null,
             producerVerified: producerMetric?.verified === true,
             producerOriginVerified: producerMetric?.originVerified === true,
+            producerStoreKind: producerMetric?.storeKind || null,
+            producerBadgeTone: producerMetric?.badgeTone || null,
+            producerStorefrontTier: producerMetric?.storefrontTier || null,
           };
         }));
 
