@@ -8,7 +8,7 @@
     "build": "vite build && node scripts/check-build-budget.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "audit:release": "node scripts/release-audit.mjs",
+    "audit:release": "node scripts/release-audit.mjs && node scripts/admin-data-contract-audit.mjs",
     "audit:bundle": "node scripts/check-build-budget.mjs",
     "lint": "tsc --noEmit",
     "quality": "npm run audit:release && npm run lint && npm run build",
