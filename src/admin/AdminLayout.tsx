@@ -14,6 +14,7 @@ import {
   Mail,
   Menu,
   Package,
+  PackagePlus,
   RefreshCw,
   Rocket,
   RotateCcw,
@@ -41,6 +42,7 @@ type MenuGroup = { title: string; items: MenuItem[] };
 const ADMIN_MENU_GROUPS: MenuGroup[] = [
   { title: 'Genel', items: [{ id: 'dashboard', label: 'Panel', icon: LayoutDashboard },{id:'production-readiness',label:'Üretim Hazırlığı',icon:Rocket,superAdminOnly:true}] },
   { title: 'E-Ticaret', items: [
+    { id: 'official-store-products', label: 'Resmi Mağaza Ürünleri', icon: PackagePlus, superAdminOnly: true },
     { id: 'products', label: 'Ürün Yönetimi', icon: ShoppingBag },
     { id: 'product-approvals', label: 'Ürün Onayları', icon: CheckSquare },
     { id: 'product-removal', label: 'Güvenli Ürün Kaldırma', icon: Trash2, superAdminOnly: true },
