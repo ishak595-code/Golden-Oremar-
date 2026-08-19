@@ -22,9 +22,7 @@ function scalarText(value: unknown, max = 500) {
 
 function safeBaseUrl(value: string) {
   const normalized = value.replace(/\/$/, "");
-  if (normalized !== "https://api.iyzipay.com" && normalized !== "https://sandbox-api.iyzipay.com") {
-    throw new Error("invalid_iyzico_base_url");
-  }
+  if (normalized !== "https://api.iyzipay.com" && normalized !== "https://sandbox-api.iyzipay.com") throw new Error("invalid_iyzico_base_url");
   return normalized;
 }
 
@@ -37,13 +35,7 @@ export function getIyzicoConfig() {
 }
 
 async function hmacHex(secret: string, value: string) {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const signature = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(value)));
   return Array.from(signature).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
@@ -57,27 +49,16 @@ function safeHexEqual(left: string, right: string) {
   return diff === 0;
 }
 
-export async function iyzicoRequest(
-  path: string,
-  method: "POST" | "DELETE",
-  payload: IyzicoJson,
-  timeoutMs = 15000,
-) {
+export async function iyzicoRequest(path: string, method: "POST" | "DELETE", payload: IyzicoJson, timeoutMs = 15000) {
   if (!path.startsWith("/") || path.length > 240) throw new Error("invalid_iyzico_path");
   const { apiKey, secretKey, baseUrl } = getIyzicoConfig();
   const requestBody = JSON.stringify(payload);
   const randomKey = `${Date.now()}${crypto.randomUUID().replaceAll("-", "")}`;
   const signature = await hmacHex(secretKey, randomKey + path + requestBody);
   const authorizationString = `apiKey:${apiKey}&randomKey:${randomKey}&signature:${signature}`;
-  const authorization = `IYZWSv2 ${btoa(authorizationString)}`;
   const response = await fetch(`${baseUrl}${path}`, {
     method,
-    headers: {
-      "Authorization": authorization,
-      "x-iyzi-rnd": randomKey,
-      "Content-Type": "application/json",
-      "Accept": "application/json",
-    },
+    headers: { "Authorization": `IYZWSv2 ${btoa(authorizationString)}`, "x-iyzi-rnd": randomKey, "Content-Type": "application/json", "Accept": "application/json" },
     body: requestBody,
     signal: AbortSignal.timeout(timeoutMs),
   });
@@ -93,47 +74,76 @@ export async function iyzicoRequest(
   return { response, data };
 }
 
-function decimalSignatureValue(value: unknown) {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    const fixed = value.toFixed(12).replace(/0+$/, "").replace(/\.$/, "");
-    return fixed || "0";
+function signatureScalar(value: unknown, decimal = false) {
+  if (decimal) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      const fixed = value.toFixed(12).replace(/0+$/, "").replace(/\.$/, "");
+      return fixed || "0";
+    }
+    const raw = scalarText(value, 80);
+    if (!raw || !/^-?[0-9]+(?:\.[0-9]+)?$/.test(raw)) return "";
+    return raw.includes(".") ? raw.replace(/0+$/, "").replace(/\.$/, "") : raw;
   }
-  const raw = scalarText(value, 80);
-  if (!raw || !/^-?[0-9]+(?:\.[0-9]+)?$/.test(raw)) return "";
-  if (!raw.includes(".")) return raw;
-  return raw.replace(/0+$/, "").replace(/\.$/, "");
+  return scalarText(value, 500);
 }
 
-export async function verifyIyzicoNon3dResponseSignature(data: IyzicoJson) {
-  const { secretKey } = getIyzicoConfig();
-  const paymentId = scalarText(data.paymentId, 120);
-  const currency = scalarText(data.currency, 3).toUpperCase();
-  const basketId = scalarText(data.basketId, 180);
-  const conversationId = scalarText(data.conversationId, 180);
-  const paidPrice = decimalSignatureValue(data.paidPrice);
-  const price = decimalSignatureValue(data.price);
+async function verifyResponseSignature(data: IyzicoJson, ordered: Array<{ key: string; decimal?: boolean }>) {
   const received = scalarText(data.signature, 256).toLowerCase();
-  if (!paymentId || !/^[A-Z]{3}$/.test(currency) || !basketId || !conversationId || !paidPrice || !price || !received) return false;
-  const expected = await hmacHex(secretKey, [paymentId, currency, basketId, conversationId, paidPrice, price].join(":"));
+  if (!received) return false;
+  const values = ordered.map(({ key, decimal }) => signatureScalar(data[key], decimal === true));
+  if (values.some((value) => !value)) return false;
+  const { secretKey } = getIyzicoConfig();
+  const expected = await hmacHex(secretKey, values.join(":"));
   return safeHexEqual(expected, received);
 }
 
-export async function verifyIyzicoWebhookV3(data: IyzicoJson, signatureHeader: string | null) {
+export async function verifyIyzicoNon3dResponseSignature(data: IyzicoJson) {
+  return verifyResponseSignature(data, [
+    { key: "paymentId" }, { key: "currency" }, { key: "basketId" }, { key: "conversationId" }, { key: "paidPrice", decimal: true }, { key: "price", decimal: true },
+  ]);
+}
+
+export async function verifyIyzicoCheckoutInitializeSignature(data: IyzicoJson) {
+  return verifyResponseSignature(data, [{ key: "conversationId" }, { key: "token" }]);
+}
+
+export async function verifyIyzicoCheckoutRetrieveSignature(data: IyzicoJson) {
+  return verifyResponseSignature(data, [
+    { key: "paymentStatus" }, { key: "paymentId" }, { key: "currency" }, { key: "basketId" }, { key: "conversationId" }, { key: "paidPrice", decimal: true }, { key: "price", decimal: true }, { key: "token" },
+  ]);
+}
+
+export async function verifyIyzicoWebhookV3Direct(data: IyzicoJson, signatureHeader: string | null) {
   const received = scalarText(signatureHeader, 256).toLowerCase();
   if (!received) return false;
   const { secretKey } = getIyzicoConfig();
   const eventType = scalarText(data.iyziEventType, 120);
-  const paymentId = scalarText(data.paymentId, 120) || scalarText(data.iyziPaymentId, 120);
+  const paymentId = scalarText(data.paymentId, 120);
   const conversationId = scalarText(data.paymentConversationId, 180);
   const status = scalarText(data.status, 80);
   if (!eventType || !paymentId || !conversationId || !status) return false;
-  const message = secretKey + eventType + paymentId + conversationId + status;
-  const expected = await hmacHex(secretKey, message);
+  const expected = await hmacHex(secretKey, secretKey + eventType + paymentId + conversationId + status);
+  return safeHexEqual(expected, received);
+}
+
+export async function verifyIyzicoWebhookV3Hpp(data: IyzicoJson, signatureHeader: string | null) {
+  const received = scalarText(signatureHeader, 256).toLowerCase();
+  if (!received) return false;
+  const { secretKey } = getIyzicoConfig();
+  const eventType = scalarText(data.iyziEventType, 120);
+  const paymentId = scalarText(data.iyziPaymentId, 120) || scalarText(data.paymentId, 120);
+  const token = scalarText(data.token, 500);
+  const conversationId = scalarText(data.paymentConversationId, 180);
+  const status = scalarText(data.status, 80);
+  if (!eventType || !paymentId || !token || !conversationId || !status) return false;
+  const expected = await hmacHex(secretKey, secretKey + eventType + paymentId + token + conversationId + status);
   return safeHexEqual(expected, received);
 }
 
 export function iyzicoError(data: IyzicoJson, fallback = "provider_request_failed") {
-  const code = scalarText(data.errorCode, 120) || fallback;
-  const message = scalarText(data.errorMessage, 400);
-  return { code, message };
+  return { code: scalarText(data.errorCode, 120) || fallback, message: scalarText(data.errorMessage, 400) };
+}
+
+export function iyzicoScalar(value: unknown, max = 500) {
+  return scalarText(value, max);
 }
