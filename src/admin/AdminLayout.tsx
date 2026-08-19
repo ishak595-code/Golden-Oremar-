@@ -5,6 +5,7 @@ import {
   Bug,
   Calendar,
   CheckSquare,
+  CreditCard,
   Crown,
   DollarSign,
   FileText,
@@ -52,6 +53,7 @@ const ADMIN_MENU_GROUPS: MenuGroup[] = [
   { title: 'Pazarlama ve Finans', items: [
     { id: 'campaigns', label: 'Kampanyalar', icon: Megaphone },
     { id: 'finance', label: 'Muhasebe ve Finans', icon: DollarSign },
+    { id: 'payment-controls', label: 'Ödeme Altyapısı', icon: CreditCard, superAdminOnly: true },
     { id: 'notifications', label: 'Bildirim Merkezi', icon: Bell },
   ]},
   { title: 'Sahip ve Güvenlik', items: [
