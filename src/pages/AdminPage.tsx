@@ -21,7 +21,6 @@ const AdminEvents = lazy(() => import('../admin/AdminEvents').then(module => ({ 
 type AdminPageProps = {
   onLogout: () => void | Promise<void>;
   onBack?: () => void;
-  currentUser?: unknown;
 };
 
 function PanelLoading() {
