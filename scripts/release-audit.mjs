@@ -38,6 +38,8 @@ const forbiddenRepoArtifacts = [
   'metadata.json',
   'src/data.ts',
   'src/data/healthData.ts',
+  'src/pages/LegacyAdminEntry.tsx',
+  'src/features/account/useDialogA11y.ts',
   'migration-tools',
   '.github/workflows/admin-delta-typecheck.yml',
   '.github/workflows/audit-legacy-admin-residue.yml',
@@ -100,6 +102,9 @@ if (appShell) {
   if (!/cartItemCount/.test(appShell) || !/badge=\{cartItemCount\}/.test(appShell)) failures.push('Cart badges must remain bound to the live total cart item count.');
   if (/<BottomNavButton\s+icon=\{User\}[^>]*badge=/.test(appShell)) failures.push('Account bottom navigation must not duplicate the notification unread count.');
   if (!/aria-label="Sesli arama"/.test(appShell)) failures.push('Voice-search control is missing from the application header.');
+  if (/LegacyAdminEntry/.test(appShell)) failures.push('App must load the canonical AdminPage directly, not the retired legacy wrapper.');
+  if (!/import\(['"]\.\/pages\/AdminPage['"]\)\.then\(module=>\(\{default:module\.AdminPage\}\)\)/.test(appShell)) failures.push('App canonical admin lazy import is missing.');
+  if (/\bCapitor\b/.test(appShell)) failures.push('Misspelled Capacitor runtime identifier detected.');
 }
 
 const homeStorefront = requireFile('src/features/home/HomeSection.tsx');
@@ -127,6 +132,33 @@ if (storefrontApi) {
   if (!/title:\s*requiredText\(section\.title/.test(storefrontApi)) failures.push('Storefront section titles must remain required at the API boundary.');
 }
 
+const sellerPanel = requireFile('src/features/account/SellerPanel.tsx');
+if (sellerPanel) {
+  if (/useDialogA11y/.test(sellerPanel)) failures.push('SellerPanel must not call the removed account dialog wrapper.');
+  if (!/useAccessibleDialog/.test(sellerPanel)) failures.push('SellerPanel destructive confirmation must use the canonical accessible dialog hook.');
+}
+
+const adminPage = requireFile('src/pages/AdminPage.tsx');
+if (adminPage) {
+  const duplicateProducerMarkers = [
+    'ProducerProductManager',
+    'ProducerOrdersPanel',
+    'ProducerFinancePanel',
+    'ProducerProfilePanel',
+    "roles.includes('producer')",
+    "currentUser?.role === 'vendor'",
+  ];
+  for (const marker of duplicateProducerMarkers) {
+    if (adminPage.includes(marker)) failures.push(`AdminPage must not contain the duplicate producer path: ${marker}`);
+  }
+}
+
+const adminLayout = requireFile('src/admin/AdminLayout.tsx');
+if (adminLayout) {
+  if (/vendorMenuGroups|isVendor|Satıcı menüsü|Mağaza Yönetimi/.test(adminLayout)) failures.push('AdminLayout must remain admin-only; seller navigation belongs to SellerPanel.');
+  if (!/ADMIN_MENU_GROUPS/.test(adminLayout)) failures.push('AdminLayout canonical admin menu definition is missing.');
+}
+
 const cartApi = requireFile('src/features/cart/api.ts');
 if (cartApi && !/supabase\.rpc\(\s*['"]create_customer_order_v5['"]/.test(cartApi)) {
   failures.push('Cart checkout must remain on create_customer_order_v5.');
@@ -149,6 +181,9 @@ if (appStyles) {
   if (/fonts\.googleapis\.com|fonts\.gstatic\.com/i.test(appStyles)) failures.push('Android/iOS application typography must not depend on Google Fonts network delivery.');
   if (/@import\s+url\(\s*['"]?https?:\/\//i.test(appStyles)) failures.push('Native app stylesheet must not import remote CSS at runtime.');
   if (/:root\[data-native-platform\][\s\S]*button\[aria-label="Sesli arama"\][\s\S]*display:\s*none/.test(appStyles)) failures.push('Real native voice search must not be hidden from Android/iOS users.');
+  if (!/--color-brand-on-gold:\s*var\(--text-on-gold\)/.test(appStyles) || !/--color-brand-on-green:\s*var\(--text-on-green\)/.test(appStyles)) failures.push('Semantic accent foreground tokens are required for theme contrast.');
+  if (!/\.bg-brand-gold\.text-brand-green[\s\S]*var\(--text-on-gold\)/.test(appStyles)) failures.push('Legacy gold-background foreground compatibility guard is missing.');
+  if (!/\.bg-brand-green\.text-white[\s\S]*var\(--text-on-green\)/.test(appStyles)) failures.push('Legacy green-background foreground compatibility guard is missing.');
 }
 
 const androidManifest = requireFile('android/app/src/main/AndroidManifest.xml');
@@ -200,4 +235,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Golden Oremar release audit passed: Android/iOS app-shell, native speech, strict storefront truth, retired-runtime and native release metadata contracts are intact.');
+console.log('Golden Oremar release audit passed: Android/iOS app-shell, native speech, strict storefront truth, canonical seller/admin paths, theme contrast, retired-runtime and native release metadata contracts are intact.');
