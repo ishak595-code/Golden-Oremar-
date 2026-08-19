@@ -1,6 +1,8 @@
 import { supabase } from '../../lib/supabase';
 import type {
   AccountClosureSummary,
+  AccountHelpContent,
+  AccountHelpDocument,
   AccountNotification,
   AccountOverview,
   AccountProducerSummary,
@@ -49,6 +51,7 @@ const NEWSLETTER_STATUSES=new Set<NewsletterSummary['status']>(['none','pending'
 const PUSH_PROVIDERS=new Set(['fcm','apns']);
 const PUSH_PLATFORMS=new Set(['android','ios']);
 const PUSH_ENVIRONMENTS=new Set(['development','production']);
+const HELP_KEYS=['about','returns','privacy','terms'] as const;
 
 function unwrap<T>(data:T|null,error:unknown):T{if(error)throw error;return data as T;}
 function isRecord(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
@@ -69,24 +72,41 @@ function safeInternalOrHttpsUrl(value:unknown,label:string){if(value==null||valu
 function validatedLimit(limit:number,max:number){if(!Number.isSafeInteger(limit)||limit<1||limit>max)throw new Error(`Liste limiti 1 ile ${max} arasında olmalıdır.`);return limit;}
 function validatedOffset(offset:number){if(!Number.isSafeInteger(offset)||offset<0)throw new Error('Liste başlangıç değeri geçersiz.');return offset;}
 function emailAddress(value:unknown,label:string){const email=requiredText(value,label,254).toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw new Error(`${label} doğrulanamadı.`);return email;}
+function phoneValue(value:unknown,label:string,required=false){if(value==null||value===''){if(required)throw new Error(`${label} doğrulanamadı.`);return null;}const text=requiredText(value,label,40);if(!/^[+()0-9 .\-]+$/.test(text))throw new Error(`${label} doğrulanamadı.`);const digits=text.replace(/\D/g,'');if(digits.length<10||digits.length>15)throw new Error(`${label} doğrulanamadı.`);return text;}
 
 function normalizeAddress(value:unknown,index:number):Address{
   if(!isRecord(value))throw new Error(`${index+1}. adres kaydı doğrulanamadı.`);
   return{
     id:uuid(value.id,`${index+1}. adres kimliği`),
-    label:requiredText(value.label,`${index+1}. adres etiketi`,120),
-    recipient_name:requiredText(value.recipient_name,`${index+1}. alıcı adı`,180),
-    phone:requiredText(value.phone,`${index+1}. telefon`,80),
+    label:requiredText(value.label,`${index+1}. adres etiketi`,60),
+    recipient_name:requiredText(value.recipient_name,`${index+1}. alıcı adı`,120),
+    phone:phoneValue(value.phone,`${index+1}. telefon`,true) as string,
     country_code:countryCode(value.country_code,`${index+1}. ülke kodu`),
-    province:requiredText(value.province,`${index+1}. il/bölge`,160),
-    district:requiredText(value.district,`${index+1}. ilçe`,160),
-    neighborhood:optionalText(value.neighborhood,`${index+1}. mahalle`,180),
-    address_line:requiredText(value.address_line,`${index+1}. açık adres`,500),
-    postal_code:optionalText(value.postal_code,`${index+1}. posta kodu`,40),
-    delivery_notes:optionalText(value.delivery_notes,`${index+1}. teslimat notu`,1000),
+    province:requiredText(value.province,`${index+1}. il/bölge`,120),
+    district:requiredText(value.district,`${index+1}. ilçe`,120),
+    neighborhood:optionalText(value.neighborhood,`${index+1}. mahalle`,160),
+    address_line:requiredText(value.address_line,`${index+1}. açık adres`,1000),
+    postal_code:optionalText(value.postal_code,`${index+1}. posta kodu`,20),
+    delivery_notes:optionalText(value.delivery_notes,`${index+1}. teslimat notu`,500),
     is_default:booleanValue(value.is_default,`${index+1}. varsayılan adres durumu`),
     updated_at:dateTime(value.updated_at,`${index+1}. adres güncelleme tarihi`) as string,
   };
+}
+
+function normalizeAddressInput(address:Address){
+  const id=address.id==null?null:uuid(address.id,'Adres kimliği');
+  const label=requiredText(address.label,'Adres etiketi',60);
+  const recipientName=requiredText(address.recipient_name,'Alıcı adı',120);if(recipientName.length<2)throw new Error('Alıcı adı doğrulanamadı.');
+  const phone=phoneValue(address.phone,'Telefon',true) as string;
+  const country=countryCode(address.country_code,'Ülke kodu');
+  const province=requiredText(address.province,'İl/bölge',120);if(province.length<2)throw new Error('İl/bölge doğrulanamadı.');
+  const district=requiredText(address.district,'İlçe/şehir',120);if(district.length<2)throw new Error('İlçe/şehir doğrulanamadı.');
+  const neighborhood=optionalText(address.neighborhood,'Mahalle/köy',160);
+  const addressLine=requiredText(address.address_line,'Açık adres',1000);if(addressLine.length<10)throw new Error('Açık adres doğrulanamadı.');
+  const postalCode=optionalText(address.postal_code,'Posta kodu',20);
+  const deliveryNotes=optionalText(address.delivery_notes,'Teslimat notu',500);
+  const isDefault=booleanValue(address.is_default,'Varsayılan adres durumu');
+  return{id,label,recipient_name:recipientName,phone,country_code:country,province,district,neighborhood,address_line:addressLine,postal_code:postalCode,delivery_notes:deliveryNotes,is_default:isDefault};
 }
 
 function normalizeRecentOrder(value:unknown,index:number):AccountRecentOrder{
@@ -169,6 +189,17 @@ function normalizeAccountOverview(value:unknown):AccountOverview{
   };
 }
 
+function normalizeProfileUpdate(value:unknown,expected:{displayName:string;phone:string|null;locale:string;marketingConsent:boolean}){
+  if(!isRecord(value))throw new Error('Profil güncelleme sonucu doğrulanamadı.');
+  const userId=uuid(value.userId,'Kullanıcı kimliği');
+  const displayName=requiredText(value.displayName,'Görünen ad',120);
+  const phone=textAllowEmpty(value.phone,'Telefon',40);
+  const locale=requiredText(value.locale,'Uygulama dili',8);if(!LOCALES.has(locale))throw new Error('Uygulama dili doğrulanamadı.');
+  const marketingConsent=booleanValue(value.marketingConsent,'Pazarlama izni');
+  if(displayName!==expected.displayName||phone!==(expected.phone??'')||locale!==expected.locale||marketingConsent!==expected.marketingConsent)throw new Error('Profil güncelleme sonucu istenen değişiklikle eşleşmiyor.');
+  return{userId,displayName,phone:phone||null,locale,marketingConsent};
+}
+
 function normalizeOrderPreviewItem(value:unknown,index:number){if(!isRecord(value))throw new Error(`${index+1}. sipariş önizleme ürünü doğrulanamadı.`);return{id:uuid(value.id,`${index+1}. sipariş kalemi kimliği`),productName:requiredText(value.productName,`${index+1}. ürün adı`,300),variantName:optionalText(value.variantName,`${index+1}. varyant adı`,240),quantity:integer(value.quantity,`${index+1}. ürün adedi`,1,1000000),imagePath:optionalText(value.imagePath,`${index+1}. ürün görseli`,2048),lineTotalMinor:integer(value.lineTotalMinor,`${index+1}. satır toplamı`)}};
 function normalizeOrderRow(value:unknown,index:number){if(!isRecord(value)||!Array.isArray(value.previewItems))throw new Error(`${index+1}. sipariş kaydı doğrulanamadı.`);const subtotal=integer(value.subtotalMinor,`${index+1}. ara toplam`),discount=integer(value.discountMinor,`${index+1}. indirim`),shipping=integer(value.shippingMinor,`${index+1}. kargo`),tax=integer(value.taxMinor,`${index+1}. vergi`),total=integer(value.totalMinor,`${index+1}. toplam`);if(total!==subtotal-discount+shipping+tax)throw new Error(`${index+1}. sipariş tutar özeti tutarsız.`);return{id:uuid(value.id,`${index+1}. sipariş kimliği`),orderNumber:requiredText(value.orderNumber,`${index+1}. sipariş numarası`,160),status:enumValue(value.status,`${index+1}. sipariş durumu`,ORDER_STATUSES,40),paymentStatus:enumValue(value.paymentStatus,`${index+1}. ödeme durumu`,PAYMENT_STATUSES,40),fulfillmentStatus:enumValue(value.fulfillmentStatus,`${index+1}. hazırlama durumu`,FULFILLMENT_STATUSES,40),currency:currencyCode(value.currency,`${index+1}. para birimi`),subtotalMinor:subtotal,discountMinor:discount,shippingMinor:shipping,taxMinor:tax,totalMinor:total,placedAt:dateTime(value.placedAt,`${index+1}. sipariş verilme tarihi`,false),createdAt:dateTime(value.createdAt,`${index+1}. sipariş oluşturma tarihi`) as string,updatedAt:dateTime(value.updatedAt,`${index+1}. sipariş güncelleme tarihi`) as string,cancelledAt:dateTime(value.cancelledAt,`${index+1}. sipariş iptal tarihi`,false),completedAt:dateTime(value.completedAt,`${index+1}. sipariş tamamlama tarihi`,false),reservationExpiresAt:dateTime(value.reservationExpiresAt,`${index+1}. stok rezervasyon tarihi`,false),itemCount:integer(value.itemCount,`${index+1}. ürün sayısı`),previewItems:value.previewItems.map(normalizeOrderPreviewItem),gift:booleanValue(value.gift,`${index+1}. hediye durumu`),shipmentStatus:optionalText(value.shipmentStatus,`${index+1}. kargo durumu`,80),trackingNumber:optionalText(value.trackingNumber,`${index+1}. takip numarası`,160)}};
 function normalizeOrdersPage(value:unknown):OrdersPage{if(!isRecord(value)||!Array.isArray(value.items))throw new Error('Sipariş listesi sunucudan doğrulanamadı.');const total=integer(value.total,'Toplam sipariş sayısı'),limit=integer(value.limit,'Sipariş liste limiti',1,50),offset=integer(value.offset,'Sipariş liste başlangıcı');if(value.items.length>limit)throw new Error('Sipariş listesi beklenen limiti aşıyor.');return{total,limit,offset,items:value.items.map(normalizeOrderRow)}}
@@ -210,6 +241,19 @@ function normalizePaymentActivity(value:unknown):PaymentActivityPage{if(!isRecor
 function normalizeNotificationPreferences(value:unknown):NotificationPreferences{if(!isRecord(value))throw new Error('Bildirim tercihleri doğrulanamadı.');return{pushEnabled:booleanValue(value.pushEnabled,'Push bildirimi tercihi'),orderPush:booleanValue(value.orderPush,'Sipariş bildirimi tercihi'),paymentPush:booleanValue(value.paymentPush,'Ödeme bildirimi tercihi'),shipmentPush:booleanValue(value.shipmentPush,'Kargo bildirimi tercihi'),returnPush:booleanValue(value.returnPush,'İade bildirimi tercihi'),messagePush:booleanValue(value.messagePush,'Mesaj bildirimi tercihi'),reviewPush:booleanValue(value.reviewPush,'Yorum bildirimi tercihi'),producerPush:booleanValue(value.producerPush,'Üretici bildirimi tercihi'),systemPush:booleanValue(value.systemPush,'Sistem bildirimi tercihi'),campaignPush:booleanValue(value.campaignPush,'Kampanya bildirimi tercihi')}}
 function normalizeNotifications(value:unknown):NotificationsPage{if(!isRecord(value)||!Array.isArray(value.items))throw new Error('Bildirim listesi doğrulanamadı.');return{unreadCount:integer(value.unreadCount,'Okunmamış bildirim sayısı'),items:value.items.map((item,index):AccountNotification=>{if(!isRecord(item))throw new Error(`${index+1}. bildirim doğrulanamadı.`);return{id:uuid(item.id,`${index+1}. bildirim kimliği`),type:enumValue(item.type,`${index+1}. bildirim türü`,NOTIFICATION_TYPES as Set<AccountNotification['type']>,40),title:requiredText(item.title,`${index+1}. bildirim başlığı`,160),message:requiredText(item.message,`${index+1}. bildirim mesajı`,5000),actionUrl:safeInternalOrHttpsUrl(item.actionUrl,`${index+1}. bildirim bağlantısı`),metadata:metadataObject(item.metadata,`${index+1}. bildirim metadata alanı`),readAt:dateTime(item.readAt,`${index+1}. bildirim okunma tarihi`,false),createdAt:dateTime(item.createdAt,`${index+1}. bildirim tarihi`) as string,expiresAt:dateTime(item.expiresAt,`${index+1}. bildirim sona erme tarihi`,false)}})}}
 
+function normalizeHelpDocument(value:unknown,key:string):AccountHelpDocument|null{
+  if(value==null)return null;
+  if(!isRecord(value))throw new Error(`${key} yardım belgesi doğrulanamadı.`);
+  const locale=requiredText(value.locale,`${key} belge dili`,8);if(!LOCALES.has(locale))throw new Error(`${key} belge dili doğrulanamadı.`);
+  return{id:uuid(value.id,`${key} belge kimliği`),slug:requiredText(value.slug,`${key} belge slug`,240),title:requiredText(value.title,`${key} belge başlığı`,300),summary:textAllowEmpty(value.summary,`${key} belge özeti`,2000),markdown:textAllowEmpty(value.markdown,`${key} markdown`,100000),sanitizedHtml:textAllowEmpty(value.sanitizedHtml,`${key} güvenli HTML`,200000),heroImagePath:optionalText(value.heroImagePath,`${key} görsel yolu`,2048),locale:locale as AccountHelpDocument['locale'],publishedAt:dateTime(value.publishedAt,`${key} yayın tarihi`,false),updatedAt:dateTime(value.updatedAt,`${key} güncelleme tarihi`) as string};
+}
+function normalizeHelpContent(value:unknown):AccountHelpContent{
+  if(!isRecord(value))throw new Error('Yardım içeriği sunucudan doğrulanamadı.');
+  const keys=Object.keys(value);if(keys.length!==HELP_KEYS.length||keys.some(key=>!HELP_KEYS.includes(key as typeof HELP_KEYS[number])))throw new Error('Yardım içeriği anahtarları doğrulanamadı.');
+  for(const key of HELP_KEYS){if(!(key in value))throw new Error(`Yardım içeriğinde ${key} belgesi anahtarı eksik.`);}
+  return{about:normalizeHelpDocument(value.about,'Hakkımızda'),returns:normalizeHelpDocument(value.returns,'İade'),privacy:normalizeHelpDocument(value.privacy,'Gizlilik'),terms:normalizeHelpDocument(value.terms,'Koşullar')};
+}
+
 function normalizeInventoryItem(value:unknown,index:number){if(!isRecord(value))throw new Error(`${index+1}. satıcı stok kaydı doğrulanamadı.`);const available=integer(value.availableQuantity,`${index+1}. mevcut stok`),reserved=integer(value.reservedQuantity,`${index+1}. rezerve stok`),sellable=integer(value.sellableQuantity,`${index+1}. satılabilir stok`);if(sellable!==Math.max(0,available-reserved))throw new Error(`${index+1}. satıcı stok özeti tutarsız.`);return{productId:uuid(value.productId,`${index+1}. ürün kimliği`),productName:requiredText(value.productName,`${index+1}. ürün adı`,300),productStatus:enumValue(value.productStatus,`${index+1}. ürün durumu`,PRODUCT_STATUSES,40),stockMode:enumValue(value.stockMode,`${index+1}. stok modeli`,STOCK_MODES,40),variantId:uuid(value.variantId,`${index+1}. varyant kimliği`),variantName:requiredText(value.variantName,`${index+1}. varyant adı`,240),sku:requiredText(value.sku,`${index+1}. SKU`,160),priceMinor:integer(value.priceMinor,`${index+1}. fiyat`),currency:currencyCode(value.currency,`${index+1}. para birimi`),availableQuantity:available,reservedQuantity:reserved,sellableQuantity:sellable,reorderLevel:integer(value.reorderLevel,`${index+1}. düşük stok eşiği`),version:integer(value.version,`${index+1}. stok sürümü`,1),weightGrams:value.weightGrams==null?null:integer(value.weightGrams,`${index+1}. kargo ağırlığı`,1,10000000)}};
 function normalizeProducerDashboard(value:unknown){if(!isRecord(value)||!isRecord(value.profile)||!isRecord(value.summary)||!Array.isArray(value.inventory)||!isRecord(value.finance)||!Array.isArray(value.changeRequests)||!Array.isArray(value.batches)||!Array.isArray(value.recentPayouts))throw new Error('Satıcı paneli verisi sunucudan doğrulanamadı.');const profile=value.profile,summary=value.summary,finance=value.finance;if(!Array.isArray(finance.balances))throw new Error('Satıcı finans özeti doğrulanamadı.');const profileId=uuid(profile.id,'Satıcı kimliği');const normalizedProfile={...profile,id:profileId,display_name:requiredText(profile.display_name,'Satıcı adı',240),production_location:textAllowEmpty(profile.production_location,'Üretim konumu',500),status:enumValue(profile.status,'Satıcı durumu',PRODUCER_STATUSES,40),is_verified:booleanValue(profile.is_verified,'Satıcı doğrulama durumu')};const normalizedSummary={draftProducts:integer(summary.draftProducts,'Taslak ürün sayısı'),reviewProducts:integer(summary.reviewProducts,'İncelemedeki ürün sayısı'),publishedProducts:integer(summary.publishedProducts,'Yayındaki ürün sayısı'),rejectedProducts:integer(summary.rejectedProducts,'Reddedilen ürün sayısı'),pendingChanges:integer(summary.pendingChanges,'Bekleyen değişiklik sayısı'),draftBatches:integer(summary.draftBatches,'Taslak lot sayısı'),reviewBatches:integer(summary.reviewBatches,'İncelemedeki lot sayısı'),releasedBatches:integer(summary.releasedBatches,'Yayınlanan lot sayısı'),lowStockVariants:integer(summary.lowStockVariants,'Düşük stok varyant sayısı')};const balances=finance.balances.map((balance,index)=>{if(!isRecord(balance))throw new Error(`${index+1}. satıcı bakiye kaydı doğrulanamadı.`);const producerId=uuid(balance.producerId,`${index+1}. bakiye üretici kimliği`);if(producerId!==profileId)throw new Error(`${index+1}. bakiye başka üreticiye ait.`);return{...balance,producerId,currency:currencyCode(balance.currency,`${index+1}. bakiye para birimi`),pendingMinor:integer(balance.pendingMinor,`${index+1}. bekleyen bakiye`),availableLedgerMinor:integer(balance.availableLedgerMinor,`${index+1}. kullanılabilir defter bakiyesi`),reservedPayoutMinor:integer(balance.reservedPayoutMinor,`${index+1}. ayrılmış ödeme`),paidPayoutMinor:integer(balance.paidPayoutMinor,`${index+1}. ödenmiş tutar`),availableToPayoutMinor:integer(balance.availableToPayoutMinor,`${index+1}. ödenebilir bakiye`,Number.MIN_SAFE_INTEGER),lifetimeNetMinor:integer(balance.lifetimeNetMinor,`${index+1}. yaşam boyu net`,Number.MIN_SAFE_INTEGER)}});const changeRequests=value.changeRequests.map((request,index)=>{if(!isRecord(request))throw new Error(`${index+1}. ürün değişiklik talebi doğrulanamadı.`);return{...request,id:uuid(request.id,`${index+1}. değişiklik talebi kimliği`),productId:uuid(request.productId,`${index+1}. değişiklik ürünü kimliği`),productName:requiredText(request.productName,`${index+1}. değişiklik ürünü adı`,300),status:enumValue(request.status,`${index+1}. değişiklik durumu`,CHANGE_STATUSES,40),proposedPayload:metadataObject(request.proposedPayload,`${index+1}. değişiklik içeriği`),reviewReason:optionalText(request.reviewReason,`${index+1}. inceleme gerekçesi`,2000),createdAt:dateTime(request.createdAt,`${index+1}. değişiklik oluşturma tarihi`) as string,updatedAt:dateTime(request.updatedAt,`${index+1}. değişiklik güncelleme tarihi`) as string,reviewedAt:dateTime(request.reviewedAt,`${index+1}. değişiklik inceleme tarihi`,false)}});return{...value,profile:normalizedProfile,summary:normalizedSummary,inventory:value.inventory.map(normalizeInventoryItem),finance:{...finance,producerId:uuid(finance.producerId,'Finans üretici kimliği'),displayName:requiredText(finance.displayName,'Finans üretici adı',240),commissionBasisPoints:integer(finance.commissionBasisPoints,'Komisyon oranı',0,10000),balances},changeRequests,batches:value.batches,recentPayouts:value.recentPayouts}}
 function normalizeProducerDraft(value:unknown){if(value==null)return null;if(!isRecord(value))throw new Error('Satıcı başvurusu doğrulanamadı.');const status=enumValue(value.status,'Başvuru durumu',APPLICATION_STATUSES,40);const applicationId=uuid(value.application_id,'Başvuru kimliği');const country=optionalText(value.production_country_code,'Üretim ülke kodu',2);if(country&&!/^[A-Za-z]{2}$/.test(country))throw new Error('Üretim ülke kodu doğrulanamadı.');return{...value,application_id:applicationId,status,brand_name:textAllowEmpty(value.brand_name,'Mağaza adı',180),public_name:textAllowEmpty(value.public_name,'Herkese açık ad',180),rejection_reason:optionalText(value.rejection_reason,'Başvuru geri bildirimi',1000),production_country_code:country?country.toUpperCase():null,production_province:optionalText(value.production_province,'Üretim ili',160),production_district:optionalText(value.production_district,'Üretim ilçesi',160),production_village:optionalText(value.production_village,'Üretim köyü',240),production_village_is_custom:booleanValue(value.production_village_is_custom,'Özel köy adı durumu')}}
@@ -241,8 +285,23 @@ function normalizePushRegistration(value:unknown,input:{provider:'fcm'|'apns';pl
 
 export async function getAccountOverview():Promise<AccountOverview>{const{data,error}=await supabase.rpc('get_my_account_overview_v1');return normalizeAccountOverview(unwrap<unknown>(data,error));}
 
-export async function updateProfile(input:{displayName:string;phone?:string|null;locale:string;marketingConsent:boolean}){const{data,error}=await supabase.rpc('update_customer_profile',{p_display_name:input.displayName,p_phone:input.phone??null,p_locale:input.locale,p_marketing_consent:input.marketingConsent});return unwrap(data,error);}
-export async function upsertAddress(address:Address){const{data,error}=await supabase.rpc('upsert_customer_address',{p_address_id:address.id??null,p_label:address.label,p_recipient_name:address.recipient_name,p_phone:address.phone,p_country_code:address.country_code,p_province:address.province,p_district:address.district,p_neighborhood:address.neighborhood??null,p_address_line:address.address_line,p_postal_code:address.postal_code??null,p_delivery_notes:address.delivery_notes??null,p_is_default:address.is_default});return unwrap(data,error);}
+export async function updateProfile(input:{displayName:string;phone?:string|null;locale:string;marketingConsent:boolean}){
+  const displayName=requiredText(input.displayName,'Görünen ad',120);if(displayName.length<2)throw new Error('Görünen ad doğrulanamadı.');
+  const phone=phoneValue(input.phone,'Telefon',false);
+  const locale=requiredText(input.locale,'Uygulama dili',8);if(!LOCALES.has(locale))throw new Error('Uygulama dili doğrulanamadı.');
+  const marketingConsent=booleanValue(input.marketingConsent,'Pazarlama izni');
+  const expected={displayName,phone,locale,marketingConsent};
+  const{data,error}=await supabase.rpc('update_customer_profile',{p_display_name:displayName,p_phone:phone,p_locale:locale,p_marketing_consent:marketingConsent});
+  return normalizeProfileUpdate(unwrap<unknown>(data,error),expected);
+}
+export async function upsertAddress(address:Address){
+  const normalized=normalizeAddressInput(address);
+  const{data,error}=await supabase.rpc('upsert_customer_address',{p_address_id:normalized.id,p_label:normalized.label,p_recipient_name:normalized.recipient_name,p_phone:normalized.phone,p_country_code:normalized.country_code,p_province:normalized.province,p_district:normalized.district,p_neighborhood:normalized.neighborhood,p_address_line:normalized.address_line,p_postal_code:normalized.postal_code,p_delivery_notes:normalized.delivery_notes,p_is_default:normalized.is_default});
+  const result=normalizeAddress(unwrap<unknown>(data,error),0);
+  if(normalized.id&&result.id!==normalized.id)throw new Error('Adres güncelleme sonucu başka bir kayda ait.');
+  if(result.label!==normalized.label||result.recipient_name!==normalized.recipient_name||result.phone!==normalized.phone||result.country_code!==normalized.country_code||result.province!==normalized.province||result.district!==normalized.district||(result.neighborhood??null)!==normalized.neighborhood||result.address_line!==normalized.address_line||(result.postal_code??null)!==normalized.postal_code||(result.delivery_notes??null)!==normalized.delivery_notes||(normalized.is_default&&result.is_default!==true))throw new Error('Adres kayıt sonucu istenen değişiklikle eşleşmiyor.');
+  return result;
+}
 export async function deleteAddress(addressId:string){const id=uuid(addressId,'Adres kimliği');const{data,error}=await supabase.rpc('delete_customer_address',{p_address_id:id});const result=unwrap<unknown>(data,error);if(result!==true)throw new Error('Adres silme sonucu doğrulanamadı.');return true;}
 export async function listOrders(limit=20,offset=0):Promise<OrdersPage>{const{data,error}=await supabase.rpc('list_my_orders_v1',{p_limit:validatedLimit(limit,50),p_offset:validatedOffset(offset)});return normalizeOrdersPage(unwrap<unknown>(data,error));}
 export async function getOrderDetail(orderId:string){const id=uuid(orderId,'Sipariş kimliği');const{data,error}=await supabase.rpc('get_my_order_detail_v1',{p_order_id:id});return normalizeOrderDetail(unwrap<unknown>(data,error));}
@@ -259,7 +318,7 @@ export async function requestAccountClosure(reason:string){const normalized=reas
 export async function cancelAccountClosure(){const{data,error}=await supabase.rpc('cancel_account_closure_v1');return normalizeClosureCancel(unwrap<unknown>(data,error));}
 
 export function catalogPublicUrl(path?:string|null){if(!path)return'';const raw=path.trim();if(/^https?:\/\//i.test(raw)){let url:URL;try{url=new URL(raw);}catch{return'';}return url.protocol==='https:'?url.toString():'';}const normalized=raw.replace(/^\/+/, '');if(!normalized||normalized.includes('..')||normalized.includes('\\'))return'';const{data}=supabase.storage.from('catalog-public').getPublicUrl(normalized);return data.publicUrl;}
-export async function getAccountHelpContent(locale='tr'){const{data,error}=await supabase.rpc('get_account_help_content_v1',{p_locale:locale});return unwrap<any>(data,error);}
+export async function getAccountHelpContent(locale='tr'){const normalizedLocale=requiredText(locale,'Yardım dili',8);if(!LOCALES.has(normalizedLocale))throw new Error('Yardım dili doğrulanamadı.');const{data,error}=await supabase.rpc('get_account_help_content_v1',{p_locale:normalizedLocale});return normalizeHelpContent(unwrap<unknown>(data,error));}
 export async function signOutCurrentDevice(){const{error}=await supabase.auth.signOut({scope:'local'});if(error)throw error;}
 export async function signOutOtherDevices(){const{error}=await supabase.auth.signOut({scope:'others'});if(error)throw error;}
 export async function signOutAllDevices(){const{error}=await supabase.auth.signOut({scope:'global'});if(error)throw error;}
