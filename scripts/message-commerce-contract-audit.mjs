@@ -13,7 +13,7 @@ if(api){
  requirePattern(api,/list_my_producer_conversations_v1/,'Seller messages must use the producer-scoped conversation RPC.');
  requirePattern(api,/scope:'all'\|'producer'/,'Canonical conversation listing must keep explicit all/producer scope.');
  requirePattern(api,/message_moderation_blocked:/,'Backend moderation violations must remain user-facing and categorized.');
- requirePattern(api,/globalThis\.crypto\.randomUUID\(\)_attachment\./,'Uploaded message attachment names must remain neutral and not expose original filenames.');
+ requirePattern(api,/globalThis\.crypto\.randomUUID\(\)\}_attachment\.\$\{extension\}/,'Uploaded message attachment names must remain neutral and not expose original filenames.');
  requirePattern(api,/parsed\.protocol!=='https:'/,'Message attachment signed URLs must remain HTTPS-only.');
  forbid(api,/const\s+(EMAIL_RE|PHONE_RE|DIRECT_CHANNEL_RE)\b|containsDisallowedContactInformation/,'Client-side hardcoded off-platform filters must not override Super Admin policy.');
  forbid(api,/unwrap<any>/,'Messaging RPCs must not return raw any payloads.');
