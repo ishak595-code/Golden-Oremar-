@@ -17,6 +17,7 @@ import CatalogProductCard from '../catalog/CatalogProductCard';
 import { useCatalogFilterOptions } from '../catalog/useCatalogFilterOptions';
 import { useLiveHomeCatalog, type LegacyHomeProduct } from '../catalog/useLiveHomeCatalog';
 import { usePublicStorefrontConfig } from '../storefront/usePublicStorefrontConfig';
+import HomeEventsSpotlight from './HomeEventsSpotlight';
 
 type Props = {
   searchQuery: string;
@@ -315,6 +316,8 @@ export default function HomeSection({
             </div>
           </section>
         ) : null}
+
+        {!searchQuery ? <HomeEventsSpotlight /> : null}
 
         {!searchQuery && interfaceContent && quickCategories.length ? (
           <section className="mb-8" aria-labelledby="quick-categories-heading">
