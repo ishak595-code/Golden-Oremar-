@@ -5,6 +5,7 @@ type StorefrontState = {
   staticContent: { interface: StorefrontConfig['interface'] | null };
   heroCategories: StorefrontConfig['heroCategories'];
   homeSections: StorefrontConfig['homeSections'];
+  eventSpotlight: StorefrontConfig['eventSpotlight'] | null;
   salesReadiness: StorefrontConfig['salesReadiness'] | null;
   brand: StorefrontConfig['brand'] | null;
   updatedAt: string | null;
@@ -16,6 +17,7 @@ const emptyState: StorefrontState = {
   staticContent: { interface: null },
   heroCategories: [],
   homeSections: [],
+  eventSpotlight: null,
   salesReadiness: null,
   brand: null,
   updatedAt: null,
@@ -37,19 +39,17 @@ export function usePublicStorefrontConfig(locale = 'tr') {
           staticContent: { interface: data.interface },
           heroCategories: data.heroCategories,
           homeSections: data.homeSections,
+          eventSpotlight: data.eventSpotlight,
           salesReadiness: data.salesReadiness,
           brand: data.brand,
           updatedAt: data.updatedAt,
           loading: false,
           error: '',
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (!active) return;
-        setState({
-          ...emptyState,
-          loading: false,
-          error: error?.message || 'Mağaza arayüz ayarları yüklenemedi.',
-        });
+        const message = error instanceof Error && error.message ? error.message : 'Mağaza arayüz ayarları yüklenemedi.';
+        setState({ ...emptyState, loading: false, error: message });
       }
     })();
     return () => { active = false; };
