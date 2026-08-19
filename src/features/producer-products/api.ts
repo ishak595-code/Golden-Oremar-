@@ -1,5 +1,8 @@
 import { supabase } from '../../lib/supabase';
 
+const ACTIVITY_TYPES=new Set(['beekeeping','livestock','dairy','poultry','field_farming','fruit_growing','vegetable_growing','wild_harvest','fishing','food_processing','beverage_production','natural_materials']);
+const PRODUCER_STATUSES=new Set(['pending','active','suspended','rejected','closed']);
+
 function unwrap<T>(data: T | null, error: any): T {
   if (error) throw error;
   return data as T;
@@ -51,10 +54,13 @@ function safeAssetPath(value: unknown) {
   return path;
 }
 
-function safeStringArray(value: unknown, label: string, maxItems: number, maxItemLength: number) {
+function safeStringArray(value: unknown, label: string, maxItems: number, maxItemLength: number, allowed?:Set<string>) {
   if (value == null) return [];
   if (!Array.isArray(value) || value.length > maxItems) throw new Error(`${label} doğrulanamadı.`);
-  return value.map((item, index) => requiredText(item, `${label} ${index + 1}`, maxItemLength));
+  const rows=value.map((item, index) => requiredText(item, `${label} ${index + 1}`, maxItemLength));
+  if(new Set(rows).size!==rows.length)throw new Error(`${label} tekrar eden değer içeriyor.`);
+  if(allowed&&rows.some(item=>!allowed.has(item)))throw new Error(`${label} desteklenmeyen değer içeriyor.`);
+  return rows;
 }
 
 function normalizeVariant(value: unknown, index: number) {
@@ -123,8 +129,32 @@ function normalizeProduct(value: unknown, index: number) {
   };
 }
 
+function normalizeProducerProfile(value:unknown){
+  if(!isRecord(value))throw new Error('Satıcı profili sunucudan doğrulanamadı.');
+  const status=requiredText(value.status,'Satıcı durumu',40);if(!PRODUCER_STATUSES.has(status))throw new Error('Satıcı durumu doğrulanamadı.');
+  if(!Array.isArray(value.approved_categories))throw new Error('Onaylı kategori kapsamı doğrulanamadı.');
+  const approvedCategories=value.approved_categories.map((row:any,index:number)=>{
+    if(!isRecord(row))throw new Error(`${index+1}. onaylı kategori doğrulanamadı.`);
+    return{id:requiredText(row.id,'Kategori kimliği',160),slug:requiredText(row.slug,'Kategori bağlantısı',220),name:requiredText(row.name,'Kategori adı',240)};
+  });
+  const approvedCategorySlugs=safeStringArray(value.approved_category_slugs,'Onaylı kategori kapsamı',100,220);
+  if(approvedCategories.some(row=>!approvedCategorySlugs.includes(row.slug)))throw new Error('Onaylı kategori adı ile yetki kapsamı uyuşmuyor.');
+  return{
+    ...value,
+    id:requiredText(value.id,'Satıcı kimliği',160),
+    display_name:requiredText(value.display_name,'Satıcı adı',240),
+    status,
+    is_verified:safeBoolean(value.is_verified,'Satıcı doğrulama durumu'),
+    origin_verified:safeBoolean(value.origin_verified,'Menşe doğrulama durumu'),
+    activity_types:safeStringArray(value.activity_types,'Üretim faaliyetleri',12,80,ACTIVITY_TYPES),
+    approved_category_slugs:approvedCategorySlugs,
+    approved_categories:approvedCategories,
+    production_location:requiredText(value.production_location,'Üretim konumu',500),
+  };
+}
+
 export async function listMyProducerProducts() {
-  const { data, error } = await supabase.rpc('list_my_producer_products_v1');
+  const { data, error } = await supabase.rpc('list_my_producer_products_v2');
   const rows = unwrap<unknown>(data, error);
   if (!Array.isArray(rows) || rows.length > 5000) throw new Error('Satıcı ürün listesi sunucudan doğrulanamadı.');
   return rows.map(normalizeProduct);
@@ -136,33 +166,26 @@ export async function listProductCategories() {
   if (!Array.isArray(rows) || rows.length > 500) throw new Error('Kategori listesi sunucudan doğrulanamadı.');
   return rows.map((value, index) => {
     if (!isRecord(value)) throw new Error(`${index + 1}. kategori doğrulanamadı.`);
-    return {
-      ...value,
-      id: requiredText(value.id, 'Kategori kimliği', 160),
-      slug: requiredText(value.slug, 'Kategori bağlantısı', 220),
-      name: requiredText(value.name, 'Kategori adı', 240),
-    };
+    return { ...value, id: requiredText(value.id, 'Kategori kimliği', 160), slug: requiredText(value.slug, 'Kategori bağlantısı', 220), name: requiredText(value.name, 'Kategori adı', 240) };
   });
 }
 
 export async function getMyProducerProfile() {
   const { data, error } = await supabase.rpc('get_my_producer_profile_v1');
-  const profile = unwrap<unknown>(data, error);
-  if (!isRecord(profile)) throw new Error('Satıcı profili sunucudan doğrulanamadı.');
-  return { ...profile, id: requiredText(profile.id, 'Satıcı kimliği', 160) };
+  return normalizeProducerProfile(unwrap<unknown>(data,error));
 }
 
 export async function saveProducerProduct(reference: string | null, payload: any) {
   if (reference != null && (typeof reference !== 'string' || !reference.trim() || reference.length > 220)) throw new Error('Ürün referansı doğrulanamadı.');
   if (!isRecord(payload)) throw new Error('Ürün değişiklik paketi doğrulanamadı.');
-  const { data, error } = await supabase.rpc('management_upsert_product_v1', { p_reference: reference?.trim() || null, p_payload: payload });
+  const { data, error } = await supabase.rpc('producer_upsert_product_v1', { p_reference: reference?.trim() || null, p_payload: payload });
   return unwrap<any>(data, error);
 }
 
 export async function archiveProducerProduct(reference: string) {
   const normalized = requiredText(reference, 'Ürün referansı', 220);
-  const { data, error } = await supabase.rpc('management_archive_product_v1', { p_reference: normalized });
-  return unwrap<boolean>(data, error);
+  const { data, error } = await supabase.rpc('producer_archive_product_v1', { p_reference: normalized });
+  const result=unwrap<unknown>(data,error);if(result!==true)throw new Error('Ürün arşivleme sonucu doğrulanamadı.');return true;
 }
 
 export async function uploadProducerProductImages(producerId: string, files: File[]) {
