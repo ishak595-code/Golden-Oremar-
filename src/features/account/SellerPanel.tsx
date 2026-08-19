@@ -8,6 +8,7 @@ import {
 import { EmptyState, ErrorState, LoadingState, Money, Panel } from './ui';
 import { useAccessibleDialog } from '../accessibility/useAccessibleDialog';
 
+const MessagesPanel = React.lazy(() => import('./MessagesPanel'));
 const ProducerOrdersPanel = React.lazy(() => import('../producer-orders/ProducerOrdersPanel'));
 const ProducerTraceabilityPanel = React.lazy(() => import('../producer-traceability/ProducerTraceabilityPanel'));
 const ProducerFinancePanel = React.lazy(() => import('../producer-finance/ProducerFinancePanel'));
@@ -29,7 +30,7 @@ const changeStatus: Record<string, string> = {
   withdrawn: 'Geri çekildi',
 };
 
-type SellerSubview = 'dashboard' | 'orders' | 'traceability' | 'finance';
+type SellerSubview = 'dashboard' | 'orders' | 'messages' | 'traceability' | 'finance';
 
 type SellerPanelProps = {
   producer: any | null;
@@ -156,6 +157,13 @@ export default function SellerPanel({ producer, onOpenApplication, onOpenProduct
       <React.Suspense fallback={<LoadingState label="Satıcı operasyonu yükleniyor" />}>
         {subview === 'orders' ? (
           <ProducerOrdersPanel onBack={() => setSubview('dashboard')} onChanged={load} />
+        ) : subview === 'messages' ? (
+          <MessagesPanel
+            scope="producer"
+            title="Müşteri Soruları"
+            description="Ürün ve sipariş sorularını, görsel/PDF eklerini ve müşteri yanıtlarını Golden Oremar içinde yönetin."
+            onBack={() => setSubview('dashboard')}
+          />
         ) : subview === 'traceability' ? (
           <ProducerTraceabilityPanel onBack={() => setSubview('dashboard')} onChanged={load} />
         ) : (
@@ -181,7 +189,7 @@ export default function SellerPanel({ producer, onOpenApplication, onOpenProduct
         </div>
       ) : null}
 
-      <Panel title={displayName || 'Satıcı Paneli'} description="Sipariş, ürün, stok, izlenebilirlik ve finans operasyonlarınızı yönetin.">
+      <Panel title={displayName || 'Satıcı Paneli'} description="Sipariş, müşteri soruları, ürün, stok, izlenebilirlik ve finans operasyonlarınızı yönetin.">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label="Satıcı hesap özeti">
           <SummaryMetric value={summary.publishedProducts} label="Yayındaki ürün" />
           <SummaryMetric value={summary.reviewProducts} label="İncelemede" />
@@ -199,6 +207,13 @@ export default function SellerPanel({ producer, onOpenApplication, onOpenProduct
             description="Size ait ödenmiş kalemleri hazırlayın ve gerçek takip numarasıyla kargoya verin."
             actionLabel="Sipariş operasyonunu aç"
             onClick={() => setSubview('orders')}
+            emphasized
+          />
+          <OperationButton
+            title="Müşteri Soruları"
+            description="Ürün ve sipariş sorularını, müşteri mesajlarını ve güvenli ek dosyalarını yanıtlayın."
+            actionLabel="Müşteri sorularını aç"
+            onClick={() => setSubview('messages')}
             emphasized
           />
           <OperationButton
