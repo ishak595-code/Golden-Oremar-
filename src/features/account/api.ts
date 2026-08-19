@@ -1,346 +1,223 @@
-
 import { supabase } from '../../lib/supabase';
-import type { Address, AccountOverview, OrdersPage } from './types';
+import type {
+  AccountClosureSummary,
+  AccountNotification,
+  AccountOverview,
+  AccountProducerSummary,
+  AccountRecentOrder,
+  AccountRole,
+  Address,
+  NotificationPreferences,
+  NotificationsPage,
+  OrdersPage,
+  PaymentActivityPage,
+  PaymentActivityStatus,
+  PaymentMethodType,
+  OrderFulfillmentStatus,
+  OrderPaymentStatus,
+  OrderStatus,
+} from './types';
 
-function unwrap<T>(data: T | null, error: any): T {
-  if (error) throw error;
-  return data as T;
+const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const ACCOUNT_ROLES=new Set<AccountRole>(['customer','producer','support','content_editor','operations','admin','super_admin']);
+const LOCALES=new Set(['tr','en','de','fr','ku','ar']);
+const PROFILE_STATUSES=new Set(['active','restricted','blocked','deleted']);
+const ORDER_STATUSES=new Set<OrderStatus>(['draft','pending_payment','confirmed','preparing','partially_shipped','shipped','delivered','completed','cancelled','refunded']);
+const PAYMENT_STATUSES=new Set<OrderPaymentStatus>(['unpaid','authorized','partially_paid','paid','partially_refunded','refunded','failed','disputed']);
+const FULFILLMENT_STATUSES=new Set<OrderFulfillmentStatus>(['unfulfilled','processing','partially_fulfilled','fulfilled','returned']);
+const PAYMENT_METHOD_TYPES=new Set<PaymentMethodType>(['card','bank_transfer','cash_on_delivery','wallet','other']);
+const PAYMENT_ACTIVITY_STATUSES=new Set<PaymentActivityStatus>(['created','pending','authorized','captured','failed','cancelled','partially_refunded','refunded','disputed']);
+const NOTIFICATION_TYPES=new Set(['order','payment','shipment','return','campaign','system','producer','message','review']);
+const PRODUCER_STATUSES=new Set(['pending','active','suspended','rejected','closed']);
+const APPLICATION_STATUSES=new Set(['draft','submitted','under_review','needs_information','approved','rejected','withdrawn']);
+const PRODUCT_STATUSES=new Set(['draft','review','published','rejected','archived']);
+const STOCK_MODES=new Set(['tracked','preorder','unlimited','seasonal']);
+const CHANGE_STATUSES=new Set(['pending','approved','rejected','withdrawn']);
+const CLOSURE_STATUSES=new Set(['requested','processing','ready_for_auth_deletion','completed','cancelled','rejected']);
+
+function unwrap<T>(data:T|null,error:unknown):T{if(error)throw error;return data as T;}
+function isRecord(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
+function requiredText(value:unknown,label:string,max=500){const text=typeof value==='string'?value.trim():'';if(!text||text.length>max||/[\u0000-\u001F\u007F]/.test(text))throw new Error(`${label} doğrulanamadı.`);return text;}
+function textAllowEmpty(value:unknown,label:string,max=5000){if(typeof value!=='string'||value.length>max||/[\u0000-\u001F\u007F]/.test(value))throw new Error(`${label} doğrulanamadı.`);return value;}
+function optionalText(value:unknown,label:string,max=1000){if(value==null||value==='')return null;if(typeof value!=='string')throw new Error(`${label} doğrulanamadı.`);const text=value.trim();if(!text)return null;if(text.length>max||/[\u0000-\u001F\u007F]/.test(text))throw new Error(`${label} doğrulanamadı.`);return text;}
+function uuid(value:unknown,label:string){const text=requiredText(value,label,36);if(!UUID_RE.test(text))throw new Error(`${label} doğrulanamadı.`);return text;}
+function optionalUuid(value:unknown,label:string){if(value==null||value==='')return null;return uuid(value,label);}
+function integer(value:unknown,label:string,min=0,max=Number.MAX_SAFE_INTEGER){if(typeof value!=='number'||!Number.isSafeInteger(value)||value<min||value>max)throw new Error(`${label} doğrulanamadı.`);return value;}
+function booleanValue(value:unknown,label:string){if(typeof value!=='boolean')throw new Error(`${label} doğrulanamadı.`);return value;}
+function dateTime(value:unknown,label:string,required=true){if(value==null||value===''){if(required)throw new Error(`${label} doğrulanamadı.`);return null;}const text=requiredText(value,label,80);if(Number.isNaN(Date.parse(text)))throw new Error(`${label} doğrulanamadı.`);return text;}
+function currencyCode(value:unknown,label='Para birimi'){const text=requiredText(value,label,3).toUpperCase();if(!/^[A-Z]{3}$/.test(text))throw new Error(`${label} doğrulanamadı.`);return text;}
+function enumValue<T extends string>(value:unknown,label:string,allowed:Set<T>,max=80):T{const text=requiredText(value,label,max) as T;if(!allowed.has(text))throw new Error(`${label} doğrulanamadı.`);return text;}
+function metadataObject(value:unknown,label:string){if(!isRecord(value))throw new Error(`${label} doğrulanamadı.`);return value;}
+function safeInternalOrHttpsUrl(value:unknown,label:string){if(value==null||value==='')return null;const raw=requiredText(value,label,2048);if(raw.startsWith('/'))return raw;let parsed:URL;try{parsed=new URL(raw);}catch{throw new Error(`${label} doğrulanamadı.`);}if(parsed.protocol!=='https:')throw new Error(`${label} güvenli değil.`);return parsed.toString();}
+function validatedLimit(limit:number,max:number){if(!Number.isSafeInteger(limit)||limit<1||limit>max)throw new Error(`Liste limiti 1 ile ${max} arasında olmalıdır.`);return limit;}
+function validatedOffset(offset:number){if(!Number.isSafeInteger(offset)||offset<0)throw new Error('Liste başlangıç değeri geçersiz.');return offset;}
+
+function normalizeAddress(value:unknown,index:number):Address{
+  if(!isRecord(value))throw new Error(`${index+1}. adres kaydı doğrulanamadı.`);
+  return{
+    id:uuid(value.id,`${index+1}. adres kimliği`),
+    label:requiredText(value.label,`${index+1}. adres etiketi`,120),
+    recipient_name:requiredText(value.recipient_name,`${index+1}. alıcı adı`,180),
+    phone:requiredText(value.phone,`${index+1}. telefon`,80),
+    country_code:requiredText(value.country_code,`${index+1}. ülke kodu`,2).toUpperCase(),
+    province:requiredText(value.province,`${index+1}. il/bölge`,160),
+    district:requiredText(value.district,`${index+1}. ilçe`,160),
+    neighborhood:optionalText(value.neighborhood,`${index+1}. mahalle`,180),
+    address_line:requiredText(value.address_line,`${index+1}. açık adres`,500),
+    postal_code:optionalText(value.postal_code,`${index+1}. posta kodu`,40),
+    delivery_notes:optionalText(value.delivery_notes,`${index+1}. teslimat notu`,1000),
+    is_default:booleanValue(value.is_default,`${index+1}. varsayılan adres durumu`),
+    updated_at:dateTime(value.updated_at,`${index+1}. adres güncelleme tarihi`) as string,
+  };
 }
 
-export async function getAccountOverview(): Promise<AccountOverview> {
-  const { data, error } = await supabase.rpc('get_my_account_overview_v1');
-  return unwrap<AccountOverview>(data, error);
+function normalizeRecentOrder(value:unknown,index:number):AccountRecentOrder{
+  if(!isRecord(value))throw new Error(`${index+1}. son sipariş kaydı doğrulanamadı.`);
+  return{
+    id:uuid(value.id,`${index+1}. sipariş kimliği`),
+    order_number:requiredText(value.order_number,`${index+1}. sipariş numarası`,160),
+    status:enumValue(value.status,`${index+1}. sipariş durumu`,ORDER_STATUSES,40),
+    payment_status:enumValue(value.payment_status,`${index+1}. ödeme durumu`,PAYMENT_STATUSES,40),
+    fulfillment_status:enumValue(value.fulfillment_status,`${index+1}. hazırlama durumu`,FULFILLMENT_STATUSES,40),
+    currency:currencyCode(value.currency,`${index+1}. sipariş para birimi`),
+    total_minor:integer(value.total_minor,`${index+1}. sipariş toplamı`),
+    placed_at:dateTime(value.placed_at,`${index+1}. sipariş verilme tarihi`,false),
+    created_at:dateTime(value.created_at,`${index+1}. sipariş oluşturma tarihi`) as string,
+    gift:booleanValue(value.gift,`${index+1}. hediye durumu`),
+  };
 }
 
-export async function updateProfile(input: {
-  displayName: string;
-  phone?: string | null;
-  locale: string;
-  marketingConsent: boolean;
-}) {
-  const { data, error } = await supabase.rpc('update_customer_profile', {
-    p_display_name: input.displayName,
-    p_phone: input.phone ?? null,
-    p_locale: input.locale,
-    p_marketing_consent: input.marketingConsent,
-  });
-  return unwrap(data, error);
+function normalizeProducerSummary(value:unknown):AccountProducerSummary|null{
+  if(value==null)return null;if(!isRecord(value))throw new Error('Üretici hesap özeti doğrulanamadı.');
+  return{
+    id:uuid(value.id,'Üretici kimliği'),
+    display_name:requiredText(value.display_name,'Üretici adı',240),
+    status:enumValue(value.status,'Üretici durumu',PRODUCER_STATUSES,40),
+    is_verified:booleanValue(value.is_verified,'Üretici doğrulama durumu'),
+    origin_verified:booleanValue(value.origin_verified,'Menşe doğrulama durumu'),
+    village:optionalText(value.village,'Üretim köyü',240),
+    district:optionalText(value.district,'Üretim ilçesi',160),
+    province:optionalText(value.province,'Üretim ili',160),
+  };
 }
 
-export async function upsertAddress(address: Address) {
-  const { data, error } = await supabase.rpc('upsert_customer_address', {
-    p_address_id: address.id ?? null,
-    p_label: address.label,
-    p_recipient_name: address.recipient_name,
-    p_phone: address.phone,
-    p_country_code: address.country_code,
-    p_province: address.province,
-    p_district: address.district,
-    p_neighborhood: address.neighborhood ?? null,
-    p_address_line: address.address_line,
-    p_postal_code: address.postal_code ?? null,
-    p_delivery_notes: address.delivery_notes ?? null,
-    p_is_default: address.is_default,
-  });
-  return unwrap(data, error);
+function normalizeClosure(value:unknown):AccountClosureSummary|null{
+  if(value==null)return null;if(!isRecord(value))throw new Error('Hesap kapatma kaydı doğrulanamadı.');
+  return{
+    id:uuid(value.id,'Hesap kapatma kimliği'),
+    status:enumValue(value.status,'Hesap kapatma durumu',CLOSURE_STATUSES,60),
+    reason:optionalText(value.reason,'Hesap kapatma gerekçesi',2000)??'',
+    requested_at:dateTime(value.requested_at,'Hesap kapatma talep tarihi') as string,
+    updated_at:dateTime(value.updated_at,'Hesap kapatma güncelleme tarihi') as string,
+  };
 }
 
-export async function deleteAddress(addressId: string) {
-  const { data, error } = await supabase.rpc('delete_customer_address', {
-    p_address_id: addressId,
-  });
-  return unwrap<boolean>(data, error);
+function normalizeAccountOverview(value:unknown):AccountOverview{
+  if(!isRecord(value)||!isRecord(value.profile)||!isRecord(value.summary)||!Array.isArray(value.roles)||!Array.isArray(value.addresses)||!Array.isArray(value.recent_orders))throw new Error('Hesap özeti sunucudan doğrulanamadı.');
+  const profile=value.profile;const summary=value.summary;
+  const roles=value.roles.map((role,index)=>enumValue(role,`${index+1}. hesap rolü`,ACCOUNT_ROLES,40));
+  if(new Set(roles).size!==roles.length)throw new Error('Hesap rolleri tekrar eden kayıt içeriyor.');
+  const locale=requiredText(profile.locale,'Hesap dili',8);if(!LOCALES.has(locale))throw new Error('Hesap dili doğrulanamadı.');
+  const profileStatus=requiredText(profile.status,'Hesap durumu',40);if(!PROFILE_STATUSES.has(profileStatus))throw new Error('Hesap durumu doğrulanamadı.');
+  return{
+    profile:{
+      id:uuid(profile.id,'Hesap kimliği'),
+      email:textAllowEmpty(profile.email,'Hesap e-postası',320),
+      display_name:textAllowEmpty(profile.display_name,'Görünen ad',240),
+      phone:optionalText(profile.phone,'Telefon',80),
+      avatar_path:optionalText(profile.avatar_path,'Profil görsel yolu',2048),
+      locale:locale as AccountOverview['profile']['locale'],
+      status:profileStatus as AccountOverview['profile']['status'],
+      marketing_consent:booleanValue(profile.marketing_consent,'Pazarlama izni'),
+      marketing_consent_at:dateTime(profile.marketing_consent_at,'Pazarlama izin tarihi',false),
+      created_at:dateTime(profile.created_at,'Hesap oluşturma tarihi') as string,
+      last_seen_at:dateTime(profile.last_seen_at,'Son görülme tarihi') as string,
+    },
+    roles,
+    addresses:value.addresses.map(normalizeAddress),
+    summary:{
+      favorite_count:integer(summary.favorite_count,'Favori sayısı'),
+      address_count:integer(summary.address_count,'Adres sayısı'),
+      order_count:integer(summary.order_count,'Sipariş sayısı'),
+      active_order_count:integer(summary.active_order_count,'Aktif sipariş sayısı'),
+      return_count:integer(summary.return_count,'İade sayısı'),
+      gift_count:integer(summary.gift_count,'Hediye sayısı'),
+      followed_producer_count:integer(summary.followed_producer_count,'Takip edilen üretici sayısı'),
+      unread_notification_count:integer(summary.unread_notification_count,'Okunmamış bildirim sayısı'),
+    },
+    recent_orders:value.recent_orders.map(normalizeRecentOrder),
+    producer:normalizeProducerSummary(value.producer),
+    account_closure:normalizeClosure(value.account_closure),
+  };
 }
 
-export async function listOrders(limit = 20, offset = 0): Promise<OrdersPage> {
-  const { data, error } = await supabase.rpc('list_my_orders_v1', {
-    p_limit: limit,
-    p_offset: offset,
-  });
-  return unwrap<OrdersPage>(data, error);
+function normalizeOrderPreviewItem(value:unknown,index:number){if(!isRecord(value))throw new Error(`${index+1}. sipariş önizleme ürünü doğrulanamadı.`);return{id:uuid(value.id,`${index+1}. sipariş kalemi kimliği`),productName:requiredText(value.productName,`${index+1}. ürün adı`,300),variantName:optionalText(value.variantName,`${index+1}. varyant adı`,240),quantity:integer(value.quantity,`${index+1}. ürün adedi`,1,1000000),imagePath:optionalText(value.imagePath,`${index+1}. ürün görseli`,2048),lineTotalMinor:integer(value.lineTotalMinor,`${index+1}. satır toplamı`)}};
+function normalizeOrderRow(value:unknown,index:number){if(!isRecord(value)||!Array.isArray(value.previewItems))throw new Error(`${index+1}. sipariş kaydı doğrulanamadı.`);const subtotal=integer(value.subtotalMinor,`${index+1}. ara toplam`),discount=integer(value.discountMinor,`${index+1}. indirim`),shipping=integer(value.shippingMinor,`${index+1}. kargo`),tax=integer(value.taxMinor,`${index+1}. vergi`),total=integer(value.totalMinor,`${index+1}. toplam`);if(total!==subtotal-discount+shipping+tax)throw new Error(`${index+1}. sipariş tutar özeti tutarsız.`);return{id:uuid(value.id,`${index+1}. sipariş kimliği`),orderNumber:requiredText(value.orderNumber,`${index+1}. sipariş numarası`,160),status:enumValue(value.status,`${index+1}. sipariş durumu`,ORDER_STATUSES,40),paymentStatus:enumValue(value.paymentStatus,`${index+1}. ödeme durumu`,PAYMENT_STATUSES,40),fulfillmentStatus:enumValue(value.fulfillmentStatus,`${index+1}. hazırlama durumu`,FULFILLMENT_STATUSES,40),currency:currencyCode(value.currency,`${index+1}. para birimi`),subtotalMinor:subtotal,discountMinor:discount,shippingMinor:shipping,taxMinor:tax,totalMinor:total,placedAt:dateTime(value.placedAt,`${index+1}. sipariş verilme tarihi`,false),createdAt:dateTime(value.createdAt,`${index+1}. sipariş oluşturma tarihi`) as string,updatedAt:dateTime(value.updatedAt,`${index+1}. sipariş güncelleme tarihi`) as string,cancelledAt:dateTime(value.cancelledAt,`${index+1}. sipariş iptal tarihi`,false),completedAt:dateTime(value.completedAt,`${index+1}. sipariş tamamlama tarihi`,false),reservationExpiresAt:dateTime(value.reservationExpiresAt,`${index+1}. stok rezervasyon tarihi`,false),itemCount:integer(value.itemCount,`${index+1}. ürün sayısı`),previewItems:value.previewItems.map(normalizeOrderPreviewItem),gift:booleanValue(value.gift,`${index+1}. hediye durumu`),shipmentStatus:optionalText(value.shipmentStatus,`${index+1}. kargo durumu`,80),trackingNumber:optionalText(value.trackingNumber,`${index+1}. takip numarası`,160)}};
+function normalizeOrdersPage(value:unknown):OrdersPage{if(!isRecord(value)||!Array.isArray(value.items))throw new Error('Sipariş listesi sunucudan doğrulanamadı.');const total=integer(value.total,'Toplam sipariş sayısı'),limit=integer(value.limit,'Sipariş liste limiti',1,50),offset=integer(value.offset,'Sipariş liste başlangıcı');if(value.items.length>limit)throw new Error('Sipariş listesi beklenen limiti aşıyor.');return{total,limit,offset,items:value.items.map(normalizeOrderRow)}}
+
+function normalizePaymentActivity(value:unknown):PaymentActivityPage{if(!isRecord(value)||!Array.isArray(value.items))throw new Error('Ödeme geçmişi sunucudan doğrulanamadı.');const limit=integer(value.limit,'Ödeme liste limiti',1,50),offset=integer(value.offset,'Ödeme liste başlangıcı');if(value.items.length>limit)throw new Error('Ödeme geçmişi beklenen limiti aşıyor.');return{total:integer(value.total,'Toplam ödeme hareketi'),limit,offset,items:value.items.map((item,index)=>{if(!isRecord(item))throw new Error(`${index+1}. ödeme hareketi doğrulanamadı.`);return{id:uuid(item.id,`${index+1}. ödeme kimliği`),orderId:uuid(item.orderId,`${index+1}. sipariş kimliği`),orderNumber:requiredText(item.orderNumber,`${index+1}. sipariş numarası`,160),provider:requiredText(item.provider,`${index+1}. ödeme sağlayıcısı`,120),paymentMethodType:enumValue(item.paymentMethodType,`${index+1}. ödeme yöntemi`,PAYMENT_METHOD_TYPES,40),amountMinor:integer(item.amountMinor,`${index+1}. ödeme tutarı`,1),currency:currencyCode(item.currency,`${index+1}. ödeme para birimi`),status:enumValue(item.status,`${index+1}. ödeme durumu`,PAYMENT_ACTIVITY_STATUSES,40),failureCode:optionalText(item.failureCode,`${index+1}. hata kodu`,160),failureMessage:optionalText(item.failureMessage,`${index+1}. hata açıklaması`,1000),authorizedAt:dateTime(item.authorizedAt,`${index+1}. yetkilendirme tarihi`,false),capturedAt:dateTime(item.capturedAt,`${index+1}. tahsilat tarihi`,false),createdAt:dateTime(item.createdAt,`${index+1}. ödeme oluşturma tarihi`) as string,updatedAt:dateTime(item.updatedAt,`${index+1}. ödeme güncelleme tarihi`) as string}})}}
+
+function normalizeNotificationPreferences(value:unknown):NotificationPreferences{if(!isRecord(value))throw new Error('Bildirim tercihleri doğrulanamadı.');return{pushEnabled:booleanValue(value.pushEnabled,'Push bildirimi tercihi'),orderPush:booleanValue(value.orderPush,'Sipariş bildirimi tercihi'),paymentPush:booleanValue(value.paymentPush,'Ödeme bildirimi tercihi'),shipmentPush:booleanValue(value.shipmentPush,'Kargo bildirimi tercihi'),returnPush:booleanValue(value.returnPush,'İade bildirimi tercihi'),messagePush:booleanValue(value.messagePush,'Mesaj bildirimi tercihi'),reviewPush:booleanValue(value.reviewPush,'Yorum bildirimi tercihi'),producerPush:booleanValue(value.producerPush,'Üretici bildirimi tercihi'),systemPush:booleanValue(value.systemPush,'Sistem bildirimi tercihi'),campaignPush:booleanValue(value.campaignPush,'Kampanya bildirimi tercihi')}}
+function normalizeNotifications(value:unknown):NotificationsPage{if(!isRecord(value)||!Array.isArray(value.items))throw new Error('Bildirim listesi doğrulanamadı.');return{unreadCount:integer(value.unreadCount,'Okunmamış bildirim sayısı'),items:value.items.map((item,index):AccountNotification=>{if(!isRecord(item))throw new Error(`${index+1}. bildirim doğrulanamadı.`);return{id:uuid(item.id,`${index+1}. bildirim kimliği`),type:enumValue(item.type,`${index+1}. bildirim türü`,NOTIFICATION_TYPES as Set<AccountNotification['type']>,40),title:requiredText(item.title,`${index+1}. bildirim başlığı`,160),message:requiredText(item.message,`${index+1}. bildirim mesajı`,5000),actionUrl:safeInternalOrHttpsUrl(item.actionUrl,`${index+1}. bildirim bağlantısı`),metadata:metadataObject(item.metadata,`${index+1}. bildirim metadata alanı`),readAt:dateTime(item.readAt,`${index+1}. bildirim okunma tarihi`,false),createdAt:dateTime(item.createdAt,`${index+1}. bildirim tarihi`) as string,expiresAt:dateTime(item.expiresAt,`${index+1}. bildirim sona erme tarihi`,false)}})}}
+
+function normalizeInventoryItem(value:unknown,index:number){if(!isRecord(value))throw new Error(`${index+1}. satıcı stok kaydı doğrulanamadı.`);const available=integer(value.availableQuantity,`${index+1}. mevcut stok`),reserved=integer(value.reservedQuantity,`${index+1}. rezerve stok`),sellable=integer(value.sellableQuantity,`${index+1}. satılabilir stok`);if(sellable!==Math.max(0,available-reserved))throw new Error(`${index+1}. satıcı stok özeti tutarsız.`);return{productId:uuid(value.productId,`${index+1}. ürün kimliği`),productName:requiredText(value.productName,`${index+1}. ürün adı`,300),productStatus:enumValue(value.productStatus,`${index+1}. ürün durumu`,PRODUCT_STATUSES,40),stockMode:enumValue(value.stockMode,`${index+1}. stok modeli`,STOCK_MODES,40),variantId:uuid(value.variantId,`${index+1}. varyant kimliği`),variantName:requiredText(value.variantName,`${index+1}. varyant adı`,240),sku:requiredText(value.sku,`${index+1}. SKU`,160),priceMinor:integer(value.priceMinor,`${index+1}. fiyat`),currency:currencyCode(value.currency,`${index+1}. para birimi`),availableQuantity:available,reservedQuantity:reserved,sellableQuantity:sellable,reorderLevel:integer(value.reorderLevel,`${index+1}. düşük stok eşiği`),version:integer(value.version,`${index+1}. stok sürümü`,1),weightGrams:value.weightGrams==null?null:integer(value.weightGrams,`${index+1}. kargo ağırlığı`,1,10000000)}};
+function normalizeProducerDashboard(value:unknown){if(!isRecord(value)||!isRecord(value.profile)||!isRecord(value.summary)||!Array.isArray(value.inventory)||!isRecord(value.finance)||!Array.isArray(value.changeRequests)||!Array.isArray(value.batches)||!Array.isArray(value.recentPayouts))throw new Error('Satıcı paneli verisi sunucudan doğrulanamadı.');const profile=value.profile,summary=value.summary,finance=value.finance;if(!Array.isArray(finance.balances))throw new Error('Satıcı finans özeti doğrulanamadı.');const profileId=uuid(profile.id,'Satıcı kimliği');const normalizedProfile={...profile,id:profileId,display_name:requiredText(profile.display_name,'Satıcı adı',240),production_location:textAllowEmpty(profile.production_location,'Üretim konumu',500),status:enumValue(profile.status,'Satıcı durumu',PRODUCER_STATUSES,40),is_verified:booleanValue(profile.is_verified,'Satıcı doğrulama durumu')};const normalizedSummary={draftProducts:integer(summary.draftProducts,'Taslak ürün sayısı'),reviewProducts:integer(summary.reviewProducts,'İncelemedeki ürün sayısı'),publishedProducts:integer(summary.publishedProducts,'Yayındaki ürün sayısı'),rejectedProducts:integer(summary.rejectedProducts,'Reddedilen ürün sayısı'),pendingChanges:integer(summary.pendingChanges,'Bekleyen değişiklik sayısı'),draftBatches:integer(summary.draftBatches,'Taslak lot sayısı'),reviewBatches:integer(summary.reviewBatches,'İncelemedeki lot sayısı'),releasedBatches:integer(summary.releasedBatches,'Yayınlanan lot sayısı'),lowStockVariants:integer(summary.lowStockVariants,'Düşük stok varyant sayısı')};const balances=finance.balances.map((balance,index)=>{if(!isRecord(balance))throw new Error(`${index+1}. satıcı bakiye kaydı doğrulanamadı.`);const producerId=uuid(balance.producerId,`${index+1}. bakiye üretici kimliği`);if(producerId!==profileId)throw new Error(`${index+1}. bakiye başka üreticiye ait.`);return{...balance,producerId,currency:currencyCode(balance.currency,`${index+1}. bakiye para birimi`),pendingMinor:integer(balance.pendingMinor,`${index+1}. bekleyen bakiye`),availableLedgerMinor:integer(balance.availableLedgerMinor,`${index+1}. kullanılabilir defter bakiyesi`),reservedPayoutMinor:integer(balance.reservedPayoutMinor,`${index+1}. ayrılmış ödeme`),paidPayoutMinor:integer(balance.paidPayoutMinor,`${index+1}. ödenmiş tutar`),availableToPayoutMinor:integer(balance.availableToPayoutMinor,`${index+1}. ödenebilir bakiye`,Number.MIN_SAFE_INTEGER),lifetimeNetMinor:integer(balance.lifetimeNetMinor,`${index+1}. yaşam boyu net`,Number.MIN_SAFE_INTEGER)}});const changeRequests=value.changeRequests.map((request,index)=>{if(!isRecord(request))throw new Error(`${index+1}. ürün değişiklik talebi doğrulanamadı.`);return{...request,id:uuid(request.id,`${index+1}. değişiklik talebi kimliği`),productId:uuid(request.productId,`${index+1}. değişiklik ürünü kimliği`),productName:requiredText(request.productName,`${index+1}. değişiklik ürünü adı`,300),status:enumValue(request.status,`${index+1}. değişiklik durumu`,CHANGE_STATUSES,40),proposedPayload:metadataObject(request.proposedPayload,`${index+1}. değişiklik içeriği`),reviewReason:optionalText(request.reviewReason,`${index+1}. inceleme gerekçesi`,2000),createdAt:dateTime(request.createdAt,`${index+1}. değişiklik oluşturma tarihi`) as string,updatedAt:dateTime(request.updatedAt,`${index+1}. değişiklik güncelleme tarihi`) as string,reviewedAt:dateTime(request.reviewedAt,`${index+1}. değişiklik inceleme tarihi`,false)}});return{...value,profile:normalizedProfile,summary:normalizedSummary,inventory:value.inventory.map(normalizeInventoryItem),finance:{...finance,producerId:uuid(finance.producerId,'Finans üretici kimliği'),displayName:requiredText(finance.displayName,'Finans üretici adı',240),commissionBasisPoints:integer(finance.commissionBasisPoints,'Komisyon oranı',0,10000),balances},changeRequests,batches:value.batches,recentPayouts:value.recentPayouts}}
+function normalizeProducerDraft(value:unknown){if(value==null)return null;if(!isRecord(value))throw new Error('Satıcı başvurusu doğrulanamadı.');const status=enumValue(value.status,'Başvuru durumu',APPLICATION_STATUSES,40);return{...value,id:uuid(value.id,'Başvuru kimliği'),status,brand_name:textAllowEmpty(value.brand_name,'Mağaza adı',180),public_name:textAllowEmpty(value.public_name,'Herkese açık ad',180),rejection_reason:optionalText(value.rejection_reason,'Başvuru geri bildirimi',1000),production_country_code:requiredText(value.production_country_code,'Üretim ülke kodu',2).toUpperCase(),production_province:optionalText(value.production_province,'Üretim ili',160),production_district:optionalText(value.production_district,'Üretim ilçesi',160),production_village:optionalText(value.production_village,'Üretim köyü',240),production_village_is_custom:booleanValue(value.production_village_is_custom,'Özel köy adı durumu')}}
+
+function normalizeOrderDetail(value:unknown){
+  if(!isRecord(value)||!Array.isArray(value.items)||!Array.isArray(value.statusHistory)||!Array.isArray(value.shipments)||!Array.isArray(value.returns)||!Array.isArray(value.refunds)||!Array.isArray(value.payments)||!isRecord(value.shippingAddress))throw new Error('Sipariş detayı sunucudan doğrulanamadı.');
+  const subtotal=integer(value.subtotalMinor,'Sipariş ara toplamı'),discount=integer(value.discountMinor,'Sipariş indirimi'),tax=integer(value.taxMinor,'Sipariş vergisi'),shipping=integer(value.shippingMinor,'Sipariş kargosu'),total=integer(value.totalMinor,'Sipariş toplamı');if(total!==subtotal-discount+tax+shipping)throw new Error('Sipariş tutarları kendi içinde tutarsız.');
+  const currency=currencyCode(value.currency,'Sipariş para birimi');
+  const items=value.items.map((item,index)=>{if(!isRecord(item)||!isRecord(item.snapshot))throw new Error(`${index+1}. sipariş ürünü doğrulanamadı.`);return{...item,id:uuid(item.id,`${index+1}. sipariş kalemi kimliği`),productId:optionalUuid(item.productId,`${index+1}. ürün kimliği`),variantId:optionalUuid(item.variantId,`${index+1}. varyant kimliği`),producerId:optionalUuid(item.producerId,`${index+1}. üretici kimliği`),productName:requiredText(item.productName,`${index+1}. ürün adı`,300),variantName:optionalText(item.variantName,`${index+1}. varyant adı`,240),sku:optionalText(item.sku,`${index+1}. SKU`,160),imagePath:optionalText(item.imagePath,`${index+1}. ürün görseli`,2048),quantity:integer(item.quantity,`${index+1}. ürün adedi`,1,1000000),unitPriceMinor:integer(item.unitPriceMinor,`${index+1}. birim fiyat`),discountMinor:integer(item.discountMinor,`${index+1}. ürün indirimi`),taxMinor:integer(item.taxMinor,`${index+1}. ürün vergisi`),lineTotalMinor:integer(item.lineTotalMinor,`${index+1}. satır toplamı`),fulfillmentStatus:requiredText(item.fulfillmentStatus,`${index+1}. hazırlama durumu`,80),snapshot:item.snapshot,reviewed:booleanValue(item.reviewed,`${index+1}. yorum durumu`)}});
+  const statusHistory=value.statusHistory.map((item,index)=>{if(!isRecord(item))throw new Error(`${index+1}. sipariş geçmişi doğrulanamadı.`);return{from:item.from==null?null:enumValue(item.from,`${index+1}. önceki sipariş durumu`,ORDER_STATUSES,40),to:enumValue(item.to,`${index+1}. yeni sipariş durumu`,ORDER_STATUSES,40),note:optionalText(item.note,`${index+1}. durum notu`,2000),at:dateTime(item.at,`${index+1}. durum tarihi`) as string}});
+  const shipments=value.shipments.map((item,index)=>{if(!isRecord(item))throw new Error(`${index+1}. kargo kaydı doğrulanamadı.`);return{id:uuid(item.id,`${index+1}. kargo kimliği`),carrier:optionalText(item.carrier,`${index+1}. kargo firması`,160),trackingNumber:optionalText(item.trackingNumber,`${index+1}. takip numarası`,160),trackingUrl:safeInternalOrHttpsUrl(item.trackingUrl,`${index+1}. takip bağlantısı`),status:requiredText(item.status,`${index+1}. kargo durumu`,80),shippedAt:dateTime(item.shippedAt,`${index+1}. kargoya verilme tarihi`,false),deliveredAt:dateTime(item.deliveredAt,`${index+1}. teslim tarihi`,false),estimatedDeliveryAt:dateTime(item.estimatedDeliveryAt,`${index+1}. tahmini teslim tarihi`,false)}});
+  const returns=value.returns.map((item,index)=>{if(!isRecord(item))throw new Error(`${index+1}. iade kaydı doğrulanamadı.`);return{id:uuid(item.id,`${index+1}. iade kimliği`),returnNumber:requiredText(item.returnNumber,`${index+1}. iade numarası`,160),reasonCode:requiredText(item.reasonCode,`${index+1}. iade nedeni`,80),customerMessage:textAllowEmpty(item.customerMessage,`${index+1}. iade mesajı`,5000),status:requiredText(item.status,`${index+1}. iade durumu`,40),resolution:optionalText(item.resolution,`${index+1}. iade çözümü`,80),requestedAt:dateTime(item.requestedAt,`${index+1}. iade talep tarihi`) as string,resolutionNote:optionalText(item.resolutionNote,`${index+1}. iade çözüm notu`,3000)}});
+  const refunds=value.refunds.map((item,index)=>{if(!isRecord(item))throw new Error(`${index+1}. geri ödeme kaydı doğrulanamadı.`);return{id:uuid(item.id,`${index+1}. geri ödeme kimliği`),amountMinor:integer(item.amountMinor,`${index+1}. geri ödeme tutarı`,1),currency:currencyCode(item.currency,`${index+1}. geri ödeme para birimi`),status:requiredText(item.status,`${index+1}. geri ödeme durumu`,40),reason:textAllowEmpty(item.reason,`${index+1}. geri ödeme nedeni`,3000),processedAt:dateTime(item.processedAt,`${index+1}. geri ödeme tarihi`,false)}});
+  const payments=value.payments.map((item,index)=>{if(!isRecord(item))throw new Error(`${index+1}. ödeme kaydı doğrulanamadı.`);return{id:uuid(item.id,`${index+1}. ödeme kimliği`),provider:requiredText(item.provider,`${index+1}. ödeme sağlayıcısı`,120),paymentMethodType:enumValue(item.paymentMethodType,`${index+1}. ödeme yöntemi`,PAYMENT_METHOD_TYPES,40),amountMinor:integer(item.amountMinor,`${index+1}. ödeme tutarı`,1),currency:currencyCode(item.currency,`${index+1}. ödeme para birimi`),status:enumValue(item.status,`${index+1}. ödeme durumu`,PAYMENT_ACTIVITY_STATUSES,40),authorizedAt:dateTime(item.authorizedAt,`${index+1}. ödeme yetkilendirme tarihi`,false),capturedAt:dateTime(item.capturedAt,`${index+1}. ödeme tahsilat tarihi`,false),createdAt:dateTime(item.createdAt,`${index+1}. ödeme oluşturma tarihi`) as string}});
+  const gift=value.gift==null?null:(()=>{if(!isRecord(value.gift))throw new Error('Hediye bilgisi doğrulanamadı.');return{recipientName:requiredText(value.gift.recipientName,'Hediye alıcısı',180),recipientPhone:optionalText(value.gift.recipientPhone,'Hediye alıcı telefonu',80),recipientEmail:optionalText(value.gift.recipientEmail,'Hediye alıcı e-postası',320),message:optionalText(value.gift.message,'Hediye mesajı',2000),senderName:optionalText(value.gift.senderName,'Hediye gönderen adı',180),hidePrice:booleanValue(value.gift.hidePrice,'Hediye fiyat gizleme tercihi')}})();
+  return{id:uuid(value.id,'Sipariş kimliği'),orderNumber:requiredText(value.orderNumber,'Sipariş numarası',160),status:enumValue(value.status,'Sipariş durumu',ORDER_STATUSES,40),paymentStatus:enumValue(value.paymentStatus,'Ödeme durumu',PAYMENT_STATUSES,40),fulfillmentStatus:enumValue(value.fulfillmentStatus,'Hazırlama durumu',FULFILLMENT_STATUSES,40),currency,subtotalMinor:subtotal,discountMinor:discount,taxMinor:tax,shippingMinor:shipping,totalMinor:total,shippingAddress:value.shippingAddress,customerNote:optionalText(value.customerNote,'Müşteri notu',2000),placedAt:dateTime(value.placedAt,'Sipariş verilme tarihi',false),createdAt:dateTime(value.createdAt,'Sipariş oluşturma tarihi') as string,updatedAt:dateTime(value.updatedAt,'Sipariş güncelleme tarihi') as string,cancelledAt:dateTime(value.cancelledAt,'Sipariş iptal tarihi',false),completedAt:dateTime(value.completedAt,'Sipariş tamamlama tarihi',false),reservationExpiresAt:dateTime(value.reservationExpiresAt,'Stok rezervasyon tarihi',false),items,statusHistory,shipments,returns,refunds,payments,gift};
 }
 
-export async function getOrderDetail(orderId: string) {
-  const { data, error } = await supabase.rpc('get_my_order_detail_v1', {
-    p_order_id: orderId,
-  });
-  return unwrap(data, error);
-}
+export async function getAccountOverview():Promise<AccountOverview>{const{data,error}=await supabase.rpc('get_my_account_overview_v1');return normalizeAccountOverview(unwrap<unknown>(data,error));}
 
-export async function cancelOrder(orderId: string) {
-  const { data, error } = await supabase.rpc('cancel_customer_order', {
-    p_order_id: orderId,
-  });
-  return unwrap(data, error);
-}
+export async function updateProfile(input:{displayName:string;phone?:string|null;locale:string;marketingConsent:boolean}){const{data,error}=await supabase.rpc('update_customer_profile',{p_display_name:input.displayName,p_phone:input.phone??null,p_locale:input.locale,p_marketing_consent:input.marketingConsent});return unwrap(data,error);}
+export async function upsertAddress(address:Address){const{data,error}=await supabase.rpc('upsert_customer_address',{p_address_id:address.id??null,p_label:address.label,p_recipient_name:address.recipient_name,p_phone:address.phone,p_country_code:address.country_code,p_province:address.province,p_district:address.district,p_neighborhood:address.neighborhood??null,p_address_line:address.address_line,p_postal_code:address.postal_code??null,p_delivery_notes:address.delivery_notes??null,p_is_default:address.is_default});return unwrap(data,error);}
+export async function deleteAddress(addressId:string){const id=uuid(addressId,'Adres kimliği');const{data,error}=await supabase.rpc('delete_customer_address',{p_address_id:id});const result=unwrap<unknown>(data,error);if(result!==true)throw new Error('Adres silme sonucu doğrulanamadı.');return true;}
+export async function listOrders(limit=20,offset=0):Promise<OrdersPage>{const{data,error}=await supabase.rpc('list_my_orders_v1',{p_limit:validatedLimit(limit,50),p_offset:validatedOffset(offset)});return normalizeOrdersPage(unwrap<unknown>(data,error));}
+export async function getOrderDetail(orderId:string){const id=uuid(orderId,'Sipariş kimliği');const{data,error}=await supabase.rpc('get_my_order_detail_v1',{p_order_id:id});return normalizeOrderDetail(unwrap<unknown>(data,error));}
+export async function cancelOrder(orderId:string){const id=uuid(orderId,'Sipariş kimliği');const{data,error}=await supabase.rpc('cancel_customer_order',{p_order_id:id});const result=unwrap<unknown>(data,error);if(result!==true)throw new Error('Sipariş iptal sonucu doğrulanamadı.');return true;}
+export async function listFavorites(){const{data,error}=await supabase.rpc('list_my_favorites_v1');return unwrap<any[]>(data,error);}
+export async function toggleFavorite(productReference:string){const{data,error}=await supabase.rpc('toggle_customer_favorite',{p_product_reference:productReference});return unwrap(data,error);}
+export async function listFollowedProducers(){const{data,error}=await supabase.rpc('list_my_followed_producers_v1');return unwrap<any[]>(data,error);}
+export async function toggleProducerFollow(producerId:string){const{data,error}=await supabase.rpc('toggle_producer_follow_v1',{p_producer_id:producerId});return unwrap(data,error);}
+export async function listGiftOrders(){const{data,error}=await supabase.rpc('list_my_gift_orders_v1');return unwrap<any[]>(data,error);}
+export async function listPaymentActivity(limit=20,offset=0):Promise<PaymentActivityPage>{const{data,error}=await supabase.rpc('list_my_payment_activity_v1',{p_limit:validatedLimit(limit,50),p_offset:validatedOffset(offset)});return normalizePaymentActivity(unwrap<unknown>(data,error));}
+export async function getNotificationPreferences():Promise<NotificationPreferences>{const{data,error}=await supabase.rpc('get_my_notification_preferences_v1');return normalizeNotificationPreferences(unwrap<unknown>(data,error));}
+export async function updateNotificationPreferences(input:NotificationPreferences){const normalized=normalizeNotificationPreferences(input);const{data,error}=await supabase.rpc('update_my_notification_preferences_v1',{p_push_enabled:normalized.pushEnabled,p_order_push:normalized.orderPush,p_payment_push:normalized.paymentPush,p_shipment_push:normalized.shipmentPush,p_return_push:normalized.returnPush,p_message_push:normalized.messagePush,p_review_push:normalized.reviewPush,p_producer_push:normalized.producerPush,p_system_push:normalized.systemPush,p_campaign_push:normalized.campaignPush});return normalizeNotificationPreferences(unwrap<unknown>(data,error));}
+export async function requestAccountClosure(reason:string){const normalized=reason.trim();if(normalized.length<5||normalized.length>2000)throw new Error('Hesap kapatma gerekçesi 5 ile 2000 karakter arasında olmalıdır.');const{data,error}=await supabase.rpc('request_account_closure_v1',{p_reason:normalized});return unwrap(data,error);}
+export async function cancelAccountClosure(){const{data,error}=await supabase.rpc('cancel_account_closure_v1');return unwrap(data,error);}
 
-export async function listFavorites() {
-  const { data, error } = await supabase.rpc('list_my_favorites_v1');
-  return unwrap<any[]>(data, error);
-}
+export function catalogPublicUrl(path?:string|null){if(!path)return'';const raw=path.trim();if(/^https?:\/\//i.test(raw)){let url:URL;try{url=new URL(raw);}catch{return'';}return url.protocol==='https:'?url.toString():'';}const normalized=raw.replace(/^\/+/, '');if(!normalized||normalized.includes('..')||normalized.includes('\\'))return'';const{data}=supabase.storage.from('catalog-public').getPublicUrl(normalized);return data.publicUrl;}
+export async function getAccountHelpContent(locale='tr'){const{data,error}=await supabase.rpc('get_account_help_content_v1',{p_locale:locale});return unwrap<any>(data,error);}
+export async function signOutCurrentDevice(){const{error}=await supabase.auth.signOut({scope:'local'});if(error)throw error;}
+export async function signOutOtherDevices(){const{error}=await supabase.auth.signOut({scope:'others'});if(error)throw error;}
+export async function signOutAllDevices(){const{error}=await supabase.auth.signOut({scope:'global'});if(error)throw error;}
 
-export async function toggleFavorite(productReference: string) {
-  const { data, error } = await supabase.rpc('toggle_customer_favorite', {
-    p_product_reference: productReference,
-  });
-  return unwrap(data, error);
-}
+export async function getMyProducerDashboard(){const{data,error}=await supabase.rpc('get_my_producer_dashboard_v1');return normalizeProducerDashboard(unwrap<unknown>(data,error));}
+export async function getMyProducerApplicationDraft(applicationId?:string|null){const id=applicationId==null?null:uuid(applicationId,'Başvuru kimliği');const{data,error}=await supabase.rpc('get_my_producer_application_draft_v4',{p_application_id:id});return normalizeProducerDraft(unwrap<unknown>(data,error));}
+export async function updateProducerInventory(input:{variantId:string;availableQuantity:number;reorderLevel:number;expectedVersion:number}){const variantId=uuid(input.variantId,'Varyant kimliği');const available=integer(input.availableQuantity,'Mevcut stok',0,1000000000);const reorder=integer(input.reorderLevel,'Düşük stok eşiği',0,1000000000);const version=integer(input.expectedVersion,'Stok sürümü',1,1000000000);if(typeof globalThis.crypto?.randomUUID!=='function')throw new Error('Güvenli stok işlem anahtarı üretilemedi.');const key=`stock_${globalThis.crypto.randomUUID()}`;const{data,error}=await supabase.rpc('producer_update_inventory_v1',{p_variant_id:variantId,p_available_quantity:available,p_reorder_level:reorder,p_expected_version:version,p_idempotency_key:key});const result=unwrap<unknown>(data,error);if(!isRecord(result))throw new Error('Stok güncelleme sonucu doğrulanamadı.');const returnedVariantId=uuid(result.variantId,'Varyant kimliği');const returnedAvailable=integer(result.availableQuantity,'Güncel stok',0,1000000000),reserved=integer(result.reservedQuantity,'Rezerve stok',0,1000000000),sellable=integer(result.sellableQuantity,'Satılabilir stok',0,1000000000),returnedReorder=integer(result.reorderLevel,'Düşük stok eşiği',0,1000000000),returnedVersion=integer(result.version,'Stok sürümü',1,1000000000);if(returnedVariantId!==variantId||returnedAvailable!==available||returnedReorder!==reorder||sellable!==Math.max(0,returnedAvailable-reserved)||returnedVersion<=version)throw new Error('Stok güncelleme sonucu beklenen değişiklikle eşleşmiyor.');return{variantId:returnedVariantId,productId:uuid(result.productId,'Ürün kimliği'),availableQuantity:returnedAvailable,reservedQuantity:reserved,sellableQuantity:sellable,reorderLevel:returnedReorder,version:returnedVersion};}
+export async function withdrawProducerProductChange(changeRequestId:string){const id=uuid(changeRequestId,'Değişiklik talebi kimliği');const{data,error}=await supabase.rpc('producer_withdraw_product_change_v1',{p_change_request_id:id});const result=unwrap<unknown>(data,error);if(result!==true)throw new Error('Değişiklik talebi geri çekme sonucu doğrulanamadı.');return true;}
 
-export async function listFollowedProducers() {
-  const { data, error } = await supabase.rpc('list_my_followed_producers_v1');
-  return unwrap<any[]>(data, error);
-}
+export async function listNotifications(limit=50,before?:string|null):Promise<NotificationsPage>{const normalizedBefore=before==null?null:dateTime(before,'Bildirim sayfalama tarihi');const{data,error}=await supabase.rpc('list_my_notifications_v1',{p_limit:validatedLimit(limit,100),p_before:normalizedBefore});return normalizeNotifications(unwrap<unknown>(data,error));}
+export async function markNotificationRead(notificationId:string){const id=uuid(notificationId,'Bildirim kimliği');const{data,error}=await supabase.rpc('mark_notification_read_v1',{p_notification_id:id});return dateTime(unwrap<unknown>(data,error),'Bildirim okunma tarihi') as string;}
+export async function markAllNotificationsRead(){const{data,error}=await supabase.rpc('mark_all_notifications_read_v1');return integer(unwrap<unknown>(data,error),'Okundu işaretlenen bildirim sayısı');}
 
-export async function toggleProducerFollow(producerId: string) {
-  const { data, error } = await supabase.rpc('toggle_producer_follow_v1', {
-    p_producer_id: producerId,
-  });
-  return unwrap(data, error);
-}
-
-export async function listGiftOrders() {
-  const { data, error } = await supabase.rpc('list_my_gift_orders_v1');
-  return unwrap<any[]>(data, error);
-}
-
-export async function listPaymentActivity(limit = 20, offset = 0) {
-  const { data, error } = await supabase.rpc('list_my_payment_activity_v1', {
-    p_limit: limit,
-    p_offset: offset,
-  });
-  return unwrap<any>(data, error);
-}
-
-export async function getNotificationPreferences() {
-  const { data, error } = await supabase.rpc('get_my_notification_preferences_v1');
-  return unwrap<any>(data, error);
-}
-
-export async function updateNotificationPreferences(input: any) {
-  const { data, error } = await supabase.rpc('update_my_notification_preferences_v1', {
-    p_push_enabled: input.pushEnabled,
-    p_order_push: input.orderPush,
-    p_payment_push: input.paymentPush,
-    p_shipment_push: input.shipmentPush,
-    p_return_push: input.returnPush,
-    p_message_push: input.messagePush,
-    p_review_push: input.reviewPush,
-    p_producer_push: input.producerPush,
-    p_system_push: input.systemPush,
-    p_campaign_push: input.campaignPush,
-  });
-  return unwrap(data, error);
-}
-
-export async function requestAccountClosure(reason: string) {
-  const { data, error } = await supabase.rpc('request_account_closure_v1', {
-    p_reason: reason,
-  });
-  return unwrap(data, error);
-}
-
-export async function cancelAccountClosure() {
-  const { data, error } = await supabase.rpc('cancel_account_closure_v1');
-  return unwrap(data, error);
-}
-
-export function catalogPublicUrl(path?: string | null) {
-  if (!path) return '';
-  if (/^https?:\/\//i.test(path)) return path;
-  const { data } = supabase.storage.from('catalog-public').getPublicUrl(path.replace(/^\/+/, ''));
-  return data.publicUrl;
-}
-
-
-export async function getAccountHelpContent(locale = 'tr') {
-  const { data, error } = await supabase.rpc('get_account_help_content_v1', {
-    p_locale: locale,
-  });
-  return unwrap<any>(data, error);
-}
-
-export async function signOutCurrentDevice() {
-  const { error } = await supabase.auth.signOut({ scope: 'local' });
-  if (error) throw error;
-}
-
-export async function signOutOtherDevices() {
-  const { error } = await supabase.auth.signOut({ scope: 'others' });
-  if (error) throw error;
-}
-
-export async function signOutAllDevices() {
-  const { error } = await supabase.auth.signOut({ scope: 'global' });
-  if (error) throw error;
-}
-
-
-export async function getMyProducerDashboard() {
-  const { data, error } = await supabase.rpc('get_my_producer_dashboard_v1');
-  return unwrap<any>(data, error);
-}
-
-export async function getMyProducerApplicationDraft(applicationId?: string | null) {
-  const { data, error } = await supabase.rpc('get_my_producer_application_draft_v4', {
-    p_application_id: applicationId ?? null,
-  });
-  return unwrap<any>(data, error);
-}
-
-export async function updateProducerInventory(input: {
-  variantId: string;
-  availableQuantity: number;
-  reorderLevel: number;
-  expectedVersion: number;
-}) {
-  const key = `stock_${Date.now()}_${Math.random().toString(36).slice(2)}`.replace(/[^A-Za-z0-9_-]/g, '');
-  const { data, error } = await supabase.rpc('producer_update_inventory_v1', {
-    p_variant_id: input.variantId,
-    p_available_quantity: input.availableQuantity,
-    p_reorder_level: input.reorderLevel,
-    p_expected_version: input.expectedVersion,
-    p_idempotency_key: key,
-  });
-  return unwrap<any>(data, error);
-}
-
-export async function withdrawProducerProductChange(changeRequestId: string) {
-  const { data, error } = await supabase.rpc('producer_withdraw_product_change_v1', {
-    p_change_request_id: changeRequestId,
-  });
-  return unwrap<boolean>(data, error);
-}
-
-
-export async function listNotifications(limit = 50, before?: string | null) {
-  const { data, error } = await supabase.rpc('list_my_notifications_v1', {
-    p_limit: limit,
-    p_before: before ?? null,
-  });
-  return unwrap<any>(data, error);
-}
-
-export async function markNotificationRead(notificationId: string) {
-  const { data, error } = await supabase.rpc('mark_notification_read_v1', {
-    p_notification_id: notificationId,
-  });
-  return unwrap<any>(data, error);
-}
-
-export async function markAllNotificationsRead() {
-  const { data, error } = await supabase.rpc('mark_all_notifications_read_v1');
-  return unwrap<number>(data, error);
-}
-
-
-export async function getPrivateAssetSignedUrl(path: string, expiresIn = 3600) {
-  const { data, error } = await supabase.storage.from('user-private').createSignedUrl(path, expiresIn);
-  if (error) throw error;
-  return data.signedUrl;
-}
-
-export async function uploadCustomerAvatar(userId: string, file: File) {
-  const allowed = ['image/jpeg','image/png','image/webp','image/avif'];
-  if (!allowed.includes(file.type)) throw new Error('Profil fotoğrafı JPEG, PNG, WebP veya AVIF olmalıdır.');
-  if (file.size <= 0 || file.size > 5 * 1024 * 1024) throw new Error('Profil fotoğrafı en fazla 5 MB olabilir.');
-
-  const extension =
-    file.type === 'image/jpeg' ? 'jpg' :
-    file.type === 'image/png' ? 'png' :
-    file.type === 'image/avif' ? 'avif' : 'webp';
-
-  const path = `${userId}/avatar/${crypto.randomUUID()}.${extension}`;
-  const { error: uploadError } = await supabase.storage.from('user-private').upload(path, file, {
-    cacheControl: '3600',
-    upsert: false,
-    contentType: file.type,
-  });
-  if (uploadError) throw uploadError;
-
-  const { data, error } = await supabase.rpc('update_customer_avatar_v1', {
-    p_avatar_path: path,
-  });
-  if (error) {
-    await supabase.storage.from('user-private').remove([path]).catch(()=>{});
-    throw error;
-  }
-  return data as { avatar_path: string };
-}
-
-export async function removeCustomerAvatar(currentPath?: string | null) {
-  const { data, error } = await supabase.rpc('update_customer_avatar_v1', {
-    p_avatar_path: null,
-  });
-  if (error) throw error;
-  if (currentPath) {
-    await supabase.storage.from('user-private').remove([currentPath]).catch(()=>{});
-  }
-  return data;
-}
-
-
-export async function changeMyPassword(currentPassword: string, newPassword: string) {
-  if (currentPassword.length < 1) throw new Error('Mevcut şifrenizi yazın.');
-  if (newPassword.length < 8 || newPassword.length > 72) throw new Error('Yeni şifre 8-72 karakter arasında olmalıdır.');
-
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError) throw userError;
-  const email = userData.user?.email;
-  if (!email) throw new Error('Bu hesap için parola tabanlı e-posta kimliği bulunamadı.');
-
-  const { error: reauthError } = await supabase.auth.signInWithPassword({
-    email,
-    password: currentPassword,
-  });
-  if (reauthError) throw new Error('Mevcut şifre doğrulanamadı.');
-
-  const { error: updateError } = await supabase.auth.updateUser({
-    password: newPassword,
-  });
-  if (updateError) throw updateError;
-
-  return true;
-}
-
-
-export async function getMyNewsletterStatus() {
-  const { data, error } = await supabase.rpc('get_my_newsletter_status_v1');
-  return unwrap<any>(data, error);
-}
-
-export async function subscribeNewsletter(email: string, locale = 'tr') {
-  const { data, error } = await supabase.rpc('subscribe_newsletter_v1', {
-    p_email: email.trim().toLowerCase(),
-    p_locale: locale,
-    p_consent_version: 'newsletter-consent-v1-2026-08-16',
-    p_source: 'mobile-app-settings',
-  });
-  return unwrap<any>(data, error);
-}
-
-export async function unsubscribeMyNewsletter() {
-  const { data, error } = await supabase.rpc('unsubscribe_my_newsletter_v1');
-  return unwrap<boolean>(data, error);
-}
-
-export async function registerNativePushToken(input: {
-  provider: 'fcm' | 'apns';
-  platform: 'android' | 'ios';
-  token: string;
-  environment: 'development' | 'production';
-}) {
-  const { data, error } = await supabase.rpc('register_push_token_v1', {
-    p_provider: input.provider,
-    p_platform: input.platform,
-    p_token: input.token,
-    p_environment: input.environment,
-  });
-  return unwrap<any>(data, error);
-}
-
-export async function unregisterNativePushDevice(deviceId: string) {
-  const { data, error } = await supabase.rpc('unregister_push_device_v1', {
-    p_device_id: deviceId,
-  });
-  return unwrap<boolean>(data, error);
-}
+export async function getPrivateAssetSignedUrl(path:string,expiresIn=3600){const normalized=requiredText(path,'Özel dosya yolu',2048).replace(/^\/+/, '');if(normalized.includes('..')||normalized.includes('\\')||/^(data|blob|javascript|https?):/i.test(normalized))throw new Error('Özel dosya yolu doğrulanamadı.');if(!Number.isSafeInteger(expiresIn)||expiresIn<60||expiresIn>86400)throw new Error('Özel dosya bağlantı süresi geçersiz.');const{data,error}=await supabase.storage.from('user-private').createSignedUrl(normalized,expiresIn);if(error)throw error;const signedUrl=typeof data?.signedUrl==='string'?data.signedUrl.trim():'';if(!signedUrl)throw new Error('Özel dosya bağlantısı oluşturulamadı.');let parsed:URL;try{parsed=new URL(signedUrl);}catch{throw new Error('Özel dosya bağlantısı doğrulanamadı.');}if(parsed.protocol!=='https:')throw new Error('Özel dosya bağlantısı güvenli değil.');return parsed.toString();}
+export async function uploadCustomerAvatar(userId:string,file:File){const id=uuid(userId,'Kullanıcı kimliği');const allowed=['image/jpeg','image/png','image/webp','image/avif'];if(!allowed.includes(file.type))throw new Error('Profil fotoğrafı JPEG, PNG, WebP veya AVIF olmalıdır.');if(file.size<=0||file.size>5*1024*1024)throw new Error('Profil fotoğrafı en fazla 5 MB olabilir.');const extension=file.type==='image/jpeg'?'jpg':file.type==='image/png'?'png':file.type==='image/avif'?'avif':'webp';const path=`${id}/avatar/${crypto.randomUUID()}.${extension}`;const{error:uploadError}=await supabase.storage.from('user-private').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type});if(uploadError)throw uploadError;const{data,error}=await supabase.rpc('update_customer_avatar_v1',{p_avatar_path:path});if(error){await supabase.storage.from('user-private').remove([path]).catch(()=>{});throw error;}if(!isRecord(data)||requiredText(data.avatar_path,'Profil görsel yolu',2048)!==path){await supabase.storage.from('user-private').remove([path]).catch(()=>{});throw new Error('Profil görseli kayıt sonucu doğrulanamadı.');}return{avatar_path:path};}
+export async function removeCustomerAvatar(currentPath?:string|null){const{data,error}=await supabase.rpc('update_customer_avatar_v1',{p_avatar_path:null});if(error)throw error;if(currentPath)await supabase.storage.from('user-private').remove([currentPath]).catch(()=>{});return data;}
+export async function changeMyPassword(currentPassword:string,newPassword:string){if(currentPassword.length<1)throw new Error('Mevcut şifrenizi yazın.');if(newPassword.length<8||newPassword.length>72)throw new Error('Yeni şifre 8-72 karakter arasında olmalıdır.');const{data:userData,error:userError}=await supabase.auth.getUser();if(userError)throw userError;const email=userData.user?.email;if(!email)throw new Error('Bu hesap için parola tabanlı e-posta kimliği bulunamadı.');const{error:reauthError}=await supabase.auth.signInWithPassword({email,password:currentPassword});if(reauthError)throw new Error('Mevcut şifre doğrulanamadı.');const{error:updateError}=await supabase.auth.updateUser({password:newPassword});if(updateError)throw updateError;return true;}
+export async function getMyNewsletterStatus(){const{data,error}=await supabase.rpc('get_my_newsletter_status_v1');return unwrap<any>(data,error);}
+export async function subscribeNewsletter(email:string,locale='tr'){const{data,error}=await supabase.rpc('subscribe_newsletter_v1',{p_email:email.trim().toLowerCase(),p_locale:locale,p_consent_version:'newsletter-consent-v1-2026-08-16',p_source:'mobile-app-settings'});return unwrap<any>(data,error);}
+export async function unsubscribeMyNewsletter(){const{data,error}=await supabase.rpc('unsubscribe_my_newsletter_v1');const result=unwrap<unknown>(data,error);if(result!==true)throw new Error('Bülten aboneliği iptal sonucu doğrulanamadı.');return true;}
+export async function registerNativePushToken(input:{provider:'fcm'|'apns';platform:'android'|'ios';token:string;environment:'development'|'production'}){const{data,error}=await supabase.rpc('register_push_token_v1',{p_provider:input.provider,p_platform:input.platform,p_token:input.token,p_environment:input.environment});return unwrap<any>(data,error);}
+export async function unregisterNativePushDevice(deviceId:string){const id=uuid(deviceId,'Push cihaz kimliği');const{data,error}=await supabase.rpc('unregister_push_device_v1',{p_device_id:id});const result=unwrap<unknown>(data,error);if(result!==true)throw new Error('Push cihaz kaydı kaldırma sonucu doğrulanamadı.');return true;}
