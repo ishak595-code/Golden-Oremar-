@@ -29,6 +29,22 @@ if(sellerApi){
  forbid(sellerApi,/rpc\('producer_upsert_product_v1'/,'Seller client must not fall back to the retired direct v1 write path.');
 }
 
+const onboarding=file('src/features/producer-onboarding/ProducerApplicationFlow.tsx');
+if(onboarding){
+ requirePattern(onboarding,/countryCode:\s*'TR',\s*province:\s*'',\s*district:\s*'',\s*village:\s*''/,'Independent producer onboarding may default to the supported TR program, but must not invent province, district, or village.');
+ requirePattern(onboarding,/sellerClassification:\s*''/,'Independent producer type must require an explicit applicant choice.');
+ requirePattern(onboarding,/foodComplianceStatus:\s*''/,'Food compliance status must require an explicit applicant choice.');
+ requirePattern(onboarding,/fulfillmentMethods:\s*\[\]/,'Fulfillment methods must start empty and come from the producer.');
+ requirePattern(onboarding,/averageDispatchDays:\s*0/,'Dispatch days must start unselected rather than inventing a shipping promise.');
+ requirePattern(onboarding,/plannedProducts:\s*\[\]/,'Product plan must start empty rather than inventing a product/source/unit/quantity.');
+ requirePattern(onboarding,/organicClaimStatus:\s*''/,'Organic claim status must require an explicit applicant choice.');
+ requirePattern(onboarding,/source_model:'',unit:'',estimated_quantity:0/,'New planned product rows must not preselect own production, kg, or a fake quantity.');
+ requirePattern(onboarding,/<option value="" disabled>Seçin<\/option>\{sourceModels\.map/,'Product source model must keep an explicit unselected placeholder.');
+ forbid(onboarding,/province:\s*'Hakk[âa]ri'|district:\s*'Yüksekova'/,'Golden Oremar official-store location must never leak into independent producer onboarding defaults.');
+ forbid(onboarding,/fulfillmentMethods:\s*\['cargo'\]/,'Independent producers must not be auto-enrolled into cargo fulfillment.');
+ forbid(onboarding,/source_model:'own_production',unit:'kg',estimated_quantity:1/,'Independent product plans must not receive invented source, unit, or quantity defaults.');
+}
+
 const admin=file('src/admin/AdminOfficialStoreProducts.tsx');
 if(admin){
  requirePattern(admin,/\['Fotoğraf ve video','Ürün bilgileri','Fiyat ve stok','Açıklama ve kaynak','Sağlık ve tarif','Önizle ve kaydet','Yayınla'\]/,'Official store product wizard must keep media-first save-preview-publish order.');
