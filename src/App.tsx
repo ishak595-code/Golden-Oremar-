@@ -17,7 +17,7 @@ import{subscribeNativePushActions}from'./features/notifications/nativePush';
 import{buildProductUrl,buildProducerUrl,buildSearchUrl,parsePublicRoute,shareOrCopy}from'./features/navigation/appUrl';
 import HomeSection from'./features/home/HomeSection';
 
-const AdminPage=React.lazy(()=>import('./pages/LegacyAdminEntry'));
+const AdminPage=React.lazy(()=>import('./pages/AdminPage').then(module=>({default:module.AdminPage})));
 const AccountCenter=React.lazy(()=>import('./features/account/AccountCenter'));
 const ProducerApplicationFlow=React.lazy(()=>import('./features/producer-onboarding/ProducerApplicationFlow'));
 const PublicInfoScreen=React.lazy(()=>import('./features/storefront/PublicInfoScreen'));
@@ -199,7 +199,7 @@ function AppContent(){
 
  const toggleFavorite=useCallback(async(product:any)=>{
   if(!currentUser){showToast('Favorileri kaydetmek için hesabınıza giriş yapın.');setAccountView('menu');navigateToTab('account');return;}
-  if(Capacitor.isNativePlatform()){try{await Haptics.impact({style:ImpactStyle.Light});}catch{}}
+  if(Capitor.isNativePlatform()){try{await Haptics.impact({style:ImpactStyle.Light});}catch{}}
   try{const result=await serverToggleProductFavorite(product?.slug||product?.legacyId||product?.id);const reference=String(result?.productReference||product?.legacyId||product?.id||'');setFavorites(previous=>result?.isFavorite?(previous.includes(reference)?previous:[...previous,reference]):previous.filter(item=>item!==reference));showToast(result?.isFavorite?`${product?.name||'Ürün'} favorilerinize eklendi.`:`${product?.name||'Ürün'} favorilerinizden çıkarıldı.`);}catch(error:any){showToast(String(error?.message||'Favori işlemi tamamlanamadı.'));}
  },[currentUser,navigateToTab,showToast]);
 
@@ -272,7 +272,7 @@ function AppContent(){
 
  if(currentTab==='admin'){
   if(!adminSession.checked)return<RouteLoading label="Yönetici yetkisi doğrulanıyor"/>;
-  if(isAdminLoggedIn)return<React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor"/>}><AdminPage currentUser={currentUser} onBack={goBack} onLogout={async()=>{await signOutCurrentSession();setCurrentUser(null);setAdminSession({checked:true,isAdmin:false,roles:[]});setCart([]);setCartItemCount(0);replaceWithHome();}}/></React.Suspense>;
+  if(isAdminLoggedIn)return<React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor"/>}><AdminPage onBack={goBack} onLogout={async()=>{await signOutCurrentSession();setCurrentUser(null);setAdminSession({checked:true,isAdmin:false,roles:[]});setCart([]);setCartItemCount(0);replaceWithHome();}}/></React.Suspense>;
  }
 
  return<div className="min-h-screen bg-brand-main pb-28 font-sans text-brand-text">
@@ -296,7 +296,7 @@ function AppContent(){
 
   {isListening?<div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/65 p-0 sm:items-center sm:p-4"><div ref={voiceDialogRef} role="dialog" aria-modal="true" aria-labelledby="voice-title" aria-describedby="voice-description" tabIndex={-1} className="relative w-full max-w-lg rounded-t-3xl bg-gray-950 p-6 text-white shadow-2xl outline-none sm:rounded-3xl"><button type="button" onClick={stopVoiceSearch} aria-label="Sesli aramayı kapat" className="absolute right-4 top-4 grid min-h-11 min-w-11 place-items-center rounded-xl bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><X aria-hidden="true" className="h-5 w-5"/></button><div className="mx-auto mt-4 grid h-20 w-20 place-items-center rounded-full border border-brand-gold/40 bg-brand-gold/10"><Mic aria-hidden="true" className="h-8 w-8 text-brand-gold"/></div><h2 id="voice-title" className="mt-5 text-center text-xl font-bold">Sesli arama</h2><p id="voice-description" className="mt-2 text-center text-sm text-gray-400">Ürün adını söyleyin. “Karakovan balı sepete ekle” gibi bir komut da kullanabilirsiniz.</p><div role="status" aria-live="polite" className="mt-4 min-h-14 rounded-xl bg-gray-900 p-4 text-center font-semibold">{speechText||'Dinleniyor…'}</div>{voiceError?<div role="alert" className="mt-3 rounded-xl bg-red-950/50 p-3 text-sm text-red-200">{voiceError}</div>:null}</div></div>:null}
 
-  {toast.visible?<div role="status" aria-live="polite" aria-atomic="true" className="fixed left-1/2 z-[130] flex max-w-[90vw] -translate-x-1/2 items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-white shadow-2xl" style={{top:'calc(4rem + env(safe-area-inset-top, 0px))'}}><CheckCircle aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-gold"/><span>{toast.message}</span></div>:null}
+  {toast.visible?<div role="status" aria-live="polite" aria-atomic="true" className="fixed left-1/2 z-[130] flex max-w-[90vw] -translate-x-1/2 items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-on-green shadow-2xl" style={{top:'calc(4rem + env(safe-area-inset-top, 0px))'}}><CheckCircle aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-gold"/><span>{toast.message}</span></div>:null}
  </div>;
 }
 
