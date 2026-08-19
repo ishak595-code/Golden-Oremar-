@@ -11,7 +11,7 @@ function notificationKey(item:AccountNotification){return item.id;}
 export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{onOpenAction?:(url:string,metadata:Record<string,unknown>)=>void;onUnreadCountChange?:(count:number)=>void}){
  const[data,setData]=useState<NotificationsPage|null>(null);const[loading,setLoading]=useState(true);const[loadingMore,setLoadingMore]=useState(false);const[hasMore,setHasMore]=useState(false);const[error,setError]=useState('');const[loadMoreError,setLoadMoreError]=useState('');const[openingId,setOpeningId]=useState<string|null>(null);const[markAllBusy,setMarkAllBusy]=useState(false);const[actionStatus,setActionStatus]=useState('');
  async function load(reset=true){
-  const items=data?.items??[];const before=reset?null:(items.at(-1)?.createdAt??null);
+  const items=data?.items??[];const before=reset?null:(items.length?items[items.length-1].createdAt:null);
   try{
    if(reset)setLoading(true);else setLoadingMore(true);
    if(reset)setError('');else setLoadMoreError('');
@@ -59,7 +59,8 @@ export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{o
  }
 
  if(loading)return<LoadingState label="Bildirimler yükleniyor"/>;
- const items=data?.items??[];const unreadCount=data?.unreadCount??0;
+ if(!data)return<Panel title="Bildirimler" description="Sipariş, ödeme, kargo, iade, mesaj ve sistem bildirimleri."><ErrorState message={error||'Bildirim verisi doğrulanamadı.'} onRetry={()=>void load(true)}/></Panel>;
+ const items=data.items;const unreadCount=data.unreadCount;
  return<Panel title="Bildirimler" description="Sipariş, ödeme, kargo, iade, mesaj ve sistem bildirimleri.">
    {error?<ErrorState message={error} onRetry={()=>void load(true)}/>:null}
    {actionStatus?<div role="status" aria-live="polite" className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{actionStatus}</div>:null}
