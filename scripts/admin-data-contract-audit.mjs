@@ -75,6 +75,17 @@ if (paymentUi) {
   requirePattern(paymentUi, /<Money minor=\{p\.amountMinor\} currency=\{p\.currency\}\/>/, 'Payment history money display must use validated server amount and currency directly.');
 }
 
+const orderUi = requireFile('src/features/account/OrdersPanel.tsx');
+if (orderUi) {
+  forbid(orderUi, /fallback:\$\{|Sipariş numarası doğrulanamadı|Ürün bilgisi doğrulanamadı|['"]Standart['"]/, 'Order UI must not invent identities, order numbers, product names, or variant names after strict API normalization.');
+  requirePattern(orderUi, /type OrdersPageData=Awaited<ReturnType<typeof listOrders>>/, 'Order UI must derive its page type from the canonical account API.');
+  requirePattern(orderUi, /type OrderDetailData=Awaited<ReturnType<typeof getOrderDetail>>/, 'Order detail UI must derive its type from the canonical account API.');
+  requirePattern(orderUi, /unpaid:['"]Ödenmedi['"]/, 'Order UI must use the live order payment status lifecycle rather than payment-record statuses.');
+  requirePattern(orderUi, /key=\{o\.id\}/, 'Order rows must use validated order ids directly.');
+  requirePattern(orderUi, /<Money minor=\{o\.totalMinor\} currency=\{o\.currency\}\/>/, 'Order list money display must use validated amount and currency directly.');
+  requirePattern(orderUi, /new Map<string,OrdersPageData\['items'\]\[number\]>\(\)/, 'Order pagination must deduplicate by validated order ids.');
+}
+
 const categoryApi = requireFile('src/admin/categoryAdminApi.ts');
 if (categoryApi) {
   forbid(categoryApi, /İsimsiz kategori/, 'Category admin API must not invent missing category names.');
@@ -171,4 +182,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Golden Oremar data contract audit passed: canonical customer account, notification, payment, migration, category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
+console.log('Golden Oremar data contract audit passed: canonical customer account, notification, payment, order, migration, category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
