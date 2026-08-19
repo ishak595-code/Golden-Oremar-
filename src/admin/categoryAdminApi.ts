@@ -14,26 +14,69 @@ export type AdminCategory = {
   published_product_count: number;
 };
 
-function unwrap<T>(data: T | null, error: any): T {
+type AdminCategoryMutationResult = {
+  id: string;
+  databaseId: string;
+  name: string;
+  is_active: boolean;
+};
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function unwrap<T>(data: T | null, error: unknown): T {
   if (error) throw error;
   return data as T;
 }
 
-function safeNonNegativeInteger(value: unknown, fallback = 0) {
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : fallback;
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function requiredText(value: unknown, label: string, max: number) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  if (!text || text.length > max || /[\u0000-\u001F\u007F]/.test(text)) {
+    throw new Error(`${label} doğrulanamadı.`);
+  }
+  return text;
+}
+
+function optionalText(value: unknown, label: string, max: number) {
+  if (value == null || value === '') return null;
+  if (typeof value !== 'string') throw new Error(`${label} doğrulanamadı.`);
+  const text = value.trim();
+  if (!text) return null;
+  if (text.length > max || /[\u0000-\u001F\u007F]/.test(text)) throw new Error(`${label} doğrulanamadı.`);
+  return text;
+}
+
+function uuid(value: unknown, label: string) {
+  const text = requiredText(value, label, 36);
+  if (!UUID_RE.test(text)) throw new Error(`${label} doğrulanamadı.`);
+  return text;
+}
+
+function optionalUuid(value: unknown, label: string) {
+  if (value == null || value === '') return null;
+  return uuid(value, label);
+}
+
+function nonNegativeInteger(value: unknown, label: string, max = Number.MAX_SAFE_INTEGER) {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0 || value > max) {
+    throw new Error(`${label} doğrulanamadı.`);
+  }
+  return value;
+}
+
+function booleanValue(value: unknown, label: string) {
+  if (typeof value !== 'boolean') throw new Error(`${label} doğrulanamadı.`);
+  return value;
 }
 
 function normalizeSortOrder(value: unknown) {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || !Number.isSafeInteger(Math.round(parsed))) {
-    throw new Error('Kategori sıralaması geçerli bir tam sayı olmalıdır.');
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0 || value > 100000) {
+    throw new Error('Kategori sıralaması 0 ile 100000 arasında tam sayı olmalıdır.');
   }
-  const normalized = Math.round(parsed);
-  if (normalized < -100000 || normalized > 100000) {
-    throw new Error('Kategori sıralaması -100000 ile 100000 arasında olmalıdır.');
-  }
-  return normalized;
+  return value;
 }
 
 function normalizePersistentImage(value?: string | null) {
@@ -56,23 +99,38 @@ function normalizePersistentImage(value?: string | null) {
   return normalized;
 }
 
+function normalizeCategory(value: unknown, index: number): AdminCategory {
+  if (!isRecord(value)) throw new Error(`${index + 1}. kategori kaydı doğrulanamadı.`);
+  return {
+    id: uuid(value.id, `${index + 1}. kategori kimliği`),
+    parent_id: optionalUuid(value.parent_id, `${index + 1}. üst kategori kimliği`),
+    slug: requiredText(value.slug, `${index + 1}. kategori kısa adı`, 160),
+    name: requiredText(value.name, `${index + 1}. kategori adı`, 120),
+    description: optionalText(value.description, `${index + 1}. kategori açıklaması`, 3000),
+    icon: optionalText(value.icon, `${index + 1}. kategori ikonu`, 80),
+    image_path: optionalText(value.image_path, `${index + 1}. kategori görseli`, 2048),
+    sort_order: nonNegativeInteger(value.sort_order, `${index + 1}. kategori sıralaması`, 100000),
+    is_active: booleanValue(value.is_active, `${index + 1}. kategori aktiflik durumu`),
+    product_count: nonNegativeInteger(value.product_count, `${index + 1}. kategori ürün sayısı`, 1000000000),
+    published_product_count: nonNegativeInteger(value.published_product_count, `${index + 1}. yayındaki ürün sayısı`, 1000000000),
+  };
+}
+
+function normalizeMutationResult(value: unknown): AdminCategoryMutationResult {
+  if (!isRecord(value)) throw new Error('Kategori kayıt sonucu doğrulanamadı.');
+  return {
+    id: requiredText(value.id, 'Kategori kısa adı', 160),
+    databaseId: uuid(value.databaseId, 'Kategori veritabanı kimliği'),
+    name: requiredText(value.name, 'Kategori adı', 120),
+    is_active: booleanValue(value.is_active, 'Kategori aktiflik durumu'),
+  };
+}
+
 export async function adminListCategories(): Promise<AdminCategory[]> {
   const { data, error } = await supabase.rpc('admin_list_categories_v1');
-  const rows = unwrap<any[]>(data, error);
-  return (Array.isArray(rows) ? rows : []).map(row => ({
-    ...row,
-    id: String(row.id),
-    parent_id: row.parent_id ? String(row.parent_id) : null,
-    slug: String(row.slug || ''),
-    name: String(row.name || 'İsimsiz kategori'),
-    description: row.description ? String(row.description) : null,
-    icon: row.icon ? String(row.icon) : null,
-    image_path: row.image_path ? String(row.image_path) : null,
-    sort_order: Number.isFinite(Number(row.sort_order)) ? Math.trunc(Number(row.sort_order)) : 0,
-    is_active: row.is_active === true,
-    product_count: safeNonNegativeInteger(row.product_count),
-    published_product_count: safeNonNegativeInteger(row.published_product_count),
-  }));
+  const rows = unwrap<unknown>(data, error);
+  if (!Array.isArray(rows) || rows.length > 10000) throw new Error('Kategori listesi sunucudan doğrulanamadı.');
+  return rows.map(normalizeCategory);
 }
 
 export async function adminSaveCategory(input: {
@@ -92,8 +150,10 @@ export async function adminSaveCategory(input: {
   if (name.length < 2 || name.length > 120) throw new Error('Kategori adı 2 ile 120 karakter arasında olmalıdır.');
   if (description.length > 3000) throw new Error('Kategori açıklaması 3000 karakteri aşamaz.');
   if (icon.length > 80) throw new Error('Kategori ikon alanı 80 karakteri aşamaz.');
+  if (typeof input.isActive !== 'boolean') throw new Error('Kategori aktiflik durumu geçersiz.');
+  const reference = input.reference == null ? null : requiredText(input.reference, 'Kategori referansı', 200);
   const { data, error } = await supabase.rpc('management_upsert_category_v1', {
-    p_reference: input.reference || null,
+    p_reference: reference,
     p_payload: {
       name,
       description,
@@ -103,14 +163,15 @@ export async function adminSaveCategory(input: {
       is_active: input.isActive,
     },
   });
-  return unwrap<any>(data, error);
+  return normalizeMutationResult(unwrap<unknown>(data, error));
 }
 
 export async function adminArchiveCategory(reference: string) {
-  const normalized = String(reference || '').trim();
-  if (!normalized || normalized.length > 200) throw new Error('Kategori referansı geçersiz.');
+  const normalized = requiredText(reference, 'Kategori referansı', 200);
   const { data, error } = await supabase.rpc('management_archive_category_v1', { p_reference: normalized });
-  return unwrap<boolean>(data, error);
+  const result = unwrap<unknown>(data, error);
+  if (result !== true) throw new Error('Kategori pasifleştirme sonucu doğrulanamadı.');
+  return true;
 }
 
 export function categoryAdminErrorMessage(error: unknown, fallback = 'Kategori işlemi tamamlanamadı.') {
@@ -120,6 +181,7 @@ export function categoryAdminErrorMessage(error: unknown, fallback = 'Kategori i
     ['admin_required', 'Bu işlem için yönetici yetkisi gerekiyor.'],
     ['category_not_found', 'Kategori artık bulunamadı. Listeyi yenileyin.'],
     ['category_has_published_products', 'Yayında ürünü olan kategori pasifleştirilemez. Önce ürünleri başka kategoriye taşıyın veya yayından kaldırın.'],
+    ['invalid_category_payload', 'Kategori veri yapısı geçersiz.'],
     ['category_name_required', 'Kategori adı zorunludur.'],
     ['invalid_category_name', 'Kategori adı 2 ile 120 karakter arasında olmalıdır.'],
     ['invalid_category_field_length', 'Kategori alanlarından biri izin verilen uzunluğu aşıyor.'],
