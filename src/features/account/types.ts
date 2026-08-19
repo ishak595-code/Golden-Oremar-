@@ -176,6 +176,80 @@ export interface PaymentActivityPage {
   items: PaymentActivityItem[];
 }
 
+export interface FavoriteItem {
+  productId: string;
+  legacyId: string | null;
+  slug: string;
+  name: string;
+  shortDescription: string;
+  origin: string | null;
+  currency: string;
+  producer: {
+    id: string;
+    name: string;
+    verified: boolean;
+    originVerified: boolean;
+    locationLabel: string;
+  };
+  variant: {
+    id: string;
+    name: string;
+    priceMinor: number;
+    compareAtPriceMinor: number | null;
+  } | null;
+  imagePath: string | null;
+  available: boolean;
+  favoritedAt: string;
+}
+
+export interface FollowedProducerItem {
+  id: string;
+  slug: string;
+  displayName: string;
+  description: string;
+  logoPath: string | null;
+  coverPath: string | null;
+  ratingAverage: number;
+  ratingCount: number;
+  verified: boolean;
+  originVerified: boolean;
+  locationLabel: string;
+  location: {
+    countryCode: string;
+    province: string | null;
+    district: string | null;
+    village: string | null;
+  };
+  productCount: number;
+  followedAt: string;
+}
+
+export interface GiftOrderItem {
+  productName: string;
+  variantName: string | null;
+  quantity: number;
+  imagePath: string | null;
+}
+
+export interface GiftOrder {
+  orderId: string;
+  orderNumber: string;
+  status: OrderStatus;
+  paymentStatus: OrderPaymentStatus;
+  fulfillmentStatus: OrderFulfillmentStatus;
+  currency: string;
+  totalMinor: number;
+  placedAt: string | null;
+  createdAt: string;
+  recipientName: string;
+  recipientPhone: string | null;
+  recipientEmail: string | null;
+  message: string | null;
+  senderName: string | null;
+  hidePrice: boolean;
+  items: GiftOrderItem[];
+}
+
 export interface NotificationPreferences {
   pushEnabled: boolean;
   orderPush: boolean;
