@@ -2,230 +2,39 @@ import { supabase } from '../../lib/supabase';
 
 const ACTIVITY_TYPES=new Set(['beekeeping','livestock','dairy','poultry','field_farming','fruit_growing','vegetable_growing','wild_harvest','fishing','food_processing','beverage_production','natural_materials']);
 const PRODUCER_STATUSES=new Set(['pending','active','suspended','rejected','closed']);
+const PRODUCT_STATUSES=new Set(['draft','review','published','rejected','archived']);
+const MODERATION_DECISIONS=new Set(['approved','rejected','resubmitted','change_approved','change_rejected']);
 
-function unwrap<T>(data: T | null, error: any): T {
-  if (error) throw error;
-  return data as T;
+function unwrap<T>(data:T|null,error:any):T{if(error)throw error;return data as T;}
+function isRecord(value:unknown):value is Record<string,any>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
+function requiredText(value:unknown,label:string,max=500){const text=typeof value==='string'?value.trim():'';if(!text||text.length>max||/[\u0000-\u001F\u007F]/.test(text))throw new Error(`${label} doğrulanamadı.`);return text;}
+function optionalText(value:unknown,label:string,max=1000){if(value==null||value==='')return null;if(typeof value!=='string')throw new Error(`${label} doğrulanamadı.`);const text=value.trim();if(!text)return null;if(text.length>max||/[\u0000-\u001F\u007F]/.test(text))throw new Error(`${label} doğrulanamadı.`);return text;}
+function safeInteger(value:unknown,label:string,min=0,max=Number.MAX_SAFE_INTEGER){if(typeof value!=='number'||!Number.isSafeInteger(value)||value<min||value>max)throw new Error(`${label} doğrulanamadı.`);return value;}
+function optionalInteger(value:unknown,label:string,min=0,max=Number.MAX_SAFE_INTEGER){return value==null?null:safeInteger(value,label,min,max);}
+function safeBoolean(value:unknown,label:string){if(typeof value!=='boolean')throw new Error(`${label} doğrulanamadı.`);return value;}
+function safeCurrency(value:unknown){const currency=requiredText(value,'Ürün para birimi',3).toUpperCase();if(!/^[A-Z]{3}$/.test(currency))throw new Error('Ürün para birimi doğrulanamadı.');return currency;}
+function safeDate(value:unknown,label:string){if(value==null||value==='')return null;const text=requiredText(value,label,80);if(Number.isNaN(Date.parse(text)))throw new Error(`${label} doğrulanamadı.`);return text;}
+function safeAssetPath(value:unknown){const path=requiredText(value,'Ürün görsel yolu',1200).replace(/^\/+/, '');if(/^[a-z][a-z0-9+.-]*:/i.test(path)||path.split('/').some(part=>!part||part==='.'||part==='..'))throw new Error('Ürün görsel yolu doğrulanamadı.');return path;}
+function safeStringArray(value:unknown,label:string,maxItems:number,maxItemLength:number,allowed?:Set<string>){if(value==null)return[];if(!Array.isArray(value)||value.length>maxItems)throw new Error(`${label} doğrulanamadı.`);const rows=value.map((item,index)=>requiredText(item,`${label} ${index+1}`,maxItemLength));if(new Set(rows).size!==rows.length)throw new Error(`${label} tekrar eden değer içeriyor.`);if(allowed&&rows.some(item=>!allowed.has(item)))throw new Error(`${label} desteklenmeyen değer içeriyor.`);return rows;}
+
+function normalizeVariant(value:unknown,index:number){if(!isRecord(value))throw new Error(`${index+1}. ürün varyantı doğrulanamadı.`);return{...value,id:requiredText(value.id,'Varyant kimliği',160),name:requiredText(value.name,'Varyant adı',240),sku:optionalText(value.sku,'SKU',160),priceMinor:safeInteger(value.priceMinor,'Varyant fiyatı'),compareAtPriceMinor:optionalInteger(value.compareAtPriceMinor,'Karşılaştırma fiyatı'),weightGrams:optionalInteger(value.weightGrams,'Varyant ağırlığı',1,10000000),default:safeBoolean(value.default,'Varsayılan varyant durumu'),active:safeBoolean(value.active,'Varyant aktiflik durumu'),availableQuantity:safeInteger(value.availableQuantity,'Mevcut stok',0,1000000000),reservedQuantity:safeInteger(value.reservedQuantity,'Rezerve stok',0,1000000000),reorderLevel:safeInteger(value.reorderLevel,'Yeniden sipariş seviyesi',0,1000000000),version:safeInteger(value.version,'Stok sürümü',1,1000000000)};}
+function normalizeImage(value:unknown,index:number){if(!isRecord(value))throw new Error(`${index+1}. ürün görseli doğrulanamadı.`);return{path:safeAssetPath(value.path),alt:optionalText(value.alt,'Görsel alternatif metni',300),primary:safeBoolean(value.primary,'Birincil görsel durumu'),sortOrder:safeInteger(value.sortOrder,'Görsel sırası',0,10000)};}
+function normalizeModeration(value:unknown){if(value==null)return null;if(!isRecord(value))throw new Error('Ürün moderasyon bilgisi doğrulanamadı.');const lastDecision=optionalText(value.lastDecision,'Son moderasyon kararı',40);if(lastDecision&&!MODERATION_DECISIONS.has(lastDecision))throw new Error('Son moderasyon kararı doğrulanamadı.');return{lastDecision,lastReason:optionalText(value.lastReason,'Son moderasyon gerekçesi',2000),lastDecisionAt:safeDate(value.lastDecisionAt,'Son moderasyon tarihi'),lastRejectedChangeReason:optionalText(value.lastRejectedChangeReason,'Reddedilen değişiklik gerekçesi',2000)};}
+function normalizeProduct(value:unknown,index:number){
+ if(!isRecord(value)||!isRecord(value.category))throw new Error(`${index+1}. satıcı ürünü doğrulanamadı.`);if(!Array.isArray(value.variants)||value.variants.length>100)throw new Error(`${index+1}. ürün varyantları doğrulanamadı.`);if(!Array.isArray(value.images)||value.images.length>20)throw new Error(`${index+1}. ürün görselleri doğrulanamadı.`);
+ const variants=value.variants.map(normalizeVariant);if(!variants.length)throw new Error(`${index+1}. ürünün düzenlenebilir varyantı bulunamadı.`);if(variants.filter(variant=>variant.default&&variant.active).length!==1)throw new Error(`${index+1}. ürünün tam bir aktif varsayılan varyantı olmalıdır.`);
+ const status=requiredText(value.status,'Ürün durumu',40);if(!PRODUCT_STATUSES.has(status))throw new Error('Ürün durumu doğrulanamadı.');
+ const rejectionReason=optionalText(value.rejectionReason,'Ürün ret nedeni',2000);if(status==='rejected'&&!rejectionReason)throw new Error('Reddedilmiş ürünün ret nedeni sunucudan gelmedi.');
+ return{...value,id:requiredText(value.id,'Ürün kimliği',160),legacyId:optionalText(value.legacyId,'Eski ürün kimliği',160),slug:requiredText(value.slug,'Ürün bağlantısı',220),name:requiredText(value.name,'Ürün adı',300),shortDescription:optionalText(value.shortDescription,'Kısa açıklama',1000),description:requiredText(value.description,'Ürün açıklaması',10000),story:optionalText(value.story,'Ürün hikâyesi',12000),origin:optionalText(value.origin,'Ürün menşei',500),unitLabel:requiredText(value.unitLabel,'Satış birimi',120),currency:safeCurrency(value.currency),status,stockMode:requiredText(value.stockMode,'Stok modeli',80),preorderLeadDays:optionalInteger(value.preorderLeadDays,'Ön sipariş hazırlık süresi',0,3650),tags:safeStringArray(value.tags,'Ürün etiketi',30,120),features:safeStringArray(value.features,'Ürün özelliği',40,500),active:safeBoolean(value.active,'Ürün aktiflik durumu'),category:{id:requiredText(value.category.id,'Kategori kimliği',160),slug:requiredText(value.category.slug,'Kategori bağlantısı',220),name:requiredText(value.category.name,'Kategori adı',240)},variants,images:value.images.map(normalizeImage),pendingChange:value.pendingChange==null?null:value.pendingChange,rejectionReason,moderation:normalizeModeration(value.moderation)};
 }
 
-function isRecord(value: unknown): value is Record<string, any> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
+function normalizeProducerProfile(value:unknown){if(!isRecord(value))throw new Error('Satıcı profili sunucudan doğrulanamadı.');const status=requiredText(value.status,'Satıcı durumu',40);if(!PRODUCER_STATUSES.has(status))throw new Error('Satıcı durumu doğrulanamadı.');if(!Array.isArray(value.approved_categories))throw new Error('Onaylı kategori kapsamı doğrulanamadı.');const approvedCategories=value.approved_categories.map((row:any,index:number)=>{if(!isRecord(row))throw new Error(`${index+1}. onaylı kategori doğrulanamadı.`);return{id:requiredText(row.id,'Kategori kimliği',160),slug:requiredText(row.slug,'Kategori bağlantısı',220),name:requiredText(row.name,'Kategori adı',240)};});const approvedCategorySlugs=safeStringArray(value.approved_category_slugs,'Onaylı kategori kapsamı',100,220);if(approvedCategories.some(row=>!approvedCategorySlugs.includes(row.slug)))throw new Error('Onaylı kategori adı ile yetki kapsamı uyuşmuyor.');return{...value,id:requiredText(value.id,'Satıcı kimliği',160),display_name:requiredText(value.display_name,'Satıcı adı',240),status,is_verified:safeBoolean(value.is_verified,'Satıcı doğrulama durumu'),origin_verified:safeBoolean(value.origin_verified,'Menşe doğrulama durumu'),activity_types:safeStringArray(value.activity_types,'Üretim faaliyetleri',12,80,ACTIVITY_TYPES),approved_category_slugs:approvedCategorySlugs,approved_categories:approvedCategories,production_location:requiredText(value.production_location,'Üretim konumu',500)};}
 
-function requiredText(value: unknown, label: string, max = 500) {
-  const text = typeof value === 'string' ? value.trim() : '';
-  if (!text || text.length > max || /[\u0000-\u001F\u007F]/.test(text)) throw new Error(`${label} doğrulanamadı.`);
-  return text;
-}
-
-function optionalText(value: unknown, label: string, max = 1000) {
-  if (value == null || value === '') return null;
-  if (typeof value !== 'string') throw new Error(`${label} doğrulanamadı.`);
-  const text = value.trim();
-  if (!text) return null;
-  if (text.length > max || /[\u0000-\u001F\u007F]/.test(text)) throw new Error(`${label} doğrulanamadı.`);
-  return text;
-}
-
-function safeInteger(value: unknown, label: string, min = 0, max = Number.MAX_SAFE_INTEGER) {
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min || value > max) throw new Error(`${label} doğrulanamadı.`);
-  return value;
-}
-
-function optionalInteger(value: unknown, label: string, min = 0, max = Number.MAX_SAFE_INTEGER) {
-  if (value == null) return null;
-  return safeInteger(value, label, min, max);
-}
-
-function safeBoolean(value: unknown, label: string) {
-  if (typeof value !== 'boolean') throw new Error(`${label} doğrulanamadı.`);
-  return value;
-}
-
-function safeCurrency(value: unknown) {
-  const currency = requiredText(value, 'Ürün para birimi', 3).toUpperCase();
-  if (!/^[A-Z]{3}$/.test(currency)) throw new Error('Ürün para birimi doğrulanamadı.');
-  return currency;
-}
-
-function safeAssetPath(value: unknown) {
-  const path = requiredText(value, 'Ürün görsel yolu', 1200).replace(/^\/+/, '');
-  if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.split('/').some(part => !part || part === '.' || part === '..')) throw new Error('Ürün görsel yolu doğrulanamadı.');
-  return path;
-}
-
-function safeStringArray(value: unknown, label: string, maxItems: number, maxItemLength: number, allowed?:Set<string>) {
-  if (value == null) return [];
-  if (!Array.isArray(value) || value.length > maxItems) throw new Error(`${label} doğrulanamadı.`);
-  const rows=value.map((item, index) => requiredText(item, `${label} ${index + 1}`, maxItemLength));
-  if(new Set(rows).size!==rows.length)throw new Error(`${label} tekrar eden değer içeriyor.`);
-  if(allowed&&rows.some(item=>!allowed.has(item)))throw new Error(`${label} desteklenmeyen değer içeriyor.`);
-  return rows;
-}
-
-function normalizeVariant(value: unknown, index: number) {
-  if (!isRecord(value)) throw new Error(`${index + 1}. ürün varyantı doğrulanamadı.`);
-  return {
-    ...value,
-    id: requiredText(value.id, 'Varyant kimliği', 160),
-    name: requiredText(value.name, 'Varyant adı', 240),
-    sku: optionalText(value.sku, 'SKU', 160),
-    priceMinor: safeInteger(value.priceMinor, 'Varyant fiyatı'),
-    compareAtPriceMinor: optionalInteger(value.compareAtPriceMinor, 'Karşılaştırma fiyatı'),
-    weightGrams: optionalInteger(value.weightGrams, 'Varyant ağırlığı', 1, 10000000),
-    default: safeBoolean(value.default, 'Varsayılan varyant durumu'),
-    active: safeBoolean(value.active, 'Varyant aktiflik durumu'),
-    availableQuantity: safeInteger(value.availableQuantity, 'Mevcut stok', 0, 1000000000),
-    reservedQuantity: safeInteger(value.reservedQuantity, 'Rezerve stok', 0, 1000000000),
-    reorderLevel: safeInteger(value.reorderLevel, 'Yeniden sipariş seviyesi', 0, 1000000000),
-    version: safeInteger(value.version, 'Stok sürümü', 1, 1000000000),
-  };
-}
-
-function normalizeImage(value: unknown, index: number) {
-  if (!isRecord(value)) throw new Error(`${index + 1}. ürün görseli doğrulanamadı.`);
-  return {
-    path: safeAssetPath(value.path),
-    alt: optionalText(value.alt, 'Görsel alternatif metni', 300),
-    primary: safeBoolean(value.primary, 'Birincil görsel durumu'),
-    sortOrder: safeInteger(value.sortOrder, 'Görsel sırası', 0, 10000),
-  };
-}
-
-function normalizeProduct(value: unknown, index: number) {
-  if (!isRecord(value) || !isRecord(value.category)) throw new Error(`${index + 1}. satıcı ürünü doğrulanamadı.`);
-  if (!Array.isArray(value.variants) || value.variants.length > 100) throw new Error(`${index + 1}. ürün varyantları doğrulanamadı.`);
-  if (!Array.isArray(value.images) || value.images.length > 20) throw new Error(`${index + 1}. ürün görselleri doğrulanamadı.`);
-  const variants = value.variants.map(normalizeVariant);
-  if (!variants.length) throw new Error(`${index + 1}. ürünün düzenlenebilir varyantı bulunamadı.`);
-  const defaultCount = variants.filter(variant => variant.default && variant.active).length;
-  if (defaultCount !== 1) throw new Error(`${index + 1}. ürünün tam bir aktif varsayılan varyantı olmalıdır.`);
-  return {
-    ...value,
-    id: requiredText(value.id, 'Ürün kimliği', 160),
-    legacyId: optionalText(value.legacyId, 'Eski ürün kimliği', 160),
-    slug: requiredText(value.slug, 'Ürün bağlantısı', 220),
-    name: requiredText(value.name, 'Ürün adı', 300),
-    shortDescription: optionalText(value.shortDescription, 'Kısa açıklama', 1000),
-    description: requiredText(value.description, 'Ürün açıklaması', 10000),
-    story: optionalText(value.story, 'Ürün hikâyesi', 12000),
-    origin: optionalText(value.origin, 'Ürün menşei', 500),
-    unitLabel: requiredText(value.unitLabel, 'Satış birimi', 120),
-    currency: safeCurrency(value.currency),
-    status: requiredText(value.status, 'Ürün durumu', 40),
-    stockMode: requiredText(value.stockMode, 'Stok modeli', 80),
-    preorderLeadDays: optionalInteger(value.preorderLeadDays, 'Ön sipariş hazırlık süresi', 0, 3650),
-    tags: safeStringArray(value.tags, 'Ürün etiketi', 30, 120),
-    features: safeStringArray(value.features, 'Ürün özelliği', 40, 500),
-    active: safeBoolean(value.active, 'Ürün aktiflik durumu'),
-    category: {
-      id: requiredText(value.category.id, 'Kategori kimliği', 160),
-      slug: requiredText(value.category.slug, 'Kategori bağlantısı', 220),
-      name: requiredText(value.category.name, 'Kategori adı', 240),
-    },
-    variants,
-    images: value.images.map(normalizeImage),
-    pendingChange: value.pendingChange == null ? null : value.pendingChange,
-  };
-}
-
-function normalizeProducerProfile(value:unknown){
-  if(!isRecord(value))throw new Error('Satıcı profili sunucudan doğrulanamadı.');
-  const status=requiredText(value.status,'Satıcı durumu',40);if(!PRODUCER_STATUSES.has(status))throw new Error('Satıcı durumu doğrulanamadı.');
-  if(!Array.isArray(value.approved_categories))throw new Error('Onaylı kategori kapsamı doğrulanamadı.');
-  const approvedCategories=value.approved_categories.map((row:any,index:number)=>{
-    if(!isRecord(row))throw new Error(`${index+1}. onaylı kategori doğrulanamadı.`);
-    return{id:requiredText(row.id,'Kategori kimliği',160),slug:requiredText(row.slug,'Kategori bağlantısı',220),name:requiredText(row.name,'Kategori adı',240)};
-  });
-  const approvedCategorySlugs=safeStringArray(value.approved_category_slugs,'Onaylı kategori kapsamı',100,220);
-  if(approvedCategories.some(row=>!approvedCategorySlugs.includes(row.slug)))throw new Error('Onaylı kategori adı ile yetki kapsamı uyuşmuyor.');
-  return{
-    ...value,
-    id:requiredText(value.id,'Satıcı kimliği',160),
-    display_name:requiredText(value.display_name,'Satıcı adı',240),
-    status,
-    is_verified:safeBoolean(value.is_verified,'Satıcı doğrulama durumu'),
-    origin_verified:safeBoolean(value.origin_verified,'Menşe doğrulama durumu'),
-    activity_types:safeStringArray(value.activity_types,'Üretim faaliyetleri',12,80,ACTIVITY_TYPES),
-    approved_category_slugs:approvedCategorySlugs,
-    approved_categories:approvedCategories,
-    production_location:requiredText(value.production_location,'Üretim konumu',500),
-  };
-}
-
-export async function listMyProducerProducts() {
-  const { data, error } = await supabase.rpc('list_my_producer_products_v2');
-  const rows = unwrap<unknown>(data, error);
-  if (!Array.isArray(rows) || rows.length > 5000) throw new Error('Satıcı ürün listesi sunucudan doğrulanamadı.');
-  return rows.map(normalizeProduct);
-}
-
-export async function listProductCategories() {
-  const { data, error } = await supabase.rpc('list_public_categories_v1');
-  const rows = unwrap<unknown>(data, error);
-  if (!Array.isArray(rows) || rows.length > 500) throw new Error('Kategori listesi sunucudan doğrulanamadı.');
-  return rows.map((value, index) => {
-    if (!isRecord(value)) throw new Error(`${index + 1}. kategori doğrulanamadı.`);
-    return { ...value, id: requiredText(value.id, 'Kategori kimliği', 160), slug: requiredText(value.slug, 'Kategori bağlantısı', 220), name: requiredText(value.name, 'Kategori adı', 240) };
-  });
-}
-
-export async function getMyProducerProfile() {
-  const { data, error } = await supabase.rpc('get_my_producer_profile_v1');
-  return normalizeProducerProfile(unwrap<unknown>(data,error));
-}
-
-export async function saveProducerProduct(reference: string | null, payload: any) {
-  if (reference != null && (typeof reference !== 'string' || !reference.trim() || reference.length > 220)) throw new Error('Ürün referansı doğrulanamadı.');
-  if (!isRecord(payload)) throw new Error('Ürün değişiklik paketi doğrulanamadı.');
-  const { data, error } = await supabase.rpc('producer_upsert_product_v1', { p_reference: reference?.trim() || null, p_payload: payload });
-  return unwrap<any>(data, error);
-}
-
-export async function archiveProducerProduct(reference: string) {
-  const normalized = requiredText(reference, 'Ürün referansı', 220);
-  const { data, error } = await supabase.rpc('producer_archive_product_v1', { p_reference: normalized });
-  const result=unwrap<unknown>(data,error);if(result!==true)throw new Error('Ürün arşivleme sonucu doğrulanamadı.');return true;
-}
-
-export async function uploadProducerProductImages(producerId: string, files: File[]) {
-  const normalizedProducerId = requiredText(producerId, 'Satıcı kimliği', 160);
-  if (!/^[0-9a-f-]{36}$/i.test(normalizedProducerId)) throw new Error('Satıcı kimliği doğrulanamadı.');
-  if (!Array.isArray(files) || files.length < 1 || files.length > 10) throw new Error('Bir seferde 1 ile 10 ürün görseli yükleyebilirsiniz.');
-  const allowed = ['image/jpeg','image/png','image/webp','image/avif'];
-  const uploaded: string[] = [];
-  try {
-    for (const file of files) {
-      if (!(file instanceof File)) throw new Error('Ürün görsel dosyası doğrulanamadı.');
-      if (!allowed.includes(file.type)) throw new Error('Ürün görselleri JPEG, PNG, WebP veya AVIF olmalıdır.');
-      if (file.size <= 0 || file.size > 10 * 1024 * 1024) throw new Error('Her ürün görseli en fazla 10 MB olabilir.');
-      const ext = file.type === 'image/jpeg' ? 'jpg' : file.type === 'image/png' ? 'png' : file.type === 'image/avif' ? 'avif' : 'webp';
-      const path = `${normalizedProducerId}/products/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from('catalog-public').upload(path, file, { contentType: file.type, upsert: false, cacheControl: '31536000' });
-      if (error) throw error;
-      uploaded.push(path);
-    }
-    return uploaded;
-  } catch (error) {
-    if (uploaded.length) await supabase.storage.from('catalog-public').remove(uploaded).catch(() => {});
-    throw error;
-  }
-}
-
-export async function removeProducerProductImages(paths: string[]) {
-  if (!Array.isArray(paths) || paths.length > 10) throw new Error('Silinecek ürün görselleri doğrulanamadı.');
-  const normalized = paths.map(safeAssetPath);
-  if (!normalized.length) return;
-  const { error } = await supabase.storage.from('catalog-public').remove(normalized);
-  if (error) throw error;
-}
-
-export function publicCatalogUrl(path?: string | null) {
-  if (!path) return '';
-  try {
-    const normalized = safeAssetPath(path);
-    return supabase.storage.from('catalog-public').getPublicUrl(normalized).data.publicUrl;
-  } catch {
-    return '';
-  }
-}
+export async function listMyProducerProducts(){const{data,error}=await supabase.rpc('list_my_producer_products_v3');const rows=unwrap<unknown>(data,error);if(!Array.isArray(rows)||rows.length>5000)throw new Error('Satıcı ürün listesi sunucudan doğrulanamadı.');return rows.map(normalizeProduct);}
+export async function listProductCategories(){const{data,error}=await supabase.rpc('list_public_categories_v1');const rows=unwrap<unknown>(data,error);if(!Array.isArray(rows)||rows.length>500)throw new Error('Kategori listesi sunucudan doğrulanamadı.');return rows.map((value,index)=>{if(!isRecord(value))throw new Error(`${index+1}. kategori doğrulanamadı.`);return{...value,id:requiredText(value.id,'Kategori kimliği',160),slug:requiredText(value.slug,'Kategori bağlantısı',220),name:requiredText(value.name,'Kategori adı',240)};});}
+export async function getMyProducerProfile(){const{data,error}=await supabase.rpc('get_my_producer_profile_v1');return normalizeProducerProfile(unwrap<unknown>(data,error));}
+export async function saveProducerProduct(reference:string|null,payload:any){if(reference!=null&&(typeof reference!=='string'||!reference.trim()||reference.length>220))throw new Error('Ürün referansı doğrulanamadı.');if(!isRecord(payload))throw new Error('Ürün değişiklik paketi doğrulanamadı.');const{data,error}=await supabase.rpc('producer_upsert_product_v1',{p_reference:reference?.trim()||null,p_payload:payload});return unwrap<any>(data,error);}
+export async function archiveProducerProduct(reference:string){const normalized=requiredText(reference,'Ürün referansı',220);const{data,error}=await supabase.rpc('producer_archive_product_v1',{p_reference:normalized});const result=unwrap<unknown>(data,error);if(result!==true)throw new Error('Ürün arşivleme sonucu doğrulanamadı.');return true;}
+export async function uploadProducerProductImages(producerId:string,files:File[]){const normalizedProducerId=requiredText(producerId,'Satıcı kimliği',160);if(!/^[0-9a-f-]{36}$/i.test(normalizedProducerId))throw new Error('Satıcı kimliği doğrulanamadı.');if(!Array.isArray(files)||files.length<1||files.length>10)throw new Error('Bir seferde 1 ile 10 ürün görseli yükleyebilirsiniz.');const allowed=['image/jpeg','image/png','image/webp','image/avif'];const uploaded:string[]=[];try{for(const file of files){if(!(file instanceof File))throw new Error('Ürün görsel dosyası doğrulanamadı.');if(!allowed.includes(file.type))throw new Error('Ürün görselleri JPEG, PNG, WebP veya AVIF olmalıdır.');if(file.size<=0||file.size>10*1024*1024)throw new Error('Her ürün görseli en fazla 10 MB olabilir.');const ext=file.type==='image/jpeg'?'jpg':file.type==='image/png'?'png':file.type==='image/avif'?'avif':'webp';const path=`${normalizedProducerId}/products/${crypto.randomUUID()}.${ext}`;const{error}=await supabase.storage.from('catalog-public').upload(path,file,{contentType:file.type,upsert:false,cacheControl:'31536000'});if(error)throw error;uploaded.push(path);}return uploaded;}catch(error){if(uploaded.length)await supabase.storage.from('catalog-public').remove(uploaded).catch(()=>{});throw error;}}
+export async function removeProducerProductImages(paths:string[]){if(!Array.isArray(paths)||paths.length>10)throw new Error('Silinecek ürün görselleri doğrulanamadı.');const normalized=paths.map(safeAssetPath);if(!normalized.length)return;const{error}=await supabase.storage.from('catalog-public').remove(normalized);if(error)throw error;}
+export function publicCatalogUrl(path?:string|null){if(!path)return'';try{const normalized=safeAssetPath(path);return supabase.storage.from('catalog-public').getPublicUrl(normalized).data.publicUrl;}catch{return'';}}
