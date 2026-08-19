@@ -8,7 +8,7 @@
     "build": "vite build && node scripts/check-build-budget.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "audit:release": "node scripts/release-audit.mjs && node scripts/admin-data-contract-audit.mjs && node scripts/customer-return-contract-audit.mjs && node scripts/message-commerce-contract-audit.mjs && node scripts/customer-review-contract-audit.mjs && node scripts/customer-event-contract-audit.mjs && node scripts/home-experience-contract-audit.mjs",
+    "audit:release": "node scripts/release-audit.mjs && node scripts/admin-data-contract-audit.mjs && node scripts/customer-return-contract-audit.mjs && node scripts/message-commerce-contract-audit.mjs && node scripts/customer-review-contract-audit.mjs && node scripts/customer-event-contract-audit.mjs && node scripts/home-experience-contract-audit.mjs && node scripts/payment-contract-audit.mjs",
     "audit:bundle": "node scripts/check-build-budget.mjs",
     "lint": "tsc --noEmit",
     "quality": "npm run audit:release && npm run lint && npm run build",
