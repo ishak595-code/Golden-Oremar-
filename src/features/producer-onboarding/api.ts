@@ -3,7 +3,8 @@ import { supabase } from '../../lib/supabase';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const SELLER_CLASSES = new Set(['individual_non_merchant','tax_exempt_artisan','artisan','sole_proprietor','company','cooperative']);
 const DOCUMENT_TYPES = new Set(['identity','cks','organic_certificate','business_registration','tax_certificate','bank_proof','food_business_registration','food_business_approval','tax_exemption_certificate','mersis_record','cooperative_registration','residence_proof','other']);
-const SOURCE_MODELS = new Set(['own_production','family_production','cooperative_production','partner_farm','authorized_local_supplier']);
+const SOURCE_MODELS = new Set(['own_production','family_production','cooperative_production']);
+const ACTIVITY_TYPES = new Set(['beekeeping','livestock','dairy','poultry','field_farming','fruit_growing','vegetable_growing','wild_harvest','fishing','food_processing','beverage_production','natural_materials']);
 const FULFILLMENT_METHODS = new Set(['cargo','local_delivery','pickup']);
 const DOCUMENT_MIME_EXTENSIONS = new Map([
   ['application/pdf', 'pdf'],
@@ -50,34 +51,37 @@ function finiteCoordinate(value: unknown, min: number, max: number, label: strin
   return number;
 }
 
-function stringArray(value: unknown, label: string, maxItems: number, allowed?: Set<string>) {
+function stringArray(value: unknown, label: string, maxItems: number, allowed?: Set<string>, minItems = 0) {
   if (!Array.isArray(value)) throw new Error(`${label} geçersiz.`);
-  if (value.length > maxItems) throw new Error(`${label} en fazla ${maxItems} öğe içerebilir.`);
+  if (value.length < minItems || value.length > maxItems) throw new Error(`${label} ${minItems} ile ${maxItems} öğe arasında olmalıdır.`);
   const normalized = Array.from(new Set(value.map(item => String(item || '').trim()).filter(Boolean)));
+  if (normalized.length !== value.length) throw new Error(`${label} boş veya tekrar eden değer içeremez.`);
   if (allowed && normalized.some(item => !allowed.has(item))) throw new Error(`${label} desteklenmeyen bir değer içeriyor.`);
   return normalized;
 }
 
-function normalizePlannedProducts(value: unknown) {
+function normalizePlannedProducts(value: unknown, allowedCategories: Set<string>) {
   if (!Array.isArray(value) || value.length < 1 || value.length > 30) throw new Error('Planlanan ürün sayısı 1 ile 30 arasında olmalıdır.');
   return value.map((item: any) => {
     if (!item || Array.isArray(item) || typeof item !== 'object') throw new Error('Planlanan ürün bilgisi geçersiz.');
     const sourceModel = boundedText(item.source_model, 'Ürün kaynağı', 80, true);
-    if (!SOURCE_MODELS.has(sourceModel)) throw new Error('Ürün kaynağı desteklenmiyor.');
+    if (!SOURCE_MODELS.has(sourceModel)) throw new Error('Golden Oremar satıcı hesabı aracılık için kullanılamaz. Ürün size, ailenize veya onaylı kooperatifinize ait üretim olmalıdır.');
+    const category = boundedText(item.category, 'Ürün kategorisi', 80, true);
+    if (!allowedCategories.has(category)) throw new Error('Planlanan ürün, seçtiğiniz üretim kategorilerinin dışında olamaz.');
     const quantity = Number(item.estimated_quantity);
     if (!Number.isFinite(quantity) || quantity <= 0 || quantity > 1_000_000) throw new Error('Tahmini ürün miktarı geçersiz.');
     return {
-      name: boundedText(item.name, 'Ürün adı', 160, true),
-      category: boundedText(item.category, 'Ürün kategorisi', 120, true),
+      name: boundedText(item.name, 'Ürün adı', 120, true),
+      category,
       source_model: sourceModel,
-      unit: boundedText(item.unit, 'Ürün birimi', 40, true),
+      unit: boundedText(item.unit, 'Ürün birimi', 30, true),
       estimated_quantity: quantity,
     };
   });
 }
 
 export async function getMyProducerApplicationDraft(applicationId?: string | null) {
-  const { data, error } = await supabase.rpc('get_my_producer_application_draft_v4', {
+  const { data, error } = await supabase.rpc('get_my_producer_application_draft_v5', {
     p_application_id: optionalUuid(applicationId, 'Başvuru kimliği'),
   });
   return unwrap<any>(data, error);
@@ -92,24 +96,27 @@ export async function saveProducerApplicationDraft(input: any) {
   if (!input || Array.isArray(input) || typeof input !== 'object') throw new Error('Satıcı başvurusu geçersiz.');
   const sellerClassification = boundedText(input.sellerClassification, 'Satıcı türü', 80, true);
   if (!SELLER_CLASSES.has(sellerClassification)) throw new Error('Satıcı türü desteklenmiyor.');
+  const activityTypes = stringArray(input.activityTypes, 'Üretim faaliyetleri', 12, ACTIVITY_TYPES, 1);
   const dispatchDays = Number(input.averageDispatchDays);
   if (!Number.isInteger(dispatchDays) || dispatchDays < 1 || dispatchDays > 30) throw new Error('Ortalama gönderim süresi 1 ile 30 gün arasında olmalıdır.');
-  const productCategories = stringArray(input.productCategories, 'Ürün kategorileri', 30);
-  const fulfillmentMethods = stringArray(input.fulfillmentMethods, 'Teslimat yöntemleri', 3, FULFILLMENT_METHODS);
-  const sourcingModels = stringArray(input.sourcingModels, 'Tedarik modelleri', 5, SOURCE_MODELS);
-  const plannedProducts = normalizePlannedProducts(input.plannedProducts);
+  const productCategories = stringArray(input.productCategories, 'Ürün kategorileri', 30, undefined, 1);
+  const categoryScope = new Set(productCategories);
+  const fulfillmentMethods = stringArray(input.fulfillmentMethods, 'Teslimat yöntemleri', 3, FULFILLMENT_METHODS, 1);
+  const sourcingModels = stringArray(input.sourcingModels, 'Üretim kaynağı', 3, SOURCE_MODELS, 1);
+  const plannedProducts = normalizePlannedProducts(input.plannedProducts, categoryScope);
   const address = input.address && !Array.isArray(input.address) && typeof input.address === 'object' ? input.address : {};
 
-  const { data, error } = await supabase.rpc('save_producer_application_draft_v4', {
+  const { data, error } = await supabase.rpc('save_producer_application_draft_v5', {
     p_application_id: optionalUuid(input.applicationId, 'Başvuru kimliği'),
     p_seller_classification: sellerClassification,
+    p_activity_types: activityTypes,
     p_brand_name: boundedText(input.brandName, 'Marka adı', 160) || null,
     p_public_name: boundedText(input.publicName, 'Üretici adı', 160, true),
     p_description: boundedText(input.description, 'Üretici açıklaması', 4000, true),
     p_production_country_code: countryCode(input.countryCode),
-    p_production_province: boundedText(input.province, 'İl/bölge', 160, true),
-    p_production_district: boundedText(input.district, 'İlçe/şehir', 160, true),
-    p_production_village: boundedText(input.village, 'Köy/mezra', 200, true),
+    p_production_province: boundedText(input.province, 'İl/bölge', 100, true),
+    p_production_district: boundedText(input.district, 'İlçe/şehir', 100, true),
+    p_production_village: boundedText(input.village, 'Köy/mezra', 160, true),
     p_production_village_is_custom: !!input.villageIsCustom,
     p_production_latitude: finiteCoordinate(input.latitude, -90, 90, 'Enlem'),
     p_production_longitude: finiteCoordinate(input.longitude, -180, 180, 'Boylam'),
@@ -124,10 +131,10 @@ export async function saveProducerApplicationDraft(input: any) {
     p_contact_email: boundedText(input.contactEmail, 'E-posta', 254, true).toLowerCase(),
     p_address: {
       country_code: countryCode(address.country_code ?? input.countryCode),
-      province: boundedText(address.province ?? input.province, 'Adres il/bölge', 160, true),
-      district: boundedText(address.district ?? input.district, 'Adres ilçe/şehir', 160, true),
+      province: boundedText(address.province ?? input.province, 'Adres il/bölge', 100, true),
+      district: boundedText(address.district ?? input.district, 'Adres ilçe/şehir', 100, true),
       settlement_type: boundedText(address.settlement_type || 'village', 'Yerleşim türü', 40, true),
-      settlement_name: boundedText(address.settlement_name ?? input.village, 'Yerleşim adı', 200, true),
+      settlement_name: boundedText(address.settlement_name ?? input.village, 'Yerleşim adı', 160, true),
       address_line: boundedText(address.address_line, 'Açık adres', 500, true),
       postal_code: boundedText(address.postal_code, 'Posta kodu', 24) || null,
     },
@@ -139,14 +146,14 @@ export async function saveProducerApplicationDraft(input: any) {
     p_planned_products: plannedProducts,
     p_sourcing_models: sourcingModels,
     p_organic_claim_status: boundedText(input.organicClaimStatus, 'Organik beyan durumu', 80, true),
-    p_organic_certifier_name: boundedText(input.organicCertifierName, 'Organik sertifika kuruluşu', 200) || null,
-    p_organic_certificate_number: boundedText(input.organicCertificateNumber, 'Organik sertifika numarası', 160) || null,
+    p_organic_certifier_name: boundedText(input.organicCertifierName, 'Organik sertifika kuruluşu', 160) || null,
+    p_organic_certificate_number: boundedText(input.organicCertificateNumber, 'Organik sertifika numarası', 100) || null,
     p_organic_certificate_expires_on: boundedText(input.organicCertificateExpiresOn, 'Organik sertifika tarihi', 16) || null,
     p_village_product_commitment: !!input.villageProductCommitment,
     p_traceability_commitment: !!input.traceabilityCommitment,
     p_product_truth_commitment: !!input.productTruthCommitment,
-    p_production_practice_notes: boundedText(input.productionPracticeNotes, 'Üretim uygulamaları', 4000) || null,
-    p_consent_version: 'producer-onboarding-v1-2026-08-14',
+    p_production_practice_notes: boundedText(input.productionPracticeNotes, 'Üretim uygulamaları', 2000) || null,
+    p_consent_version: 'producer-onboarding-v2-2026-08-19',
   });
   return unwrap<any>(data, error);
 }
@@ -199,7 +206,7 @@ export async function submitProducerApplication(applicationId: string, documents
     if (!storagePath || storagePath.length > 500 || storagePath.includes('..') || storagePath.startsWith('/') || /[\\\u0000-\u001f]/.test(storagePath)) throw new Error('Belge yolu geçersiz.');
     return { storage_path: storagePath, document_type: documentType };
   });
-  const { data, error } = await supabase.rpc('submit_producer_application_v3', {
+  const { data, error } = await supabase.rpc('submit_producer_application_v4', {
     p_application_id: safeApplicationId,
     p_documents: safeDocuments,
   });
@@ -221,8 +228,8 @@ export async function removeProducerUploadedDocuments(paths: string[]) {
 export async function listProductionLocationSuggestions(countryCodeInput: string, province?: string, district?: string) {
   const { data, error } = await supabase.rpc('list_public_production_locations_v1', {
     p_country_code: countryCode(countryCodeInput),
-    p_province: boundedText(province, 'İl/bölge', 160) || null,
-    p_district: boundedText(district, 'İlçe/şehir', 160) || null,
+    p_province: boundedText(province, 'İl/bölge', 100) || null,
+    p_district: boundedText(district, 'İlçe/şehir', 100) || null,
     p_limit: 100,
   });
   return unwrap<any[]>(data, error);
