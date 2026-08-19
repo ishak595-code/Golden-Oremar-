@@ -38,6 +38,7 @@ type MenuItem = {
   id: string;
   label: string;
   icon: React.ComponentType<{ className?: string; 'aria-hidden'?: React.AriaAttributes['aria-hidden'] }>;
+  superAdminOnly?: boolean;
 };
 
 type MenuGroup = { title: string; items: MenuItem[] };
@@ -72,6 +73,7 @@ const ADMIN_MENU_GROUPS: MenuGroup[] = [
     items: [
       { id: 'content', label: 'İçerik Kütüphanesi', icon: FileText },
       { id: 'events', label: 'Etkinlikler', icon: Calendar },
+      { id: 'producer-event-submissions', label: 'Köylü Etkinlik Onayları', icon: CheckSquare, superAdminOnly: true },
       { id: 'settings', label: 'Ayarlar', icon: Settings },
     ],
   },
@@ -83,10 +85,15 @@ export function AdminLayout({ children, activeTab, setActiveTab, onLogout, onBac
   const [brandLoading, setBrandLoading] = useState(true);
   const { currentUser } = useCustomerSession();
   const sidebarRef = useAccessibleDialog<HTMLElement>(isSidebarOpen, () => setIsSidebarOpen(false));
-
+  const roles = Array.isArray(currentUser?.roles) ? currentUser.roles.map(String) : [];
+  const isSuperAdmin = roles.includes('super_admin');
+  const visibleMenuGroups = useMemo(
+    () => ADMIN_MENU_GROUPS.map(group => ({ ...group, items: group.items.filter(item => !item.superAdminOnly || isSuperAdmin) })).filter(group => group.items.length > 0),
+    [isSuperAdmin],
+  );
   const activeItem = useMemo(
-    () => ADMIN_MENU_GROUPS.flatMap(group => group.items).find(item => item.id === activeTab),
-    [activeTab],
+    () => visibleMenuGroups.flatMap(group => group.items).find(item => item.id === activeTab),
+    [activeTab, visibleMenuGroups],
   );
   const userName = String((currentUser as any)?.name || (currentUser as any)?.display_name || (currentUser as any)?.email || 'Yetkili yönetici');
 
@@ -109,6 +116,11 @@ export function AdminLayout({ children, activeTab, setActiveTab, onLogout, onBac
   useEffect(() => {
     setIsSidebarOpen(false);
   }, [activeTab]);
+
+  useEffect(() => {
+    const hiddenForCurrentUser = ADMIN_MENU_GROUPS.flatMap(group => group.items).find(item => item.id === activeTab)?.superAdminOnly && !isSuperAdmin;
+    if (hiddenForCurrentUser) setActiveTab('dashboard');
+  }, [activeTab, isSuperAdmin, setActiveTab]);
 
   const navigate = (tab: string) => {
     setActiveTab(tab);
@@ -159,7 +171,7 @@ export function AdminLayout({ children, activeTab, setActiveTab, onLogout, onBac
         </div>
 
         <nav className="flex-1 space-y-7 overflow-y-auto px-4 py-5" aria-label="Panel navigasyonu">
-          {ADMIN_MENU_GROUPS.map(group => (
+          {visibleMenuGroups.map(group => (
             <div key={group.title}>
               <h2 className="px-3 text-xs font-bold uppercase tracking-wider text-gray-400">{group.title}</h2>
               <div className="mt-2 space-y-1">
@@ -187,7 +199,7 @@ export function AdminLayout({ children, activeTab, setActiveTab, onLogout, onBac
         <div className="space-y-2 border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
           <div className="rounded-xl bg-white p-3 dark:bg-gray-900/60">
             <div className="truncate text-sm font-bold text-gray-900 dark:text-white">{userName}</div>
-            <div className="mt-1 text-xs text-gray-500">Sunucu tarafından doğrulanmış yönetici oturumu</div>
+            <div className="mt-1 text-xs text-gray-500">{isSuperAdmin?'Super Admin oturumu':'Sunucu tarafından doğrulanmış yönetici oturumu'}</div>
           </div>
           {onBack ? (
             <button
