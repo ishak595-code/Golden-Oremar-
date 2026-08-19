@@ -13,11 +13,10 @@ export default function ProfilePanel({ overview, onChanged }: {
   onChanged: () => Promise<void> | void;
 }) {
   const p = overview.profile;
-  const initialLocale = PROFILE_LOCALES.has(String(p.locale || '')) ? String(p.locale) : '';
-  const [displayName, setDisplayName] = useState(p.display_name || '');
-  const [phone, setPhone] = useState(p.phone || '');
-  const [locale, setLocale] = useState(initialLocale);
-  const [marketingConsent, setMarketingConsent] = useState(!!p.marketing_consent);
+  const [displayName, setDisplayName] = useState(p.display_name);
+  const [phone, setPhone] = useState(p.phone ?? '');
+  const [locale, setLocale] = useState(p.locale);
+  const [marketingConsent, setMarketingConsent] = useState(p.marketing_consent);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -29,10 +28,10 @@ export default function ProfilePanel({ overview, onChanged }: {
   });
 
   useEffect(() => {
-    setDisplayName(p.display_name || '');
-    setPhone(p.phone || '');
-    setLocale(PROFILE_LOCALES.has(String(p.locale || '')) ? String(p.locale) : '');
-    setMarketingConsent(!!p.marketing_consent);
+    setDisplayName(p.display_name);
+    setPhone(p.phone ?? '');
+    setLocale(p.locale);
+    setMarketingConsent(p.marketing_consent);
   }, [p.display_name, p.phone, p.locale, p.marketing_consent]);
 
   useEffect(() => {
@@ -69,8 +68,8 @@ export default function ProfilePanel({ overview, onChanged }: {
       }
       await onChanged();
       setMessage('Profil fotoğrafınız güncellendi.');
-    } catch (err: any) {
-      setError(err?.message || 'Profil fotoğrafı güncellenemedi.');
+    } catch (err: unknown) {
+      setError(err instanceof Error && err.message ? err.message : 'Profil fotoğrafı güncellenemedi.');
     } finally {
       setAvatarBusy(false);
     }
@@ -86,9 +85,9 @@ export default function ProfilePanel({ overview, onChanged }: {
       setAvatarConfirmOpen(false);
       await onChanged();
       setMessage('Profil fotoğrafınız kaldırıldı.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       setAvatarConfirmOpen(false);
-      setError(err?.message || 'Profil fotoğrafı kaldırılamadı.');
+      setError(err instanceof Error && err.message ? err.message : 'Profil fotoğrafı kaldırılamadı.');
     } finally {
       setAvatarBusy(false);
     }
@@ -114,12 +113,12 @@ export default function ProfilePanel({ overview, onChanged }: {
       setError('Telefon numarası en fazla 40 karakter olabilir.');
       return;
     }
-    if (normalizedPhone && !/^[+()0-9 .\-]{5,40}$/.test(normalizedPhone)) {
+    if (normalizedPhone && !/^[+()0-9 .\-]{10,40}$/.test(normalizedPhone)) {
       setError('Telefon numarası yalnız rakam ve standart telefon işaretlerini içermelidir.');
       return;
     }
-    if (normalizedPhone && (phoneDigits.length < 5 || phoneDigits.length > 20)) {
-      setError('Telefon numarası 5 ile 20 rakam içermelidir.');
+    if (normalizedPhone && (phoneDigits.length < 10 || phoneDigits.length > 15)) {
+      setError('Telefon numarası 10 ile 15 rakam içermelidir.');
       return;
     }
     if (!PROFILE_LOCALES.has(locale)) {
@@ -138,8 +137,8 @@ export default function ProfilePanel({ overview, onChanged }: {
       setDisplayName(normalizedName);
       setPhone(normalizedPhone);
       setMessage('Profil bilgileriniz güncellendi.');
-    } catch (err: any) {
-      setError(err?.message || 'Profil güncellenemedi.');
+    } catch (err: unknown) {
+      setError(err instanceof Error && err.message ? err.message : 'Profil güncellenemedi.');
     } finally {
       setSaving(false);
     }
@@ -150,7 +149,6 @@ export default function ProfilePanel({ overview, onChanged }: {
       <form onSubmit={save} className="space-y-4" aria-busy={saving || avatarBusy}>
         {error ? <ErrorState message={error} /> : null}
         {message ? <div role="status" aria-live="polite" className="rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{message}</div> : null}
-        {!initialLocale ? <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">Hesaptaki uygulama dili doğrulanamadı. Başka bir profil değişikliğini kaydetmeden önce aşağıdan geçerli bir dil seçin.</div> : null}
 
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
           <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-full bg-brand-gold/15 text-3xl font-bold text-brand-gold" aria-label="Profil fotoğrafı">
@@ -174,7 +172,7 @@ export default function ProfilePanel({ overview, onChanged }: {
 
         <label className="block">
           <span className="text-sm font-semibold">E-posta</span>
-          <input value={p.email || ''} readOnly autoComplete="email" className="mt-1 min-h-11 w-full rounded-xl border bg-gray-100 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-200" />
+          <input value={p.email} readOnly autoComplete="email" className="mt-1 min-h-11 w-full rounded-xl border bg-gray-100 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-200" />
           <span className="mt-1 block text-xs text-gray-500">E-posta kimlik hesabınızdan gelir; burada doğrudan değiştirilemez.</span>
         </label>
 
@@ -188,13 +186,13 @@ export default function ProfilePanel({ overview, onChanged }: {
           <span className="text-sm font-semibold">Telefon</span>
           <input maxLength={40} disabled={saving} value={phone} onChange={e => setPhone(e.target.value)} autoComplete="tel" inputMode="tel"
             className="mt-1 min-h-11 w-full rounded-xl border border-gray-300 bg-transparent px-3 disabled:opacity-60 dark:border-gray-700" />
+          <span className="mt-1 block text-xs text-gray-500">Telefon giriyorsanız 10-15 rakam içermelidir.</span>
         </label>
 
         <label className="block">
           <span className="text-sm font-semibold">Uygulama dili</span>
-          <select required disabled={saving} value={locale} onChange={e => setLocale(e.target.value)}
+          <select required disabled={saving} value={locale} onChange={e => setLocale(e.target.value as AccountOverview['profile']['locale'])}
             className="mt-1 min-h-11 w-full rounded-xl border border-gray-300 bg-transparent px-3 disabled:opacity-60 dark:border-gray-700">
-            <option value="" disabled>Dil seçin</option>
             <option value="tr">Türkçe</option><option value="en">English</option><option value="de">Deutsch</option>
             <option value="fr">Français</option><option value="ku">Kurdî</option><option value="ar">العربية</option>
           </select>
