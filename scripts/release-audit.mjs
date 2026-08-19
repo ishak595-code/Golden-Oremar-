@@ -102,6 +102,31 @@ if (appShell) {
   if (!/aria-label="Sesli arama"/.test(appShell)) failures.push('Voice-search control is missing from the application header.');
 }
 
+const homeStorefront = requireFile('src/features/home/HomeSection.tsx');
+if (homeStorefront) {
+  const forbiddenHomeFallbacks = [
+    { re: /interfaceContent\.heroTitle\s*\|\|/, label: 'Home hero title must not silently fall back to hard-coded copy.' },
+    { re: /interfaceContent\.heroSubtitle\s*\|\|/, label: 'Home hero subtitle must not silently fall back to hard-coded copy.' },
+    { re: /interfaceContent\.heroButtonText\s*\|\|/, label: 'Home hero CTA must not silently fall back to hard-coded copy.' },
+    { re: /producerName\s*\|\|\s*product\.origin\s*\|\|\s*['"]Golden Oremar['"]/, label: 'Missing producer context must not be replaced with the Golden Oremar brand.' },
+    { re: /products\.find\(isSellable\)/, label: 'A non-featured product must not be silently promoted into the featured slot.' },
+    { re: /Doğrulanmış katalog seçkisi/, label: 'Home spotlight must not make an unscoped verification claim.' },
+  ];
+  for (const rule of forbiddenHomeFallbacks) {
+    if (rule.re.test(homeStorefront)) failures.push(rule.label);
+  }
+  if (!/loading:\s*storefrontLoading/.test(homeStorefront)) failures.push('Home storefront must expose server storefront loading separately from catalog loading.');
+  if (!/salesReadiness\.message/.test(homeStorefront)) failures.push('Sales-readiness notice must use the validated server message.');
+  if (!/Doğrulanmış ürün görseli henüz yayınlanmadı\./.test(homeStorefront)) failures.push('Home hero must distinguish missing verified assets from an active loading state.');
+  if (!/interfaceContent\.featuredTitle/.test(homeStorefront) || !/interfaceContent\.categoriesTitle/.test(homeStorefront)) failures.push('Validated storefront headings must drive home merchandising sections.');
+}
+
+const storefrontApi = requireFile('src/features/storefront/api.ts');
+if (storefrontApi) {
+  if (!/heroTitle:\s*requiredText\(value\.interface\.heroTitle/.test(storefrontApi)) failures.push('Storefront hero title must remain required at the API boundary.');
+  if (!/title:\s*requiredText\(section\.title/.test(storefrontApi)) failures.push('Storefront section titles must remain required at the API boundary.');
+}
+
 const cartApi = requireFile('src/features/cart/api.ts');
 if (cartApi && !/supabase\.rpc\(\s*['"]create_customer_order_v5['"]/.test(cartApi)) {
   failures.push('Cart checkout must remain on create_customer_order_v5.');
@@ -175,4 +200,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Golden Oremar release audit passed: Android/iOS app-shell, native speech, retired-runtime and native release metadata contracts are intact.');
+console.log('Golden Oremar release audit passed: Android/iOS app-shell, native speech, strict storefront truth, retired-runtime and native release metadata contracts are intact.');
