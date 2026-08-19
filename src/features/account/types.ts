@@ -26,6 +26,7 @@ export type OrderFulfillmentStatus = 'unfulfilled' | 'processing' | 'partially_f
 export type PaymentMethodType = 'card' | 'bank_transfer' | 'cash_on_delivery' | 'wallet' | 'other';
 export type PaymentActivityStatus = 'created' | 'pending' | 'authorized' | 'captured' | 'failed' | 'cancelled' | 'partially_refunded' | 'refunded' | 'disputed';
 export type NotificationType = 'order' | 'payment' | 'shipment' | 'return' | 'campaign' | 'system' | 'producer' | 'message' | 'review';
+export type AccountClosureStatus = 'requested' | 'processing' | 'ready_for_auth_deletion' | 'completed' | 'cancelled' | 'rejected';
 
 export interface AccountProfile {
   id: string;
@@ -38,7 +39,7 @@ export interface AccountProfile {
   marketing_consent: boolean;
   marketing_consent_at: string | null;
   created_at: string;
-  last_seen_at: string;
+  last_seen_at: string | null;
 }
 
 export interface Address {
@@ -94,8 +95,8 @@ export interface AccountProducerSummary {
 
 export interface AccountClosureSummary {
   id: string;
-  status: string;
-  reason: string;
+  status: AccountClosureStatus;
+  reason: string | null;
   requested_at: string;
   updated_at: string;
 }
