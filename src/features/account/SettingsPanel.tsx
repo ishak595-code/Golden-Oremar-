@@ -12,28 +12,11 @@ const keys=[
  ['returnPush','İade ve geri ödeme'],['messagePush','Mesajlar'],['reviewPush','Yorumlar'],
  ['producerPush','Satıcı/üretici işlemleri'],['systemPush','Sistem ve güvenlik'],['campaignPush','Kampanyalar']
 ] as const;
-const newsletterStatuses=new Set<NewsletterStatus>(['active','pending','unsubscribed','none','bounced','complained']);
 const activeClosureStatuses=new Set(['requested','processing','ready_for_auth_deletion']);
 
 type SessionAction='current'|'others'|'all'|null;
 type ConfirmedSessionAction='others'|'all'|null;
 
-function normalizeNewsletter(value:unknown):NewsletterSummary{
- if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('E-bülten durumu sunucudan doğrulanamadı.');
- const row=value as Record<string,unknown>;const rawStatus=typeof row.status==='string'?row.status.trim():'';
- if(!newsletterStatuses.has(rawStatus as NewsletterStatus))throw new Error('E-bülten durumu sunucudan doğrulanamadı.');
- const status=rawStatus as NewsletterStatus;
- const email=row.email==null?null:typeof row.email==='string'&&row.email.trim()?row.email.trim():null;
- if(status==='none')return{status,email,locale:null,consentVersion:null,consentedAt:null,confirmedAt:null,unsubscribedAt:null};
- const locale=typeof row.locale==='string'&&['tr','en','de','fr','ku','ar'].includes(row.locale)?row.locale as AccountProfile['locale']:null;
- const consentVersion=typeof row.consentVersion==='string'&&row.consentVersion.trim()?row.consentVersion.trim():null;
- const consentedAt=typeof row.consentedAt==='string'&&!Number.isNaN(Date.parse(row.consentedAt))?row.consentedAt:null;
- if(!email||!locale||!consentVersion||!consentedAt)throw new Error('E-bülten kaydı eksik alan içeriyor.');
- const optionalDate=(candidate:unknown)=>candidate==null?null:typeof candidate==='string'&&!Number.isNaN(Date.parse(candidate))?candidate:null;
- if(row.confirmedAt!=null&&!optionalDate(row.confirmedAt))throw new Error('E-bülten onay tarihi doğrulanamadı.');
- if(row.unsubscribedAt!=null&&!optionalDate(row.unsubscribedAt))throw new Error('E-bülten abonelik kapanış tarihi doğrulanamadı.');
- return{status,email,locale,consentVersion,consentedAt,confirmedAt:optionalDate(row.confirmedAt),unsubscribedAt:optionalDate(row.unsubscribedAt)};
-}
 function newsletterStatusLabel(status:NewsletterStatus|null){return status==='active'?'Aktif':status==='pending'?'E-posta onayı bekleniyor':status==='unsubscribed'?'Abonelik kapalı':status==='none'?'Abone değil':status==='bounced'?'E-posta teslimatı başarısız':status==='complained'?'Spam şikayeti nedeniyle kapalı':'Durum alınamadı';}
 function permissionLabel(value:string){return value==='granted'?'İzin verildi':value==='denied'?'İzin reddedildi':value==='prompt'?'Henüz sorulmadı':value==='prompt-with-rationale'?'İzin onayı bekleniyor':'Durum doğrulanamadı';}
 function closureStatusLabel(value:AccountClosureSummary['status']){const labels:Record<AccountClosureSummary['status'],string>={requested:'Talep alındı',processing:'İşleniyor',ready_for_auth_deletion:'Kimlik hesabı silme aşamasına hazır',cancelled:'İptal edildi',completed:'Tamamlandı',rejected:'Reddedildi'};return labels[value];}
@@ -58,7 +41,7 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
   finally{setPrefsLoading(false);}
  }
  async function loadNewsletter(){
-  try{setNewsletterLoading(true);setNewsletterError('');setNewsletter(normalizeNewsletter(await getMyNewsletterStatus()));}
+  try{setNewsletterLoading(true);setNewsletterError('');setNewsletter(await getMyNewsletterStatus());}
   catch(e:unknown){setNewsletter(null);setNewsletterError(e instanceof Error&&e.message?e.message:'E-bülten durumu şu anda alınamadı.');}
   finally{setNewsletterLoading(false);}
  }
@@ -87,13 +70,13 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
 
  async function startNewsletter(){
   if(newsletterBusy||!accountEmail)return;
-  try{setNewsletterBusy(true);setNewsletterMessage('');setNewsletterError('');await subscribeNewsletter(accountEmail,profile.locale);const refreshed=normalizeNewsletter(await getMyNewsletterStatus());setNewsletter(refreshed);setNewsletterMessage(refreshed.status==='active'?'E-bülten aboneliğiniz aktif.':refreshed.status==='pending'?'E-posta onayı bekleniyor. Abonelik onaydan sonra aktif olur.':'E-bülten isteği işlendi. Güncel durum hesap kaydından alındı.');}
+  try{setNewsletterBusy(true);setNewsletterMessage('');setNewsletterError('');await subscribeNewsletter(accountEmail,profile.locale);const refreshed=await getMyNewsletterStatus();setNewsletter(refreshed);setNewsletterMessage(refreshed.status==='active'?'E-bülten aboneliğiniz aktif.':refreshed.status==='pending'?'E-posta onayı bekleniyor. Abonelik onaydan sonra aktif olur.':'E-bülten isteği işlendi. Güncel durum hesap kaydından alındı.');}
   catch(e:unknown){const message=e instanceof Error&&e.message?e.message:'E-bülten aboneliği başlatılamadı.';setNewsletterError(message.includes('invalid_email')?'E-bülten için geçerli hesap e-postası bulunamadı.':message);}
   finally{setNewsletterBusy(false);}
  }
  async function stopNewsletter(){
   if(newsletterBusy)return;
-  try{setNewsletterBusy(true);setNewsletterMessage('');setNewsletterError('');await unsubscribeMyNewsletter();setNewsletter(normalizeNewsletter(await getMyNewsletterStatus()));setNewsletterMessage('E-bülten aboneliğiniz kapatıldı; kampanya pazarlama izni de devre dışı bırakıldı.');await onChanged();}
+  try{setNewsletterBusy(true);setNewsletterMessage('');setNewsletterError('');await unsubscribeMyNewsletter();setNewsletter(await getMyNewsletterStatus());setNewsletterMessage('E-bülten aboneliğiniz kapatıldı; kampanya pazarlama izni de devre dışı bırakıldı.');await onChanged();}
   catch(e:unknown){setNewsletterError(e instanceof Error&&e.message?e.message:'E-bülten aboneliği kapatılamadı.');}
   finally{setNewsletterBusy(false);}
  }
