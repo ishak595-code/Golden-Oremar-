@@ -257,7 +257,7 @@ async function reconcile(service: any, context: RecordValue) {
   try {
     providerResponse = await iyzicoRequest("/payment/detail", "POST", {
       locale: "tr",
-      conversationId: crypto.randomUUID(),
+      conversationId: intentId,
       paymentConversationId: intentId,
     });
   } catch {
