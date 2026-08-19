@@ -17,6 +17,7 @@ const AdminFinance = lazy(() => import('../admin/AdminFinance').then(module => (
 const AdminNotifications = lazy(() => import('../admin/AdminNotifications').then(module => ({ default: module.AdminNotifications })));
 const AdminVendorApplications = lazy(() => import('../admin/AdminVendorApplications').then(module => ({ default: module.AdminVendorApplications })));
 const AdminEvents = lazy(() => import('../admin/AdminEvents').then(module => ({ default: module.AdminEvents })));
+const AdminProducerEventSubmissions = lazy(() => import('../admin/AdminProducerEventSubmissions').then(module => ({ default: module.AdminProducerEventSubmissions })));
 
 type AdminPageProps = {
   onLogout: () => void | Promise<void>;
@@ -56,6 +57,7 @@ export function AdminPage({ onLogout, onBack }: AdminPageProps) {
       case 'notifications': return <AdminNotifications />;
       case 'vendor-applications': return <AdminVendorApplications />;
       case 'events': return <AdminEvents setActiveTab={setActiveTab} />;
+      case 'producer-event-submissions': return <AdminProducerEventSubmissions />;
       default: return <AdminDashboard setActiveTab={setActiveTab} />;
     }
   };
