@@ -132,6 +132,15 @@ if (storefrontApi) {
   if (!/title:\s*requiredText\(section\.title/.test(storefrontApi)) failures.push('Storefront section titles must remain required at the API boundary.');
 }
 
+const productCard = requireFile('src/features/catalog/CatalogProductCard.tsx');
+if (productCard) {
+  if (!/useEffect\(\(\)=>\{setQuantity\(current=>Math\.min\(Math\.max\(1,current\),maxQuantity\)\);\},\[maxQuantity\]\)/.test(productCard.replace(/\s+/g, ''))) failures.push('Canonical product card must clamp selected quantity when live stock decreases.');
+  if (!/text-brand-on-green/.test(productCard) || !/text-brand-on-gold/.test(productCard)) failures.push('Canonical product card must use semantic accent foreground tokens.');
+  if (!/disabled=\{cardBusy\|\|!purchaseReady\}/.test(productCard.replace(/\s+/g, ''))) failures.push('Gift and purchase actions must remain bound to full purchase readiness.');
+  if (!/actionFeedback/.test(productCard) || !/runAction/.test(productCard)) failures.push('Canonical product card secondary async actions must expose caught failures instead of unhandled promises.');
+  if (!/Doğrulanmış görsel henüz yayınlanmadı/.test(productCard)) failures.push('Canonical product card must state missing verified imagery truthfully.');
+}
+
 const sellerPanel = requireFile('src/features/account/SellerPanel.tsx');
 if (sellerPanel) {
   if (/useDialogA11y/.test(sellerPanel)) failures.push('SellerPanel must not call the removed account dialog wrapper.');
@@ -157,6 +166,35 @@ const adminLayout = requireFile('src/admin/AdminLayout.tsx');
 if (adminLayout) {
   if (/vendorMenuGroups|isVendor|Satıcı menüsü|Mağaza Yönetimi/.test(adminLayout)) failures.push('AdminLayout must remain admin-only; seller navigation belongs to SellerPanel.');
   if (!/ADMIN_MENU_GROUPS/.test(adminLayout)) failures.push('AdminLayout canonical admin menu definition is missing.');
+}
+
+const adminDashboard = requireFile('src/admin/AdminDashboard.tsx');
+if (adminDashboard) {
+  if (/ProducerOverview|getMyProducerDashboardV2|useCustomerSession/.test(adminDashboard)) failures.push('AdminDashboard must not contain a second producer dashboard or role-switched seller runtime.');
+  if (!/getAdminOperationsOverview/.test(adminDashboard)) failures.push('AdminDashboard must remain bound to the strict admin overview API.');
+}
+
+const adminDashboardApi = requireFile('src/admin/dashboardApi.ts');
+if (adminDashboardApi) {
+  if (/getMyProducerDashboardV2|ProducerDashboard/.test(adminDashboardApi)) failures.push('Admin dashboard API must not contain the retired producer dashboard path.');
+  if (/\|\|\s*['"]TRY['"]/.test(adminDashboardApi)) failures.push('Admin dashboard API must not invent TRY when server currency is missing.');
+  if (/new Date\(\)\.toISOString\(\)/.test(adminDashboardApi)) failures.push('Admin dashboard API must not replace missing server timestamps with the current client time.');
+  if (!/currencyCode\(value\.currency\)/.test(adminDashboardApi)) failures.push('Admin dashboard finance currency must be validated at the client boundary.');
+  if (!/net !== captured - refunded/.test(adminDashboardApi)) failures.push('Admin dashboard finance summary must retain arithmetic consistency validation.');
+}
+
+const sharedAdminApi = requireFile('src/admin/supabaseAdminApi.ts');
+if (sharedAdminApi) {
+  if (/\?\s*[^:]+:\s*['"]Kullanıcı['"]/.test(sharedAdminApi) || /\?\s*[^:]+:\s*['"]Ürün['"]/.test(sharedAdminApi)) failures.push('Shared admin API must not invent user or product names when the server payload is incomplete.');
+  if (!/currency:currencyCode\(raw\.currency,true\)/.test(sharedAdminApi.replace(/\s+/g, ''))) failures.push('Admin finance report currency must remain required at the API boundary.');
+  if (!/net!==gross-refund/.test(sharedAdminApi.replace(/\s+/g, ''))) failures.push('Shared admin finance report must retain gross/refund/net arithmetic checks.');
+  if (!/safeInteger\(value\.rating,['"]Yorum puanı['"],1,5\)/.test(sharedAdminApi)) failures.push('Admin review rating must remain strictly validated from 1 to 5.');
+}
+
+const adminFinance = requireFile('src/admin/AdminFinance.tsx');
+if (adminFinance) {
+  if (/Grafik TRY bazındadır|\}\s*TRY/.test(adminFinance)) failures.push('Admin finance UI must not hard-code TRY instead of the validated report currency.');
+  if (!/report\.currency/.test(adminFinance) || !/formatMinorCurrency/.test(adminFinance)) failures.push('Admin finance UI must render server report currency through the shared formatter.');
 }
 
 const cartApi = requireFile('src/features/cart/api.ts');
@@ -235,4 +273,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Golden Oremar release audit passed: Android/iOS app-shell, native speech, strict storefront truth, canonical seller/admin paths, theme contrast, retired-runtime and native release metadata contracts are intact.');
+console.log('Golden Oremar release audit passed: Android/iOS app-shell, native speech, strict storefront truth, canonical product/seller/admin paths, fail-closed admin data, currency truth, theme contrast, retired-runtime and native release metadata contracts are intact.');
