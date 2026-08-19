@@ -1,24 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
-
 const corsHeaders={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
 function json(status:number,body:Record<string,unknown>){return new Response(JSON.stringify(body),{status,headers:{...corsHeaders,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});}
 function isRecord(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==="object"&&!Array.isArray(value);}
 function hasEnv(...keys:string[]){return keys.every(key=>Boolean(Deno.env.get(key)?.trim()));}
-
-Deno.serve(async(req:Request)=>{
- if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders});
- if(req.method!=="POST")return json(405,{ok:false,error:"method_not_allowed"});
- try{
-  const supabaseUrl=Deno.env.get("SUPABASE_URL")||"",anonKey=Deno.env.get("SUPABASE_ANON_KEY")||"",authorization=req.headers.get("Authorization")||"";
-  if(!supabaseUrl||!anonKey||!authorization)return json(401,{ok:false,error:"authentication_required"});
-  const client=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}});
-  const{data:userData,error:userError}=await client.auth.getUser();if(userError||!userData.user?.id)return json(401,{ok:false,error:"authentication_required"});
-  const{data:configRaw,error:configError}=await client.rpc("super_admin_get_payment_control_v1");if(configError)throw configError;if(!isRecord(configRaw))throw new Error("payment_config_invalid");
-  if(configRaw.provider!=="iyzico")throw new Error("payment_provider_invalid");
-  const iyzicoSecretsConfigured=hasEnv("IYZICO_API_KEY","IYZICO_SECRET_KEY","IYZICO_BASE_URL");
-  const paymentReturnUrlConfigured=Boolean(Deno.env.get("GOLDEN_OREMAR_PAYMENT_RETURN_URL")?.trim());
-  const hosted=configRaw.checkout_form_enabled===true,saved=configRaw.live_card_payments_enabled===true,enrollment=configRaw.card_enrollment_enabled===true;
-  return json(200,{ok:true,provider:"iyzico",runtime:{iyzicoSecretsConfigured,paymentReturnUrlConfigured,livePaymentsEnabled:iyzicoSecretsConfigured&&(hosted||saved)},methods:{hostedCheckout:{enabled:hosted,ready:hosted&&iyzicoSecretsConfigured&&paymentReturnUrlConfigured},savedCardPayment:{enabled:saved,ready:saved&&iyzicoSecretsConfigured},cardEnrollment:{enabled:enrollment,ready:enrollment&&saved&&iyzicoSecretsConfigured}}});
- }catch(error){const message=error instanceof Error?error.message:"payment_health_failed";return json(message.includes("super_admin_required")?403:400,{ok:false,error:message.length<=240?message:"payment_health_failed"});}
-});
+Deno.serve(async(req:Request)=>{if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders});if(req.method!=="POST")return json(405,{ok:false,error:"method_not_allowed"});try{const supabaseUrl=Deno.env.get("SUPABASE_URL")||"",anonKey=Deno.env.get("SUPABASE_ANON_KEY")||"",authorization=req.headers.get("Authorization")||"";if(!supabaseUrl||!anonKey||!authorization)return json(401,{ok:false,error:"authentication_required"});const client=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}});const{data:userData,error:userError}=await client.auth.getUser();if(userError||!userData.user?.id)return json(401,{ok:false,error:"authentication_required"});const{data:configRaw,error:configError}=await client.rpc("super_admin_get_payment_control_v1");if(configError)throw configError;if(!isRecord(configRaw)||configRaw.provider!=="iyzico")throw new Error("payment_config_invalid");const iyzicoSecretsConfigured=hasEnv("IYZICO_API_KEY","IYZICO_SECRET_KEY","IYZICO_BASE_URL");const returnUrl=typeof configRaw.return_url==="string"?configRaw.return_url.trim():"";const paymentReturnUrlConfigured=/^(https:\/\/|goldenoremar:\/\/)/i.test(returnUrl);const hosted=configRaw.checkout_form_enabled===true,saved=configRaw.live_card_payments_enabled===true,enrollment=configRaw.card_enrollment_enabled===true;return json(200,{ok:true,provider:"iyzico",runtime:{iyzicoSecretsConfigured,paymentReturnUrlConfigured,livePaymentsEnabled:iyzicoSecretsConfigured&&(hosted||saved)},methods:{hostedCheckout:{enabled:hosted,ready:hosted&&iyzicoSecretsConfigured&&paymentReturnUrlConfigured},savedCardPayment:{enabled:saved,ready:saved&&iyzicoSecretsConfigured},cardEnrollment:{enabled:enrollment,ready:enrollment&&saved&&iyzicoSecretsConfigured}}});}catch(error){const message=error instanceof Error?error.message:"payment_health_failed";return json(message.includes("super_admin_required")?403:400,{ok:false,error:message.length<=240?message:"payment_health_failed"});}});
