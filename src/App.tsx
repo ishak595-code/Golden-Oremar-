@@ -199,7 +199,7 @@ function AppContent(){
 
  const toggleFavorite=useCallback(async(product:any)=>{
   if(!currentUser){showToast('Favorileri kaydetmek için hesabınıza giriş yapın.');setAccountView('menu');navigateToTab('account');return;}
-  if(Capitor.isNativePlatform()){try{await Haptics.impact({style:ImpactStyle.Light});}catch{}}
+  if(Capacitor.isNativePlatform()){try{await Haptics.impact({style:ImpactStyle.Light});}catch{}}
   try{const result=await serverToggleProductFavorite(product?.slug||product?.legacyId||product?.id);const reference=String(result?.productReference||product?.legacyId||product?.id||'');setFavorites(previous=>result?.isFavorite?(previous.includes(reference)?previous:[...previous,reference]):previous.filter(item=>item!==reference));showToast(result?.isFavorite?`${product?.name||'Ürün'} favorilerinize eklendi.`:`${product?.name||'Ürün'} favorilerinizden çıkarıldı.`);}catch(error:any){showToast(String(error?.message||'Favori işlemi tamamlanamadı.'));}
  },[currentUser,navigateToTab,showToast]);
 
