@@ -47,6 +47,7 @@ const ADMIN_MENU_GROUPS: MenuGroup[] = [
     { id: 'orders', label: 'Siparişler', icon: Package },
     { id: 'returns', label: 'İadeler', icon: RotateCcw },
     { id: 'stock', label: 'Stok Gözetimi', icon: TrendingUp },
+    { id: 'shipping-readiness', label: 'Kargo Hazırlığı', icon: Package, superAdminOnly: true },
     { id: 'vendors', label: 'Satıcılar', icon: Store },
     { id: 'vendor-applications', label: 'Satıcı Başvuruları', icon: FileText },
     { id: 'users', label: 'Kullanıcılar', icon: Users },
