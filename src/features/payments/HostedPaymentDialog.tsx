@@ -2,7 +2,7 @@ import React,{useEffect,useMemo,useState}from'react';
 import{CreditCard,ShieldCheck,X}from'lucide-react';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 
-const IYZICO_HOSTS=new Set(['api.iyzipay.com','sandbox-api.iyzipay.com']);
+const IYZICO_HOSTS=new Set(['cpp.iyzipay.com','sandbox-cpp.iyzipay.com','api.iyzipay.com','sandbox-api.iyzipay.com']);
 
 function iframeUrl(value:string){
  const raw=value.trim();
@@ -28,7 +28,7 @@ export default function HostedPaymentDialog({open,paymentPageUrl,title='Güvenli
  const dialogRef=useAccessibleDialog<HTMLDivElement>(open,()=>onClose());
  const src=useMemo(()=>{
   if(!open||!paymentPageUrl)return'';
-  try{return iframeUrl(paymentPageUrl);}catch(error){return'';}
+  try{return iframeUrl(paymentPageUrl);}catch{return'';}
  },[open,paymentPageUrl]);
  useEffect(()=>{if(open){setLoaded(false);setFrameError(src?'':'Ödeme ekranı güvenlik kontrolünden geçemedi.');}},[open,src]);
  if(!open)return null;
