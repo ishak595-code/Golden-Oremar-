@@ -23,13 +23,28 @@ export type AdminContentEntry = {
   updated_at: string;
 };
 
+export type AdminBrandPublicConfig = Record<string, unknown> & {
+  appSettings?: { logoUrl?: string; theme?: 'light' | 'dark' };
+  contactInfo?: {
+    address?: string;
+    phone?: string;
+    whatsapp?: string;
+    email?: string;
+    mapUrl?: string;
+    social?: Record<string, string>;
+  };
+  heroCategories?: Array<{ id: string; title: string; subtitle: string; image: string; icon: string; targetCategory: string }>;
+  homeSections?: Array<{ id: string; title: string; active: boolean }>;
+  launchReadiness?: { status: string; reason?: string };
+};
+
 export type AdminBrandConfig = {
   slug: string;
   brandName: string;
   maintenanceMode: boolean;
   supportEmail: string | null;
   supportPhone: string | null;
-  publicConfig: Record<string, unknown>;
+  publicConfig: AdminBrandPublicConfig;
   updatedAt: string;
 };
 
@@ -60,6 +75,12 @@ function optionalText(value: unknown, label: string, max = 500) {
   if (!text) return null;
   if (text.length > max || /[\u0000-\u001F\u007F]/.test(text)) throw new Error(`${label} doğrulanamadı.`);
   return text;
+}
+
+function optionalPlainString(value: unknown, label: string, max = 2048) {
+  if (value == null) return undefined;
+  if (typeof value !== 'string' || value.length > max || /[\u0000-\u001F\u007F]/.test(value)) throw new Error(`${label} doğrulanamadı.`);
+  return value;
 }
 
 function contentText(value: unknown) {
@@ -138,12 +159,93 @@ function normalizeContent(value: unknown, index: number): AdminContentEntry {
   };
 }
 
+function normalizeAppSettings(value: unknown) {
+  if (value == null) return undefined;
+  if (!isRecord(value)) throw new Error('Uygulama görünüm ayarları doğrulanamadı.');
+  const theme = value.theme == null ? undefined : requiredText(value.theme, 'Varsayılan tema', 10);
+  if (theme && theme !== 'light' && theme !== 'dark') throw new Error('Varsayılan tema doğrulanamadı.');
+  return {
+    logoUrl: optionalPlainString(value.logoUrl, 'Logo yolu'),
+    theme: theme as 'light' | 'dark' | undefined,
+  };
+}
+
+function normalizeContactInfo(value: unknown) {
+  if (value == null) return undefined;
+  if (!isRecord(value)) throw new Error('İletişim ayarları doğrulanamadı.');
+  let social: Record<string, string> | undefined;
+  if (value.social != null) {
+    if (!isRecord(value.social)) throw new Error('Sosyal medya ayarları doğrulanamadı.');
+    social = {};
+    for (const [key, raw] of Object.entries(value.social)) {
+      const safeKey = requiredText(key, 'Sosyal medya anahtarı', 40);
+      social[safeKey] = optionalPlainString(raw, `${safeKey} bağlantısı`) || '';
+    }
+  }
+  return {
+    address: optionalPlainString(value.address, 'İletişim adresi', 500),
+    phone: optionalPlainString(value.phone, 'İletişim telefonu', 40),
+    whatsapp: optionalPlainString(value.whatsapp, 'WhatsApp bilgisi', 40),
+    email: optionalPlainString(value.email, 'İletişim e-postası', 320),
+    mapUrl: optionalPlainString(value.mapUrl, 'Harita bağlantısı'),
+    social,
+  };
+}
+
+function normalizeHeroCategories(value: unknown) {
+  if (value == null) return undefined;
+  if (!Array.isArray(value) || value.length < 1 || value.length > 12) throw new Error('Hero kategori listesi doğrulanamadı.');
+  return value.map((item, index) => {
+    if (!isRecord(item)) throw new Error(`${index + 1}. hero kategori kartı doğrulanamadı.`);
+    return {
+      id: requiredText(item.id, 'Hero kategori kimliği', 80),
+      title: requiredText(item.title, 'Hero kategori başlığı', 120),
+      subtitle: optionalPlainString(item.subtitle, 'Hero kategori alt başlığı', 180) || '',
+      image: optionalPlainString(item.image, 'Hero kategori görseli') || '',
+      icon: optionalPlainString(item.icon, 'Hero kategori ikonu', 80) || '',
+      targetCategory: requiredText(item.targetCategory, 'Hero kategori hedefi', 120),
+    };
+  });
+}
+
+function normalizeHomeSections(value: unknown) {
+  if (value == null) return undefined;
+  if (!Array.isArray(value) || value.length < 1 || value.length > 20) throw new Error('Ana sayfa bölüm listesi doğrulanamadı.');
+  return value.map((item, index) => {
+    if (!isRecord(item)) throw new Error(`${index + 1}. ana sayfa bölümü doğrulanamadı.`);
+    return {
+      id: requiredText(item.id, 'Ana sayfa bölüm kimliği', 80),
+      title: requiredText(item.title, 'Ana sayfa bölüm başlığı', 160),
+      active: booleanValue(item.active, 'Ana sayfa bölüm durumu'),
+    };
+  });
+}
+
+function normalizeLaunchReadiness(value: unknown) {
+  if (value == null) return undefined;
+  if (!isRecord(value)) throw new Error('Canlı satış hazırlık durumu doğrulanamadı.');
+  return {
+    status: requiredText(value.status, 'Canlı satış hazırlık durumu', 120),
+    reason: optionalPlainString(value.reason, 'Canlı satış hazırlık açıklaması', 1000),
+  };
+}
+
+function normalizePublicConfig(value: unknown): AdminBrandPublicConfig {
+  if (!isRecord(value)) throw new Error('Marka publicConfig alanı doğrulanamadı.');
+  return {
+    ...value,
+    appSettings: normalizeAppSettings(value.appSettings),
+    contactInfo: normalizeContactInfo(value.contactInfo),
+    heroCategories: normalizeHeroCategories(value.heroCategories),
+    homeSections: normalizeHomeSections(value.homeSections),
+    launchReadiness: normalizeLaunchReadiness(value.launchReadiness),
+  };
+}
+
 function normalizeBrandConfiguration(value: unknown): AdminBrandConfig {
   if (!isRecord(value)) throw new Error('Marka ayarı yanıtı doğrulanamadı.');
   const slug = requiredText(value.slug, 'Marka kısa adı', 80);
   if (slug !== 'golden-oremar') throw new Error('Beklenmeyen marka ayarı döndü.');
-  const publicConfig = value.publicConfig;
-  if (!isRecord(publicConfig)) throw new Error('Marka publicConfig alanı doğrulanamadı.');
   const supportEmail = optionalText(value.supportEmail, 'Destek e-postası', 320);
   if (supportEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supportEmail)) throw new Error('Destek e-postası doğrulanamadı.');
   return {
@@ -152,7 +254,7 @@ function normalizeBrandConfiguration(value: unknown): AdminBrandConfig {
     maintenanceMode: booleanValue(value.maintenanceMode, 'Bakım modu'),
     supportEmail,
     supportPhone: optionalText(value.supportPhone, 'Destek telefonu', 40),
-    publicConfig,
+    publicConfig: normalizePublicConfig(value.publicConfig),
     updatedAt: dateTime(value.updatedAt, 'Marka ayarı güncelleme tarihi', true) as string,
   };
 }
