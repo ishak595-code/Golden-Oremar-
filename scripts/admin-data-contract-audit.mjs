@@ -21,6 +21,20 @@ function requirePattern(content, pattern, message) {
   if (!pattern.test(content)) failures.push(message);
 }
 
+if (fs.existsSync(path.join(root, 'backend'))) {
+  failures.push('Retired backend/ migration mirror must not return; Supabase migrations belong under supabase/migrations/.');
+}
+
+const consolidatedMigrationFiles = [
+  'supabase/migrations/20260816062936_add_my_product_batch_editor_v1.sql',
+  'supabase/migrations/20260816120247_add_atomic_customer_return_evidence_v3.sql',
+  'supabase/migrations/20260816120431_complete_return_options_and_admin_evidence_detail.sql',
+  'supabase/migrations/20260816123842_add_public_producer_product_inventory_truth.sql',
+  'supabase/migrations/20260816125511_add_secure_producer_order_fulfillment_v1.sql',
+  'supabase/migrations/20260816185944_fix_public_storefront_brand_name_v1.sql',
+];
+for (const relative of consolidatedMigrationFiles) requireFile(relative);
+
 const categoryApi = requireFile('src/admin/categoryAdminApi.ts');
 if (categoryApi) {
   forbid(categoryApi, /İsimsiz kategori/, 'Category admin API must not invent missing category names.');
@@ -117,4 +131,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Golden Oremar admin data contract audit passed: category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
+console.log('Golden Oremar admin data contract audit passed: canonical migration storage and category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
