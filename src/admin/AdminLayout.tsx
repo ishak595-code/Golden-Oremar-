@@ -15,6 +15,7 @@ import {
   Menu,
   Package,
   RefreshCw,
+  Rocket,
   RotateCcw,
   Settings,
   ShoppingBag,
@@ -37,7 +38,7 @@ type MenuItem = { id: string; label: string; icon: React.ComponentType<{ classNa
 type MenuGroup = { title: string; items: MenuItem[] };
 
 const ADMIN_MENU_GROUPS: MenuGroup[] = [
-  { title: 'Genel', items: [{ id: 'dashboard', label: 'Panel', icon: LayoutDashboard }] },
+  { title: 'Genel', items: [{ id: 'dashboard', label: 'Panel', icon: LayoutDashboard },{id:'production-readiness',label:'Üretim Hazırlığı',icon:Rocket,superAdminOnly:true}] },
   { title: 'E-Ticaret', items: [
     { id: 'products', label: 'Ürün Yönetimi', icon: ShoppingBag },
     { id: 'product-approvals', label: 'Ürün Onayları', icon: CheckSquare },
