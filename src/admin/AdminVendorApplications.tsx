@@ -1,252 +1,53 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Check, CheckCircle, Eye, FileSearch, Loader2, MapPin, RefreshCw, Search, ShieldCheck, Store, X, XCircle } from 'lucide-react';
-import {
-  adminGetProducerApplicationSensitive,
-  adminListProducerApplications,
-  adminReviewProducerApplication,
-  adminSetProducerDocumentStatus,
-  producerApplicationErrorMessage,
-  type AdminProducerApplication,
-  type ProducerApplicationDocument,
-  type ProducerApplicationReviewStatus,
-  type ProducerApplicationStatus,
-  type ProducerDocumentReviewStatus,
-  type ProducerDocumentVerificationStatus,
-  type SensitiveProducerApplication,
-} from './producerApplicationAdminApi';
-import { createProducerDocumentPreviewUrl } from './producerDocumentApi';
-import { useAccessibleDialog } from '../features/accessibility/useAccessibleDialog';
+import React,{useEffect,useMemo,useState}from'react';
+import{Check,CheckCircle,Eye,FileSearch,Loader2,MapPin,RefreshCw,Search,ShieldCheck,Store,X,XCircle}from'lucide-react';
+import{adminGetProducerApplicationSensitive,adminListProducerApplications,adminReviewProducerApplication,adminSetProducerDocumentStatus,producerApplicationErrorMessage,type AdminProducerApplication,type ProducerApplicationDocument,type ProducerApplicationReviewStatus,type ProducerApplicationStatus,type ProducerDocumentReviewStatus,type ProducerDocumentVerificationStatus,type SensitiveProducerApplication}from'./producerApplicationAdminApi';
+import{createProducerDocumentPreviewUrl}from'./producerDocumentApi';
+import{useAccessibleDialog}from'../features/accessibility/useAccessibleDialog';
 
-type ReviewAction = ProducerApplicationReviewStatus;
+type ReviewAction=ProducerApplicationReviewStatus;
+const activityLabels:Record<string,string>={beekeeping:'Arıcılık',livestock:'Hayvancılık',dairy:'Süt üretimi',poultry:'Kümes hayvancılığı',field_farming:'Tarla tarımı',fruit_growing:'Meyvecilik',vegetable_growing:'Sebzecilik',wild_harvest:'Dağ ve doğa mahsulleri',fishing:'Balıkçılık',food_processing:'Geleneksel gıda işleme',beverage_production:'Yöresel içecek üretimi',natural_materials:'Doğal malzeme üretimi'};
+const sourceLabels:Record<string,string>={own_production:'Kendi üretimi',family_production:'Aile üretimi',cooperative_production:'Kooperatif üretimi'};
+function statusLabel(status:ProducerApplicationStatus){return({draft:'Taslak',submitted:'Gönderildi',under_review:'İnceleniyor',needs_information:'Ek bilgi gerekli',approved:'Onaylandı',rejected:'Reddedildi',withdrawn:'Geri çekildi'}as const)[status];}
+function statusClass(status:ProducerApplicationStatus){if(status==='approved')return'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200';if(status==='rejected'||status==='withdrawn')return'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200';if(status==='needs_information')return'bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200';if(status==='under_review')return'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200';if(status==='submitted')return'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200';return'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';}
+function documentStatusClass(status:ProducerDocumentVerificationStatus){if(status==='verified')return'bg-green-100 text-green-800';if(status==='rejected')return'bg-red-100 text-red-800';if(status==='expired')return'bg-gray-200 text-gray-800';return'bg-yellow-100 text-yellow-800';}
+function documentStatusLabel(status:ProducerDocumentVerificationStatus){return({pending:'Bekliyor',verified:'Doğrulandı',rejected:'Reddedildi',expired:'Süresi doldu'}as const)[status];}
+function formatDate(value:string|null|undefined){if(!value)return'Bilinmiyor';const date=new Date(value);return Number.isNaN(date.getTime())?'Bilinmiyor':date.toLocaleString('tr-TR',{dateStyle:'medium',timeStyle:'short'});}
+function structuredLocation(app:AdminProducerApplication){const parts=[app.production_village,app.production_district,app.production_province,app.production_country_code].filter(Boolean);return parts.length?parts.join(' / '):app.production_location||'Belirtilmemiş';}
+function applicantDisplay(app:AdminProducerApplication){return app.legal_name||app.public_name||app.email||'Başvuru sahibi bilgisi eksik';}
+function documentSizeLabel(size:number){return size<1024*1024?`${Math.ceil(size/1024)} KB`:`${(size/(1024*1024)).toLocaleString('tr-TR',{maximumFractionDigits:1})} MB`;}
 
-function statusLabel(status: ProducerApplicationStatus) {
-  return ({ draft: 'Taslak', submitted: 'Gönderildi', under_review: 'İnceleniyor', needs_information: 'Ek bilgi gerekli', approved: 'Onaylandı', rejected: 'Reddedildi', withdrawn: 'Geri çekildi' } as const)[status];
+export function AdminVendorApplications(){
+ const[applications,setApplications]=useState<AdminProducerApplication[]>([]);const[loading,setLoading]=useState(true);const[busy,setBusy]=useState('');const[error,setError]=useState('');const[toast,setToast]=useState('');const[searchTerm,setSearchTerm]=useState('');const[statusFilter,setStatusFilter]=useState<'all'|ProducerApplicationStatus>('submitted');const[selected,setSelected]=useState<AdminProducerApplication|null>(null);const[reviewAction,setReviewAction]=useState<ReviewAction|null>(null);const[reviewReason,setReviewReason]=useState('');const[commissionPercent,setCommissionPercent]=useState(10);const[sensitivePurpose,setSensitivePurpose]=useState('');const[sensitive,setSensitive]=useState<SensitiveProducerApplication|null>(null);const[sensitiveLoading,setSensitiveLoading]=useState(false);
+ const closeDetail=()=>{if(busy||sensitiveLoading||reviewAction)return;setSelected(null);setSensitive(null);setSensitivePurpose('');setError('');};const closeReview=()=>{if(busy)return;setReviewAction(null);setReviewReason('');setError('');};
+ const detailDialogRef=useAccessibleDialog<HTMLElement>(Boolean(selected),closeDetail);const reviewDialogRef=useAccessibleDialog<HTMLElement>(Boolean(reviewAction&&selected),closeReview);
+ function showToast(message:string){setToast(message);window.setTimeout(()=>setToast(''),3000);}
+ async function load(silent=false){if(!silent)setLoading(true);setError('');try{const rows=await adminListProducerApplications();setApplications(rows);setSelected(current=>current?rows.find(row=>row.id===current.id)||null:null);}catch(nextError){setError(producerApplicationErrorMessage(nextError,'Satıcı başvuruları yüklenemedi.'));}finally{if(!silent)setLoading(false);}}
+ useEffect(()=>{void load();},[]);
+ const filtered=useMemo(()=>{const q=searchTerm.trim().toLocaleLowerCase('tr-TR');return applications.filter(app=>{if(statusFilter!=='all'&&app.status!==statusFilter)return false;if(!q)return true;const productText=app.planned_products.map(item=>`${item.name} ${item.category} ${sourceLabels[item.source_model]||item.source_model}`).join(' ');return`${app.brand_name} ${app.public_name} ${app.legal_name||''} ${app.email} ${structuredLocation(app)} ${app.activity_types.map(value=>activityLabels[value]||value).join(' ')} ${productText}`.toLocaleLowerCase('tr-TR').includes(q);});},[applications,searchTerm,statusFilter]);
+ function openDetail(app:AdminProducerApplication){setSelected(app);setSensitive(null);setSensitivePurpose('');setError('');}
+ async function submitReview(event:React.FormEvent){event.preventDefault();if(!selected||!reviewAction||busy)return;setBusy(selected.id);setError('');try{await adminReviewProducerApplication({applicationId:selected.id,status:reviewAction,reason:reviewReason,commissionPercent});showToast(reviewAction==='approved'?'Başvuru onaylandı. Faaliyet ve kategori kapsamı üretici hesabına işlendi.':reviewAction==='rejected'?'Başvuru reddedildi.':reviewAction==='needs_information'?'Üreticiden ek bilgi istendi.':'Başvuru incelemeye alındı.');setReviewAction(null);await load(true);}catch(nextError){setError(producerApplicationErrorMessage(nextError));}finally{setBusy('');}}
+ async function updateDocument(document:ProducerApplicationDocument,status:ProducerDocumentReviewStatus){if(busy)return;setBusy(document.id);setError('');try{await adminSetProducerDocumentStatus(document.id,status);showToast(`Belge ${documentStatusLabel(status).toLocaleLowerCase('tr-TR')} olarak işaretlendi.`);await load(true);}catch(nextError){setError(producerApplicationErrorMessage(nextError,'Belge durumu güncellenemedi.'));}finally{setBusy('');}}
+ async function previewDocument(document:ProducerApplicationDocument){if(busy)return;setBusy(document.id);setError('');try{const url=await createProducerDocumentPreviewUrl(document.storage_path);window.open(url,'_blank','noopener,noreferrer');}catch(nextError){setError(producerApplicationErrorMessage(nextError,'Belge önizlemesi açılamadı.'));}finally{setBusy('');}}
+ async function unlockSensitive(event:React.FormEvent){event.preventDefault();if(!selected||sensitiveLoading)return;setSensitiveLoading(true);setError('');try{setSensitive(await adminGetProducerApplicationSensitive(selected.id,sensitivePurpose));}catch(nextError){setError(producerApplicationErrorMessage(nextError,'Hassas başvuru bilgileri açılamadı.'));}finally{setSensitiveLoading(false);}}
+ const canReview=selected&&!['approved','rejected','withdrawn'].includes(selected.status);
+ return<div className="space-y-6">
+  <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><h2 className="text-2xl font-bold">Satıcı Başvuruları</h2><p className="mt-1 max-w-3xl text-sm text-gray-500">Köy üreticisinin kimliği, gerçek üretim faaliyeti, köy/menşe, ürün sahipliği, kategori kapsamı ve belgeleri ayrı ayrı doğrulanır. Satıcı paneli ile Super Admin yetkileri birbirine karıştırılmaz.</p></div><button type="button" onClick={()=>void load()} disabled={loading} className="flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 disabled:opacity-50"><RefreshCw aria-hidden="true" className={`h-4 w-4 ${loading?'animate-spin':''}`}/>Yenile</button></header>
+  {error&&!selected&&!reviewAction?<div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/30 dark:text-red-200">{error}</div>:null}
+  <div className="grid gap-3 rounded-2xl border bg-white p-4 dark:bg-gray-800 md:grid-cols-[minmax(0,1fr)_220px]"><label className="relative"><span className="sr-only">Başvuru ara</span><Search aria-hidden="true" className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"/><input type="search" value={searchTerm} onChange={event=>setSearchTerm(event.target.value)} placeholder="Üretici, köy, faaliyet veya ürün ara..." className="min-h-11 w-full rounded-xl border bg-gray-50 py-2 pl-10 pr-4 dark:bg-gray-900"/></label><label><span className="sr-only">Başvuru durumu</span><select value={statusFilter} onChange={event=>setStatusFilter(event.target.value as typeof statusFilter)} className="min-h-11 w-full rounded-xl border bg-gray-50 px-4 dark:bg-gray-900"><option value="all">Tüm başvurular</option><option value="draft">Taslaklar</option><option value="submitted">Gönderilenler</option><option value="under_review">İncelenenler</option><option value="needs_information">Ek bilgi bekleyen</option><option value="approved">Onaylananlar</option><option value="rejected">Reddedilenler</option><option value="withdrawn">Geri çekilenler</option></select></label></div>
+  {loading?<div role="status" className="flex min-h-40 items-center justify-center gap-2 rounded-2xl border"><Loader2 aria-hidden="true" className="h-5 w-5 animate-spin"/>Başvurular yükleniyor...</div>:<div className="grid gap-4 xl:grid-cols-2">{filtered.map(app=><article key={app.id} className="rounded-2xl border bg-white p-5 dark:bg-gray-800"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 gap-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-green/10 text-brand-green"><Store aria-hidden="true" className="h-6 w-6"/></span><div className="min-w-0"><h3 className="truncate font-bold">{app.brand_name}</h3><p className="truncate text-sm text-gray-500">{applicantDisplay(app)}</p></div></div><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(app.status)}`}>{statusLabel(app.status)}</span></div><div className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><Info label="Üretim yeri" value={structuredLocation(app)} icon={<MapPin aria-hidden="true" className="h-4 w-4"/>}/><Info label="Faaliyet" value={app.activity_types.map(value=>activityLabels[value]||value).join(', ')}/><Info label="Kategori kapsamı" value={app.product_categories.join(', ')}/><Info label="Planlanan ürün" value={`${app.planned_products.length} ürün`}/></div><div className="mt-5 flex items-center justify-between border-t pt-4"><span className="text-xs text-gray-500">{app.submitted_at?`Gönderim: ${formatDate(app.submitted_at)}`:`Oluşturma: ${formatDate(app.created_at)}`}</span><button type="button" onClick={()=>openDetail(app)} className="min-h-11 rounded-xl bg-brand-green px-4 font-semibold text-brand-on-green"><Eye aria-hidden="true" className="mr-2 inline h-4 w-4"/>İncele</button></div></article>)}{!filtered.length?<div className="xl:col-span-2 rounded-2xl border p-10 text-center text-gray-500">Filtrelerle eşleşen başvuru yok.</div>:null}</div>}
+
+  {selected?<div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center sm:p-4"><section ref={detailDialogRef} role="dialog" aria-modal="true" aria-labelledby="application-title" tabIndex={-1} className="max-h-[96dvh] w-full max-w-5xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl outline-none dark:bg-gray-800 sm:rounded-2xl sm:p-6"><div className="flex items-start justify-between gap-4"><div><h3 id="application-title" className="text-xl font-bold">{selected.brand_name}</h3><p className="mt-1 text-sm text-gray-500">{applicantDisplay(selected)} · {statusLabel(selected.status)}</p></div><button type="button" disabled={Boolean(busy)||sensitiveLoading||Boolean(reviewAction)} onClick={closeDetail} aria-label="Başvuru detayını kapat" className="min-h-11 min-w-11 rounded-xl"><X aria-hidden="true" className="mx-auto h-5 w-5"/></button></div>{error&&!reviewAction?<div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>:null}
+   <div className="mt-5 grid gap-4 lg:grid-cols-2"><section className="rounded-2xl border p-4"><h4 className="font-bold">Üretici profili</h4><dl className="mt-3 space-y-3 text-sm"><Row label="Başvuru türü" value={`${selected.applicant_type} · ${selected.seller_classification}`}/><Row label="Köy / üretim yeri" value={structuredLocation(selected)}/><Row label="Faaliyetler" value={selected.activity_types.map(value=>activityLabels[value]||value).join(', ')}/><Row label="Onay istenen kategoriler" value={selected.product_categories.join(', ')}/><Row label="Üretim kaynakları" value={selected.sourcing_models.map(value=>sourceLabels[value]||value).join(', ')}/><Row label="Üretim uygulamaları" value={selected.production_practice_notes||'Girilmedi'}/></dl></section><section className="rounded-2xl border p-4"><h4 className="font-bold">Uygunluk ve KYC özeti</h4><dl className="mt-3 space-y-3 text-sm"><Row label="İletişim" value={`${selected.email||'E-posta yok'}${selected.phone?` · ${selected.phone}`:''}`}/><Row label="E-posta / telefon" value={`${selected.contact_email_verified_at?'E-posta doğrulandı':'E-posta doğrulanmadı'} · ${selected.phone_verified_at?'Telefon doğrulandı':'Telefon doğrulanmadı'}`}/><Row label="Gıda uygunluğu" value={selected.food_compliance_status}/><Row label="Organik iddia" value={`${selected.organic_claim_status}${selected.organic_certifier_name?` · ${selected.organic_certifier_name}`:''}`}/><Row label="Maskelenmiş kimlik / vergi" value={selected.identifier_masked||'Kayıt yok'}/><Row label="Maskelenmiş IBAN" value={selected.iban_masked||'Kayıt yok'}/></dl></section></div>
+   <section className="mt-4 rounded-2xl border p-4"><h4 className="font-bold">Planlanan kendi ürünleri</h4><p className="mt-1 text-xs text-gray-500">Her ürün başvurudaki kategori kapsamına ve izin verilen üretim kaynağına bağlıdır.</p><div className="mt-3 grid gap-3 sm:grid-cols-2">{selected.planned_products.map((item,index)=><div key={`${item.name}-${index}`} className="rounded-xl bg-gray-50 p-3 dark:bg-gray-900/60"><div className="font-semibold">{item.name}</div><div className="mt-1 text-sm text-gray-500">{item.category} · {sourceLabels[item.source_model]||item.source_model}</div><div className="mt-1 text-xs text-gray-500">Tahmini {item.estimated_quantity} {item.unit}</div></div>)}</div></section>
+   <section className="mt-4 rounded-2xl border p-4"><div className="flex items-center justify-between"><div><h4 className="font-bold">Belgeler</h4><p className="mt-1 text-xs text-gray-500">Belge doğrulaması ürün ve üretici onayından ayrıdır.</p></div><FileSearch aria-hidden="true" className="h-5 w-5 text-gray-400"/></div><div className="mt-3 space-y-2">{selected.documents.map(document=><div key={document.id} className="flex flex-col gap-3 rounded-xl bg-gray-50 p-3 dark:bg-gray-900/60 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><span className="font-medium">{document.document_type}</span><span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${documentStatusClass(document.verification_status)}`}>{documentStatusLabel(document.verification_status)}</span><p className="mt-1 text-xs text-gray-500">{document.mime_type} · {documentSizeLabel(document.size_bytes)}</p></div><div className="flex flex-wrap gap-2"><button type="button" disabled={Boolean(busy)} onClick={()=>void previewDocument(document)} className="min-h-11 rounded-lg border px-3 text-sm">Önizle</button><button type="button" disabled={Boolean(busy)||document.verification_status==='verified'} onClick={()=>void updateDocument(document,'verified')} className="min-h-11 rounded-lg border border-green-200 px-3 text-sm text-green-700 disabled:opacity-40">Doğrula</button><button type="button" disabled={Boolean(busy)||document.verification_status==='rejected'} onClick={()=>void updateDocument(document,'rejected')} className="min-h-11 rounded-lg border border-red-200 px-3 text-sm text-red-700 disabled:opacity-40">Reddet</button></div></div>)}{!selected.documents.length?<p className="py-4 text-center text-sm text-gray-500">Belge yok.</p>:null}</div></section>
+   <section className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4 dark:bg-amber-950/20"><div className="flex gap-3"><ShieldCheck aria-hidden="true" className="h-5 w-5 shrink-0 text-amber-700"/><div className="flex-1"><h4 className="font-bold">Hassas KYC erişimi</h4><p className="mt-1 text-xs">Tam kimlik, vergi ve IBAN varsayılan olarak gizlidir. Erişim amacı denetim kaydına yazılır.</p>{!sensitive?<form onSubmit={unlockSensitive} className="mt-3 flex flex-col gap-2 sm:flex-row"><input required minLength={10} maxLength={200} value={sensitivePurpose} onChange={event=>setSensitivePurpose(event.target.value)} placeholder="Erişim amacını yazın" className="min-h-11 flex-1 rounded-xl border px-3"/><button disabled={sensitiveLoading||sensitivePurpose.trim().length<10} className="min-h-11 rounded-xl bg-amber-700 px-4 font-semibold text-white disabled:opacity-50">{sensitiveLoading?'Açılıyor...':'Hassas bilgileri aç'}</button></form>:<dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><Row label="Kimlik" value={sensitive.national_id||'Kayıt yok'}/><Row label="Vergi no" value={sensitive.tax_number||'Kayıt yok'}/><Row label="IBAN" value={sensitive.iban||'Kayıt yok'}/><Row label="Gıda kayıt no" value={sensitive.food_registration_number||'Kayıt yok'}/><button type="button" onClick={()=>{setSensitive(null);setSensitivePurpose('');}} className="min-h-11 rounded-xl border sm:col-span-2">Hassas bilgileri kapat</button></dl>}</div></div></section>
+   {canReview?<div className="mt-5 grid gap-2 sm:grid-cols-4"><button type="button" onClick={()=>{setReviewAction('under_review');setReviewReason('');}} className="min-h-11 rounded-xl border border-blue-200 text-blue-700">İncelemeye al</button><button type="button" onClick={()=>{setReviewAction('needs_information');setReviewReason('');}} className="min-h-11 rounded-xl border border-orange-200 text-orange-700">Ek bilgi iste</button><button type="button" onClick={()=>{setReviewAction('rejected');setReviewReason('');}} className="min-h-11 rounded-xl border border-red-200 text-red-700"><XCircle aria-hidden="true" className="mr-1 inline h-4 w-4"/>Reddet</button><button type="button" onClick={()=>{setReviewAction('approved');setReviewReason('');}} className="min-h-11 rounded-xl bg-brand-green font-semibold text-brand-on-green"><CheckCircle aria-hidden="true" className="mr-1 inline h-4 w-4"/>Onayla</button></div>:null}
+  </section></div>:null}
+
+  {reviewAction&&selected?<div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/65 sm:items-center sm:p-4"><section ref={reviewDialogRef} role="dialog" aria-modal="true" aria-labelledby="review-title" tabIndex={-1} className="w-full max-w-lg rounded-t-3xl bg-white p-5 shadow-2xl outline-none dark:bg-gray-800 sm:rounded-2xl"><h3 id="review-title" className="text-lg font-bold">{reviewAction==='approved'?'Üreticiyi ve yetki kapsamını onayla':reviewAction==='rejected'?'Başvuruyu reddet':reviewAction==='needs_information'?'Ek bilgi iste':'İncelemeye al'}</h3><p className="mt-1 text-sm text-gray-500">{reviewAction==='approved'?'Onaydan sonra faaliyet türleri ve seçilen kategoriler üretici hesabının satıcı yetki kapsamı olacaktır.':'İşlem sunucu denetim kaydıyla uygulanır.'}</p>{error?<div role="alert" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>:null}<form onSubmit={submitReview} className="mt-4 space-y-4"><label><span className="block text-sm font-medium">Platform komisyonu (%)</span><input type="number" min="0" max="30" step="0.01" value={commissionPercent} onChange={event=>setCommissionPercent(Number(event.target.value))} className="mt-1 min-h-11 w-full rounded-xl border px-3"/></label><label><span className="block text-sm font-medium">Gerekçe / inceleme notu</span><textarea required={reviewAction==='rejected'||reviewAction==='needs_information'} minLength={reviewAction==='rejected'||reviewAction==='needs_information'?10:undefined} maxLength={1000} rows={4} value={reviewReason} onChange={event=>setReviewReason(event.target.value)} className="mt-1 w-full rounded-xl border p-3"/></label><div className="flex gap-3"><button type="button" disabled={Boolean(busy)} onClick={closeReview} className="min-h-11 flex-1 rounded-xl border">Vazgeç</button><button disabled={Boolean(busy)} className={`min-h-11 flex-1 rounded-xl font-semibold text-white ${reviewAction==='rejected'?'bg-red-700':'bg-brand-green'}`}>{busy?<><Loader2 aria-hidden="true" className="mr-1 inline h-4 w-4 animate-spin"/>İşleniyor</>:'Onayla'}</button></div></form></section></div>:null}
+  {toast?<div role="status" aria-live="polite" className="fixed bottom-4 right-4 z-[70] flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-white"><Check aria-hidden="true" className="h-5 w-5 text-green-400"/>{toast}</div>:null}
+ </div>;
 }
 
-function statusClass(status: ProducerApplicationStatus) {
-  if (status === 'approved') return 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200';
-  if (status === 'rejected' || status === 'withdrawn') return 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200';
-  if (status === 'needs_information') return 'bg-orange-100 text-orange-800 dark:bg-orange-950/40 dark:text-orange-200';
-  if (status === 'under_review') return 'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200';
-  if (status === 'submitted') return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200';
-  return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200';
-}
-
-function documentStatusClass(status: ProducerDocumentVerificationStatus) {
-  if (status === 'verified') return 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200';
-  if (status === 'rejected') return 'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200';
-  if (status === 'expired') return 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100';
-  return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200';
-}
-
-function documentStatusLabel(status: ProducerDocumentVerificationStatus) {
-  return ({ pending: 'Bekliyor', verified: 'Doğrulandı', rejected: 'Reddedildi', expired: 'Süresi doldu' } as const)[status];
-}
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return 'Bilinmiyor';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'Bilinmiyor' : date.toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' });
-}
-
-function structuredLocation(app: AdminProducerApplication) {
-  const parts = [app.production_village, app.production_district, app.production_province, app.production_country_code].filter((value): value is string => Boolean(value));
-  return parts.length ? parts.join(' / ') : app.production_location || 'Belirtilmemiş';
-}
-
-function applicantDisplay(app: AdminProducerApplication) {
-  return app.legal_name || app.public_name || app.email || 'Başvuru sahibi bilgisi eksik';
-}
-
-function documentSizeLabel(sizeBytes: number) {
-  if (sizeBytes < 1024 * 1024) return `${Math.ceil(sizeBytes / 1024)} KB`;
-  return `${(sizeBytes / (1024 * 1024)).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} MB`;
-}
-
-export function AdminVendorApplications() {
-  const [applications, setApplications] = useState<AdminProducerApplication[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState('');
-  const [error, setError] = useState('');
-  const [toast, setToast] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | ProducerApplicationStatus>('submitted');
-  const [selected, setSelected] = useState<AdminProducerApplication | null>(null);
-  const [reviewAction, setReviewAction] = useState<ReviewAction | null>(null);
-  const [reviewReason, setReviewReason] = useState('');
-  const [commissionPercent, setCommissionPercent] = useState(10);
-  const [sensitivePurpose, setSensitivePurpose] = useState('');
-  const [sensitive, setSensitive] = useState<SensitiveProducerApplication | null>(null);
-  const [sensitiveLoading, setSensitiveLoading] = useState(false);
-
-  const closeDetail = () => {
-    if (busy || sensitiveLoading || reviewAction) return;
-    setSelected(null);
-    setSensitive(null);
-    setSensitivePurpose('');
-    setError('');
-  };
-
-  const closeReview = () => {
-    if (busy) return;
-    setReviewAction(null);
-    setReviewReason('');
-    setError('');
-  };
-
-  const detailDialogRef = useAccessibleDialog<HTMLElement>(Boolean(selected), closeDetail);
-  const reviewDialogRef = useAccessibleDialog<HTMLElement>(Boolean(reviewAction && selected), closeReview);
-
-  const showToast = (message: string) => {
-    setToast(message);
-    window.setTimeout(() => setToast(''), 3000);
-  };
-
-  const load = async (silent = false) => {
-    if (!silent) setLoading(true);
-    setError('');
-    try {
-      const rows = await adminListProducerApplications();
-      setApplications(rows);
-      setSelected(current => current ? rows.find(row => row.id === current.id) || null : null);
-    } catch (err) {
-      setError(producerApplicationErrorMessage(err, 'Satıcı başvuruları yüklenemedi.'));
-    } finally {
-      if (!silent) setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-  }, []);
-
-  const filtered = useMemo(() => {
-    const q = searchTerm.trim().toLocaleLowerCase('tr-TR');
-    return applications.filter(app => {
-      if (statusFilter !== 'all' && app.status !== statusFilter) return false;
-      if (!q) return true;
-      return `${app.brand_name} ${app.public_name} ${app.legal_name || ''} ${app.email} ${app.production_location} ${app.production_village || ''} ${app.production_district || ''} ${app.production_province || ''} ${app.planned_products.join(' ')}`.toLocaleLowerCase('tr-TR').includes(q);
-    });
-  }, [applications, searchTerm, statusFilter]);
-
-  const openDetail = (app: AdminProducerApplication) => {
-    setSelected(app);
-    setSensitive(null);
-    setSensitivePurpose('');
-    setError('');
-  };
-
-  const openReview = (action: ReviewAction) => {
-    setReviewAction(action);
-    setReviewReason('');
-    setError('');
-  };
-
-  const submitReview = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selected || !reviewAction || busy) return;
-    setBusy(selected.id);
-    setError('');
-    try {
-      await adminReviewProducerApplication({
-        applicationId: selected.id,
-        status: reviewAction,
-        reason: reviewReason,
-        commissionPercent,
-      });
-      showToast(reviewAction === 'approved' ? 'Satıcı başvurusu onaylandı ve üretici hesabı oluşturuldu.' : reviewAction === 'rejected' ? 'Başvuru reddedildi.' : reviewAction === 'needs_information' ? 'Başvuru sahibinden ek bilgi istendi.' : 'Başvuru incelemeye alındı.');
-      setReviewAction(null);
-      await load(true);
-    } catch (err) {
-      setError(producerApplicationErrorMessage(err));
-    } finally {
-      setBusy('');
-    }
-  };
-
-  const updateDocument = async (document: ProducerApplicationDocument, status: ProducerDocumentReviewStatus) => {
-    if (busy) return;
-    setBusy(document.id);
-    setError('');
-    try {
-      await adminSetProducerDocumentStatus(document.id, status);
-      showToast(`Belge durumu ${documentStatusLabel(status).toLocaleLowerCase('tr-TR')} olarak güncellendi.`);
-      await load(true);
-    } catch (err) {
-      setError(producerApplicationErrorMessage(err, 'Belge durumu güncellenemedi.'));
-    } finally {
-      setBusy('');
-    }
-  };
-
-  const previewDocument = async (document: ProducerApplicationDocument) => {
-    if (busy) return;
-    setBusy(document.id);
-    setError('');
-    try {
-      const url = await createProducerDocumentPreviewUrl(document.storage_path);
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (err) {
-      setError(producerApplicationErrorMessage(err, 'Belge önizlemesi açılamadı.'));
-    } finally {
-      setBusy('');
-    }
-  };
-
-  const unlockSensitive = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selected || sensitiveLoading) return;
-    setSensitiveLoading(true);
-    setError('');
-    try {
-      setSensitive(await adminGetProducerApplicationSensitive(selected.id, sensitivePurpose));
-    } catch (err) {
-      setError(producerApplicationErrorMessage(err, 'Hassas başvuru bilgileri açılamadı.'));
-    } finally {
-      setSensitiveLoading(false);
-    }
-  };
-
-  const canReview = selected && !['approved', 'rejected', 'withdrawn'].includes(selected.status);
-
-  return (
-    <div className="space-y-6">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div><h2 className="text-2xl font-bold text-gray-900 dark:text-white">Satıcı Başvuruları</h2><p className="mt-1 max-w-3xl text-sm text-gray-500 dark:text-gray-400">Köy üreticisi başvuruları gerçek Supabase KYC, belge, izlenebilirlik ve organik iddia kurallarıyla incelenir. Sertifikası doğrulanmamış ürün veya mağazaya organik sertifika statüsü verilmez.</p></div>
-        <button type="button" onClick={() => void load()} disabled={loading} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 py-2 text-gray-700 flex items-center justify-center gap-2 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> Yenile</button>
-      </header>
-
-      {error && !selected && !reviewAction && <div role="alert" aria-live="assertive" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
-
-      <div className="grid gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800 md:grid-cols-[minmax(0,1fr)_220px]">
-        <label className="relative"><span className="sr-only">Başvuru ara</span><Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" aria-hidden="true" /><input type="search" value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Mağaza, kişi, e-posta, köy veya ürün ara..." className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
-        <label><span className="sr-only">Başvuru durumu</span><select value={statusFilter} onChange={event => setStatusFilter(event.target.value as typeof statusFilter)} className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="all">Tüm başvurular</option><option value="draft">Taslaklar</option><option value="submitted">Gönderilenler</option><option value="under_review">İncelenenler</option><option value="needs_information">Ek bilgi bekleyen</option><option value="approved">Onaylananlar</option><option value="rejected">Reddedilenler</option><option value="withdrawn">Geri çekilenler</option></select></label>
-      </div>
-
-      {loading ? <div role="status" aria-live="polite" className="flex min-h-40 items-center justify-center gap-2 rounded-2xl border border-gray-100 bg-white text-gray-500 dark:border-gray-700 dark:bg-gray-800"><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" /> Başvurular yükleniyor...</div> : <div className="grid gap-4 xl:grid-cols-2">
-        {filtered.map(app => <article key={app.id} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-green/10 text-brand-green"><Store className="h-6 w-6" aria-hidden="true" /></div><div className="min-w-0"><h3 className="truncate font-bold text-gray-900 dark:text-white">{app.brand_name}</h3><p className="mt-1 truncate text-sm text-gray-500">{applicantDisplay(app)}{app.email ? ` · ${app.email}` : ''}</p></div></div><span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(app.status)}`}>{statusLabel(app.status)}</span></div><div className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-900/60"><div className="text-xs text-gray-500">Üretim yeri</div><div className="mt-1 flex items-start gap-1.5 text-gray-800 dark:text-gray-200"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" /> {structuredLocation(app)}</div></div><div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-900/60"><div className="text-xs text-gray-500">Organik iddia</div><div className="mt-1 font-medium text-gray-800 dark:text-gray-200">{app.organic_claim_status}{app.organic_certifier_name ? ` · ${app.organic_certifier_name}` : ''}</div></div></div><div className="mt-3 flex flex-wrap gap-2 text-xs">{app.village_product_commitment && <span className="rounded-full bg-green-50 px-2.5 py-1 font-medium text-green-800 dark:bg-green-950/30 dark:text-green-200">Köy ürünü taahhüdü</span>}{app.traceability_commitment && <span className="rounded-full bg-blue-50 px-2.5 py-1 font-medium text-blue-800 dark:bg-blue-950/30 dark:text-blue-200">İzlenebilirlik</span>}{app.product_truth_commitment && <span className="rounded-full bg-amber-50 px-2.5 py-1 font-medium text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">Ürün doğruluğu</span>}<span className="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700 dark:bg-gray-700 dark:text-gray-200">{app.documents.length} belge</span></div><div className="mt-5 flex items-center justify-between gap-3 border-t border-gray-100 pt-4 dark:border-gray-700"><div className="text-xs text-gray-500">{app.submitted_at ? `Gönderim: ${formatDate(app.submitted_at)}` : `Oluşturma: ${formatDate(app.created_at)}`}</div><button type="button" onClick={() => openDetail(app)} className="min-h-11 rounded-xl bg-brand-green px-4 py-2 font-semibold text-white hover:bg-green-700"><Eye className="mr-2 inline h-4 w-4" aria-hidden="true" /> İncele</button></div></article>)}
-        {filtered.length === 0 && <div className="xl:col-span-2 rounded-2xl border border-gray-100 bg-white p-10 text-center text-gray-500 dark:border-gray-700 dark:bg-gray-800">Filtrelerle eşleşen başvuru yok.</div>}
-      </div>}
-
-      {selected && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget) closeDetail(); }}><section ref={detailDialogRef} role="dialog" aria-modal="true" aria-labelledby="application-title" aria-describedby="application-description" tabIndex={-1} className="max-h-[96dvh] w-full max-w-4xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl outline-none dark:bg-gray-800 sm:rounded-2xl sm:p-6"><div className="flex items-start justify-between gap-4"><div><h3 id="application-title" className="text-xl font-bold text-gray-900 dark:text-white">{selected.brand_name}</h3><p id="application-description" className="mt-1 text-sm text-gray-500">{applicantDisplay(selected)}</p></div><button type="button" onClick={closeDetail} disabled={Boolean(busy) || sensitiveLoading || Boolean(reviewAction)} className="min-h-11 min-w-11 rounded-xl p-2 text-gray-500 hover:bg-gray-100 disabled:opacity-40 dark:hover:bg-gray-700" aria-label="Başvuru detayını kapat"><X className="mx-auto h-5 w-5" aria-hidden="true" /></button></div>
-
-        {error && !reviewAction && <div role="alert" aria-live="assertive" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
-
-        <div className="mt-6 grid gap-4 lg:grid-cols-2"><section className="rounded-2xl border border-gray-100 p-4 dark:border-gray-700"><h4 className="font-bold text-gray-900 dark:text-white">Başvuru özeti</h4><dl className="mt-4 space-y-3 text-sm"><div><dt className="text-xs text-gray-500">Başvuru türü</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.applicant_type} · {selected.seller_classification}</dd></div><div><dt className="text-xs text-gray-500">İletişim</dt><dd className="mt-1 break-all text-gray-900 dark:text-white">{selected.email || 'E-posta kaydı yok'}{selected.phone ? ` · ${selected.phone}` : ' · telefon kaydı yok'}</dd></div><div><dt className="text-xs text-gray-500">Doğrulamalar</dt><dd className="mt-1 flex flex-wrap gap-2"><span className={`rounded-full px-2 py-1 text-xs ${selected.contact_email_verified_at ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>E-posta {selected.contact_email_verified_at ? 'doğrulandı' : 'doğrulanmadı'}</span><span className={`rounded-full px-2 py-1 text-xs ${selected.phone_verified_at ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>Telefon {selected.phone_verified_at ? 'doğrulandı' : 'doğrulanmadı'}</span></dd></div><div><dt className="text-xs text-gray-500">Serbest üretim konumu</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.production_location || 'Belirtilmemiş'}</dd></div><div><dt className="text-xs text-gray-500">Köy / ilçe / il / ülke</dt><dd className="mt-1 text-gray-900 dark:text-white">{structuredLocation(selected)}{selected.production_village_is_custom ? ' · köy adı başvuru sahibi tarafından girildi' : ''}</dd></div><div><dt className="text-xs text-gray-500">Planlanan ürünler</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.planned_products.length ? selected.planned_products.join(', ') : 'Planlanan ürün kaydı yok'}</dd></div><div><dt className="text-xs text-gray-500">Üretim uygulamaları</dt><dd className="mt-1 whitespace-pre-wrap text-gray-900 dark:text-white">{selected.production_practice_notes || 'Üretim uygulaması notu girilmemiş'}</dd></div></dl></section>
-
-          <section className="rounded-2xl border border-gray-100 p-4 dark:border-gray-700"><h4 className="font-bold text-gray-900 dark:text-white">Maskelenmiş KYC</h4><dl className="mt-4 space-y-3 text-sm"><div><dt className="text-xs text-gray-500">Kimlik / vergi</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.identifier_masked || 'Kayıt yok'}</dd></div><div><dt className="text-xs text-gray-500">IBAN</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.iban_masked || 'Kayıt yok'}</dd></div><div><dt className="text-xs text-gray-500">MERSİS</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.mersis_masked || 'Kayıt yok'}</dd></div><div><dt className="text-xs text-gray-500">Gıda kayıt</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.food_registration_masked || 'Kayıt yok'}</dd></div><div><dt className="text-xs text-gray-500">Organik iddia</dt><dd className="mt-1 text-gray-900 dark:text-white">{selected.organic_claim_status}{selected.organic_certifier_name ? ` · ${selected.organic_certifier_name}` : ''}{selected.organic_certificate_expires_on ? ` · ${selected.organic_certificate_expires_on}` : ''}</dd></div></dl></section>
-        </div>
-
-        <section className="mt-4 rounded-2xl border border-gray-100 p-4 dark:border-gray-700"><div className="flex items-center justify-between gap-3"><div><h4 className="font-bold text-gray-900 dark:text-white">Belgeler</h4><p className="mt-1 text-xs text-gray-500">Önizlemeler 5 dakikalık özel bağlantıyla açılır. Onay için zorunlu belgelerin doğrulanmış olması gerekir.</p></div><FileSearch className="h-5 w-5 text-gray-400" aria-hidden="true" /></div><div className="mt-4 space-y-2">{selected.documents.map(document => <div key={document.id} className="flex flex-col gap-3 rounded-xl bg-gray-50 p-3 dark:bg-gray-900/60 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="font-medium text-gray-900 dark:text-white">{document.document_type}</span><span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${documentStatusClass(document.verification_status)}`}>{documentStatusLabel(document.verification_status)}</span></div><p className="mt-1 truncate text-xs text-gray-500">{document.mime_type} · {documentSizeLabel(document.size_bytes)}</p></div><div className="flex flex-wrap gap-2"><button type="button" disabled={Boolean(busy)} onClick={() => void previewDocument(document)} aria-label={`${document.document_type} belgesini önizle`} className="min-h-11 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-white disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800">Önizle</button><button type="button" disabled={Boolean(busy) || document.verification_status === 'verified'} onClick={() => void updateDocument(document, 'verified')} aria-label={`${document.document_type} belgesini doğrula`} className="min-h-11 rounded-lg border border-green-200 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-50 disabled:opacity-40 dark:border-green-900/50 dark:text-green-300">Doğrula</button><button type="button" disabled={Boolean(busy) || document.verification_status === 'rejected'} onClick={() => void updateDocument(document, 'rejected')} aria-label={`${document.document_type} belgesini reddet`} className="min-h-11 rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-40 dark:border-red-900/50 dark:text-red-300">Reddet</button></div></div>)}{selected.documents.length === 0 && <p className="py-4 text-center text-sm text-gray-500">Başvuruya yüklenmiş belge yok.</p>}</div></section>
-
-        <section className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4 dark:border-amber-900/40 dark:bg-amber-950/20"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden="true" /><div className="flex-1"><h4 className="font-bold text-amber-950 dark:text-amber-100">Hassas KYC erişimi</h4><p id="sensitive-purpose-help" className="mt-1 text-xs text-amber-800 dark:text-amber-200">Tam kimlik, vergi, IBAN ve sertifika numaraları varsayılan olarak gizlidir. Açmak için denetim kaydına yazılacak erişim amacını belirtin.</p>{!sensitive ? <form onSubmit={unlockSensitive} className="mt-3 flex flex-col gap-2 sm:flex-row"><label htmlFor="sensitive-purpose" className="sr-only">Hassas KYC erişim amacı</label><input id="sensitive-purpose" required minLength={10} maxLength={200} aria-describedby="sensitive-purpose-help" value={sensitivePurpose} onChange={event => setSensitivePurpose(event.target.value)} placeholder="Örn. Satıcı KYC belge doğrulaması için..." className="min-h-11 flex-1 rounded-xl border border-amber-200 bg-white px-3 outline-none focus:ring-2 focus:ring-amber-500 dark:border-amber-900 dark:bg-gray-900 dark:text-white" /><button type="submit" disabled={sensitiveLoading || sensitivePurpose.trim().length < 10} className="min-h-11 rounded-xl bg-amber-700 px-4 font-semibold text-white disabled:opacity-50">{sensitiveLoading ? 'Açılıyor...' : 'Hassas bilgileri aç'}</button></form> : <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2"><div><dt className="text-xs text-amber-700 dark:text-amber-300">Kimlik</dt><dd className="break-all font-medium">{sensitive.national_id || 'Kayıt yok'}</dd></div><div><dt className="text-xs text-amber-700 dark:text-amber-300">Vergi no</dt><dd className="break-all font-medium">{sensitive.tax_number || 'Kayıt yok'}</dd></div><div><dt className="text-xs text-amber-700 dark:text-amber-300">IBAN</dt><dd className="break-all font-medium">{sensitive.iban || 'Kayıt yok'}</dd></div><div><dt className="text-xs text-amber-700 dark:text-amber-300">Hesap sahibi</dt><dd className="font-medium">{sensitive.bank_account_holder || 'Kayıt yok'}</dd></div><div><dt className="text-xs text-amber-700 dark:text-amber-300">Gıda kayıt no</dt><dd className="break-all font-medium">{sensitive.food_registration_number || 'Kayıt yok'}</dd></div><div><dt className="text-xs text-amber-700 dark:text-amber-300">Organik sertifika no</dt><dd className="break-all font-medium">{sensitive.organic_certificate_number || 'Kayıt yok'}</dd></div><div className="sm:col-span-2"><button type="button" onClick={() => { setSensitive(null); setSensitivePurpose(''); }} className="min-h-11 w-full rounded-xl border border-amber-300 px-3 font-medium text-amber-900 dark:text-amber-100">Hassas bilgileri kapat</button></div></dl>}</div></div></section>
-
-        {canReview && <div className="mt-5 grid gap-2 sm:grid-cols-4"><button type="button" onClick={() => openReview('under_review')} className="min-h-11 rounded-xl border border-blue-200 px-3 font-semibold text-blue-700 hover:bg-blue-50 dark:border-blue-900/50 dark:text-blue-300">İncelemeye al</button><button type="button" onClick={() => openReview('needs_information')} className="min-h-11 rounded-xl border border-orange-200 px-3 font-semibold text-orange-700 hover:bg-orange-50 dark:border-orange-900/50 dark:text-orange-300">Ek bilgi iste</button><button type="button" onClick={() => openReview('rejected')} className="min-h-11 rounded-xl border border-red-200 px-3 font-semibold text-red-700 hover:bg-red-50 dark:border-red-900/50 dark:text-red-300"><XCircle className="mr-1 inline h-4 w-4" aria-hidden="true" /> Reddet</button><button type="button" onClick={() => openReview('approved')} className="min-h-11 rounded-xl bg-brand-green px-3 font-semibold text-white hover:bg-green-700"><CheckCircle className="mr-1 inline h-4 w-4" aria-hidden="true" /> Onayla</button></div>}
-      </section></div>}
-
-      {reviewAction && selected && <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/65 p-0 sm:items-center sm:p-4"><section ref={reviewDialogRef} role="dialog" aria-modal="true" aria-labelledby="review-title" aria-describedby="review-description" tabIndex={-1} className="w-full max-w-lg rounded-t-3xl bg-white p-5 shadow-2xl outline-none dark:bg-gray-800 sm:rounded-2xl"><h3 id="review-title" className="text-lg font-bold text-gray-900 dark:text-white">{reviewAction === 'approved' ? 'Satıcıyı onayla' : reviewAction === 'rejected' ? 'Başvuruyu reddet' : reviewAction === 'needs_information' ? 'Ek bilgi iste' : 'İncelemeye al'}</h3><p id="review-description" className="mt-1 text-sm text-gray-500">{selected.brand_name} · Sunucu tarafındaki tüm KYC ve belge koşulları yeniden kontrol edilir.</p>{error && <div role="alert" aria-live="assertive" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}<form onSubmit={submitReview} className="mt-4 space-y-4"><label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Platform komisyonu (%)</span><input type="number" min="0" max="30" step="0.01" value={commissionPercent} onChange={event => setCommissionPercent(Number(event.target.value))} className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /><span className="mt-1 block text-xs text-gray-500">Backend'e basis point olarak kaydedilir. Örn. %10 = 1000.</span></label><label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Gerekçe / inceleme notu {reviewAction === 'rejected' || reviewAction === 'needs_information' ? '(zorunlu)' : '(isteğe bağlı)'}</span><textarea required={reviewAction === 'rejected' || reviewAction === 'needs_information'} minLength={reviewAction === 'rejected' || reviewAction === 'needs_information' ? 10 : undefined} maxLength={1000} rows={4} value={reviewReason} onChange={event => setReviewReason(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label><div className="flex gap-3"><button type="button" disabled={Boolean(busy)} onClick={closeReview} className="min-h-11 flex-1 rounded-xl px-4 text-gray-700 hover:bg-gray-100 disabled:opacity-40 dark:text-gray-200 dark:hover:bg-gray-700">İptal</button><button type="submit" disabled={Boolean(busy)} className={`min-h-11 flex-1 rounded-xl px-4 font-semibold text-white disabled:opacity-50 ${reviewAction === 'rejected' ? 'bg-red-700 hover:bg-red-800' : 'bg-brand-green hover:bg-green-700'}`}>{busy ? <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> İşleniyor</span> : 'Onayla'}</button></div></form></section></div>}
-
-      {toast && <div role="status" aria-live="polite" className="fixed bottom-4 right-4 z-[70] flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-white shadow-2xl"><Check className="h-5 w-5 text-green-400" aria-hidden="true" /> {toast}</div>}
-    </div>
-  );
-}
+function Info({label,value,icon}:{label:string;value:string;icon?:React.ReactNode}){return<div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-900/60"><div className="text-xs text-gray-500">{label}</div><div className="mt-1 flex items-start gap-1.5 font-medium">{icon}{value||'Belirtilmemiş'}</div></div>;}
+function Row({label,value}:{label:string;value:string}){return<div><dt className="text-xs text-gray-500">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words font-medium">{value}</dd></div>;}
