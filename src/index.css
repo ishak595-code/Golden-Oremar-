@@ -126,6 +126,20 @@
   --text-on-green: #FFFFFF;
 }
 
+/* Compatibility bridge for existing accent utility pairs. New components should
+   use text-brand-on-gold / text-brand-on-green directly, while old canonical
+   screens remain contrast-correct during incremental cleanup. */
+.bg-brand-gold.text-brand-main,
+.bg-brand-gold.text-brand-green,
+.bg-brand-gold.text-white {
+  color: var(--text-on-gold);
+}
+
+.bg-brand-green.text-white,
+.bg-brand-green.text-brand-main {
+  color: var(--text-on-green);
+}
+
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
