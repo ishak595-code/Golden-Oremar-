@@ -28,6 +28,7 @@ export type PaymentActivityStatus = 'created' | 'pending' | 'authorized' | 'capt
 export type NotificationType = 'order' | 'payment' | 'shipment' | 'return' | 'campaign' | 'system' | 'producer' | 'message' | 'review';
 export type AccountClosureStatus = 'requested' | 'processing' | 'ready_for_auth_deletion' | 'completed' | 'cancelled' | 'rejected';
 export type NewsletterStatus = 'none' | 'pending' | 'active' | 'unsubscribed' | 'bounced' | 'complained';
+export type AccountHelpKey = 'about' | 'returns' | 'privacy' | 'terms';
 
 export interface AccountProfile {
   id: string;
@@ -279,7 +280,7 @@ export interface NewsletterSummary {
 export interface NewsletterSubscribeResult {
   id: string;
   status: 'pending' | 'active';
-  email: string;
+  email: string | null;
   unchanged: boolean;
 }
 
@@ -290,6 +291,21 @@ export interface NativePushRegistrationResult {
   environment: 'development' | 'production';
   registered: true;
 }
+
+export interface AccountHelpDocument {
+  id: string;
+  slug: string;
+  title: string;
+  summary: string;
+  markdown: string;
+  sanitizedHtml: string;
+  heroImagePath: string | null;
+  locale: AccountLocale;
+  publishedAt: string | null;
+  updatedAt: string;
+}
+
+export type AccountHelpContent = Record<AccountHelpKey, AccountHelpDocument | null>;
 
 export interface NotificationPreferences {
   pushEnabled: boolean;
