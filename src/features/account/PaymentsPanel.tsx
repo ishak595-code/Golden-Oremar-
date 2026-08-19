@@ -1,6 +1,7 @@
 import React,{useEffect,useState}from'react';
 import{CreditCard,Pencil,Plus,ShieldCheck,Star,Trash2,X}from'lucide-react';
 import{listPaymentActivity}from'./api';
+import type{PaymentActivityItem,PaymentActivityPage}from'./types';
 import{EmptyState,ErrorState,LoadingState,Money,Panel}from'./ui';
 import{formatAccountDate,paymentMethodLabel as paymentActivityMethodLabel,paymentStatusLabel,providerLabel}from'./presentation';
 import{NETWORK_RESTORED_EVENT}from'../resilience/useConnectivity';
@@ -18,19 +19,12 @@ import{
 }from'../payments/api';
 
 const PAGE_SIZE=20;
-function verifiedMinor(value:unknown){const parsed=Number(value);return Number.isSafeInteger(parsed)?parsed:null;}
-function verifiedCurrency(value:unknown){const normalized=String(value||'').trim().toUpperCase();return /^[A-Z]{3}$/.test(normalized)?normalized:null;}
-function paymentKey(item:any,index:number){
- const id=String(item?.id||'').trim();
- if(id)return`id:${id}`;
- return`fallback:${String(item?.orderNumber||'')}|${String(item?.processedAt||item?.createdAt||item?.updatedAt||'')}|${String(item?.amountMinor??'')}|${String(item?.provider||'')}|${String(item?.paymentMethodType||'')}|${index}`;
-}
 function safeDisplay(value:unknown,max=120){return typeof value==='string'?value.trim().slice(0,max):'';}
 function formatCardInput(value:string){const digits=value.replace(/\D/g,'').slice(0,19);return digits.replace(/(.{4})/g,'$1 ').trim();}
 function currentYear(){return new Date().getUTCFullYear();}
 
 export default function PaymentsPanel(){
- const[page,setPage]=useState<any>(null);
+ const[page,setPage]=useState<PaymentActivityPage|null>(null);
  const[methods,setMethods]=useState<SavedPaymentMethod[]>([]);
  const[readiness,setReadiness]=useState<PaymentReadiness|null>(null);
  const[loading,setLoading]=useState(true);
@@ -62,7 +56,7 @@ export default function PaymentsPanel(){
  const addDialogRef=useAccessibleDialog<HTMLFormElement>(addOpen,()=>{if(!addBusy)setAddOpen(false);});
 
  async function load(reset=true){
-  const currentItems=Array.isArray(page?.items)?page.items:[];
+  const currentItems=page?.items??[];
   const offset=reset?0:currentItems.length;
   try{
    if(reset)setLoading(true);else setLoadingMore(true);
@@ -73,23 +67,21 @@ export default function PaymentsPanel(){
      listMyPaymentMethods(),
      getPaymentReadiness(),
     ]);
-    setPage({...next,items:Array.isArray(next?.items)?next.items:[]});
+    setPage(next);
     setMethods(methodsResult);
     setReadiness(readinessResult);
    }else{
     const next=await listPaymentActivity(PAGE_SIZE,offset);
-    const nextItems=Array.isArray(next?.items)?next.items:[];
-    setPage((previous:any)=>{
-     if(!previous)return{...next,items:nextItems};
-     const previousItems=Array.isArray(previous?.items)?previous.items:[];
-     const unique=new Map<string,any>();
-     previousItems.forEach((item:any,index:number)=>unique.set(paymentKey(item,index),item));
-     nextItems.forEach((item:any,index:number)=>unique.set(paymentKey(item,offset+index),item));
+    setPage(previous=>{
+     if(!previous)return next;
+     const unique=new Map<string,PaymentActivityItem>();
+     previous.items.forEach(item=>unique.set(item.id,item));
+     next.items.forEach(item=>unique.set(item.id,item));
      return{...next,offset:0,items:Array.from(unique.values())};
     });
    }
-  }catch(e:any){
-   const message=e?.message||'Ödeme bilgileri yüklenemedi.';
+  }catch(e:unknown){
+   const message=e instanceof Error&&e.message?e.message:'Ödeme bilgileri yüklenemedi.';
    if(reset)setError(message);else setLoadMoreError(message);
   }finally{if(reset)setLoading(false);else setLoadingMore(false);}
  }
@@ -131,14 +123,14 @@ export default function PaymentsPanel(){
    setMethodBusyId(editing.id);setEditError('');setMethodStatus('');
    await updateMyPaymentMethodMetadata(editing.id,{nickname:nickname||null,billingName:billingName||null,billingCountryCode:country||null,billingPostalCode:postal||null});
    await refreshMethods();setEditing(null);setMethodStatus('Kart bilgileri güncellendi.');
-  }catch(e:any){setEditError(e?.message||'Kart bilgileri güncellenemedi.');}
+  }catch(e:unknown){setEditError(e instanceof Error&&e.message?e.message:'Kart bilgileri güncellenemedi.');}
   finally{setMethodBusyId(null);}
  }
 
  async function addPaymentMethod(event:React.FormEvent){
   event.preventDefault();
   if(addBusy)return;
-  if(readiness?.cardEnrollmentEnabled!==true||readiness?.savedPaymentMethodsSupported!==true||!readiness.provider){setAddError('Kart kaydı için gerçek ödeme sağlayıcısı henüz etkinleştirilmedi.');return;}
+  if(readiness?.cardEnrollmentEnabled!==true||readiness.savedPaymentMethodsSupported!==true||!readiness.provider){setAddError('Kart kaydı için gerçek ödeme sağlayıcısı henüz etkinleştirilmedi.');return;}
   const digits=addCardNumber.replace(/\D/g,'');
   const holder=addCardHolder.trim();
   const month=Number(addExpMonth);
@@ -158,28 +150,28 @@ export default function PaymentsPanel(){
    const saved=await enrollMyPaymentMethod({cardNumber:digits,cardHolderName:holder,expMonth:month,expYear:year,nickname:nickname||null,billingCountryCode:country||null,billingPostalCode:postal||null,makeDefault:addMakeDefault});
    await refreshMethods();
    setAddOpen(false);setMethodStatus(`${saved.nickname||saved.brand} kartınız güvenli şekilde kaydedildi.`);
-  }catch(e:any){setAddError(e?.message||'Kart güvenli şekilde kaydedilemedi.');}
+  }catch(e:unknown){setAddError(e instanceof Error&&e.message?e.message:'Kart güvenli şekilde kaydedilemedi.');}
   finally{setAddBusy(false);}
  }
 
  async function makeDefault(method:SavedPaymentMethod){
   if(methodBusyId||method.isDefault||method.status!=='active')return;
-  try{setMethodBusyId(method.id);setMethodStatus('');await setMyDefaultPaymentMethod(method.id);await refreshMethods();setMethodStatus(`${method.nickname||method.brand} varsayılan ödeme yöntemi yapıldı.`);}catch(e:any){setError(e?.message||'Varsayılan kart değiştirilemedi.');}finally{setMethodBusyId(null);}
+  try{setMethodBusyId(method.id);setMethodStatus('');await setMyDefaultPaymentMethod(method.id);await refreshMethods();setMethodStatus(`${method.nickname||method.brand} varsayılan ödeme yöntemi yapıldı.`);}catch(e:unknown){setError(e instanceof Error&&e.message?e.message:'Varsayılan kart değiştirilemedi.');}finally{setMethodBusyId(null);}
  }
 
  async function removeMethod(){
   if(!removeCandidate||methodBusyId)return;
-  try{setMethodBusyId(removeCandidate.id);setMethodStatus('');await removeMyPaymentMethod(removeCandidate.id);await refreshMethods();setRemoveCandidate(null);setMethodStatus('Kayıtlı ödeme yöntemi sağlayıcıdan ve hesabınızdan kaldırıldı.');}catch(e:any){setError(e?.message||'Kayıtlı ödeme yöntemi kaldırılamadı.');}finally{setMethodBusyId(null);}
+  try{setMethodBusyId(removeCandidate.id);setMethodStatus('');await removeMyPaymentMethod(removeCandidate.id);await refreshMethods();setRemoveCandidate(null);setMethodStatus('Kayıtlı ödeme yöntemi sağlayıcıdan ve hesabınızdan kaldırıldı.');}catch(e:unknown){setError(e instanceof Error&&e.message?e.message:'Kayıtlı ödeme yöntemi kaldırılamadı.');}finally{setMethodBusyId(null);}
  }
 
  if(loading)return<LoadingState label="Ödeme bilgileri yükleniyor"/>;
- const items=Array.isArray(page?.items)?page.items:[];
+ if(!page)return<Panel title="Ödeme Yöntemleri ve İşlemler" description="Kayıtlı kartlarınızı, kart rumuzlarını ve doğrulanmış ödeme hareketlerinizi yönetin."><ErrorState message={error||'Ödeme verisi doğrulanamadı.'} onRetry={()=>void load(true)}/></Panel>;
+ const items=page.items;
  const shown=items.length;
- const rawTotal=Number(page?.total);
- const total=Number.isSafeInteger(rawTotal)&&rawTotal>=0?rawTotal:null;
- const hasMore=total!==null&&shown<total;
+ const total=page.total;
+ const hasMore=shown<total;
  const activeMethods=methods.filter(method=>method.status==='active');
- const cardEnrollmentReady=readiness?.cardEnrollmentEnabled===true&&readiness?.savedPaymentMethodsSupported===true&&Boolean(readiness.provider);
+ const cardEnrollmentReady=readiness?.cardEnrollmentEnabled===true&&readiness.savedPaymentMethodsSupported===true&&Boolean(readiness.provider);
  const defaultMethod=activeMethods.find(method=>method.isDefault)||null;
 
  return<Panel title="Ödeme Yöntemleri ve İşlemler" description="Kayıtlı kartlarınızı, kart rumuzlarını ve doğrulanmış ödeme hareketlerinizi yönetin.">
@@ -207,10 +199,10 @@ export default function PaymentsPanel(){
    <p className="mb-4 text-sm text-gray-500">Yalnız backend tarafından doğrulanmış ödeme hareketleri gösterilir.</p>
    <div className="sr-only" aria-live="polite">{loadingMore?'Daha fazla ödeme hareketi yükleniyor.':loadMoreError||''}</div>
    {!shown?<EmptyState title="Ödeme hareketi yok" body="Ödeme sağlayıcısı üzerinden doğrulanan işlemler burada görünecek."/>:<>
-    <div className="mb-3 text-sm text-gray-500" aria-live="polite">{shown}{total!==null?` / ${total}`:''} işlem gösteriliyor</div>
-    <div className="space-y-3">{items.map((p:any,index:number)=>{
-      const id=String(p?.id||'').trim();const date=formatAccountDate(p?.processedAt||p?.createdAt||p?.updatedAt);const currency=verifiedCurrency(p?.currency);const amount=verifiedMinor(p?.amountMinor);const key=id||paymentKey(p,index);
-      return <article key={key} className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="font-bold">{String(p?.orderNumber||'').trim()||'Sipariş numarası doğrulanamadı'}</div><div className="mt-1 text-sm text-gray-500">{providerLabel(p?.provider)} • {paymentActivityMethodLabel(p?.paymentMethodType)}</div><div className="mt-1 text-sm font-semibold text-brand-green dark:text-brand-gold">{paymentStatusLabel(p?.status)}</div><div className="mt-1 text-xs text-gray-500">{date||'İşlem tarihi doğrulanamadı'}</div></div><div className="font-bold text-brand-green dark:text-brand-gold">{amount!==null&&currency?<Money minor={amount} currency={currency}/>:<span role="status" className="text-red-700 dark:text-red-300">Tutar doğrulanamadı</span>}</div></div></article>;
+    <div className="mb-3 text-sm text-gray-500" aria-live="polite">{shown} / {total} işlem gösteriliyor</div>
+    <div className="space-y-3">{items.map(p=>{
+      const date=formatAccountDate(p.capturedAt||p.authorizedAt||p.createdAt);
+      return <article key={p.id} className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="font-bold">{p.orderNumber}</div><div className="mt-1 text-sm text-gray-500">{providerLabel(p.provider)} • {paymentActivityMethodLabel(p.paymentMethodType)}</div><div className="mt-1 text-sm font-semibold text-brand-green dark:text-brand-gold">{paymentStatusLabel(p.status)}</div><div className="mt-1 text-xs text-gray-500">{date}</div></div><div className="font-bold text-brand-green dark:text-brand-gold"><Money minor={p.amountMinor} currency={p.currency}/></div></div></article>;
     })}</div>
     {loadMoreError?<div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100"><p>Daha eski ödeme hareketleri yüklenemedi. Mevcut kayıtlar korunuyor.</p><button type="button" disabled={loadingMore} onClick={()=>void load(false)} className="mt-2 min-h-11 rounded-xl border border-amber-300 px-4 font-semibold disabled:opacity-50 dark:border-amber-800">Tekrar dene</button></div>:null}
     {hasMore?<div className="mt-5 flex justify-center"><button type="button" disabled={loadingMore} onClick={()=>void load(false)} className="min-h-11 rounded-xl border border-brand-green px-5 font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:text-brand-gold">{loadingMore?'Yükleniyor…':'Daha fazla işlem göster'}</button></div>:null}
