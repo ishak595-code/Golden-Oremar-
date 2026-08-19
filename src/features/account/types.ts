@@ -27,6 +27,7 @@ export type PaymentMethodType = 'card' | 'bank_transfer' | 'cash_on_delivery' | 
 export type PaymentActivityStatus = 'created' | 'pending' | 'authorized' | 'captured' | 'failed' | 'cancelled' | 'partially_refunded' | 'refunded' | 'disputed';
 export type NotificationType = 'order' | 'payment' | 'shipment' | 'return' | 'campaign' | 'system' | 'producer' | 'message' | 'review';
 export type AccountClosureStatus = 'requested' | 'processing' | 'ready_for_auth_deletion' | 'completed' | 'cancelled' | 'rejected';
+export type NewsletterStatus = 'none' | 'pending' | 'active' | 'unsubscribed' | 'bounced' | 'complained';
 
 export interface AccountProfile {
   id: string;
@@ -99,6 +100,21 @@ export interface AccountClosureSummary {
   reason: string | null;
   requested_at: string;
   updated_at: string;
+}
+
+export interface AccountClosureRequestResult {
+  id: string;
+  status: 'requested' | 'processing' | 'ready_for_auth_deletion';
+  requestedAt: string;
+  unchanged: boolean;
+  activeOrders: number | null;
+  activeReturns: number | null;
+}
+
+export interface AccountClosureCancelResult {
+  id: string;
+  status: 'cancelled';
+  cancelledAt: string;
 }
 
 export interface AccountOverview {
@@ -248,6 +264,31 @@ export interface GiftOrder {
   senderName: string | null;
   hidePrice: boolean;
   items: GiftOrderItem[];
+}
+
+export interface NewsletterSummary {
+  status: NewsletterStatus;
+  email: string | null;
+  locale: AccountLocale | null;
+  consentVersion: string | null;
+  consentedAt: string | null;
+  confirmedAt: string | null;
+  unsubscribedAt: string | null;
+}
+
+export interface NewsletterSubscribeResult {
+  id: string;
+  status: 'pending' | 'active';
+  email: string;
+  unchanged: boolean;
+}
+
+export interface NativePushRegistrationResult {
+  id: string;
+  provider: 'fcm' | 'apns';
+  platform: 'android' | 'ios';
+  environment: 'development' | 'production';
+  registered: true;
 }
 
 export interface NotificationPreferences {
