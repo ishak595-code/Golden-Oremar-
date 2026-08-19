@@ -25,6 +25,20 @@ export type StorefrontHeroCategory = {
   targetCategory: string;
 };
 
+export type StorefrontEventSpotlightPlacement = 'after_hero' | 'after_categories' | 'before_products';
+export type StorefrontEventSpotlight = {
+  enabled: boolean;
+  title: string;
+  subtitle: string;
+  maxItems: number;
+  featuredEventReference: string | null;
+  showCountdown: boolean;
+  showCapacity: boolean;
+  showShare: boolean;
+  showAllLink: boolean;
+  placement: StorefrontEventSpotlightPlacement;
+};
+
 export type StorefrontConfig = {
   brand: {
     name: string;
@@ -35,6 +49,7 @@ export type StorefrontConfig = {
   interface: StorefrontInterface;
   homeSections: StorefrontHomeSection[];
   heroCategories: StorefrontHeroCategory[];
+  eventSpotlight: StorefrontEventSpotlight;
   salesReadiness: {
     status: string;
     message: string;
@@ -42,12 +57,12 @@ export type StorefrontConfig = {
   updatedAt: string;
 };
 
-function unwrap<T>(data: T | null, error: any): T {
+function unwrap<T>(data: T | null, error: unknown): T {
   if (error) throw error;
   return data as T;
 }
 
-function isRecord(value: unknown): value is Record<string, any> {
+function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
@@ -66,6 +81,16 @@ function optionalText(value: unknown, label: string, max = 1000) {
   return text;
 }
 
+function booleanValue(value: unknown, label: string) {
+  if (typeof value !== 'boolean') throw new Error(`${label} doğrulanamadı.`);
+  return value;
+}
+
+function integer(value: unknown, label: string, min: number, max: number) {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min || value > max) throw new Error(`${label} doğrulanamadı.`);
+  return value;
+}
+
 function safeLocale(value: unknown, label = 'Dil') {
   const locale = requiredText(value, label, 16);
   if (!/^[a-z]{2}(?:-[A-Z]{2})?$/.test(locale)) throw new Error(`${label} doğrulanamadı.`);
@@ -81,8 +106,26 @@ function safeCurrency(value: unknown) {
 function safeAssetPath(value: unknown, label: string) {
   const path = optionalText(value, label, 1200);
   if (!path) return null;
-  if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.startsWith('/') || path.split('/').some(part => !part || part === '.' || part === '..')) throw new Error(`${label} doğrulanamadı.`);
+  if (/^[a-z][a-z0-9+.-]*:/i.test(path) || path.startsWith('/') || path.split('/').some(part => !part || part === '.' || part === '..') || path.includes('\\')) throw new Error(`${label} doğrulanamadı.`);
   return path;
+}
+
+function normalizeEventSpotlight(value: unknown): StorefrontEventSpotlight {
+  if (!isRecord(value)) throw new Error('Etkinlik vitrini ayarları doğrulanamadı.');
+  const placement = requiredText(value.placement, 'Etkinlik vitrini konumu', 40) as StorefrontEventSpotlightPlacement;
+  if (!['after_hero', 'after_categories', 'before_products'].includes(placement)) throw new Error('Etkinlik vitrini konumu doğrulanamadı.');
+  return {
+    enabled: booleanValue(value.enabled, 'Etkinlik vitrini görünürlüğü'),
+    title: requiredText(value.title, 'Etkinlik vitrini başlığı', 120),
+    subtitle: optionalText(value.subtitle, 'Etkinlik vitrini açıklaması', 300) || '',
+    maxItems: integer(value.maxItems, 'Etkinlik vitrini kart sayısı', 1, 6),
+    featuredEventReference: optionalText(value.featuredEventReference, 'Öne çıkan etkinlik referansı', 220),
+    showCountdown: booleanValue(value.showCountdown, 'Etkinlik geri sayım ayarı'),
+    showCapacity: booleanValue(value.showCapacity, 'Etkinlik kontenjan ayarı'),
+    showShare: booleanValue(value.showShare, 'Etkinlik paylaşım ayarı'),
+    showAllLink: booleanValue(value.showAllLink, 'Tüm etkinlikler bağlantı ayarı'),
+    placement,
+  };
 }
 
 function normalizeStorefrontConfig(value: unknown): StorefrontConfig {
@@ -107,7 +150,7 @@ function normalizeStorefrontConfig(value: unknown): StorefrontConfig {
       icon: optionalText(category.icon, 'Vitrin kategori ikonu', 80),
       image: safeAssetPath(category.image, 'Vitrin kategori görseli'),
       title: requiredText(category.title, 'Vitrin kategori başlığı', 160),
-      subtitle: requiredText(category.subtitle, 'Vitrin kategori açıklaması', 240),
+      subtitle: optionalText(category.subtitle, 'Vitrin kategori açıklaması', 240) || '',
       targetCategory: requiredText(category.targetCategory, 'Vitrin hedef kategorisi', 220),
     };
   });
@@ -134,6 +177,7 @@ function normalizeStorefrontConfig(value: unknown): StorefrontConfig {
     },
     homeSections,
     heroCategories,
+    eventSpotlight: normalizeEventSpotlight(value.eventSpotlight),
     salesReadiness: {
       status: requiredText(value.salesReadiness.status, 'Satış hazırlık durumu', 100),
       message: requiredText(value.salesReadiness.message, 'Satış hazırlık açıklaması', 500),
@@ -144,16 +188,12 @@ function normalizeStorefrontConfig(value: unknown): StorefrontConfig {
 
 export async function getPublicStorefrontConfig(locale = 'tr'): Promise<StorefrontConfig> {
   const requestedLocale = safeLocale(locale, 'İstenen dil');
-  const { data, error } = await supabase.rpc('get_public_storefront_config_v1', {
-    p_locale: requestedLocale,
-  });
+  const { data, error } = await supabase.rpc('get_public_storefront_config_v1', { p_locale: requestedLocale });
   return normalizeStorefrontConfig(unwrap<unknown>(data, error));
 }
 
 export async function getPublicInfoPages(locale = 'tr') {
   const requestedLocale = safeLocale(locale, 'İstenen dil');
-  const { data, error } = await supabase.rpc('get_account_help_content_v1', {
-    p_locale: requestedLocale,
-  });
-  return unwrap<any>(data, error);
+  const { data, error } = await supabase.rpc('get_account_help_content_v1', { p_locale: requestedLocale });
+  return unwrap<unknown>(data, error);
 }
