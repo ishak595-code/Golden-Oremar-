@@ -3,6 +3,7 @@ import { AdminLayout } from '../admin/AdminLayout';
 
 const AdminDashboard = lazy(() => import('../admin/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 const AdminProducts = lazy(() => import('../admin/AdminProducts').then(module => ({ default: module.AdminProducts })));
+const AdminProductRemoval = lazy(() => import('../admin/AdminProductRemoval').then(module => ({ default: module.AdminProductRemoval })));
 const AdminOrders = lazy(() => import('../admin/AdminOrders').then(module => ({ default: module.AdminOrders })));
 const AdminReturns = lazy(() => import('../admin/AdminReturns').then(module => ({ default: module.AdminReturns })));
 const AdminUsers = lazy(() => import('../admin/AdminUsers').then(module => ({ default: module.AdminUsers })));
@@ -43,6 +44,7 @@ export function AdminPage({ onLogout, onBack }: AdminPageProps) {
       case 'dashboard': return <AdminDashboard setActiveTab={setActiveTab} />;
       case 'products': return <AdminProducts setActiveTab={setActiveTab} />;
       case 'product-approvals': return <AdminProducts setActiveTab={setActiveTab} initialView="pending" />;
+      case 'product-removal': return <AdminProductRemoval />;
       case 'orders': return <AdminOrders setActiveTab={setActiveTab} />;
       case 'returns': return <AdminReturns />;
       case 'stock': return <AdminStock setActiveTab={setActiveTab} />;
