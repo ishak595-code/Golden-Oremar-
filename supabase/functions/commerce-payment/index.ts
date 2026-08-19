@@ -1,121 +1,454 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
+import {
+  iyzicoError,
+  iyzicoRequest,
+  verifyIyzicoNon3dResponseSignature,
+  type IyzicoJson,
+} from "../_shared/iyzico.ts";
 
-const corsHeaders={
-  "Access-Control-Allow-Origin":"*",
-  "Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods":"POST, OPTIONS",
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function json(status:number,body:Record<string,unknown>){return new Response(JSON.stringify(body),{status,headers:{...corsHeaders,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});}
-function isRecord(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==="object"&&!Array.isArray(value);}
-function text(value:unknown,max:number){if(typeof value!=="string")return"";const next=value.trim();if(!next||next.length>max||/[\u0000-\u001F\u007F]/.test(next))return"";return next;}
-function uuid(value:unknown){const next=text(value,80);return UUID_RE.test(next)?next:"";}
-function safeInteger(value:unknown,min=0){return typeof value==="number"&&Number.isSafeInteger(value)&&value>=min?value:null;}
-function major(minor:number){if(!Number.isSafeInteger(minor)||minor<0)throw new Error("invalid_money");return(minor/100).toFixed(2);}
-function safeBaseUrl(raw:string){const value=raw.replace(/\/$/,"");if(value!=="https://api.iyzipay.com"&&value!=="https://sandbox-api.iyzipay.com")throw new Error("invalid_iyzico_base_url");return value;}
-function safeIp(req:Request){const candidates=[req.headers.get("cf-connecting-ip"),req.headers.get("x-real-ip"),req.headers.get("x-forwarded-for")?.split(",")[0]];for(const value of candidates){const next=(value||"").trim();if(next&&next.length<=64&&/^[0-9a-fA-F:.]+$/.test(next))return next;}throw new Error("request_ip_missing");}
-function splitName(displayName:string){const parts=displayName.trim().split(/\s+/).filter(Boolean);if(parts.length===0)return{name:"Golden",surname:"Oremar"};if(parts.length===1)return{name:parts[0],surname:parts[0]};return{name:parts.slice(0,-1).join(" "),surname:parts.at(-1)||parts[0]};}
-function addressText(address:Record<string,unknown>){return[text(address.address_line1||address.address_line,1000),text(address.address_line2,500),text(address.locality,160)].filter(Boolean).join(" ").slice(0,1000);}
-function addressCity(address:Record<string,unknown>){return text(address.city||address.district||address.administrative_area||address.province,160);}
-function addressCountry(address:Record<string,unknown>){return text(address.country_code||address.countryCode,2).toUpperCase();}
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PAYMENT_CURRENCIES = new Set(["TRY", "USD", "EUR", "GBP", "NOK", "CHF"]);
 
-async function hmacHex(secret:string,value:string){const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(secret),{name:"HMAC",hash:"SHA-256"},false,["sign"]);const signature=new Uint8Array(await crypto.subtle.sign("HMAC",key,new TextEncoder().encode(value)));return Array.from(signature).map(byte=>byte.toString(16).padStart(2,"0")).join("");}
-function timingSafeEqualHex(a:string,b:string){const left=a.toLowerCase(),right=b.toLowerCase();if(left.length!==right.length||left.length===0)return false;let diff=0;for(let i=0;i<left.length;i++)diff|=left.charCodeAt(i)^right.charCodeAt(i);return diff===0;}
+type RecordValue = Record<string, unknown>;
+type PaymentState = "captured" | "authorized" | "failed";
 
-class ProviderRejectedError extends Error{data:Record<string,unknown>;constructor(data:Record<string,unknown>){super(text(data.errorCode,120)||"provider_request_failed");this.data=data;}}
-class ProviderUncertainError extends Error{}
-
-async function iyzicoRequest(path:"/payment/auth"|"/payment/detail",payload:Record<string,unknown>){
-  const apiKey=Deno.env.get("IYZICO_API_KEY")?.trim()||"";
-  const secretKey=Deno.env.get("IYZICO_SECRET_KEY")?.trim()||"";
-  const baseUrlRaw=Deno.env.get("IYZICO_BASE_URL")?.trim()||"";
-  if(!apiKey||!secretKey||!baseUrlRaw)throw new Error("payment_provider_credentials_missing");
-  const baseUrl=safeBaseUrl(baseUrlRaw);const body=JSON.stringify(payload);const randomKey=`${Date.now()}${crypto.randomUUID().replaceAll("-","")}`;
-  const signature=await hmacHex(secretKey,randomKey+path+body);const authorizationString=`apiKey:${apiKey}&randomKey:${randomKey}&signature:${signature}`;
-  let response:Response;
-  try{response=await fetch(`${baseUrl}${path}`,{method:"POST",headers:{Authorization:`IYZWSv2 ${btoa(authorizationString)}`,"x-iyzi-rnd":randomKey,"Content-Type":"application/json",Accept:"application/json"},body,signal:AbortSignal.timeout(15000)});}catch{throw new ProviderUncertainError("payment_provider_transport_uncertain");}
-  let data:Record<string,unknown>={};try{const parsed=await response.json();if(isRecord(parsed))data=parsed;}catch{throw new ProviderUncertainError("payment_provider_invalid_response");}
-  if(!response.ok||data.status!=="success")throw new ProviderRejectedError(data);
-  return{data,secretKey};
+function json(status: number, body: RecordValue) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
-async function verifyPaymentResponse(data:Record<string,unknown>,secretKey:string){
-  const signature=text(data.signature,256);if(!signature)return false;
-  const fields=[data.paymentId,data.currency,data.basketId,data.conversationId,data.paidPrice,data.price].map(value=>String(value??""));
-  if(fields.some(value=>!value))return false;
-  return timingSafeEqualHex(await hmacHex(secretKey,fields.join(":")),signature);
+function isRecord(value: unknown): value is RecordValue {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function safeProviderResult(data:Record<string,unknown>,signatureVerified:boolean){
-  const allowed=["status","locale","systemTime","conversationId","paymentId","price","paidPrice","installment","fraudStatus","merchantCommissionRate","merchantCommissionRateAmount","iyziCommissionRateAmount","iyziCommissionFee","cardType","cardAssociation","cardFamily","lastFourDigits","basketId","currency","authCode","phase","hostReference","paymentStatus"];
-  const result:Record<string,unknown>={signatureVerified};for(const key of allowed)if(data[key]!=null)result[key]=data[key];
-  if(Array.isArray(data.itemTransactions))result.itemTransactions=data.itemTransactions.slice(0,100).map(item=>isRecord(item)?{itemId:item.itemId,paymentTransactionId:item.paymentTransactionId,transactionStatus:item.transactionStatus,price:item.price,paidPrice:item.paidPrice}:{});
+function text(value: unknown, max: number) {
+  if (typeof value !== "string") return "";
+  const normalized = value.trim();
+  if (!normalized || normalized.length > max || /[\u0000-\u001F\u007F]/.test(normalized)) return "";
+  return normalized;
+}
+
+function uuid(value: unknown) {
+  const normalized = text(value, 80);
+  return UUID_RE.test(normalized) ? normalized : "";
+}
+
+function integer(value: unknown, min = 0) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= min ? value : null;
+}
+
+function minorToMajor(value: number) {
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error("invalid_money");
+  return (value / 100).toFixed(2);
+}
+
+function decimalToMinor(value: unknown) {
+  const raw = typeof value === "number" && Number.isFinite(value) ? String(value) : text(value, 80);
+  if (!raw || !/^[0-9]+(?:\.[0-9]+)?$/.test(raw)) return null;
+  const amount = Number(raw);
+  if (!Number.isFinite(amount) || amount < 0) return null;
+  const minor = Math.round(amount * 100);
+  return Number.isSafeInteger(minor) ? minor : null;
+}
+
+function validEmail(value: unknown) {
+  const email = text(value, 254).toLowerCase();
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
+}
+
+function validPhone(value: unknown) {
+  const phone = text(value, 40);
+  const digits = phone.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 20 ? phone : "";
+}
+
+function requestIp(req: Request) {
+  const candidates = [
+    req.headers.get("cf-connecting-ip"),
+    req.headers.get("x-real-ip"),
+    req.headers.get("x-forwarded-for")?.split(",")[0] || null,
+  ];
+  for (const candidate of candidates) {
+    const normalized = (candidate || "").trim();
+    if (normalized && normalized.length <= 64 && /^[0-9a-fA-F:.]+$/.test(normalized)) return normalized;
+  }
+  throw new Error("payment_request_ip_required");
+}
+
+function fullNameParts(...candidates: unknown[]) {
+  for (const candidate of candidates) {
+    const normalized = text(candidate, 240);
+    const parts = normalized.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return {
+        fullName: normalized,
+        name: parts.slice(0, -1).join(" "),
+        surname: parts[parts.length - 1],
+      };
+    }
+  }
+  throw new Error("payment_profile_full_name_required");
+}
+
+function validTurkishIdentity(value: string) {
+  if (!/^[1-9][0-9]{10}$/.test(value)) return false;
+  const digits = value.split("").map(Number);
+  const odd = digits[0] + digits[2] + digits[4] + digits[6] + digits[8];
+  const even = digits[1] + digits[3] + digits[5] + digits[7];
+  const tenth = ((odd * 7) - even) % 10;
+  const eleventh = digits.slice(0, 10).reduce((sum, digit) => sum + digit, 0) % 10;
+  return tenth === digits[9] && eleventh === digits[10];
+}
+
+function buyerIdentity(value: unknown, countryCode: string) {
+  const normalized = text(value, 40).replace(/\s+/g, "").toUpperCase();
+  if (countryCode === "TR") {
+    if (!validTurkishIdentity(normalized)) throw new Error("payment_turkish_identity_invalid");
+    return normalized;
+  }
+  if (!/^[A-Z0-9-]{5,30}$/.test(normalized)) throw new Error("payment_passport_invalid");
+  return normalized;
+}
+
+function addressContext(raw: unknown) {
+  if (!isRecord(raw)) throw new Error("payment_address_invalid");
+  const countryCode = text(raw.country_code ?? raw.countryCode, 2).toUpperCase();
+  if (!/^[A-Z]{2}$/.test(countryCode)) throw new Error("payment_country_invalid");
+  const city = text(raw.city ?? raw.district ?? raw.administrative_area ?? raw.province, 160);
+  if (!city) throw new Error("payment_city_required");
+  const address = [
+    text(raw.address_line1 ?? raw.address_line, 1000),
+    text(raw.address_line2, 500),
+    text(raw.locality ?? raw.neighborhood, 160),
+  ].filter(Boolean).join(" ").trim();
+  if (address.length < 5 || address.length > 1000) throw new Error("payment_address_invalid");
+  const postalCode = text(raw.postal_code ?? raw.postalCode, 30);
+  if (!postalCode) throw new Error("payment_postal_code_required");
+  const recipientName = text(raw.recipient_name ?? raw.recipientName, 240);
+  return { countryCode, city, address, postalCode, recipientName };
+}
+
+function classifyPayment(data: IyzicoJson): PaymentState {
+  const fraudStatus = Number(data.fraudStatus);
+  if (fraudStatus === 1) return "captured";
+  if (fraudStatus === 0) return "authorized";
+  if (fraudStatus === -1) return "failed";
+  throw new Error("payment_fraud_status_invalid");
+}
+
+function safeProviderPayload(data: IyzicoJson, signatureVerified: boolean) {
+  const allowed = [
+    "status", "locale", "systemTime", "conversationId", "paymentId", "price", "paidPrice",
+    "installment", "fraudStatus", "merchantCommissionRate", "merchantCommissionRateAmount",
+    "iyziCommissionRateAmount", "iyziCommissionFee", "cardType", "cardAssociation", "cardFamily",
+    "lastFourDigits", "basketId", "currency", "authCode", "phase", "hostReference", "paymentStatus",
+  ];
+  const result: RecordValue = { signatureVerified };
+  for (const key of allowed) if (data[key] != null) result[key] = data[key];
+  if (Array.isArray(data.itemTransactions)) {
+    result.itemTransactions = data.itemTransactions.slice(0, 100).map((item) => {
+      if (!isRecord(item)) return {};
+      return {
+        itemId: item.itemId,
+        paymentTransactionId: item.paymentTransactionId,
+        transactionStatus: item.transactionStatus,
+        price: item.price,
+        paidPrice: item.paidPrice,
+        subMerchantPrice: item.subMerchantPrice,
+      };
+    });
+  }
   return result;
 }
 
-function classifyPayment(data:Record<string,unknown>):"captured"|"authorized"|"failed"{
-  const fraud=Number(data.fraudStatus);if(fraud===1)return"captured";if(fraud===0)return"authorized";return"failed";
-}
-
-function buildBasket(context:Record<string,unknown>){
-  const amount=safeInteger(context.amountMinor);const shipping=safeInteger(context.shippingMinor)||0;if(amount==null||amount<=0||shipping<0||shipping>amount)throw new Error("invalid_payment_amount");
-  if(!Array.isArray(context.items)||context.items.length===0||context.items.length>100)throw new Error("invalid_payment_items");
-  const targetMerchandise=amount-shipping;
-  const rows=context.items.map((raw,index)=>{if(!isRecord(raw))throw new Error("invalid_payment_item");const id=uuid(raw.id);const name=text(raw.name,300);const line=safeInteger(raw.lineTotalMinor);if(!id||!name||line==null)throw new Error("invalid_payment_item");return{id,name,minor:line,index};});
-  const sourceTotal=rows.reduce((sum,row)=>sum+row.minor,0);if(!Number.isSafeInteger(sourceTotal)||sourceTotal<=0)throw new Error("invalid_payment_items_total");
-  let difference=sourceTotal-targetMerchandise;
-  if(difference>0){for(const row of rows){if(difference<=0)break;const reduction=Math.min(row.minor,difference);row.minor-=reduction;difference-=reduction;}}
-  else if(difference<0){rows[0].minor+=Math.abs(difference);difference=0;}
-  if(difference!==0)throw new Error("payment_basket_allocation_failed");
-  const basket=rows.filter(row=>row.minor>0).map(row=>({id:row.id,name:row.name,category1:"Köy Ürünleri",itemType:"PHYSICAL",price:major(row.minor)}));
-  if(shipping>0)basket.push({id:`shipping-${uuid(context.orderId)}`,name:"Teslimat ve kargo",category1:"Teslimat",itemType:"PHYSICAL",price:major(shipping)});
-  const verification=basket.reduce((sum,row)=>sum+Math.round(Number(row.price)*100),0);if(verification!==amount)throw new Error("payment_basket_total_mismatch");return basket;
-}
-
-async function complete(service:any,intentId:string,providerReference:string,status:"captured"|"authorized"|"failed"|"cancelled",providerPayload:Record<string,unknown>,failureCode?:string|null,failureMessage?:string|null){
-  const{data,error}=await service.rpc("complete_order_payment_for_service_v1",{p_intent_id:intentId,p_provider_reference:providerReference,p_status:status,p_provider_payload:providerPayload,p_failure_code:failureCode||null,p_failure_message:failureMessage||null});if(error)throw error;return data;
-}
-
-async function reconcile(service:any,context:Record<string,unknown>){
-  const intentId=uuid(context.intentId);if(!intentId)throw new Error("payment_intent_invalid");
-  try{
-    const{data,secretKey}=await iyzicoRequest("/payment/detail",{locale:"tr",conversationId:crypto.randomUUID(),paymentConversationId:intentId});
-    const verified=await verifyPaymentResponse(data,secretKey);if(!verified)throw new Error("payment_provider_signature_invalid");
-    const paymentId=text(data.paymentId,220);if(!paymentId)throw new Error("payment_provider_reference_missing");
-    const state=classifyPayment(data);const result=await complete(service,intentId,paymentId,state,safeProviderResult(data,true),state==="failed"?"fraud_rejected":null,state==="failed"?"Ödeme sağlayıcısı işlemi reddetti.":null);
-    return{ok:state!=="failed",state,intentId,orderId:context.orderId,result};
-  }catch(error){
-    if(error instanceof ProviderRejectedError||error instanceof ProviderUncertainError)return{ok:true,state:"processing",intentId,orderId:context.orderId,reconciliationPending:true};
-    throw error;
-  }
-}
-
-Deno.serve(async(req:Request)=>{
-  if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders});if(req.method!=="POST")return json(405,{ok:false,error:"method_not_allowed"});
-  try{
-    const supabaseUrl=Deno.env.get("SUPABASE_URL")||"",anonKey=Deno.env.get("SUPABASE_ANON_KEY")||"",serviceRoleKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"",authorization=req.headers.get("Authorization")||"";
-    if(!supabaseUrl||!anonKey||!serviceRoleKey||!authorization)return json(401,{ok:false,error:"authentication_required"});
-    const userClient=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}});const{data:userData,error:userError}=await userClient.auth.getUser();const user=userData.user;if(userError||!user?.id)return json(401,{ok:false,error:"authentication_required"});
-    const service=createClient(supabaseUrl,serviceRoleKey,{auth:{persistSession:false,autoRefreshToken:false}});
-    const raw=await req.json().catch(()=>null);if(!isRecord(raw))return json(400,{ok:false,error:"invalid_request"});
-    const action=text(raw.action,30);if(action!=="pay_order")return json(400,{ok:false,error:"unsupported_action"});
-    const orderId=uuid(raw.orderId),idempotencyKey=text(raw.idempotencyKey,120),identityNumber=text(raw.buyerIdentityNumber,50);
-    if(!orderId)return json(400,{ok:false,error:"order_id_required"});if(!/^[A-Za-z0-9_-]{16,120}$/.test(idempotencyKey))return json(400,{ok:false,error:"invalid_payment_idempotency_key"});if(identityNumber.length<5)return json(400,{ok:false,error:"buyer_identity_required"});
-    const{data:prepared,error:prepareError}=await service.rpc("prepare_order_payment_for_service_v1",{p_user_id:user.id,p_order_id:orderId,p_idempotency_key:idempotencyKey});if(prepareError)throw prepareError;if(!isRecord(prepared))throw new Error("payment_context_invalid");
-    const intentId=uuid(prepared.intentId);if(prepared.action==="terminal")return json(200,{ok:prepared.status==="captured",state:prepared.status||prepared.intentStatus||"terminal",intentId:intentId||null,orderId:prepared.orderId,orderNumber:prepared.orderNumber,paymentStatus:prepared.paymentStatus,orderStatus:prepared.orderStatus});
-    if(prepared.action==="reconcile")return json(200,await reconcile(service,prepared));if(prepared.action!=="charge"||!intentId)throw new Error("payment_action_invalid");
-    if(text(prepared.provider,40)!=="iyzico")throw new Error("unsupported_payment_provider");
-    const buyer=isRecord(prepared.buyer)?prepared.buyer:{},shipping=isRecord(prepared.shippingAddress)?prepared.shippingAddress:{};const displayName=text(buyer.displayName,240);const names=splitName(displayName);const email=text(buyer.email,254),phone=text(buyer.phone,40),city=addressCity(shipping),country=addressCountry(shipping),address=addressText(shipping),zip=text(shipping.postal_code||shipping.postalCode,30),providerCustomerRef=text(prepared.providerCustomerRef,255),providerPaymentMethodRef=text(prepared.providerPaymentMethodRef,255),orderNumber=text(prepared.orderNumber,160),currency=text(prepared.currency,3).toUpperCase(),amount=safeInteger(prepared.amountMinor);
-    if(!email||!phone||!city||!country||!address||!providerCustomerRef||!providerPaymentMethodRef||!orderNumber||!currency||amount==null)throw new Error("payment_context_incomplete");
-    const basket=buildBasket(prepared);const paymentPayload={locale:"tr",conversationId:intentId,price:major(amount),paidPrice:major(amount),currency,installment:1,basketId:orderNumber,paymentChannel:"WEB",paymentGroup:"PRODUCT",paymentCard:{cardUserKey:providerCustomerRef,cardToken:providerPaymentMethodRef},buyer:{id:user.id,name:names.name,surname:names.surname,gsmNumber:phone,email,identityNumber,registrationAddress:address,ip:safeIp(req),city,country,zipCode:zip||"00000"},shippingAddress:{contactName:displayName||`${names.name} ${names.surname}`,city,country,address,zipCode:zip||"00000"},billingAddress:{contactName:displayName||`${names.name} ${names.surname}`,city,country,address,zipCode:zip||"00000"},basketItems:basket};
-    try{
-      const{data,secretKey}=await iyzicoRequest("/payment/auth",paymentPayload);const verified=await verifyPaymentResponse(data,secretKey);if(!verified)throw new Error("payment_provider_signature_invalid");if(text(data.conversationId,80)!==intentId)throw new Error("payment_conversation_mismatch");if(text(data.basketId,160)!==orderNumber)throw new Error("payment_basket_mismatch");if(text(data.currency,3).toUpperCase()!==currency)throw new Error("payment_currency_mismatch");if(Math.round(Number(data.paidPrice)*100)!==amount)throw new Error("payment_amount_mismatch");
-      const providerReference=text(data.paymentId,220);if(!providerReference)throw new Error("payment_provider_reference_missing");const state=classifyPayment(data);const result=await complete(service,intentId,providerReference,state,safeProviderResult(data,true),state==="failed"?"fraud_rejected":null,state==="failed"?"Ödeme sağlayıcısı işlemi reddetti.":null);return json(state==="failed"?402:200,{ok:state!=="failed",state,intentId,orderId,orderNumber,result});
-    }catch(error){
-      if(error instanceof ProviderRejectedError){const failureCode=text(error.data.errorCode,120)||"provider_rejected",failureMessage=text(error.data.errorMessage,500)||"Ödeme sağlayıcısı işlemi kabul etmedi.";const providerReference=`failure:${intentId}:${failureCode}`.slice(0,220);await complete(service,intentId,providerReference,"failed",{status:"failure",errorCode:failureCode,errorGroup:text(error.data.errorGroup,120)},failureCode,failureMessage);return json(402,{ok:false,state:"failed",intentId,orderId,error:failureCode,message:failureMessage});}
-      if(error instanceof ProviderUncertainError)return json(202,{ok:true,state:"processing",intentId,orderId,reconciliationPending:true});throw error;
+function marketplaceBasket(context: RecordValue) {
+  const priceMinor = integer(context.priceMinor, 1);
+  const splitTotalMinor = integer(context.splitTotalMinor, 1);
+  if (priceMinor == null || splitTotalMinor == null || splitTotalMinor > priceMinor) throw new Error("payment_marketplace_totals_invalid");
+  if (!Array.isArray(context.items) || context.items.length < 1 || context.items.length > 100) throw new Error("payment_items_invalid");
+  let priceSum = 0;
+  let splitSum = 0;
+  const items = context.items.map((raw) => {
+    if (!isRecord(raw)) throw new Error("payment_item_invalid");
+    const id = uuid(raw.id);
+    const name = text(raw.name, 300);
+    const lineTotalMinor = integer(raw.lineTotalMinor, 1);
+    const subMerchantKey = text(raw.subMerchantKey, 500);
+    const subMerchantPriceMinor = integer(raw.subMerchantPriceMinor, 1);
+    if (!id || !name || lineTotalMinor == null || !subMerchantKey || subMerchantPriceMinor == null || subMerchantPriceMinor > lineTotalMinor) {
+      throw new Error("payment_marketplace_item_invalid");
     }
-  }catch(error){const message=error instanceof Error?error.message:"commerce_payment_failed";const safe=message.length<=300&&!/[\u0000-\u001F\u007F]/.test(message)?message:"commerce_payment_failed";const status=safe.includes("credentials_missing")||safe.includes("provider_not_configured")?503:safe.includes("authentication_required")?401:400;return json(status,{ok:false,error:safe});}
+    priceSum += lineTotalMinor;
+    splitSum += subMerchantPriceMinor;
+    if (!Number.isSafeInteger(priceSum) || !Number.isSafeInteger(splitSum)) throw new Error("payment_marketplace_totals_invalid");
+    return {
+      id,
+      name,
+      category1: "Köy Ürünleri",
+      itemType: "PHYSICAL",
+      price: minorToMajor(lineTotalMinor),
+      subMerchantKey,
+      subMerchantPrice: minorToMajor(subMerchantPriceMinor),
+    };
+  });
+  if (priceSum !== priceMinor || splitSum !== splitTotalMinor) throw new Error("payment_marketplace_totals_mismatch");
+  return items;
+}
+
+function verifyProviderResponse(data: IyzicoJson, context: RecordValue, intentId: string) {
+  const orderNumber = text(context.orderNumber, 160);
+  const currency = text(context.currency, 3).toUpperCase();
+  const priceMinor = integer(context.priceMinor, 1);
+  const amountMinor = integer(context.amountMinor, 1);
+  if (!orderNumber || !PAYMENT_CURRENCIES.has(currency) || priceMinor == null || amountMinor == null) throw new Error("payment_context_invalid");
+  if (text(data.conversationId, 160) !== intentId) throw new Error("payment_conversation_mismatch");
+  if (text(data.basketId, 180) !== orderNumber) throw new Error("payment_basket_mismatch");
+  if (text(data.currency, 3).toUpperCase() !== currency) throw new Error("payment_currency_mismatch");
+  if (decimalToMinor(data.price) !== priceMinor || decimalToMinor(data.paidPrice) !== amountMinor) throw new Error("payment_amount_mismatch");
+  const paymentId = text(data.paymentId, 220);
+  if (!paymentId) throw new Error("payment_provider_reference_missing");
+  return paymentId;
+}
+
+async function completeOrder(service: any, intentId: string, providerReference: string, state: PaymentState, providerPayload: RecordValue) {
+  const { data, error } = await service.rpc("complete_order_payment_for_service_v1", {
+    p_intent_id: intentId,
+    p_provider_reference: providerReference,
+    p_status: state,
+    p_provider_payload: providerPayload,
+    p_failure_code: state === "failed" ? "provider_fraud_rejected" : null,
+    p_failure_message: state === "failed" ? "Ödeme sağlayıcısı işlemi reddetti." : null,
+  });
+  if (error) throw error;
+  if (!isRecord(data) || data.ok !== true) throw new Error("payment_completion_invalid");
+  return data;
+}
+
+async function failOrder(service: any, intentId: string, providerData: IyzicoJson) {
+  const providerError = iyzicoError(providerData, "provider_rejected");
+  const safePayload = safeProviderPayload(providerData, false);
+  const { data, error } = await service.rpc("fail_order_payment_intent_for_service_v1", {
+    p_intent_id: intentId,
+    p_failure_code: providerError.code,
+    p_failure_message: providerError.message || "Ödeme sağlayıcısı işlemi kabul etmedi.",
+    p_provider_payload: safePayload,
+  });
+  if (error) throw error;
+  return { data, providerError };
+}
+
+async function reconcile(service: any, context: RecordValue) {
+  const intentId = uuid(context.intentId);
+  if (!intentId) throw new Error("payment_intent_invalid");
+  let providerResponse: Awaited<ReturnType<typeof iyzicoRequest>>;
+  try {
+    providerResponse = await iyzicoRequest("/payment/detail", "POST", {
+      locale: "tr",
+      conversationId: crypto.randomUUID(),
+      paymentConversationId: intentId,
+    });
+  } catch {
+    return { ok: true, state: "processing", intentId, orderId: context.orderId, reconciliationPending: true };
+  }
+  const { response, data } = providerResponse;
+  if (!response.ok || data.status !== "success") {
+    if (response.status >= 500) return { ok: true, state: "processing", intentId, orderId: context.orderId, reconciliationPending: true };
+    const failed = await failOrder(service, intentId, data);
+    return { ok: false, state: "failed", intentId, orderId: context.orderId, error: failed.providerError.code };
+  }
+  const signatureVerified = await verifyIyzicoNon3dResponseSignature(data);
+  if (!signatureVerified) return { ok: true, state: "processing", intentId, orderId: context.orderId, reconciliationPending: true };
+  const providerReference = verifyProviderResponse(data, context, intentId);
+  const state = classifyPayment(data);
+  const result = await completeOrder(service, intentId, providerReference, state, safeProviderPayload(data, true));
+  return { ok: state !== "failed", state, intentId, orderId: context.orderId, result };
+}
+
+function publicError(error: unknown) {
+  const raw = error instanceof Error ? error.message : "payment_failed";
+  const code = raw.split(":")[0].trim();
+  const allowed = new Set([
+    "authentication_required", "invalid_request", "unsupported_action", "order_id_required",
+    "invalid_payment_idempotency_key", "buyer_identity_required", "payment_turkish_identity_invalid",
+    "payment_passport_invalid", "payment_profile_full_name_required", "payment_postal_code_required",
+    "payment_request_ip_required", "payment_provider_not_configured", "payment_method_required",
+    "payment_method_not_found", "payment_method_expired", "payment_method_provider_mismatch",
+    "producer_payment_account_not_ready", "payment_reservation_expired", "payment_review_pending",
+    "payment_provider_credentials_missing", "payment_provider_signature_invalid", "payment_failed",
+  ]);
+  return allowed.has(code) ? code : "payment_failed";
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (req.method !== "POST") return json(405, { ok: false, error: "method_not_allowed" });
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const authorization = req.headers.get("Authorization") || "";
+    if (!supabaseUrl || !anonKey || !serviceRoleKey || !authorization) return json(401, { ok: false, error: "authentication_required" });
+
+    const userClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authorization } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: userData, error: userError } = await userClient.auth.getUser();
+    const user = userData.user;
+    if (userError || !user?.id) return json(401, { ok: false, error: "authentication_required" });
+
+    const service = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+
+    const body = await req.json().catch(() => null);
+    if (!isRecord(body)) return json(400, { ok: false, error: "invalid_request" });
+    if (text(body.action, 30) !== "pay_order") return json(400, { ok: false, error: "unsupported_action" });
+
+    const orderId = uuid(body.orderId);
+    const idempotencyKey = text(body.idempotencyKey, 120);
+    if (!orderId) return json(400, { ok: false, error: "order_id_required" });
+    if (!/^[A-Za-z0-9_-]{16,120}$/.test(idempotencyKey)) return json(400, { ok: false, error: "invalid_payment_idempotency_key" });
+
+    const { data: preparedRaw, error: prepareError } = await service.rpc("prepare_order_payment_for_service_v2", {
+      p_user_id: user.id,
+      p_order_id: orderId,
+      p_idempotency_key: idempotencyKey,
+    });
+    if (prepareError) throw prepareError;
+    if (!isRecord(preparedRaw)) throw new Error("payment_context_invalid");
+    const prepared = preparedRaw as RecordValue;
+    const intentId = uuid(prepared.intentId);
+
+    if (prepared.action === "terminal") {
+      const state = text(prepared.status, 40) || text(prepared.intentStatus, 40) || "terminal";
+      return json(200, {
+        ok: state === "captured",
+        state,
+        intentId: intentId || null,
+        orderId: prepared.orderId,
+        orderNumber: prepared.orderNumber,
+        paymentStatus: prepared.paymentStatus,
+        orderStatus: prepared.orderStatus,
+      });
+    }
+
+    if (!intentId) throw new Error("payment_intent_invalid");
+    if (prepared.action === "reconcile") return json(200, await reconcile(service, prepared));
+    if (prepared.action !== "charge") throw new Error("payment_action_invalid");
+    if (text(prepared.provider, 40).toLowerCase() !== "iyzico") throw new Error("unsupported_payment_provider");
+
+    const shipping = addressContext(prepared.shippingAddress);
+    const buyer = isRecord(prepared.buyer) ? prepared.buyer : {};
+    const names = fullNameParts(buyer.displayName, shipping.recipientName);
+    const email = validEmail(buyer.email);
+    const phone = validPhone(buyer.phone);
+    if (!email) throw new Error("payment_buyer_email_invalid");
+    if (!phone) throw new Error("payment_buyer_phone_invalid");
+    const identityNumber = buyerIdentity(body.buyerIdentityNumber, shipping.countryCode);
+    const providerCustomerRef = text(prepared.providerCustomerRef, 500);
+    const providerPaymentMethodRef = text(prepared.providerPaymentMethodRef, 500);
+    const orderNumber = text(prepared.orderNumber, 180);
+    const currency = text(prepared.currency, 3).toUpperCase();
+    const amountMinor = integer(prepared.amountMinor, 1);
+    const priceMinor = integer(prepared.priceMinor, 1);
+    if (!providerCustomerRef || !providerPaymentMethodRef || !orderNumber || !PAYMENT_CURRENCIES.has(currency) || amountMinor == null || priceMinor == null) {
+      throw new Error("payment_context_incomplete");
+    }
+
+    const basketItems = marketplaceBasket(prepared);
+    const paymentPayload = {
+      locale: "tr",
+      conversationId: intentId,
+      price: minorToMajor(priceMinor),
+      paidPrice: minorToMajor(amountMinor),
+      currency,
+      installment: 1,
+      basketId: orderNumber,
+      paymentChannel: "WEB",
+      paymentGroup: "PRODUCT",
+      paymentCard: {
+        cardUserKey: providerCustomerRef,
+        cardToken: providerPaymentMethodRef,
+      },
+      buyer: {
+        id: user.id,
+        name: names.name,
+        surname: names.surname,
+        gsmNumber: phone,
+        email,
+        identityNumber,
+        registrationAddress: shipping.address,
+        ip: requestIp(req),
+        city: shipping.city,
+        country: shipping.countryCode,
+        zipCode: shipping.postalCode,
+      },
+      shippingAddress: {
+        contactName: names.fullName,
+        city: shipping.city,
+        country: shipping.countryCode,
+        address: shipping.address,
+        zipCode: shipping.postalCode,
+      },
+      billingAddress: {
+        contactName: names.fullName,
+        city: shipping.city,
+        country: shipping.countryCode,
+        address: shipping.address,
+        zipCode: shipping.postalCode,
+      },
+      basketItems,
+    };
+
+    let providerResponse: Awaited<ReturnType<typeof iyzicoRequest>>;
+    try {
+      providerResponse = await iyzicoRequest("/payment/auth", "POST", paymentPayload);
+    } catch {
+      return json(202, { ok: true, state: "processing", intentId, orderId, reconciliationPending: true });
+    }
+
+    const { response, data } = providerResponse;
+    if (!response.ok || data.status !== "success") {
+      if (response.status >= 500) return json(202, { ok: true, state: "processing", intentId, orderId, reconciliationPending: true });
+      const failed = await failOrder(service, intentId, data);
+      return json(402, { ok: false, state: "failed", intentId, orderId, error: failed.providerError.code });
+    }
+
+    const signatureVerified = await verifyIyzicoNon3dResponseSignature(data);
+    if (!signatureVerified) return json(202, { ok: true, state: "processing", intentId, orderId, reconciliationPending: true });
+
+    const providerReference = verifyProviderResponse(data, prepared, intentId);
+    const state = classifyPayment(data);
+    const result = await completeOrder(service, intentId, providerReference, state, safeProviderPayload(data, true));
+    return json(state === "failed" ? 402 : 200, {
+      ok: state !== "failed",
+      state,
+      intentId,
+      orderId,
+      orderNumber,
+      result,
+    });
+  } catch (error) {
+    const code = publicError(error);
+    const status = code === "authentication_required" ? 401
+      : code === "payment_provider_not_configured" || code === "payment_provider_credentials_missing" ? 503
+      : code === "producer_payment_account_not_ready" || code === "payment_review_pending" || code === "payment_reservation_expired" ? 409
+      : 400;
+    return json(status, { ok: false, error: code });
+  }
 });
