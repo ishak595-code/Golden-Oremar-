@@ -1,5 +1,6 @@
 import React,{useEffect,useState}from'react';
 import{cancelAccountClosure,changeMyPassword,getMyNewsletterStatus,getNotificationPreferences,requestAccountClosure,signOutAllDevices,signOutCurrentDevice,signOutOtherDevices,subscribeNewsletter,unsubscribeMyNewsletter,updateNotificationPreferences}from'./api';
+import type{AccountClosureSummary,AccountProfile,NewsletterStatus,NewsletterSummary,NotificationPreferences}from'./types';
 import{ErrorState,Panel}from'./ui';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 import PremiumPreferencesPanel from'./PremiumPreferencesPanel';
@@ -11,56 +12,65 @@ const keys=[
  ['returnPush','İade ve geri ödeme'],['messagePush','Mesajlar'],['reviewPush','Yorumlar'],
  ['producerPush','Satıcı/üretici işlemleri'],['systemPush','Sistem ve güvenlik'],['campaignPush','Kampanyalar']
 ] as const;
-const prefKeys=['pushEnabled',...keys.map(([key])=>key)] as const;
-const newsletterStatuses=new Set(['active','pending','unsubscribed','none']);
-const supportedLocales=new Set(['tr','en','de','fr','ku','ar']);
+const newsletterStatuses=new Set<NewsletterStatus>(['active','pending','unsubscribed','none','bounced','complained']);
+const activeClosureStatuses=new Set(['requested','processing','ready_for_auth_deletion']);
 
 type SessionAction='current'|'others'|'all'|null;
 type ConfirmedSessionAction='others'|'all'|null;
 
-function normalizePrefs(value:any){
- if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('Bildirim tercihleri sunucudan doğrulanamadı.');
- for(const key of prefKeys){if(typeof value[key]!=='boolean')throw new Error('Bildirim tercihleri sunucudan doğrulanamadı.');}
- return value;
+function normalizeNewsletter(value:unknown):NewsletterSummary{
+ if(!value||typeof value!=='object'||Array.isArray(value))throw new Error('E-bülten durumu sunucudan doğrulanamadı.');
+ const row=value as Record<string,unknown>;const rawStatus=typeof row.status==='string'?row.status.trim():'';
+ if(!newsletterStatuses.has(rawStatus as NewsletterStatus))throw new Error('E-bülten durumu sunucudan doğrulanamadı.');
+ const status=rawStatus as NewsletterStatus;
+ const email=row.email==null?null:typeof row.email==='string'&&row.email.trim()?row.email.trim():null;
+ if(status==='none')return{status,email,locale:null,consentVersion:null,consentedAt:null,confirmedAt:null,unsubscribedAt:null};
+ const locale=typeof row.locale==='string'&&['tr','en','de','fr','ku','ar'].includes(row.locale)?row.locale as AccountProfile['locale']:null;
+ const consentVersion=typeof row.consentVersion==='string'&&row.consentVersion.trim()?row.consentVersion.trim():null;
+ const consentedAt=typeof row.consentedAt==='string'&&!Number.isNaN(Date.parse(row.consentedAt))?row.consentedAt:null;
+ if(!email||!locale||!consentVersion||!consentedAt)throw new Error('E-bülten kaydı eksik alan içeriyor.');
+ const optionalDate=(candidate:unknown)=>candidate==null?null:typeof candidate==='string'&&!Number.isNaN(Date.parse(candidate))?candidate:null;
+ if(row.confirmedAt!=null&&!optionalDate(row.confirmedAt))throw new Error('E-bülten onay tarihi doğrulanamadı.');
+ if(row.unsubscribedAt!=null&&!optionalDate(row.unsubscribedAt))throw new Error('E-bülten abonelik kapanış tarihi doğrulanamadı.');
+ return{status,email,locale,consentVersion,consentedAt,confirmedAt:optionalDate(row.confirmedAt),unsubscribedAt:optionalDate(row.unsubscribedAt)};
 }
-function newsletterStatus(value:any){const status=String(value?.status||'').trim();return newsletterStatuses.has(status)?status:'';}
-function newsletterStatusLabel(status:string){return status==='active'?'Aktif':status==='pending'?'E-posta onayı bekleniyor':status==='unsubscribed'?'Abonelik kapalı':status==='none'?'Abone değil':'Durum doğrulanamadı';}
+function newsletterStatusLabel(status:NewsletterStatus|null){return status==='active'?'Aktif':status==='pending'?'E-posta onayı bekleniyor':status==='unsubscribed'?'Abonelik kapalı':status==='none'?'Abone değil':status==='bounced'?'E-posta teslimatı başarısız':status==='complained'?'Spam şikayeti nedeniyle kapalı':'Durum alınamadı';}
 function permissionLabel(value:string){return value==='granted'?'İzin verildi':value==='denied'?'İzin reddedildi':value==='prompt'?'Henüz sorulmadı':value==='prompt-with-rationale'?'İzin onayı bekleniyor':'Durum doğrulanamadı';}
-function closureStatusLabel(value:unknown){const status=String(value||'').trim();const labels:Record<string,string>={requested:'Talep alındı',pending:'Bekliyor',under_review:'İnceleniyor',approved:'Onaylandı',scheduled:'Planlandı',cancelled:'İptal edildi',completed:'Tamamlandı',rejected:'Reddedildi'};return labels[status]||'Durum doğrulanamadı';}
+function closureStatusLabel(value:AccountClosureSummary['status']){const labels:Record<AccountClosureSummary['status'],string>={requested:'Talep alındı',processing:'İşleniyor',ready_for_auth_deletion:'Kimlik hesabı silme aşamasına hazır',cancelled:'İptal edildi',completed:'Tamamlandı',rejected:'Reddedildi'};return labels[value];}
 function validEmail(value:unknown){const email=String(value||'').trim();return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)?email:'';}
 
-export default function SettingsPanel({closure,onChanged,profile,theme='light',onThemeChange}:{closure:any;onChanged:()=>Promise<void>|void;profile?:any;theme?:AppTheme;onThemeChange?:(theme:AppTheme)=>void}){
- const[prefs,setPrefs]=useState<any>(null);const[prefsLoading,setPrefsLoading]=useState(true);const[prefsBusy,setPrefsBusy]=useState(false);const[prefsError,setPrefsError]=useState('');const[prefsMessage,setPrefsMessage]=useState('');
+export default function SettingsPanel({closure,onChanged,profile,theme='light',onThemeChange}:{closure:AccountClosureSummary|null;onChanged:()=>Promise<void>|void;profile:AccountProfile;theme?:AppTheme;onThemeChange?:(theme:AppTheme)=>void}){
+ const[prefs,setPrefs]=useState<NotificationPreferences|null>(null);const[prefsLoading,setPrefsLoading]=useState(true);const[prefsBusy,setPrefsBusy]=useState(false);const[prefsError,setPrefsError]=useState('');const[prefsMessage,setPrefsMessage]=useState('');
  const[nativePushPermission,setNativePushPermission]=useState<string>('unknown');const nativePushPlatform=isNativePushPlatform();const nativePushConfigured=isNativePushProviderConfigured();
  const[currentPassword,setCurrentPassword]=useState('');const[newPassword,setNewPassword]=useState('');const[confirmPassword,setConfirmPassword]=useState('');const[passwordBusy,setPasswordBusy]=useState(false);const[passwordError,setPasswordError]=useState('');const[passwordMessage,setPasswordMessage]=useState('');
- const[newsletter,setNewsletter]=useState<any>(null);const[newsletterLoading,setNewsletterLoading]=useState(true);const[newsletterBusy,setNewsletterBusy]=useState(false);const[newsletterError,setNewsletterError]=useState('');const[newsletterMessage,setNewsletterMessage]=useState('');
+ const[newsletter,setNewsletter]=useState<NewsletterSummary|null>(null);const[newsletterLoading,setNewsletterLoading]=useState(true);const[newsletterBusy,setNewsletterBusy]=useState(false);const[newsletterError,setNewsletterError]=useState('');const[newsletterMessage,setNewsletterMessage]=useState('');
  const[sessionBusy,setSessionBusy]=useState<SessionAction>(null);const[sessionError,setSessionError]=useState('');const[sessionMessage,setSessionMessage]=useState('');const[sessionConfirmAction,setSessionConfirmAction]=useState<ConfirmedSessionAction>(null);
  const[reason,setReason]=useState('');const[closureBusy,setClosureBusy]=useState(false);const[closureError,setClosureError]=useState('');const[closureMessage,setClosureMessage]=useState('');const[closureConfirmOpen,setClosureConfirmOpen]=useState(false);
  const closureDialogRef=useAccessibleDialog<HTMLDivElement>(closureConfirmOpen,()=>{if(!closureBusy)setClosureConfirmOpen(false);});
  const sessionDialogRef=useAccessibleDialog<HTMLDivElement>(!!sessionConfirmAction,()=>{if(!sessionBusy)setSessionConfirmAction(null);});
  const passwordMismatch=confirmPassword.length>0&&newPassword!==confirmPassword;
- const accountEmail=validEmail(profile?.email||newsletter?.email);
- const currentNewsletterStatus=newsletterStatus(newsletter);
+ const accountEmail=validEmail(profile.email||newsletter?.email);
+ const currentNewsletterStatus=newsletter?.status??null;
 
  async function loadPrefs(){
-  try{setPrefsLoading(true);setPrefsError('');const next=await getNotificationPreferences();setPrefs(normalizePrefs(next));}
-  catch(e:any){setPrefs(null);setPrefsError(e?.message||'Bildirim ayarları yüklenemedi.');}
+  try{setPrefsLoading(true);setPrefsError('');setPrefs(await getNotificationPreferences());}
+  catch(e:unknown){setPrefs(null);setPrefsError(e instanceof Error&&e.message?e.message:'Bildirim ayarları yüklenemedi.');}
   finally{setPrefsLoading(false);}
  }
  async function loadNewsletter(){
-  try{setNewsletterLoading(true);setNewsletterError('');const next=await getMyNewsletterStatus();setNewsletter(next&&typeof next==='object'&&!Array.isArray(next)?next:null);if(!newsletterStatus(next))setNewsletterError('E-bülten durumu sunucudan doğrulanamadı.');}
-  catch{setNewsletter(null);setNewsletterError('E-bülten durumu şu anda alınamadı.');}
+  try{setNewsletterLoading(true);setNewsletterError('');setNewsletter(normalizeNewsletter(await getMyNewsletterStatus()));}
+  catch(e:unknown){setNewsletter(null);setNewsletterError(e instanceof Error&&e.message?e.message:'E-bülten durumu şu anda alınamadı.');}
   finally{setNewsletterLoading(false);}
  }
  useEffect(()=>{void loadPrefs();void loadNewsletter();if(nativePushPlatform){void getNativePushPermission().then(value=>setNativePushPermission(String(value))).catch(()=>setNativePushPermission('unknown'));}},[]);
 
  async function savePrefs(){
   if(!prefs||prefsBusy)return;
-  try{setPrefsBusy(true);setPrefsError('');setPrefsMessage('');const verified=normalizePrefs(prefs);
-   if(nativePushPlatform&&verified.pushEnabled){const registration=await enableNativePushRegistration();if(registration.status==='not-configured')throw new Error('Cihaz push sağlayıcısı henüz üretim anahtarlarıyla yapılandırılmadı.');if(registration.status==='denied')throw new Error('Cihaz bildirim izni verilmedi. Sistem ayarlarından bildirimlere izin verin.');setNativePushPermission('granted');}
-   if(nativePushPlatform&&!verified.pushEnabled){await disableNativePushRegistration();setNativePushPermission(String(await getNativePushPermission()));}
-   const saved=await updateNotificationPreferences(verified);setPrefs(normalizePrefs(saved));setPrefsMessage('Bildirim tercihleriniz kaydedildi.');}
-  catch(e:any){setPrefsError(e?.message||'Bildirim tercihleri kaydedilemedi.');}
+  try{setPrefsBusy(true);setPrefsError('');setPrefsMessage('');
+   if(nativePushPlatform&&prefs.pushEnabled){const registration=await enableNativePushRegistration();if(registration.status==='not-configured')throw new Error('Cihaz push sağlayıcısı henüz üretim anahtarlarıyla yapılandırılmadı.');if(registration.status==='denied')throw new Error('Cihaz bildirim izni verilmedi. Sistem ayarlarından bildirimlere izin verin.');setNativePushPermission('granted');}
+   if(nativePushPlatform&&!prefs.pushEnabled){await disableNativePushRegistration();setNativePushPermission(String(await getNativePushPermission()));}
+   setPrefs(await updateNotificationPreferences(prefs));setPrefsMessage('Bildirim tercihleriniz kaydedildi.');}
+  catch(e:unknown){setPrefsError(e instanceof Error&&e.message?e.message:'Bildirim tercihleri kaydedilemedi.');}
   finally{setPrefsBusy(false);}
  }
 
@@ -71,21 +81,20 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
   if(newPassword!==confirmPassword){setPasswordError('Yeni şifreler eşleşmiyor.');return;}
   if(currentPassword===newPassword){setPasswordError('Yeni şifre mevcut şifrenizden farklı olmalıdır.');return;}
   try{setPasswordBusy(true);await changeMyPassword(currentPassword,newPassword);setCurrentPassword('');setNewPassword('');setConfirmPassword('');setPasswordMessage('Şifreniz güncellendi.');}
-  catch(e:any){setPasswordError(e?.message||'Şifre güncellenemedi.');}
+  catch(e:unknown){setPasswordError(e instanceof Error&&e.message?e.message:'Şifre güncellenemedi.');}
   finally{setPasswordBusy(false);}
  }
 
  async function startNewsletter(){
   if(newsletterBusy||!accountEmail)return;
-  const locale=supportedLocales.has(String(profile?.locale||''))?String(profile.locale):'tr';
-  try{setNewsletterBusy(true);setNewsletterMessage('');setNewsletterError('');await subscribeNewsletter(accountEmail,locale);let refreshed:any=null;try{refreshed=await getMyNewsletterStatus();setNewsletter(refreshed);}catch{setNewsletter(null);}const status=newsletterStatus(refreshed);setNewsletterMessage(status==='active'?'E-bülten aboneliğiniz aktif.':status==='pending'?'E-posta onayı bekleniyor. Abonelik onaydan sonra aktif olur.':'Abonelik isteğiniz işlendi ancak güncel durum henüz doğrulanamadı.');if(!status)setNewsletterError('Güncel e-bülten durumu yeniden alınamadı.');}
-  catch(e:any){setNewsletterError(e?.message?.includes('invalid_email')?'E-bülten için geçerli hesap e-postası bulunamadı.':e?.message||'E-bülten aboneliği başlatılamadı.');}
+  try{setNewsletterBusy(true);setNewsletterMessage('');setNewsletterError('');await subscribeNewsletter(accountEmail,profile.locale);const refreshed=normalizeNewsletter(await getMyNewsletterStatus());setNewsletter(refreshed);setNewsletterMessage(refreshed.status==='active'?'E-bülten aboneliğiniz aktif.':refreshed.status==='pending'?'E-posta onayı bekleniyor. Abonelik onaydan sonra aktif olur.':'E-bülten isteği işlendi. Güncel durum hesap kaydından alındı.');}
+  catch(e:unknown){const message=e instanceof Error&&e.message?e.message:'E-bülten aboneliği başlatılamadı.';setNewsletterError(message.includes('invalid_email')?'E-bülten için geçerli hesap e-postası bulunamadı.':message);}
   finally{setNewsletterBusy(false);}
  }
  async function stopNewsletter(){
   if(newsletterBusy)return;
-  try{setNewsletterBusy(true);setNewsletterMessage('');setNewsletterError('');await unsubscribeMyNewsletter();let refreshed:any=null;try{refreshed=await getMyNewsletterStatus();setNewsletter(refreshed);}catch{setNewsletter(null);}setNewsletterMessage('E-bülten aboneliğiniz kapatıldı; kampanya pazarlama izni de devre dışı bırakıldı.');if(!newsletterStatus(refreshed))setNewsletterError('Abonelik kapatıldı ancak güncel e-bülten durumu yeniden alınamadı.');await onChanged();}
-  catch(e:any){setNewsletterError(e?.message||'E-bülten aboneliği kapatılamadı.');}
+  try{setNewsletterBusy(true);setNewsletterMessage('');setNewsletterError('');await unsubscribeMyNewsletter();setNewsletter(normalizeNewsletter(await getMyNewsletterStatus()));setNewsletterMessage('E-bülten aboneliğiniz kapatıldı; kampanya pazarlama izni de devre dışı bırakıldı.');await onChanged();}
+  catch(e:unknown){setNewsletterError(e instanceof Error&&e.message?e.message:'E-bülten aboneliği kapatılamadı.');}
   finally{setNewsletterBusy(false);}
  }
 
@@ -97,24 +106,24 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
    else if(action==='others'){await signOutOtherDevices();setSessionMessage('Diğer cihazlardaki oturumlar kapatıldı.');}
    else await signOutAllDevices();
    setSessionConfirmAction(null);
-  }catch(e:any){setSessionConfirmAction(null);setSessionError(e?.message||'Oturum işlemi tamamlanamadı.');}
+  }catch(e:unknown){setSessionConfirmAction(null);setSessionError(e instanceof Error&&e.message?e.message:'Oturum işlemi tamamlanamadı.');}
   finally{setSessionBusy(null);}
  }
 
  async function confirmCloseAccount(){
-  if(closureBusy)return;const normalizedReason=reason.trim();if(normalizedReason.length<10||normalizedReason.length>1000){setClosureConfirmOpen(false);setClosureError('Kapatma nedeni 10 ile 1000 karakter arasında olmalıdır.');return;}
+  if(closureBusy)return;const normalizedReason=reason.trim();if(normalizedReason.length<5||normalizedReason.length>2000){setClosureConfirmOpen(false);setClosureError('Kapatma nedeni 5 ile 2000 karakter arasında olmalıdır.');return;}
   try{setClosureBusy(true);setClosureError('');setClosureMessage('');await requestAccountClosure(normalizedReason);setReason('');setClosureConfirmOpen(false);await onChanged();setClosureMessage('Hesap kapatma talebiniz oluşturuldu.');}
-  catch(e:any){setClosureConfirmOpen(false);setClosureError(e?.message||'Hesap kapatma talebi oluşturulamadı.');}
+  catch(e:unknown){setClosureConfirmOpen(false);setClosureError(e instanceof Error&&e.message?e.message:'Hesap kapatma talebi oluşturulamadı.');}
   finally{setClosureBusy(false);}
  }
  async function cancelClose(){
   if(closureBusy)return;
   try{setClosureBusy(true);setClosureError('');setClosureMessage('');await cancelAccountClosure();await onChanged();setClosureMessage('Hesap kapatma talebiniz iptal edildi.');}
-  catch(e:any){setClosureError(e?.message||'Talep iptal edilemedi.');}
+  catch(e:unknown){setClosureError(e instanceof Error&&e.message?e.message:'Talep iptal edilemedi.');}
   finally{setClosureBusy(false);}
  }
 
- const closureStatus=String(closure?.status||'').trim();const activeClosure=Boolean(closure)&&!['cancelled','completed','rejected'].includes(closureStatus);
+ const closureStatus=closure?.status??null;const activeClosure=closureStatus?activeClosureStatuses.has(closureStatus):false;
  return<div className="space-y-5">
   <PremiumPreferencesPanel theme={theme} onThemeChange={onThemeChange}/>
 
@@ -132,20 +141,20 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
   <Panel title="E-bülten" description="Yeni ürün ve kampanya e-postaları için çift onaylı abonelik kullanılır. Tek tıkla aktif edilmez.">
     {newsletterError?<ErrorState message={newsletterError} onRetry={()=>void loadNewsletter()}/>:null}
     {newsletterMessage?<div role="status" aria-live="polite" className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{newsletterMessage}</div>:null}
-    {newsletterLoading?<div role="status" className="text-sm text-gray-500">E-bülten durumu yükleniyor…</div>:<div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700" aria-busy={newsletterBusy}>
+    {newsletterLoading?<div role="status" className="text-sm text-gray-500">E-bülten durumu yükleniyor…</div>:newsletter?<div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700" aria-busy={newsletterBusy}>
       <div className="text-sm text-gray-500">E-posta</div>
-      <div className="mt-1 break-all font-semibold">{accountEmail||'Hesap e-postası doğrulanamadı'}</div>
+      <div className="mt-1 break-all font-semibold">{accountEmail||'Hesap e-postası bulunamadı'}</div>
       <div className="mt-3 text-sm">Durum: <strong>{newsletterStatusLabel(currentNewsletterStatus)}</strong></div>
-      {currentNewsletterStatus==='active'||currentNewsletterStatus==='pending'?<button type="button" disabled={newsletterBusy} onClick={()=>void stopNewsletter()} className="mt-4 min-h-11 w-full rounded-xl border border-red-300 font-bold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">{newsletterBusy?'İşleniyor…':'E-bülten aboneliğini kapat'}</button>:currentNewsletterStatus==='none'||currentNewsletterStatus==='unsubscribed'?<button type="button" disabled={newsletterBusy||!accountEmail} onClick={()=>void startNewsletter()} className="mt-4 min-h-11 w-full rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{newsletterBusy?'İşleniyor…':'E-bültene abone ol'}</button>:<button type="button" disabled={newsletterBusy} onClick={()=>void loadNewsletter()} className="mt-4 min-h-11 w-full rounded-xl border font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Durumu yeniden kontrol et</button>}
-    </div>}
+      {currentNewsletterStatus==='active'||currentNewsletterStatus==='pending'?<button type="button" disabled={newsletterBusy} onClick={()=>void stopNewsletter()} className="mt-4 min-h-11 w-full rounded-xl border border-red-300 font-bold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">{newsletterBusy?'İşleniyor…':'E-bülten aboneliğini kapat'}</button>:currentNewsletterStatus==='none'||currentNewsletterStatus==='unsubscribed'||currentNewsletterStatus==='bounced'||currentNewsletterStatus==='complained'?<button type="button" disabled={newsletterBusy||!accountEmail} onClick={()=>void startNewsletter()} className="mt-4 min-h-11 w-full rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{newsletterBusy?'İşleniyor…':currentNewsletterStatus==='none'?'E-bültene abone ol':'Yeniden abone ol'}</button>:null}
+    </div>:<ErrorState message={newsletterError||'E-bülten durumu doğrulanamadı.'} onRetry={()=>void loadNewsletter()}/>} 
   </Panel>
 
   <Panel title="Bildirim Ayarları" description="İşlemsel bildirimleri ve kampanya bildirimlerini ayrı ayrı yönetin.">
    {prefsError?<ErrorState message={prefsError} onRetry={()=>void loadPrefs()}/>:null}
    {prefsMessage?<div role="status" aria-live="polite" className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{prefsMessage}</div>:null}
    {prefsLoading?<div role="status" className="text-sm text-gray-500">Bildirim ayarları yükleniyor…</div>:prefs?<div className="space-y-2" aria-busy={prefsBusy}>
-    <label className="flex min-h-11 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"><span className="font-bold">Push bildirimleri</span><input disabled={prefsBusy} type="checkbox" className="h-5 w-5 shrink-0" checked={prefs.pushEnabled===true} onChange={e=>setPrefs({...prefs,pushEnabled:e.target.checked})}/></label>{nativePushPlatform?<div className={`rounded-xl border p-3 text-sm ${nativePushConfigured?'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200':'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200'}`}><div className="font-semibold">Cihaz push durumu</div><div className="mt-1">{nativePushConfigured?`Sağlayıcı yapılandırması hazır. Sistem izni: ${permissionLabel(nativePushPermission)}.`:'Uygulama kodu hazır. FCM/APNs üretim yapılandırması eklenmeden cihaz kaydı açılmaz.'}</div><div className="mt-1 text-xs opacity-80">Bildirim izni yalnız Push bildirimleri seçilip kaydedildiğinde istenir.</div></div>:null}
-    {keys.map(([key,label])=><label key={key} className="flex min-h-11 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"><span>{label}</span><input disabled={prefsBusy} type="checkbox" className="h-5 w-5 shrink-0" checked={prefs[key]===true} onChange={e=>setPrefs({...prefs,[key]:e.target.checked})}/></label>)}
+    <label className="flex min-h-11 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"><span className="font-bold">Push bildirimleri</span><input disabled={prefsBusy} type="checkbox" className="h-5 w-5 shrink-0" checked={prefs.pushEnabled} onChange={e=>setPrefs({...prefs,pushEnabled:e.target.checked})}/></label>{nativePushPlatform?<div className={`rounded-xl border p-3 text-sm ${nativePushConfigured?'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200':'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200'}`}><div className="font-semibold">Cihaz push durumu</div><div className="mt-1">{nativePushConfigured?`Sağlayıcı yapılandırması hazır. Sistem izni: ${permissionLabel(nativePushPermission)}.`:'Uygulama kodu hazır. FCM/APNs üretim yapılandırması eklenmeden cihaz kaydı açılmaz.'}</div><div className="mt-1 text-xs opacity-80">Bildirim izni yalnız Push bildirimleri seçilip kaydedildiğinde istenir.</div></div>:null}
+    {keys.map(([key,label])=><label key={key} className="flex min-h-11 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700"><span>{label}</span><input disabled={prefsBusy} type="checkbox" className="h-5 w-5 shrink-0" checked={prefs[key]} onChange={e=>setPrefs({...prefs,[key]:e.target.checked})}/></label>)}
     <button type="button" disabled={prefsBusy} onClick={()=>void savePrefs()} className="min-h-11 w-full rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{prefsBusy?'Kaydediliyor…':'Bildirim tercihlerini kaydet'}</button>
    </div>:null}
   </Panel>
@@ -163,12 +172,12 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
   <Panel title="Hesap Kapatma" description="Sipariş ve yasal işlem kayıtları muhasebe bütünlüğü için korunabilir; aktif sipariş/iade varken kapatma engellenir.">
    {closureError?<ErrorState message={closureError}/>:null}
    {closureMessage?<div role="status" aria-live="polite" className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{closureMessage}</div>:null}
-   {activeClosure?<div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" aria-busy={closureBusy}>
+   {activeClosure&&closureStatus?<div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" aria-busy={closureBusy}>
      Aktif hesap kapatma talebiniz var. Durum: <strong>{closureStatusLabel(closureStatus)}</strong>.
-     <button type="button" disabled={closureBusy||!closureStatus} onClick={()=>void cancelClose()} className="mt-3 min-h-11 w-full rounded-lg border border-amber-500 font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600">{closureBusy?'İptal ediliyor…':'Talebi iptal et'}</button>
+     <button type="button" disabled={closureBusy} onClick={()=>void cancelClose()} className="mt-3 min-h-11 w-full rounded-lg border border-amber-500 font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600">{closureBusy?'İptal ediliyor…':'Talebi iptal et'}</button>
    </div>:<div>
-     <label className="block"><span className="text-sm font-semibold">Kapatma nedeni</span><textarea value={reason} onChange={e=>setReason(e.target.value)} rows={3} minLength={10} maxLength={1000} aria-describedby="closure-reason-help" className="mt-1 w-full rounded-xl border bg-transparent p-3" placeholder="Neden hesabınızı kapatmak istediğinizi kısaca yazın."/><span id="closure-reason-help" className="mt-1 block text-xs text-gray-500">En az 10 karakter yazın. Talep oluşturulmadan önce ayrıca onay istenir.</span></label>
-     <button type="button" onClick={()=>{setClosureError('');setClosureMessage('');setClosureConfirmOpen(true);}} disabled={closureBusy||reason.trim().length<10||reason.trim().length>1000} className="mt-3 min-h-11 w-full rounded-xl border border-red-300 font-bold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Hesap kapatma talebi oluştur</button>
+     <label className="block"><span className="text-sm font-semibold">Kapatma nedeni</span><textarea value={reason} onChange={e=>setReason(e.target.value)} rows={3} minLength={5} maxLength={2000} aria-describedby="closure-reason-help" className="mt-1 w-full rounded-xl border bg-transparent p-3" placeholder="Neden hesabınızı kapatmak istediğinizi kısaca yazın."/><span id="closure-reason-help" className="mt-1 block text-xs text-gray-500">5-2000 karakter yazın. Talep oluşturulmadan önce ayrıca onay istenir.</span></label>
+     <button type="button" onClick={()=>{setClosureError('');setClosureMessage('');setClosureConfirmOpen(true);}} disabled={closureBusy||reason.trim().length<5||reason.trim().length>2000} className="mt-3 min-h-11 w-full rounded-xl border border-red-300 font-bold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Hesap kapatma talebi oluştur</button>
    </div>}
   </Panel>
 
