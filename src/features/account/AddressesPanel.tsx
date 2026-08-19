@@ -12,15 +12,21 @@ const blank: Address = {
 };
 
 const fields = [
-  { key: 'label', label: 'Adres etiketi', autoComplete: 'off', maxLength: 60 },
+  { key: 'label', label: 'Adres etiketi', autoComplete: 'off', required: true, maxLength: 60 },
   { key: 'recipient_name', label: 'Alıcı adı', autoComplete: 'name', required: true, maxLength: 120 },
-  { key: 'phone', label: 'Telefon', autoComplete: 'tel', inputMode: 'tel', required: true, maxLength: 32 },
+  { key: 'phone', label: 'Telefon', autoComplete: 'tel', inputMode: 'tel', required: true, maxLength: 40 },
   { key: 'country_code', label: 'Ülke kodu', autoComplete: 'country', required: true, maxLength: 2 },
   { key: 'province', label: 'İl/Bölge', autoComplete: 'address-level1', required: true, maxLength: 120 },
   { key: 'district', label: 'İlçe/Şehir', autoComplete: 'address-level2', required: true, maxLength: 120 },
-  { key: 'neighborhood', label: 'Mahalle/Köy', autoComplete: 'address-level3', maxLength: 160 },
-  { key: 'postal_code', label: 'Posta kodu', autoComplete: 'postal-code', inputMode: 'text', maxLength: 24 },
+  { key: 'neighborhood', label: 'Mahalle/Köy', autoComplete: 'address-level3', required: false, maxLength: 160 },
+  { key: 'postal_code', label: 'Posta kodu', autoComplete: 'postal-code', inputMode: 'text', required: false, maxLength: 20 },
 ] as const;
+
+type SavedAddress = Address & { id: string };
+
+function isSavedAddress(address: Address): address is SavedAddress {
+  return typeof address.id === 'string' && address.id.trim().length > 0;
+}
 
 function validateAddress(address: Address) {
   const label = String(address.label || '').trim();
@@ -33,28 +39,22 @@ function validateAddress(address: Address) {
   const neighborhood = String(address.neighborhood || '').trim();
   const postal = String(address.postal_code || '').trim();
   const line = String(address.address_line || '').trim();
-  if (label.length > 60) return 'Adres etiketi en fazla 60 karakter olabilir.';
+  if (label.length < 1 || label.length > 60) return 'Adres etiketi 1 ile 60 karakter arasında olmalıdır.';
   if (recipient.length < 2 || recipient.length > 120) return 'Alıcı adı 2 ile 120 karakter arasında olmalıdır.';
-  if (!/^[+()0-9 .\-]{5,32}$/.test(phone) || phoneDigits.length < 7 || phoneDigits.length > 20) return 'Geçerli bir teslimat telefonu yazın.';
+  if (!/^[+()0-9 .\-]{10,40}$/.test(phone) || phoneDigits.length < 10 || phoneDigits.length > 15) return 'Teslimat telefonu 10 ile 15 rakam içermelidir.';
   if (!/^[A-Z]{2}$/.test(country)) return 'Ülke kodu iki harfli ISO kodu olmalıdır.';
   if (province.length < 2 || province.length > 120) return 'İl veya bölge bilgisi 2 ile 120 karakter arasında olmalıdır.';
   if (district.length < 2 || district.length > 120) return 'İlçe veya şehir bilgisi 2 ile 120 karakter arasında olmalıdır.';
   if (neighborhood.length > 160) return 'Mahalle veya köy bilgisi en fazla 160 karakter olabilir.';
-  if (postal.length > 24) return 'Posta kodu en fazla 24 karakter olabilir.';
-  if (line.length < 5) return 'Açık adres en az 5 karakter olmalıdır.';
-  if (line.length > 500) return 'Açık adres en fazla 500 karakter olabilir.';
+  if (postal.length > 20) return 'Posta kodu en fazla 20 karakter olabilir.';
+  if (line.length < 10 || line.length > 1000) return 'Açık adres 10 ile 1000 karakter arasında olmalıdır.';
   if (String(address.delivery_notes || '').length > 500) return 'Teslimat notu en fazla 500 karakter olabilir.';
   return '';
 }
 
-function addressKey(address: Address, index: number) {
-  const id = String(address?.id || '').trim();
-  return id || `${String(address?.label || '')}|${String(address?.address_line || '')}|${index}`;
-}
-
 export default function AddressesPanel({ addresses, onChanged }: { addresses: Address[]; onChanged: () => Promise<void> | void }) {
   const [editing, setEditing] = useState<Address | null>(null);
-  const [deleteCandidate, setDeleteCandidate] = useState<Address | null>(null);
+  const [deleteCandidate, setDeleteCandidate] = useState<SavedAddress | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [error, setError] = useState('');
@@ -62,7 +62,8 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
   const [status, setStatus] = useState('');
   const editDialogRef = useAccessibleDialog<HTMLFormElement>(!!editing, () => { if (!saving) setEditing(null); });
   const deleteDialogRef = useAccessibleDialog<HTMLDivElement>(!!deleteCandidate, () => { if (!deleteBusy) setDeleteCandidate(null); });
-  const safeAddresses = Array.isArray(addresses) ? addresses : [];
+  const savedAddresses = addresses.filter(isSavedAddress);
+  const addressContractValid = savedAddresses.length === addresses.length;
 
   function startCreate() {
     setError('');
@@ -71,7 +72,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
     setEditing({ ...blank });
   }
 
-  function startEdit(address: Address) {
+  function startEdit(address: SavedAddress) {
     setError('');
     setFormError('');
     setStatus('');
@@ -92,7 +93,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
     const normalized = {
       ...editing,
       id: String(editing.id || '').trim() || undefined,
-      label: String(editing.label || '').trim() || 'Teslimat',
+      label: String(editing.label || '').trim(),
       recipient_name: String(editing.recipient_name || '').trim(),
       phone: String(editing.phone || '').trim(),
       country_code: String(editing.country_code || '').trim().toUpperCase(),
@@ -114,26 +115,25 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
       setFormError('');
       await onChanged();
       setStatus(wasEditing ? 'Adres güncellendi.' : 'Yeni adres kaydedildi.');
-    } catch (err: any) {
-      setFormError(err?.message || 'Adres kaydedilemedi.');
+    } catch (err: unknown) {
+      setFormError(err instanceof Error && err.message ? err.message : 'Adres kaydedilemedi.');
     } finally {
       setSaving(false);
     }
   }
 
   async function confirmRemove() {
-    const id = String(deleteCandidate?.id || '').trim();
-    if (!id || deleteBusy) return;
+    if (!deleteCandidate || deleteBusy) return;
     setError('');
     setStatus('');
     try {
       setDeleteBusy(true);
-      await deleteAddress(id);
+      await deleteAddress(deleteCandidate.id);
       setDeleteCandidate(null);
       await onChanged();
       setStatus('Adres silindi.');
-    } catch (err: any) {
-      setError(err?.message || 'Adres silinemedi.');
+    } catch (err: unknown) {
+      setError(err instanceof Error && err.message ? err.message : 'Adres silinemedi.');
     } finally {
       setDeleteBusy(false);
     }
@@ -143,29 +143,27 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
     <Panel title="Adreslerim" description="Türkiye veya yurt dışındaki teslimat adreslerinizi ekleyin ve varsayılan adresinizi seçin.">
       {error ? <ErrorState message={error} /> : null}
       {status ? <div role="status" aria-live="polite" className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{status}</div> : null}
+      {!addressContractValid ? <ErrorState message="Kayıtlı adreslerden en az birinin kimliği doğrulanamadı. Adres düzenleme ve silme işlemleri güvenlik amacıyla kapatıldı." /> : null}
       <button type="button" onClick={startCreate} className="mb-4 min-h-11 rounded-xl bg-brand-green px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
         Yeni adres ekle
       </button>
 
       <div className="space-y-3">
-        {safeAddresses.length === 0 ? <EmptyState title="Kayıtlı adres yok" body="İlk teslimat adresinizi ekleyebilirsiniz." /> : safeAddresses.map((a, index) => {
-          const id = String(a?.id || '').trim();
-          const label = String(a?.label || '').trim() || 'Adres etiketi doğrulanamadı';
-          return <article key={addressKey(a,index)} className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+        {savedAddresses.length === 0 ? <EmptyState title="Kayıtlı adres yok" body="İlk teslimat adresinizi ekleyebilirsiniz." /> : savedAddresses.map(a => (
+          <article key={a.id} className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
-                <div className="font-bold">{label} {a?.is_default === true ? <span className="text-xs text-brand-green">• Varsayılan</span> : null}</div>
-                <p className="mt-1 text-sm">{String(a?.recipient_name || '').trim() || 'Alıcı doğrulanamadı'} • {String(a?.phone || '').trim() || 'Telefon doğrulanamadı'}</p>
-                <p className="mt-1 break-words text-sm text-gray-500">{String(a?.address_line || '').trim() || 'Açık adres doğrulanamadı'}{a?.neighborhood ? `, ${a.neighborhood}` : ''}{a?.district ? `, ${a.district}` : ''}{a?.province ? `/${a.province}` : ''}{a?.postal_code ? ` ${a.postal_code}` : ''}{a?.country_code ? ` • ${a.country_code}` : ' • Ülke doğrulanamadı'}</p>
-                {!id ? <p className="mt-1 text-xs text-red-700 dark:text-red-300">Adres kimliği doğrulanamadı. Silme işlemi kapalıdır.</p> : null}
+                <div className="font-bold">{a.label} {a.is_default ? <span className="text-xs text-brand-green">• Varsayılan</span> : null}</div>
+                <p className="mt-1 text-sm">{a.recipient_name} • {a.phone}</p>
+                <p className="mt-1 break-words text-sm text-gray-500">{a.address_line}{a.neighborhood ? `, ${a.neighborhood}` : ''}, {a.district}, {a.province}{a.postal_code ? ` ${a.postal_code}` : ''} • {a.country_code}</p>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-col">
-                <button type="button" onClick={() => startEdit(a)} className="min-h-11 rounded-lg border px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Düzenle</button>
-                <button type="button" disabled={!id} onClick={() => { setError(''); setStatus(''); setDeleteCandidate(a); }} className="min-h-11 rounded-lg border border-red-200 px-3 text-sm font-semibold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900 dark:text-red-300">Sil</button>
+                <button type="button" disabled={!addressContractValid} onClick={() => startEdit(a)} className="min-h-11 rounded-lg border px-3 text-sm font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Düzenle</button>
+                <button type="button" disabled={!addressContractValid} onClick={() => { setError(''); setStatus(''); setDeleteCandidate(a); }} className="min-h-11 rounded-lg border border-red-200 px-3 text-sm font-semibold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900 dark:text-red-300">Sil</button>
               </div>
             </div>
-          </article>;
-        })}
+          </article>
+        ))}
       </div>
 
       {editing ? (
@@ -192,15 +190,15 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
             {formError ? <div id="address-form-error" role="alert" aria-live="assertive" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{formError}</div> : null}
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {fields.map(field => {
-                const value = String((editing as any)[field.key] || '');
+                const value = String(editing[field.key] ?? '');
                 return (
                   <label key={field.key} className="block">
-                    <span className="text-sm font-semibold">{field.label}{'required' in field && field.required ? ' *' : ''}</span>
+                    <span className="text-sm font-semibold">{field.label}{field.required ? ' *' : ''}</span>
                     <input
                       value={value}
-                      required={'required' in field ? field.required : false}
+                      required={field.required}
                       autoComplete={field.autoComplete}
-                      inputMode={'inputMode' in field ? field.inputMode as any : undefined}
+                      inputMode={'inputMode' in field ? field.inputMode as React.HTMLAttributes<HTMLInputElement>['inputMode'] : undefined}
                       maxLength={field.maxLength}
                       pattern={field.key === 'country_code' ? '[A-Za-z]{2}' : undefined}
                       disabled={saving}
@@ -218,7 +216,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
             </div>
             <label className="mt-3 block">
               <span className="text-sm font-semibold">Açık adres *</span>
-              <textarea required minLength={5} maxLength={500} autoComplete="street-address" value={editing.address_line} disabled={saving} aria-describedby={formError ? 'address-form-error' : undefined} onChange={e => { if (formError) setFormError(''); setEditing({ ...editing, address_line: e.target.value }); }}
+              <textarea required minLength={10} maxLength={1000} autoComplete="street-address" value={editing.address_line} disabled={saving} aria-describedby={formError ? 'address-form-error' : undefined} onChange={e => { if (formError) setFormError(''); setEditing({ ...editing, address_line: e.target.value }); }}
                 rows={3} className="mt-1 w-full rounded-xl border bg-transparent p-3 disabled:opacity-60" />
             </label>
             <label className="mt-3 block">
@@ -254,13 +252,13 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
               <div aria-hidden="true" className="rounded-xl bg-red-50 p-2 text-red-700 dark:bg-red-950/30 dark:text-red-300"><Trash2 className="h-5 w-5" /></div>
               <div>
                 <h3 id="delete-address-title" className="text-lg font-bold">Adresi silmek istiyor musunuz?</h3>
-                <p id="delete-address-description" className="mt-1 text-sm text-gray-500">“{String(deleteCandidate.label || '').trim() || 'Bu adres'}” hesabınızdan kaldırılacak. Bu işlem geri alınamaz.</p>
+                <p id="delete-address-description" className="mt-1 text-sm text-gray-500">“{deleteCandidate.label}” hesabınızdan kaldırılacak. Bu işlem geri alınamaz.</p>
               </div>
             </div>
             <div aria-live="polite" className="sr-only">{deleteBusy ? 'Adres siliniyor.' : ''}</div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button type="button" disabled={deleteBusy} onClick={() => setDeleteCandidate(null)} className="min-h-11 rounded-xl border font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Vazgeç</button>
-              <button type="button" disabled={deleteBusy || !String(deleteCandidate.id || '').trim()} onClick={() => void confirmRemove()} className="min-h-11 rounded-xl bg-red-700 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">{deleteBusy ? 'Siliniyor…' : 'Adresi Sil'}</button>
+              <button type="button" disabled={deleteBusy} onClick={() => void confirmRemove()} className="min-h-11 rounded-xl bg-red-700 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">{deleteBusy ? 'Siliniyor…' : 'Adresi Sil'}</button>
             </div>
           </div>
         </div>
