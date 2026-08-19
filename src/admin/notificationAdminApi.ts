@@ -7,9 +7,13 @@ const notificationScopes: NotificationTargetScope[] = ['all', 'producer', 'speci
 const notificationTypes: PlatformNotificationType[] = ['order', 'payment', 'shipment', 'return', 'campaign', 'system', 'producer'];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function unwrap<T>(data: T | null, error: any): T {
+function unwrap<T>(data: T | null, error: unknown): T {
   if (error) throw error;
   return data as T;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
 function normalizeActionUrl(value?: string | null) {
@@ -31,6 +35,20 @@ function validateScope(scope: NotificationTargetScope) {
   return scope;
 }
 
+function responseScope(value: unknown) {
+  if (typeof value !== 'string' || !notificationScopes.includes(value as NotificationTargetScope)) {
+    throw new Error('Bildirim yayın hedefi doğrulanamadı.');
+  }
+  return value as NotificationTargetScope;
+}
+
+function responseType(value: unknown) {
+  if (typeof value !== 'string' || !notificationTypes.includes(value as PlatformNotificationType)) {
+    throw new Error('Bildirim yayın türü doğrulanamadı.');
+  }
+  return value as PlatformNotificationType;
+}
+
 function normalizedTargetUserId(scope: NotificationTargetScope, userId?: string | null) {
   if (scope !== 'specific') return null;
   const id = String(userId || '').trim();
@@ -40,9 +58,8 @@ function normalizedTargetUserId(scope: NotificationTargetScope, userId?: string 
 }
 
 function safeAudienceCount(value: unknown) {
-  const count = Number(value);
-  if (!Number.isSafeInteger(count) || count < 0) throw new Error('Bildirim hedef kitle sayısı doğrulanamadı.');
-  return count;
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) throw new Error('Bildirim hedef kitle sayısı doğrulanamadı.');
+  return value;
 }
 
 export async function adminNotificationAudienceCount(scope: NotificationTargetScope, userId?: string | null) {
@@ -79,20 +96,19 @@ export async function adminBroadcastNotification(input: {
     p_type: input.type,
     p_action_url: actionUrl,
   });
-  const result = unwrap<any>(data, error);
-  const broadcastId = String(result?.broadcastId || result?.broadcast_id || '').trim();
-  const recipientCount = safeAudienceCount(result?.recipientCount ?? result?.recipient_count);
+  const result = unwrap<unknown>(data, error);
+  if (!isRecord(result)) throw new Error('Bildirim yayın yanıtı doğrulanamadı.');
+  const broadcastId = typeof result.broadcastId === 'string' ? result.broadcastId.trim() : '';
   if (!UUID_RE.test(broadcastId)) throw new Error('Bildirim yayın kaydı doğrulanamadı.');
-  return {
-    broadcastId,
-    recipientCount,
-    targetScope: String(result?.targetScope || result?.target_scope || scope),
-    type: String(result?.type || input.type),
-  };
+  const recipientCount = safeAudienceCount(result.recipientCount);
+  const targetScope = responseScope(result.targetScope);
+  const type = responseType(result.type);
+  if (targetScope !== scope || type !== input.type) throw new Error('Bildirim yayın yanıtı istekle eşleşmiyor.');
+  return { broadcastId, recipientCount, targetScope, type };
 }
 
 export function notificationAdminErrorMessage(error: unknown, fallback = 'Bildirim işlemi tamamlanamadı.') {
-  const message = String((error as any)?.message || '').trim();
+  const message = error instanceof Error ? error.message.trim() : '';
   if (!message) return fallback;
   const map: Array<[string, string]> = [
     ['admin_required', 'Bu işlem için yönetici yetkisi gerekiyor.'],
