@@ -1,265 +1,76 @@
 import { supabase } from '../lib/supabase';
 import { listPublicCategories, searchCatalog, type CatalogItem, type PublicCategory } from '../features/catalog/api';
 
-function unwrap<T>(data: T | null, error: any): T {
-  if (error) throw error;
-  return data as T;
-}
+function unwrap<T>(data: T | null, error: unknown): T { if (error) throw error; return data as T; }
+function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' && !Array.isArray(value); }
+function requiredText(value: unknown, label: string, max = 4000) { const text = typeof value === 'string' ? value.trim() : ''; if (!text || text.length > max || /[\u0000-\u001F\u007F]/.test(text)) throw new Error(`${label} doğrulanamadı.`); return text; }
+function optionalText(value: unknown, label: string, max = 4000) { if (value == null || value === '') return null; if (typeof value !== 'string') throw new Error(`${label} doğrulanamadı.`); const text = value.trim(); if (!text) return null; if (text.length > max || /[\u0000-\u001F\u007F]/.test(text)) throw new Error(`${label} doğrulanamadı.`); return text; }
+function safeInteger(value: unknown, label: string, min = 0, max = Number.MAX_SAFE_INTEGER) { if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min || value > max) throw new Error(`${label} doğrulanamadı.`); return value; }
+function nullableSafeInteger(value: unknown, label: string, min = 0) { return value == null ? null : safeInteger(value, label, min); }
+function currencyCode(value: unknown, required = true) { if (value == null || value === '') { if (required) throw new Error('Para birimi doğrulanamadı.'); return null; } const code = requiredText(value, 'Para birimi', 3).toUpperCase(); if (!/^[A-Z]{3}$/.test(code)) throw new Error('Para birimi doğrulanamadı.'); return code; }
+function dateTime(value: unknown, label: string) { const text = requiredText(value, label, 80); if (Number.isNaN(new Date(text).getTime())) throw new Error(`${label} doğrulanamadı.`); return text; }
+function dateOnly(value: unknown, label: string) { const text = requiredText(value, label, 10); if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) throw new Error(`${label} doğrulanamadı.`); const parsed = new Date(`${text}T12:00:00Z`); if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== text) throw new Error(`${label} doğrulanamadı.`); return text; }
+function oneOf<T extends string>(value: unknown, label: string, allowed: readonly T[]) { const text = requiredText(value, label, 60); if (!allowed.includes(text as T)) throw new Error(`${label} doğrulanamadı.`); return text as T; }
+function stringArray(value: unknown, label: string, max = 500) { if (!Array.isArray(value) || value.length > max) throw new Error(`${label} doğrulanamadı.`); return value.map((entry, index) => requiredText(entry, `${label} ${index + 1}`, 160)); }
 
 export type CampaignDiscountType = 'percentage' | 'fixed' | 'free_shipping';
 export type CampaignStatus = 'draft' | 'scheduled' | 'active' | 'paused' | 'ended';
 export type CampaignTargetScope = 'all' | 'products' | 'categories';
+const CAMPAIGN_DISCOUNT_TYPES = ['percentage','fixed','free_shipping'] as const;
+const CAMPAIGN_STATUSES = ['draft','scheduled','active','paused','ended'] as const;
+const CAMPAIGN_TARGET_SCOPES = ['all','products','categories'] as const;
 
-export type AdminCampaign = {
-  id: string;
-  slug: string;
-  title: string;
-  description?: string | null;
-  banner_path?: string | null;
-  discount_type: CampaignDiscountType;
-  // Backend contract: percentage is basis points, fixed is currency minor units.
-  discount_value: number;
-  currency?: string | null;
-  minimum_order_minor: number;
-  usage_limit?: number | null;
-  per_user_limit: number;
-  starts_at: string;
-  ends_at: string;
-  status: CampaignStatus;
-  target_scope: CampaignTargetScope;
-  target_ids: string[];
-  created_at?: string;
-  updated_at?: string;
-};
+export type AdminCampaign = { id:string; slug:string; title:string; description?:string|null; banner_path?:string|null; discount_type:CampaignDiscountType; discount_value:number; currency?:string|null; minimum_order_minor:number; usage_limit?:number|null; per_user_limit:number; starts_at:string; ends_at:string; status:CampaignStatus; target_scope:CampaignTargetScope; target_ids:string[]; created_at?:string; updated_at?:string; };
+export type AdminCampaignInput = { id?:string|null; slug:string; title:string; description?:string|null; discountType:CampaignDiscountType; discountDisplayValue:number; currency?:string|null; minimumOrderTry?:number; usageLimit?:number|null; perUserLimit?:number; startsAt:string; endsAt:string; status:CampaignStatus; targetScope:CampaignTargetScope; targetIds?:string[]; };
 
-export type AdminCampaignInput = {
-  id?: string | null;
-  slug: string;
-  title: string;
-  description?: string | null;
-  discountType: CampaignDiscountType;
-  // Human-facing value: 10 means 10%, or 10 TRY for a fixed discount.
-  discountDisplayValue: number;
-  currency?: string | null;
-  // Human-facing TRY amount. Conversion to minor unit happens only in this API boundary.
-  minimumOrderTry?: number;
-  usageLimit?: number | null;
-  perUserLimit?: number;
-  startsAt: string;
-  endsAt: string;
-  status: CampaignStatus;
-  targetScope: CampaignTargetScope;
-  targetIds?: string[];
-};
-
-export async function adminListCampaigns(): Promise<AdminCampaign[]> {
-  const { data, error } = await supabase.rpc('admin_list_campaigns');
-  const rows = unwrap<any[]>(data, error);
-  return (Array.isArray(rows) ? rows : []).map(row => ({
-    ...row,
-    id: String(row.id),
-    target_ids: Array.isArray(row.target_ids) ? row.target_ids.map(String) : [],
-    discount_value: Number(row.discount_value || 0),
-    minimum_order_minor: Number(row.minimum_order_minor || 0),
-    usage_limit: row.usage_limit == null ? null : Number(row.usage_limit),
-    per_user_limit: Math.max(1, Number(row.per_user_limit || 1)),
-  }));
+function normalizeCampaign(value: unknown, index: number): AdminCampaign {
+ if (!isRecord(value)) throw new Error(`${index + 1}. kampanya doğrulanamadı.`);
+ const discountType = oneOf(value.discount_type, 'İndirim türü', CAMPAIGN_DISCOUNT_TYPES);
+ const discountValue = safeInteger(value.discount_value, 'İndirim değeri');
+ if (discountType === 'percentage' && (discountValue < 1 || discountValue > 10000)) throw new Error(`${index + 1}. kampanya yüzdesi doğrulanamadı.`);
+ if (discountType === 'fixed' && discountValue < 1) throw new Error(`${index + 1}. sabit indirim tutarı doğrulanamadı.`);
+ const campaignCurrency = currencyCode(value.currency, discountType !== 'percentage' && discountType !== 'free_shipping');
+ return {
+  id: requiredText(value.id, 'Kampanya kimliği', 80), slug: requiredText(value.slug, 'Kampanya kısa adı', 160), title: requiredText(value.title, 'Kampanya adı', 160), description: optionalText(value.description, 'Kampanya açıklaması'), banner_path: optionalText(value.banner_path, 'Kampanya görsel yolu', 500),
+  discount_type: discountType, discount_value: discountValue, currency: campaignCurrency, minimum_order_minor: safeInteger(value.minimum_order_minor, 'Minimum sipariş tutarı'), usage_limit: nullableSafeInteger(value.usage_limit, 'Kullanım limiti', 1), per_user_limit: safeInteger(value.per_user_limit, 'Kullanıcı başına limit', 1), starts_at: dateTime(value.starts_at, 'Kampanya başlangıcı'), ends_at: dateTime(value.ends_at, 'Kampanya bitişi'), status: oneOf(value.status, 'Kampanya durumu', CAMPAIGN_STATUSES), target_scope: oneOf(value.target_scope, 'Kampanya hedefi', CAMPAIGN_TARGET_SCOPES), target_ids: stringArray(value.target_ids, 'Kampanya hedefleri'), created_at: value.created_at ? dateTime(value.created_at, 'Kampanya oluşturulma tarihi') : undefined, updated_at: value.updated_at ? dateTime(value.updated_at, 'Kampanya güncelleme tarihi') : undefined,
+ };
 }
+
+export async function adminListCampaigns(): Promise<AdminCampaign[]> { const {data,error}=await supabase.rpc('admin_list_campaigns'); const rows=unwrap<unknown>(data,error); if(!Array.isArray(rows)||rows.length>1000) throw new Error('Kampanya listesi doğrulanamadı.'); return rows.map(normalizeCampaign); }
 
 export async function adminSaveCampaign(input: AdminCampaignInput) {
-  const title = input.title.trim();
-  const slug = input.slug.trim();
-  const targetIds = input.targetScope === 'all'
-    ? []
-    : [...new Set((input.targetIds || []).map(String).filter(Boolean))];
-
-  if (title.length < 2 || title.length > 160) throw new Error('Kampanya adı 2 ile 160 karakter arasında olmalıdır.');
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error('Kampanya kısa adı yalnızca küçük harf, sayı ve tire içerebilir.');
-  if ((input.description || '').length > 4000) throw new Error('Kampanya açıklaması 4000 karakteri aşamaz.');
-  if (input.targetScope !== 'all' && targetIds.length === 0) throw new Error('Kampanya hedefi için en az bir ürün veya kategori seçin.');
-
-  let backendDiscountValue = 0;
-  if (input.discountType === 'percentage') {
-    if (!Number.isFinite(input.discountDisplayValue) || input.discountDisplayValue < 0.01 || input.discountDisplayValue > 100) {
-      throw new Error('Yüzde indirim %0,01 ile %100 arasında olmalıdır.');
-    }
-    backendDiscountValue = percentageToBasisPoints(input.discountDisplayValue);
-  } else if (input.discountType === 'fixed') {
-    if (!Number.isFinite(input.discountDisplayValue) || input.discountDisplayValue <= 0) {
-      throw new Error('Sabit indirim tutarı sıfırdan büyük olmalıdır.');
-    }
-    backendDiscountValue = majorToMinor(input.discountDisplayValue);
-  }
-
-  const minimumOrderMinor = majorToMinor(input.minimumOrderTry || 0);
-  const startMs = new Date(input.startsAt).getTime();
-  const endMs = new Date(input.endsAt).getTime();
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
-    throw new Error('Bitiş tarihi başlangıç tarihinden sonra olmalıdır.');
-  }
-
-  const { data, error } = await supabase.rpc('admin_upsert_campaign', {
-    p_id: input.id || null,
-    p_slug: slug,
-    p_title: title,
-    p_description: input.description?.trim() || null,
-    p_banner_path: null,
-    p_discount_type: input.discountType,
-    p_discount_value: backendDiscountValue,
-    p_currency: input.discountType === 'fixed' ? (input.currency || 'TRY').toUpperCase() : null,
-    p_minimum_order_minor: minimumOrderMinor,
-    p_usage_limit: input.usageLimit && input.usageLimit > 0 ? Math.round(input.usageLimit) : null,
-    p_per_user_limit: Math.max(1, Math.round(input.perUserLimit || 1)),
-    p_starts_at: input.startsAt,
-    p_ends_at: input.endsAt,
-    p_status: input.status,
-    p_target_scope: input.targetScope,
-    p_target_ids: targetIds,
-  });
-  return unwrap<string>(data, error);
+ const title=input.title.trim(); const slug=input.slug.trim(); const targetIds=input.targetScope==='all'?[]:[...new Set((input.targetIds||[]).map(String).map(value=>value.trim()).filter(Boolean))];
+ if(title.length<2||title.length>160) throw new Error('Kampanya adı 2 ile 160 karakter arasında olmalıdır.');
+ if(!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) throw new Error('Kampanya kısa adı yalnızca küçük harf, sayı ve tire içerebilir.');
+ if((input.description||'').length>4000) throw new Error('Kampanya açıklaması 4000 karakteri aşamaz.');
+ if(input.targetScope!=='all'&&targetIds.length===0) throw new Error('Kampanya hedefi için en az bir ürün veya kategori seçin.');
+ let backendDiscountValue=0;
+ if(input.discountType==='percentage'){if(!Number.isFinite(input.discountDisplayValue)||input.discountDisplayValue<0.01||input.discountDisplayValue>100) throw new Error('Yüzde indirim %0,01 ile %100 arasında olmalıdır.'); backendDiscountValue=percentageToBasisPoints(input.discountDisplayValue);}
+ else if(input.discountType==='fixed'){if(!Number.isFinite(input.discountDisplayValue)||input.discountDisplayValue<=0) throw new Error('Sabit indirim tutarı sıfırdan büyük olmalıdır.'); backendDiscountValue=majorToMinor(input.discountDisplayValue); if(!currencyCode(input.currency,true)) throw new Error('Sabit indirim için para birimi gereklidir.');}
+ const minimumOrderMinor=majorToMinor(input.minimumOrderTry??0); const startMs=new Date(input.startsAt).getTime(); const endMs=new Date(input.endsAt).getTime(); if(!Number.isFinite(startMs)||!Number.isFinite(endMs)||endMs<=startMs) throw new Error('Bitiş tarihi başlangıç tarihinden sonra olmalıdır.');
+ const {data,error}=await supabase.rpc('admin_upsert_campaign',{p_id:input.id||null,p_slug:slug,p_title:title,p_description:input.description?.trim()||null,p_banner_path:null,p_discount_type:input.discountType,p_discount_value:backendDiscountValue,p_currency:input.discountType==='fixed'?currencyCode(input.currency,true):null,p_minimum_order_minor:minimumOrderMinor,p_usage_limit:input.usageLimit&&input.usageLimit>0?Math.round(input.usageLimit):null,p_per_user_limit:Math.max(1,Math.round(input.perUserLimit||1)),p_starts_at:input.startsAt,p_ends_at:input.endsAt,p_status:input.status,p_target_scope:input.targetScope,p_target_ids:targetIds});
+ return requiredText(unwrap<unknown>(data,error),'Kampanya kimliği',80);
 }
 
-export async function adminCampaignTargetOptions(): Promise<{ categories: PublicCategory[]; products: CatalogItem[] }> {
-  const [categories, productResult] = await Promise.all([
-    listPublicCategories(),
-    searchCatalog({ limit: 100, offset: 0, sort: 'newest' }),
-  ]);
-  return {
-    categories: Array.isArray(categories) ? categories : [],
-    products: Array.isArray(productResult?.items) ? productResult.items : [],
-  };
-}
+export async function adminCampaignTargetOptions(): Promise<{categories:PublicCategory[];products:CatalogItem[]}> { const[categories,productResult]=await Promise.all([listPublicCategories(),searchCatalog({limit:100,offset:0,sort:'newest'})]); return {categories,products:productResult.items}; }
 
-export type AdminFinanceReport = {
-  currency: string;
-  from: string;
-  to: string;
-  totals: {
-    order_count: number;
-    gross_sales_minor: number;
-    refund_minor: number;
-    net_sales_minor: number;
-    commission_minor: number;
-    estimated_payout_minor: number;
-  };
-  daily_sales: Array<{
-    date: string;
-    order_count: number;
-    gross_sales_minor: number;
-    refund_minor: number;
-    net_sales_minor: number;
-  }>;
-  vendor_income: Array<{
-    producer_id: string;
-    vendor_name: string;
-    order_count: number;
-    gross_sales_minor: number;
-    commission_minor: number;
-    estimated_payout_minor: number;
-  }>;
-};
+export type AdminFinanceReport = { currency:string; from:string; to:string; totals:{order_count:number;gross_sales_minor:number;refund_minor:number;net_sales_minor:number;commission_minor:number;estimated_payout_minor:number;}; daily_sales:Array<{date:string;order_count:number;gross_sales_minor:number;refund_minor:number;net_sales_minor:number;}>; vendor_income:Array<{producer_id:string;vendor_name:string;order_count:number;gross_sales_minor:number;commission_minor:number;estimated_payout_minor:number;}>; };
+function financeTotals(value: unknown): AdminFinanceReport['totals'] { if(!isRecord(value)) throw new Error('Finans toplamları doğrulanamadı.'); const gross=safeInteger(value.gross_sales_minor,'Brüt satış'); const refund=safeInteger(value.refund_minor,'İade toplamı'); const net=safeInteger(value.net_sales_minor,'Net satış'); if(net!==gross-refund) throw new Error('Finans toplamları matematiksel olarak tutarsız.'); return {order_count:safeInteger(value.order_count,'Sipariş sayısı'),gross_sales_minor:gross,refund_minor:refund,net_sales_minor:net,commission_minor:safeInteger(value.commission_minor,'Komisyon toplamı'),estimated_payout_minor:safeInteger(value.estimated_payout_minor,'Tahmini hakediş')}; }
+function dailyFinance(value: unknown,index:number){if(!isRecord(value)) throw new Error(`${index+1}. günlük finans kaydı doğrulanamadı.`); const gross=safeInteger(value.gross_sales_minor,'Günlük brüt satış'); const refund=safeInteger(value.refund_minor,'Günlük iade'); const net=safeInteger(value.net_sales_minor,'Günlük net satış'); if(net!==gross-refund) throw new Error(`${index+1}. günlük finans kaydı tutarsız.`); return {date:dateOnly(value.date,'Finans günü'),order_count:safeInteger(value.order_count,'Günlük sipariş sayısı'),gross_sales_minor:gross,refund_minor:refund,net_sales_minor:net};}
+function vendorFinance(value:unknown,index:number){if(!isRecord(value)) throw new Error(`${index+1}. satıcı finans kaydı doğrulanamadı.`); return {producer_id:requiredText(value.producer_id,'Satıcı kimliği',80),vendor_name:requiredText(value.vendor_name,'Satıcı adı',240),order_count:safeInteger(value.order_count,'Satıcı sipariş sayısı'),gross_sales_minor:safeInteger(value.gross_sales_minor,'Satıcı brüt satış'),commission_minor:safeInteger(value.commission_minor,'Satıcı komisyonu'),estimated_payout_minor:safeInteger(value.estimated_payout_minor,'Satıcı tahmini hakedişi')};}
+export async function adminFinanceReport(from:string,to:string):Promise<AdminFinanceReport>{dateOnly(from,'Rapor başlangıcı');dateOnly(to,'Rapor bitişi');const{data,error}=await supabase.rpc('admin_finance_report',{p_from:from,p_to:to});const raw=unwrap<unknown>(data,error);if(!isRecord(raw)) throw new Error('Finans raporu doğrulanamadı.');if(!Array.isArray(raw.daily_sales)||raw.daily_sales.length>400) throw new Error('Günlük finans listesi doğrulanamadı.');if(!Array.isArray(raw.vendor_income)||raw.vendor_income.length>5000) throw new Error('Satıcı gelir listesi doğrulanamadı.');const reportFrom=dateOnly(raw.from,'Rapor başlangıcı');const reportTo=dateOnly(raw.to,'Rapor bitişi');if(reportFrom!==from||reportTo!==to) throw new Error('Finans raporu istenen tarih aralığıyla eşleşmiyor.');return{currency:currencyCode(raw.currency,true) as string,from:reportFrom,to:reportTo,totals:financeTotals(raw.totals),daily_sales:raw.daily_sales.map(dailyFinance),vendor_income:raw.vendor_income.map(vendorFinance)};}
 
-export async function adminFinanceReport(from: string, to: string): Promise<AdminFinanceReport> {
-  const { data, error } = await supabase.rpc('admin_finance_report', { p_from: from, p_to: to });
-  const report = unwrap<AdminFinanceReport>(data, error);
-  return {
-    ...report,
-    totals: {
-      order_count: Number(report?.totals?.order_count || 0),
-      gross_sales_minor: Number(report?.totals?.gross_sales_minor || 0),
-      refund_minor: Number(report?.totals?.refund_minor || 0),
-      net_sales_minor: Number(report?.totals?.net_sales_minor || 0),
-      commission_minor: Number(report?.totals?.commission_minor || 0),
-      estimated_payout_minor: Number(report?.totals?.estimated_payout_minor || 0),
-    },
-    daily_sales: Array.isArray(report?.daily_sales) ? report.daily_sales : [],
-    vendor_income: Array.isArray(report?.vendor_income) ? report.vendor_income : [],
-  };
-}
+export type AdminReview = {id:string;user_name:string;product_name:string;rating:number;title?:string|null;comment:string;status:'pending'|'published'|'rejected'|'hidden'|'withdrawn';is_verified_purchase:boolean;created_at:string;updated_at:string;};
+const REVIEW_STATUSES=['pending','published','rejected','hidden','withdrawn'] as const;
+function normalizeReview(value:unknown,index:number):AdminReview{if(!isRecord(value)) throw new Error(`${index+1}. yorum doğrulanamadı.`);const rating=safeInteger(value.rating,'Yorum puanı',1,5);if(typeof value.is_verified_purchase!=='boolean') throw new Error(`${index+1}. doğrulanmış alışveriş durumu doğrulanamadı.`);return{id:requiredText(value.id,'Yorum kimliği',80),user_name:requiredText(value.user_name,'Yorum sahibi',240),product_name:requiredText(value.product_name,'Yorum ürünü',300),rating,title:optionalText(value.title,'Yorum başlığı',300),comment:typeof value.comment==='string'&&value.comment.length<=5000?value.comment:'',status:oneOf(value.status,'Yorum durumu',REVIEW_STATUSES),is_verified_purchase:value.is_verified_purchase,created_at:dateTime(value.created_at,'Yorum oluşturulma tarihi'),updated_at:dateTime(value.updated_at,'Yorum güncelleme tarihi')};}
+export async function adminListReviews():Promise<AdminReview[]>{const{data,error}=await supabase.rpc('admin_list_reviews');const rows=unwrap<unknown>(data,error);if(!Array.isArray(rows)||rows.length>5000) throw new Error('Yorum listesi doğrulanamadı.');return rows.map(normalizeReview);}
+export async function adminModerateReview(reviewId:string,status:'published'|'rejected'|'hidden',reason?:string|null){const id=requiredText(reviewId,'Yorum kimliği',80);const moderationReason=optionalText(reason,'Moderasyon gerekçesi',1000);const{data,error}=await supabase.rpc('admin_moderate_review_v1',{p_review_id:id,p_status:status,p_reason:moderationReason});return unwrap<unknown>(data,error);}
 
-export type AdminReview = {
-  id: string;
-  user_name: string;
-  product_name: string;
-  rating: number;
-  title?: string | null;
-  comment: string;
-  status: 'pending' | 'published' | 'rejected' | 'hidden' | 'withdrawn';
-  is_verified_purchase: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
-export async function adminListReviews(): Promise<AdminReview[]> {
-  const { data, error } = await supabase.rpc('admin_list_reviews');
-  const rows = unwrap<any[]>(data, error);
-  return (Array.isArray(rows) ? rows : []).map(row => ({
-    ...row,
-    id: String(row.id),
-    rating: Math.max(0, Math.min(5, Number(row.rating || 0))),
-    user_name: String(row.user_name || 'Kullanıcı'),
-    product_name: String(row.product_name || 'Ürün'),
-    comment: String(row.comment || ''),
-    is_verified_purchase: row.is_verified_purchase === true,
-  }));
-}
-
-export async function adminModerateReview(
-  reviewId: string,
-  status: 'published' | 'rejected' | 'hidden',
-  reason?: string | null,
-) {
-  const { data, error } = await supabase.rpc('admin_moderate_review_v1', {
-    p_review_id: reviewId,
-    p_status: status,
-    p_reason: reason?.trim() || null,
-  });
-  return unwrap<any>(data, error);
-}
-
-export function slugifyCampaign(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLocaleLowerCase('tr-TR')
-    .replace(/ı/g, 'i')
-    .replace(/ğ/g, 'g')
-    .replace(/ü/g, 'u')
-    .replace(/ş/g, 's')
-    .replace(/ö/g, 'o')
-    .replace(/ç/g, 'c')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
-}
-
-export function percentageToBasisPoints(value: number) {
-  return Math.round(Number(value || 0) * 100);
-}
-
-export function basisPointsToPercentage(value: number | null | undefined) {
-  return Number(value || 0) / 100;
-}
-
-export function majorToMinor(value: number | null | undefined) {
-  return Math.max(0, Math.round(Number(value || 0) * 100));
-}
-
-export function minorToMajor(value: number | null | undefined) {
-  return Number(value || 0) / 100;
-}
-
-export function minorToTry(value: number | null | undefined) {
-  return minorToMajor(value).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-export function adminErrorMessage(error: unknown, fallback = 'İşlem tamamlanamadı.') {
-  const message = String((error as any)?.message || (error as any)?.error_description || '').trim();
-  if (!message) return fallback;
-  if (message.includes('admin_required')) return 'Bu işlem için yönetici yetkisi gerekiyor.';
-  if (message.includes('active_campaign_outside_window')) return 'Aktif kampanyanın başlangıç ve bitiş aralığı şu anı kapsamalıdır.';
-  if (message.includes('campaign_target_not_found')) return 'Seçilen ürün veya kategori artık bulunamadı. Listeyi yenileyip tekrar deneyin.';
-  if (message.includes('invalid_finance_date_range')) return 'Finans raporu tarih aralığı geçersiz.';
-  if (message.includes('invalid_campaign')) return 'Kampanya bilgileri backend doğrulamasından geçmedi.';
-  return message.length <= 240 ? message : fallback;
-}
+export function slugifyCampaign(value:string){return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('tr-TR').replace(/ı/g,'i').replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ö/g,'o').replace(/ç/g,'c').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,80);}
+export function percentageToBasisPoints(value:number){if(!Number.isFinite(value)||value<0||value>100) throw new Error('Yüzde değeri doğrulanamadı.');return Math.round(value*100);}
+export function basisPointsToPercentage(value:number|null|undefined){return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value/100:Number.NaN;}
+export function majorToMinor(value:number|null|undefined){if(typeof value!=='number'||!Number.isFinite(value)||value<0) throw new Error('Tutar doğrulanamadı.');const minor=Math.round(value*100);if(!Number.isSafeInteger(minor)) throw new Error('Tutar doğrulanamadı.');return minor;}
+export function minorToMajor(value:number|null|undefined){return typeof value==='number'&&Number.isSafeInteger(value)?value/100:Number.NaN;}
+export function minorToTry(value:number|null|undefined){const major=minorToMajor(value);return Number.isFinite(major)?major.toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2}):'Tutar doğrulanamadı';}
+export function formatMinorCurrency(value:unknown,currency:unknown){if(typeof value!=='number'||!Number.isSafeInteger(value)) return 'Tutar doğrulanamadı';const code=typeof currency==='string'?currency.trim().toUpperCase():'';if(!/^[A-Z]{3}$/.test(code)) return 'Para birimi doğrulanamadı';try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency:code,maximumFractionDigits:2}).format(value/100);}catch{return `${(value/100).toFixed(2)} ${code}`;}}
+export function adminErrorMessage(error:unknown,fallback='İşlem tamamlanamadı.'){const message=error instanceof Error?error.message.trim():'';if(!message)return fallback;if(message.includes('admin_required'))return'Bu işlem için yönetici yetkisi gerekiyor.';if(message.includes('active_campaign_outside_window'))return'Aktif kampanyanın başlangıç ve bitiş aralığı şu anı kapsamalıdır.';if(message.includes('campaign_target_not_found'))return'Seçilen ürün veya kategori artık bulunamadı. Listeyi yenileyip tekrar deneyin.';if(message.includes('invalid_finance_date_range'))return'Finans raporu tarih aralığı geçersiz.';if(message.includes('invalid_campaign'))return'Kampanya bilgileri backend doğrulamasından geçmedi.';return message.length<=240?message:fallback;}
