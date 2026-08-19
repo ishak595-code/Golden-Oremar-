@@ -29,9 +29,9 @@ function eventState(event:PublicEvent,now:number){
  return{label:'Kayıt kapalı',className:'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200'};
 }
 function capacityLabel(event:PublicEvent){
- if(event.capacity==null)return'';
- if(event.waitlistOnly||event.remainingCapacity===0)return'Kontenjan dolu, bekleme listesi açık';
- if(event.remainingCapacity==null)return'';
+ if(event.capacity==null||event.remainingCapacity==null)return'';
+ if(event.reservable&&event.waitlistOnly)return event.remainingCapacity===0?'Kontenjan dolu, bekleme listesi açık':'Bekleme listesi açık';
+ if(event.remainingCapacity===0)return'Kontenjan dolu';
  return`${event.remainingCapacity} kişilik yer kaldı`;
 }
 function CapacityMeter({event}:{event:PublicEvent}){
@@ -58,7 +58,7 @@ export default function HomeEventsSpotlight(){
  if(!featured)return null;
  const featuredUrl=eventHref(featured.slug),timer=countdown(featured,now),state=eventState(featured,now),image=publicContentUrl(featured.imagePath);
  return <section className="mb-8" aria-labelledby="home-events-heading">
-  {shareStatus?<div role="status" aria-live="polite" className="sr-only">{shareStatus}</div>:null}
+  {shareStatus?<div role="status" aria-live="polite" className="mb-3 rounded-xl border border-brand-gold/20 bg-brand-gold/10 px-4 py-3 text-sm font-semibold text-brand-green dark:text-brand-gold">{shareStatus}</div>:null}
   <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><div className="text-xs font-bold uppercase tracking-[0.16em] text-brand-gold">Golden Oremar Etkinlikleri</div><h2 id="home-events-heading" className="mt-1 text-2xl font-black text-brand-green dark:text-brand-gold">Yaklaşan etkinlikler</h2><p className="mt-1 max-w-2xl text-sm text-gray-500">Herkese açık etkinlikleri keşfedin, yerinizi ayırın veya kontenjan dolduysa bekleme listesine katılın.</p></div><a href={eventsHref()} className="inline-flex min-h-11 items-center rounded-xl border px-4 font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Tüm etkinlikler<ArrowRight aria-hidden="true" className="ml-2 h-4 w-4"/></a></div>
   <div className="grid gap-4 lg:grid-cols-[1.45fr_.55fr]">
    <article className="relative overflow-hidden rounded-[2rem] border border-brand-gold/25 bg-brand-green text-white shadow-xl">
