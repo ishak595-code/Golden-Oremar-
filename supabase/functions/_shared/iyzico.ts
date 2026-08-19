@@ -7,6 +7,19 @@ function nonEmpty(value: unknown, max = 500) {
   return normalized;
 }
 
+function scalarText(value: unknown, max = 500) {
+  if (typeof value === "string") return nonEmpty(value, max);
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const normalized = String(value);
+    return normalized.length <= max ? normalized : "";
+  }
+  if (typeof value === "bigint") {
+    const normalized = value.toString();
+    return normalized.length <= max ? normalized : "";
+  }
+  return "";
+}
+
 function safeBaseUrl(value: string) {
   const normalized = value.replace(/\/$/, "");
   if (normalized !== "https://api.iyzipay.com" && normalized !== "https://sandbox-api.iyzipay.com") {
@@ -85,7 +98,7 @@ function decimalSignatureValue(value: unknown) {
     const fixed = value.toFixed(12).replace(/0+$/, "").replace(/\.$/, "");
     return fixed || "0";
   }
-  const raw = nonEmpty(value, 80);
+  const raw = scalarText(value, 80);
   if (!raw || !/^-?[0-9]+(?:\.[0-9]+)?$/.test(raw)) return "";
   if (!raw.includes(".")) return raw;
   return raw.replace(/0+$/, "").replace(/\.$/, "");
@@ -93,26 +106,26 @@ function decimalSignatureValue(value: unknown) {
 
 export async function verifyIyzicoNon3dResponseSignature(data: IyzicoJson) {
   const { secretKey } = getIyzicoConfig();
-  const paymentId = nonEmpty(data.paymentId, 120);
-  const currency = nonEmpty(data.currency, 3).toUpperCase();
-  const basketId = nonEmpty(data.basketId, 180);
-  const conversationId = nonEmpty(data.conversationId, 180);
+  const paymentId = scalarText(data.paymentId, 120);
+  const currency = scalarText(data.currency, 3).toUpperCase();
+  const basketId = scalarText(data.basketId, 180);
+  const conversationId = scalarText(data.conversationId, 180);
   const paidPrice = decimalSignatureValue(data.paidPrice);
   const price = decimalSignatureValue(data.price);
-  const received = nonEmpty(data.signature, 256).toLowerCase();
+  const received = scalarText(data.signature, 256).toLowerCase();
   if (!paymentId || !/^[A-Z]{3}$/.test(currency) || !basketId || !conversationId || !paidPrice || !price || !received) return false;
   const expected = await hmacHex(secretKey, [paymentId, currency, basketId, conversationId, paidPrice, price].join(":"));
   return safeHexEqual(expected, received);
 }
 
 export async function verifyIyzicoWebhookV3(data: IyzicoJson, signatureHeader: string | null) {
-  const received = nonEmpty(signatureHeader, 256).toLowerCase();
+  const received = scalarText(signatureHeader, 256).toLowerCase();
   if (!received) return false;
   const { secretKey } = getIyzicoConfig();
-  const eventType = nonEmpty(data.iyziEventType, 120);
-  const paymentId = nonEmpty(data.paymentId, 120) || nonEmpty(data.iyziPaymentId, 120);
-  const conversationId = nonEmpty(data.paymentConversationId, 180);
-  const status = nonEmpty(data.status, 80);
+  const eventType = scalarText(data.iyziEventType, 120);
+  const paymentId = scalarText(data.paymentId, 120) || scalarText(data.iyziPaymentId, 120);
+  const conversationId = scalarText(data.paymentConversationId, 180);
+  const status = scalarText(data.status, 80);
   if (!eventType || !paymentId || !conversationId || !status) return false;
   const message = secretKey + eventType + paymentId + conversationId + status;
   const expected = await hmacHex(secretKey, message);
@@ -120,7 +133,7 @@ export async function verifyIyzicoWebhookV3(data: IyzicoJson, signatureHeader: s
 }
 
 export function iyzicoError(data: IyzicoJson, fallback = "provider_request_failed") {
-  const code = nonEmpty(data.errorCode, 120) || fallback;
-  const message = nonEmpty(data.errorMessage, 400);
+  const code = scalarText(data.errorCode, 120) || fallback;
+  const message = scalarText(data.errorMessage, 400);
   return { code, message };
 }
