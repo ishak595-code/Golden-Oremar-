@@ -43,6 +43,17 @@ export function buildProducerUrl(reference: unknown, baseHref?: string): string 
   return url.toString();
 }
 
+export function buildEventUrl(reference: unknown, baseHref?: string): string {
+  const safeReference = cleanPublicReference(reference);
+  if (!safeReference) throw new Error('invalid_event_reference');
+  const url = safeNavigationBaseUrl(baseHref);
+  url.search = '';
+  url.hash = '';
+  url.searchParams.set('tab', 'events');
+  url.searchParams.set('event', safeReference);
+  return url.toString();
+}
+
 export function buildSearchUrl(input: {
   query?: unknown;
   categorySlug?: unknown;
@@ -68,6 +79,7 @@ export function parsePublicRoute(href?: string) {
     tab,
     productReference: cleanPublicReference(url.searchParams.get('product')),
     producerReference: cleanPublicReference(url.searchParams.get('producer')),
+    eventReference: cleanPublicReference(url.searchParams.get('event')),
     query: String(url.searchParams.get('q') || '').trim().slice(0, 160),
     categorySlug: cleanPublicReference(url.searchParams.get('category')),
     producerId: cleanPublicReference(url.searchParams.get('producerId')),
