@@ -4,8 +4,8 @@
   "branch": "agent/admin-supabase-retire-node",
   "pullRequest": 47,
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "latestFunctionalHead": "62fdc869bfbe4529e56433db26af5719ecc9a2f1",
-  "stateRecordedAt": "2026-08-19T08:01:30+02:00",
+  "latestFunctionalHead": "a5750854a6f85ff1ebdd8e12ddde85aac917f67f",
+  "stateRecordedAt": "2026-08-19T10:37:13+02:00",
   "applicationShell": {
     "desktopTopMenu": false,
     "hamburgerMenu": false,
@@ -25,8 +25,8 @@
     }
   },
   "backend": {
-    "liveMigrationCount": 154,
-    "latestMigration": "20260819055617_extend_admin_producer_application_location_snapshot",
+    "liveMigrationCount": 157,
+    "latestMigration": "20260819083519_harden_message_attachment_update_scope",
     "migrationReconciliation": "LIVE_HISTORY_AND_FEATURE_BRANCH_FILES_ALIGNED_FOR_CURRENT_HARDENING_SERIES",
     "securityAdvisorLints": 0,
     "checkout": {
@@ -62,6 +62,39 @@
       "producer": "full-pending-active-suspended-rejected-closed-lifecycle",
       "producerApplication": "strict-kyc-document-organic-commitment-and-structured-location-contracts",
       "privateDocumentPreview": "validated-private-storage-path-and-https-signed-url"
+    },
+    "marketplaceMessaging": {
+      "canonicalConversationBackend": true,
+      "questionEntrypoints": ["product", "producer-product", "post-purchase-order-item"],
+      "customerContinuation": "AccountCenter -> MessagesPanel",
+      "sellerContinuation": "SellerPanel -> MessagesPanel scope=producer",
+      "sellerScopedRpc": "list_my_producer_conversations_v1",
+      "moderationAuthority": "private.message_moderation_settings controlled by super_admin RPC",
+      "moderationServerAuthoritative": true,
+      "defaultBlockedCategories": [
+        "email",
+        "phone",
+        "messaging-apps",
+        "external-links",
+        "social-handles",
+        "bank-iban",
+        "external-payments",
+        "qr-karekod",
+        "custom-phrases"
+      ],
+      "supportFilterDefault": false,
+      "attachmentPolicy": {
+        "privateBucket": "message-attachments",
+        "absoluteBucketMaxMb": 20,
+        "absoluteMimeTypes": ["image/jpeg", "image/png", "image/webp", "image/avif", "application/pdf"],
+        "superAdminCanTightenAttachmentCountAndMb": true,
+        "uploadRequiresOpenConversationParticipation": true,
+        "unusedUpdateRequiresOpenConversationParticipation": true,
+        "participantReadAfterMessageBinding": true,
+        "neutralizedRemoteFilename": true,
+        "signedUrlHttpsOnly": true,
+        "ocrContentModerationConnected": false
+      }
     }
   },
   "completedCurrentHardening": [
@@ -114,7 +147,31 @@
     "producer-application-kyc-document-organic-and-commitment-contract-hardening",
     "producer-document-private-preview-url-hardening",
     "producer-application-ui-expired-document-and-structured-village-visibility",
-    "admin-data-contract-audit-wired-into-release-audit"
+    "admin-data-contract-audit-wired-into-release-audit",
+    "account-overview-single-canonical-normalizer-and-live-role-contract",
+    "customer-notification-server-authoritative-contract",
+    "customer-payment-activity-strict-contract",
+    "customer-order-list-detail-status-money-and-arithmetic-contract",
+    "customer-favorite-following-and-gift-strict-contracts",
+    "customer-newsletter-account-closure-and-push-live-lifecycle-contracts",
+    "customer-profile-and-address-backend-aligned-validation",
+    "customer-help-content-strict-published-document-contract",
+    "customer-return-options-request-detail-refund-and-evidence-strict-contract",
+    "customer-return-dialog-canonical-accessibility-hook",
+    "customer-return-contract-audit-wired-into-release-audit",
+    "marketplace-messaging-strict-conversation-and-message-contracts",
+    "product-and-post-purchase-question-canonical-producer-conversations",
+    "shared-producer-question-composer",
+    "seller-customer-questions-reuse-canonical-messages-panel",
+    "seller-scoped-conversation-list-rpc",
+    "super-admin-configurable-off-platform-trade-message-moderation",
+    "server-authoritative-message-moderation-not-client-regex-policy",
+    "message-attachment-live-policy-client-controls",
+    "message-attachment-neutral-remote-filenames",
+    "message-attachment-open-conversation-upload-scope",
+    "message-attachment-unused-update-open-conversation-scope",
+    "message-attachment-participant-read-policy-verified",
+    "marketplace-messaging-contract-audit-wired-into-release-audit"
   ],
   "canonicalRuntimePaths": {
     "seller": "AccountCenter -> SellerPanel -> producer feature modules",
@@ -123,7 +180,10 @@
     "voiceSearch": "App header SpeechRecognition UX -> src/native.ts adapter on Android/iOS",
     "storefront": "Supabase public storefront config + live catalog -> HomeSection",
     "checkout": "src/features/cart/api.ts -> create_customer_order_v5",
-    "adminReleaseAudit": "npm run audit:release -> release-audit.mjs -> admin-data-contract-audit.mjs"
+    "customerMessaging": "product/order Soru sor -> start_producer_conversation_v1 -> AccountCenter/MessagesPanel",
+    "sellerMessaging": "SellerPanel/Müşteri Soruları -> same MessagesPanel scope=producer -> list_my_producer_conversations_v1",
+    "messageModeration": "Super Admin/AdminSettings -> admin_update_message_moderation_v1 -> private.message_moderation_settings -> server message insert validation",
+    "adminReleaseAudit": "npm run audit:release -> release-audit.mjs -> admin-data-contract-audit.mjs -> customer-return-contract-audit.mjs -> message-commerce-contract-audit.mjs"
   },
   "truthfulnessInvariants": [
     "no-fake-price-stock-rating-location-currency-payment-provider-legal-copy-support-identity-or-credentials",
@@ -149,20 +209,25 @@
     "expired-producer-document-must-never-be-presented-as-pending",
     "structured-producer-village-province-district-country-data-must-remain-visible-to-admin-review",
     "admin-inventory-rpc-must-not-reference-nonexistent-product-variant-columns",
+    "marketplace-customer-and-producer-must-share-one-canonical-conversation-system",
+    "off-platform-trade-filter-policy-must-remain-server-authoritative-and-super-admin-configurable",
+    "seller-messaging-must-not-create-a-second-chat-runtime",
+    "message-attachment-upload-and-unused-update-must-require-open-conversation-participation",
+    "original-message-attachment-filename-must-not-be-exposed-to-counterparty",
     "newest-head-is-not-claimed-ci-green"
   ],
   "releaseValidation": {
-    "latestHeadCi": "NOT_EXECUTED_GITHUB_ACTIONS_RUNNER_ALLOCATION_BILLING_OR_SPENDING_LIMIT_BLOCKER",
+    "latestHeadCi": "NOT_EXECUTED_GITHUB_ACTIONS_WORKFLOW_DISPATCH_NOT_RUN_FOR_CURRENT_HEAD",
     "automaticWorkflowRunsPaused": true,
-    "mobileQualityTrigger": "workflow_dispatch-only-until-runner-allocation-restored",
+    "mobileQualityTrigger": "workflow_dispatch-only-until-current-head-run-is-explicitly-invoked",
     "lastRecordedBlockedRun": 32029478472,
     "previousAndroidReleaseBundleBaseline": "PASS_PREVIOUS_BASELINE_NOT_CURRENT_HEAD",
     "previousIosSimulatorCompileBaseline": "PASS_PREVIOUS_BASELINE_NOT_CURRENT_HEAD",
     "mergeAllowed": false,
-    "mergeRule": "Restore or manually invoke one current-head mobile quality gate after runner allocation is restored, require reachable gates green, then require explicit user authorization."
+    "mergeRule": "Invoke one current-head mobile quality gate when runner allocation is available, require reachable gates green, then require explicit user authorization."
   },
   "externalBlockers": [
-    "github-actions-billing-or-spending-limit",
+    "current-head-mobile-quality-gate-not-executed",
     "catalog-public-real-product-assets-missing",
     "content-public-real-content-assets-missing",
     "business-and-support-identity",
@@ -172,12 +237,13 @@
     "production-fcm-apns-provider-credentials",
     "play-store-app-store-signing-release-configuration",
     "real-public-https-share-origin",
-    "fourteen-active-perishable-variant-real-shipping-weights"
+    "fourteen-active-perishable-variant-real-shipping-weights",
+    "image-pdf-embedded-contact-information-ocr-moderation-not-connected"
   ],
   "historicalStatePreservation": {
     "gitHistoryPreservesPriorVersions": true,
-    "previousProjectStateBlob": "9b4732dc51ab2f7d0a1d6626f70d6d68ef6be537",
+    "previousProjectStateBlob": "82028d42490bab773ba953fc22d7c4558b69c3a6",
     "note": "Applied Supabase migration history is retained for reproducibility. Obsolete active runtime, wrappers and one-time integration duplicates are removed instead of preserved in the working tree."
   },
-  "nextBlock": "continue-current-branch-admin-ui-data-contract-category-event-stock-return-consistency-and-remaining-runtime-scan-without-repeating-completed-work"
+  "nextBlock": "continue-current-branch-remaining-account-seller-admin-runtime-contract-and-mobile-ui-quality-scan-without-repeating-completed-return-or-marketplace-messaging-work"
 }
