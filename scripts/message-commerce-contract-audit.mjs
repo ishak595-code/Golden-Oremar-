@@ -88,5 +88,18 @@ if(migration){
  requirePattern(migration,/private\.get_my_message_policy_v1/,'Canonical migration must expose only the sanitized authenticated message policy.');
 }
 
+const uploadScope=read('supabase/migrations/20260819083413_harden_message_attachment_upload_scope.sql');
+if(uploadScope){
+ requirePattern(uploadScope,/private\.can_upload_message_attachment_v1/,'Message attachment uploads must remain scoped to an authenticated open conversation.');
+ requirePattern(uploadScope,/storage_message_attachments_insert_own_v2/,'Message attachment INSERT policy must remain conversation-scoped.');
+ requirePattern(uploadScope,/conversation\.status<>'closed'/,'Closed conversations must not accept new message attachment uploads.');
+}
+
+const updateScope=read('supabase/migrations/20260819083519_harden_message_attachment_update_scope.sql');
+if(updateScope){
+ requirePattern(updateScope,/storage_message_attachments_update_own_unused_v2/,'Unused attachment UPDATE policy must remain conversation-scoped.');
+ requirePattern(updateScope,/private\.can_upload_message_attachment_v1\(name\)/,'Updated attachment paths must pass the same canonical upload authorization.');
+}
+
 if(failures.length){console.error('Golden Oremar marketplace messaging contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
 console.log('Golden Oremar marketplace messaging contract audit passed: questions, seller replies, attachments, server moderation and Super Admin policy remain canonical.');
