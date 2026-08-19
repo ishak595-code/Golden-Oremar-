@@ -4,8 +4,8 @@
   "branch": "agent/admin-supabase-retire-node",
   "pullRequest": 47,
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "latestFunctionalHead": "9c5c263f450da93dc4b761b267ef03b47163885b",
-  "stateRecordedAt": "2026-08-19T02:47:00+02:00",
+  "latestFunctionalHead": "62fdc869bfbe4529e56433db26af5719ecc9a2f1",
+  "stateRecordedAt": "2026-08-19T08:01:30+02:00",
   "applicationShell": {
     "desktopTopMenu": false,
     "hamburgerMenu": false,
@@ -25,8 +25,8 @@
     }
   },
   "backend": {
-    "liveMigrationCount": 151,
-    "latestMigration": "20260818232517_verify_producer_product_gallery_assets",
+    "liveMigrationCount": 154,
+    "latestMigration": "20260819055617_extend_admin_producer_application_location_snapshot",
     "migrationReconciliation": "LIVE_HISTORY_AND_FEATURE_BRANCH_FILES_ALIGNED_FOR_CURRENT_HARDENING_SERIES",
     "securityAdvisorLints": 0,
     "checkout": {
@@ -53,6 +53,15 @@
       "producerStorageInsertRequiresVerifiedActiveProducer": true,
       "producerStorageDeleteRequiresUnusedOwnObject": true,
       "producerStorageOverwriteUpdateDisabled": true
+    },
+    "adminContractHardening": {
+      "category": "strict-no-invented-name-sort-or-count",
+      "event": "strict-event-and-reservation-contracts",
+      "return": "strict-money-status-item-and-refund-contracts",
+      "inventory": "strict-stock-currency-producer-lifecycle-contracts",
+      "producer": "full-pending-active-suspended-rejected-closed-lifecycle",
+      "producerApplication": "strict-kyc-document-organic-commitment-and-structured-location-contracts",
+      "privateDocumentPreview": "validated-private-storage-path-and-https-signed-url"
     }
   },
   "completedCurrentHardening": [
@@ -93,7 +102,19 @@
     "admin-layout-producer-menu-path-removed",
     "legacy-admin-entry-wrapper-removed",
     "app-direct-canonical-admin-page-lazy-import",
-    "release-audit-canonical-seller-admin-storefront-theme-guards"
+    "release-audit-canonical-seller-admin-storefront-theme-guards",
+    "admin-category-fail-closed-contract",
+    "admin-event-and-reservation-fail-closed-contract",
+    "admin-return-financial-and-status-fail-closed-contract",
+    "admin-inventory-fail-closed-contract",
+    "live-admin-inventory-rpc-nonexistent-variant-deleted-at-filter-fixed",
+    "producer-admin-full-lifecycle-status-contract",
+    "producer-admin-ui-full-status-filter-and-managed-transition-guard",
+    "producer-application-structured-location-admin-snapshot",
+    "producer-application-kyc-document-organic-and-commitment-contract-hardening",
+    "producer-document-private-preview-url-hardening",
+    "producer-application-ui-expired-document-and-structured-village-visibility",
+    "admin-data-contract-audit-wired-into-release-audit"
   ],
   "canonicalRuntimePaths": {
     "seller": "AccountCenter -> SellerPanel -> producer feature modules",
@@ -101,7 +122,8 @@
     "dialog": "src/features/accessibility/useAccessibleDialog.ts",
     "voiceSearch": "App header SpeechRecognition UX -> src/native.ts adapter on Android/iOS",
     "storefront": "Supabase public storefront config + live catalog -> HomeSection",
-    "checkout": "src/features/cart/api.ts -> create_customer_order_v5"
+    "checkout": "src/features/cart/api.ts -> create_customer_order_v5",
+    "adminReleaseAudit": "npm run audit:release -> release-audit.mjs -> admin-data-contract-audit.mjs"
   },
   "truthfulnessInvariants": [
     "no-fake-price-stock-rating-location-currency-payment-provider-legal-copy-support-identity-or-credentials",
@@ -122,6 +144,11 @@
     "admin-must-not-contain-a-second-producer-runtime-path",
     "home-storefront-must-not-hide-server-failure-with-hardcoded-merchandising-copy",
     "theme-accent-backgrounds-must-use-theme-aware-foreground-contrast",
+    "admin-category-event-return-inventory-producer-and-producer-application-data-must-fail-closed",
+    "producer-pending-rejected-or-closed-status-must-never-be-presented-as-active-or-suspended",
+    "expired-producer-document-must-never-be-presented-as-pending",
+    "structured-producer-village-province-district-country-data-must-remain-visible-to-admin-review",
+    "admin-inventory-rpc-must-not-reference-nonexistent-product-variant-columns",
     "newest-head-is-not-claimed-ci-green"
   ],
   "releaseValidation": {
@@ -149,8 +176,8 @@
   ],
   "historicalStatePreservation": {
     "gitHistoryPreservesPriorVersions": true,
-    "previousProjectStateBlob": "20c2cdad2fc7c2f6afb52138cc26a8834f476115",
+    "previousProjectStateBlob": "9b4732dc51ab2f7d0a1d6626f70d6d68ef6be537",
     "note": "Applied Supabase migration history is retained for reproducibility. Obsolete active runtime, wrappers and one-time integration duplicates are removed instead of preserved in the working tree."
   },
-  "nextBlock": "continue-current-branch-account-catalog-card-admin-data-contract-and-ui-scan-without-repeating-completed-work"
+  "nextBlock": "continue-current-branch-admin-ui-data-contract-category-event-stock-return-consistency-and-remaining-runtime-scan-without-repeating-completed-work"
 }
