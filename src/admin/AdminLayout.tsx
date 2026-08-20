@@ -60,6 +60,7 @@ const ADMIN_MENU_GROUPS: MenuGroup[] = [
   { title: 'Pazarlama ve Finans', items: [
     { id: 'campaigns', label: 'Kampanyalar', icon: Megaphone },
     { id: 'finance', label: 'Muhasebe ve Finans', icon: DollarSign },
+    { id: 'producer-payouts', label: 'Satıcı Ödeme ve IBAN', icon: DollarSign, superAdminOnly: true },
     { id: 'payment-controls', label: 'Ödeme Altyapısı', icon: CreditCard, superAdminOnly: true },
     { id: 'transactional-emails', label: 'Makbuz E-posta Kuyruğu', icon: Mail, superAdminOnly: true },
     { id: 'notifications', label: 'Bildirim Merkezi', icon: Bell },
