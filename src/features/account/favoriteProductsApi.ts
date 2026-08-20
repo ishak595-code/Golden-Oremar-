@@ -4,7 +4,7 @@ import { normalizeProductHandlingProfile, type ProductHandlingProfile } from '..
 export type FavoriteProductItem={
  productId:string;legacyId:string|null;slug:string;name:string;shortDescription:string;origin:string|null;currency:string;
  stockMode:'tracked'|'preorder'|'unlimited'|'seasonal';availableQuantity:number|null;handlingProfile:ProductHandlingProfile;
- producer:{id:string;name:string;verified:boolean;originVerified:boolean;locationLabel:string;storeKind:'official'|'independent';storefrontTier:'standard'|'signature';badgeTone:'ruby'|'blue';storeBadgeLabel:string};
+ producer:{id:string;name:string;verified:boolean;originVerified:boolean;locationLabel:string;storeKind:'official'|'independent';storefrontTier:'standard'|'verified'|'signature';badgeTone:'ruby'|'blue';storeBadgeLabel:string};
  variant:{id:string;name:string;priceMinor:number;compareAtPriceMinor:number|null}|null;imagePath:string|null;available:boolean;favoritedAt:string;
 };
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -21,7 +21,7 @@ function currency(v:unknown){const s=text(v,'Para birimi',3).toUpperCase();if(!/
 function normalize(v:unknown,index:number):FavoriteProductItem{
  if(!record(v)||!record(v.producer)||!record(v.variant))throw new Error(`${index+1}. favori ürün doğrulanamadı.`);
  const producer=v.producer,kind=text(producer.storeKind,'Mağaza türü',30) as FavoriteProductItem['producer']['storeKind'];if(!['official','independent'].includes(kind))throw new Error('Mağaza türü doğrulanamadı.');
- const tier=text(producer.storefrontTier,'Vitrin seviyesi',30) as FavoriteProductItem['producer']['storefrontTier'];if(!['standard','signature'].includes(tier))throw new Error('Vitrin seviyesi doğrulanamadı.');
+ const tier=text(producer.storefrontTier,'Vitrin seviyesi',30) as FavoriteProductItem['producer']['storefrontTier'];if(!['standard','verified','signature'].includes(tier))throw new Error('Vitrin seviyesi doğrulanamadı.');
  const tone=text(producer.badgeTone,'Rozet tonu',20) as FavoriteProductItem['producer']['badgeTone'];if((kind==='official'&&tone!=='ruby')||(kind==='independent'&&tone!=='blue'))throw new Error('Mağaza rozeti kimliği tutarsız.');
  const stockMode=text(v.stockMode,'Stok modu',40) as FavoriteProductItem['stockMode'];if(!STOCK_MODES.has(stockMode))throw new Error('Stok modu doğrulanamadı.');
  let variant:FavoriteProductItem['variant']=null;if(v.variant.id!=null){variant={id:uuid(v.variant.id,'Varyant kimliği'),name:text(v.variant.name,'Varyant adı',240),priceMinor:integer(v.variant.priceMinor,'Fiyat'),compareAtPriceMinor:optionalInteger(v.variant.compareAtPriceMinor,'Karşılaştırma fiyatı')};}
