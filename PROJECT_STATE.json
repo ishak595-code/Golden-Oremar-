@@ -4,8 +4,8 @@
   "branch": "agent/admin-supabase-retire-node",
   "pullRequest": 47,
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "latestFunctionalHead": "9b077d399a9f1b837d86eeaf54bc1e6eb9750e41",
-  "stateRecordedAt": "2026-08-20T22:46:00+02:00",
+  "latestFunctionalHead": "e024e3428468ef1122068aa334d1b94369cab281",
+  "stateRecordedAt": "2026-08-20T23:26:34+02:00",
   "releaseStatus": "BLOCKED_PENDING_EXTERNAL_PRODUCTION_INPUTS_AND_CURRENT_HEAD_EXECUTED_QUALITY_GATE",
   "applicationShell": {
     "nativeTarget": ["android", "ios"],
@@ -32,17 +32,22 @@
     "missingBeforeCommercialLaunch": [
       "registered legal/trade identity",
       "open commercial/service address",
-      "applicable tax/trade registry details",
-      "final data-controller identity and legally required application channels"
+      "registered country/data-controller identity",
+      "final legal-document approval"
     ]
   },
   "backend": {
     "provider": "Supabase",
     "legacyFirebaseCustomerRuntimeRetired": true,
     "legacyNodeSqliteRuntimeRetired": true,
-    "liveMigrationCount": 269,
-    "latestMigration": "20260820205756_strengthen_golden_oremar_legal_disclosures_2026",
+    "liveMigrationCount": 276,
+    "latestMigration": "20260820212614_deny_direct_client_access_to_admin_audit_logs_v1",
     "securityAdvisorLints": 0,
+    "missingPrivateFunctionReferences": 0,
+    "missingPublicFunctionReferences": 0,
+    "superAdminCompatibilityHelperRestored": true,
+    "superAdminAuditLedgerPresent": true,
+    "superAdminAuditLedgerDirectClientAccess": false,
     "sensitivePrivateTableDirectAnonAuthenticatedGrants": 0,
     "currentPublicReadRpcs": {
       "productDetail": "get_public_product_detail_v6",
@@ -83,6 +88,7 @@
     "missingShippingWeights": 40,
     "catalogPublicStorageObjects": 0,
     "contentPublicStorageObjects": 0,
+    "eventPublicStorageObjects": 0,
     "missingAssetsFailClosed": true,
     "cardIdentitySource": "single canonical catalog payload",
     "cardIdentityFields": [
@@ -116,6 +122,10 @@
     "defectiveWrongDamagedGoodsRightsPreserved": true,
     "privacyNoticeDescribesCollectionPurposesRecipientsLegalBasesAndRights": true,
     "commercialLaunchLegalIdentityGate": true,
+    "registeredLegalNameConfigured": false,
+    "registeredAddressConfigured": false,
+    "registeredCountryCodeConfigured": false,
+    "legalDocumentsFinalized": false,
     "finalLegalComplianceClaimed": false
   },
   "finance": {
@@ -130,7 +140,14 @@
     "duplicateSellerEntitlementPrevented": true,
     "adminSettlementFunction": "admin-order-settlement",
     "superAdminPayoutNotificationTarget": "/?tab=admin&adminView=producer-payouts",
-    "sellerPayoutNotificationTarget": "/?tab=account&view=seller%3Afinance"
+    "sellerPayoutNotificationTarget": "/?tab=account&view=seller%3Afinance",
+    "producerApplicationNotificationTarget": "/?tab=account&view=vendor-apply"
+  },
+  "auth": {
+    "liveAuthUsers": 0,
+    "liveProfiles": 0,
+    "liveRoleAssignments": 0,
+    "realOwnerAccountRequiredForEndToEndAdminVerification": true
   },
   "superAdmin": {
     "ownerOperationalAuthority": true,
@@ -138,7 +155,9 @@
     "fullSellerBankIdentityAccessWhenOperationallyRequired": true,
     "productHealthPublishAuthority": true,
     "orderSettlementReleaseAuthority": true,
-    "ordinaryAdminSensitiveAccessLimited": true
+    "ordinaryAdminSensitiveAccessLimited": true,
+    "missingLegacyHelperBreakageFixed": true,
+    "auditWritesHaveBackingLedger": true
   },
   "truthfulnessInvariants": [
     "no fake users, orders, payments, balances, followers, reviews, products, health claims, certificates or compliance data",
@@ -151,32 +170,33 @@
   ],
   "releaseValidation": {
     "lastVerifiedFunctionalHead": "9b077d399a9f1b837d86eeaf54bc1e6eb9750e41",
-    "githubActionsRun": 32416986934,
+    "currentFunctionalHead": "e024e3428468ef1122068aa334d1b94369cab281",
+    "githubActionsRun": 32419409997,
     "githubActionsConclusion": "failure_before_steps",
-    "verifyWebAndroidJob": 96580266941,
-    "verifyIosJob": 96580267044,
+    "verifyWebAndroidJob": 96587903459,
+    "verifyIosJob": 96587903284,
     "verifyWebAndroidSteps": 0,
     "verifyIosSteps": 0,
-    "jobLog": "BlobNotFound",
     "codeFailureProvenByCi": false,
     "currentHeadQualityGateGreen": false,
-    "localContainerGitAccess": "blocked_dns_github.com",
-    "vercelBuildCandidate": "none",
-    "vercelReason": "only connected project is unrelated ishak-alper repository",
+    "runnerAllocationFailureStillPresent": true,
     "mergeAllowed": false,
     "mergeRule": "Require an actually executed current-head mobile quality gate to pass, then require explicit user authorization."
   },
   "externalBlockers": [
     "42 real primary catalog product images",
     "40 real packaged shipping weights",
-    "registered business/data-controller identity and open commercial/service address",
+    "registered legal business/data-controller identity, registered country and open commercial/service address",
+    "final legal-document approval after real registered identity is entered",
     "production iyzico merchant configuration, return URL and seller submerchant onboarding",
+    "production transactional email credentials and verified sender if not configured",
     "production Google/Facebook OAuth configuration where enabled",
     "production FCM/APNs credentials",
     "Play Store/App Store signing and release configuration",
     "real public HTTPS share origin",
     "real content/event assets where publication requires them",
+    "real owner Auth account plus server-verified super_admin role for end-to-end admin verification",
     "executed current-head release audit, TypeScript, production build, Capacitor sync reproducibility, Android bundle and iOS simulator compile"
   ],
-  "nextBlock": "obtain external release inputs and an executing build runner; do not replace them with invented values or merge PR 47 prematurely"
+  "nextBlock": "obtain only real external release inputs and an executing build runner; do not replace them with invented values or merge PR 47 prematurely"
 }
