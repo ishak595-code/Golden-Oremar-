@@ -14,7 +14,7 @@ import{getCart as getServerCart,publicCatalogUrl as serverCatalogUrl,resolveDefa
 import{useDeviceTheme}from'./features/appearance/useDeviceTheme';
 import{useConnectivity}from'./features/resilience/useConnectivity';
 import{subscribeNativePushActions}from'./features/notifications/nativePush';
-import{buildProductUrl,buildProducerUrl,buildSearchUrl,parsePublicRoute,shareOrCopy}from'./features/navigation/appUrl';
+import{buildProductUrl,buildProducerUrl,buildSearchUrl,parsePublicRoute,resolveAppActionTarget,shareOrCopy}from'./features/navigation/appUrl';
 import HomeSection from'./features/home/HomeSection';
 
 const AdminPage=React.lazy(()=>import('./pages/AdminPage').then(module=>({default:module.AdminPage})));
@@ -55,7 +55,8 @@ function AppContent(){
  const[currentTab,setCurrentTab]=useState<Tab>(resolvedInitialTab);
  const[routeDepth,setRouteDepth]=useState(0);
  const routeDepthRef=useRef(0);
- const[accountView,setAccountView]=useState('menu');
+ const[accountView,setAccountView]=useState(initialRoute.accountView||'menu');
+ const[adminView,setAdminView]=useState(initialRoute.adminView||'dashboard');
  const[selectedProductReference,setSelectedProductReference]=useState<string|null>(initialRoute.productReference);
  const[selectedProducerReference,setSelectedProducerReference]=useState<string|null>(initialRoute.producerReference);
  const[searchQuery,setSearchQuery]=useState(initialRoute.query);
@@ -82,7 +83,7 @@ function AppContent(){
   const normalizedUrl=resolvedInitialTab===initialTab?window.location.href:tabUrl('home');
   routeDepthRef.current=0;
   window.history.replaceState({...window.history.state,goldenOremar:true,goldenOremarDepth:0,tab:resolvedInitialTab},'',normalizedUrl);
-  if(resolvedInitialTab!==initialTab){setSelectedProductReference(null);setSelectedProducerReference(null);}
+  if(resolvedInitialTab!==initialTab){setSelectedProductReference(null);setSelectedProducerReference(null);setAccountView('menu');setAdminView('dashboard');}
  },[]);
 
  const pushRoute=useCallback((url:string,tab:Tab)=>{
@@ -141,6 +142,8 @@ function AppContent(){
    setSelectedProductReference(route.productReference);
    setSelectedProducerReference(route.producerReference);
    setSearchQuery(route.query);setSearchCategorySlug(route.categorySlug);setSearchProducerId(route.producerId);
+   if(next==='account')setAccountView(route.accountView||'menu');
+   if(next==='admin')setAdminView(route.adminView||'dashboard');
    setCurrentTab(next);setIsSearchFocused(false);window.scrollTo({top:0,behavior:'auto'});
   };
   window.addEventListener('popstate',applyLocation);return()=>window.removeEventListener('popstate',applyLocation);
@@ -209,14 +212,18 @@ function AppContent(){
 
  const openGift=useCallback((product:any)=>{if(!currentUser){setGiftProduct(product);showToast('Hediye siparişi için hesabınıza giriş yapın.');setAccountView('menu');navigateToTab('account');return;}setGiftProduct(product);setShowGiftModal(true);},[currentUser,navigateToTab,showToast]);
 
- useEffect(()=>subscribeNativePushActions(({actionUrl,metadata})=>{
-  const url=String(actionUrl||'');const meta=metadata as Record<string,any>;
-  if(url.includes('/messages/')){const conversationId=String(meta.conversationId||url.split('/messages/')[1]?.split(/[?#/]/)[0]||'');setAccountView(conversationId?`messages:${conversationId}`:'messages');}
-  else if(meta.orderId)setAccountView(`orders:${String(meta.orderId)}`);
-  else if(url.includes('/orders/')){const orderId=String(url.split('/orders/')[1]?.split(/[?#/]/)[0]||'');setAccountView(orderId?`orders:${orderId}`:'orders');}
-  else if(url.includes('/settings'))setAccountView('settings');else if(url.includes('/messages'))setAccountView('messages');else setAccountView('notifications');
-  pushRoute(tabUrl('account'),'account');void refreshUnreadCount();
- }),[pushRoute,refreshUnreadCount]);
+ const handleNotificationAction=useCallback((actionUrl:unknown,metadata:Record<string,unknown>={})=>{
+  const target=resolveAppActionTarget(actionUrl,metadata);
+  if(target.kind==='product')openProduct(target.reference);
+  else if(target.kind==='producer')openProducer(target.reference);
+  else if(target.kind==='events')navigateToTab('events');
+  else if(target.kind==='admin'){setAdminView(target.view);navigateToTab('admin');}
+  else if(target.kind==='account'){setAccountView(target.view);pushRoute(tabUrl('account'),'account');}
+  else{setAccountView('notifications');pushRoute(tabUrl('account'),'account');}
+  void refreshUnreadCount();
+ },[navigateToTab,openProduct,openProducer,pushRoute,refreshUnreadCount]);
+
+ useEffect(()=>subscribeNativePushActions(({actionUrl,metadata})=>handleNotificationAction(actionUrl,(metadata||{})as Record<string,unknown>)),[handleNotificationAction]);
 
  useEffect(()=>{if(!authRecovery.callbackHandled)return;setAccountView('menu');pushRoute(tabUrl('account'),'account');if(!authRecovery.recoveryPending)authRecovery.acknowledgeCallback();},[authRecovery.callbackHandled,authRecovery.recoveryPending,authRecovery.acknowledgeCallback,pushRoute]);
  useEffect(()=>{if(!authRecovery.error)return;showToast(authRecovery.error);authRecovery.clearError();},[authRecovery.error,authRecovery.clearError,showToast]);
@@ -255,7 +262,7 @@ function AppContent(){
    if(!authReady)return<RouteLoading label="Hesabınız doğrulanıyor"/>;
    if(!currentUser)return<AuthScreen title="Golden Oremar Hesabı" onAuthenticated={()=>setAccountView('menu')}/>;
    if(accountView==='vendor-apply')return<ProducerApplicationFlow currentUser={currentUser} onBack={()=>setAccountView('menu')}/>;
-   return<AccountCenter requestedView={accountView} theme={appearanceTheme} onThemeChange={setAppearanceTheme} onBack={goBack} onOpenProduct={slug=>openProduct(slug)} onOpenProducer={slug=>openProducer(slug)} onStartGift={()=>navigateToTab('home')} onOpenContact={()=>navigateToTab('contact')} onOpenHealth={()=>navigateToTab('health')} onOpenEvents={()=>navigateToTab('events')} onOpenAdmin={()=>navigateToTab('admin')} onOpenSellerApplication={()=>setAccountView('vendor-apply')} onUnreadNotificationCountChange={setUnreadCount} onOpenNotificationAction={(url,metadata)=>{if(url?.includes('/messages/')){const conversationId=metadata?.conversationId||url.split('/messages/')[1]?.split(/[?#/]/)[0]||'';setAccountView(conversationId?`messages:${conversationId}`:'messages');}else if(metadata?.orderId)setAccountView(`orders:${metadata.orderId}`);else if(url?.includes('producer'))setAccountView('seller');else if(url?.includes('order'))setAccountView('orders');}}/>;
+   return<AccountCenter requestedView={accountView} theme={appearanceTheme} onThemeChange={setAppearanceTheme} onBack={goBack} onOpenProduct={slug=>openProduct(slug)} onOpenProducer={slug=>openProducer(slug)} onStartGift={()=>navigateToTab('home')} onOpenContact={()=>navigateToTab('contact')} onOpenHealth={()=>navigateToTab('health')} onOpenEvents={()=>navigateToTab('events')} onOpenAdmin={()=>{setAdminView('dashboard');navigateToTab('admin');}} onOpenSellerApplication={()=>setAccountView('vendor-apply')} onUnreadNotificationCountChange={setUnreadCount} onOpenNotificationAction={(url,metadata)=>handleNotificationAction(url,metadata)}/>;
   }
   if(currentTab==='cart'){
    if(!authReady)return<RouteLoading label="Sepet oturumunuz doğrulanıyor"/>;
@@ -272,7 +279,7 @@ function AppContent(){
 
  if(currentTab==='admin'){
   if(!adminSession.checked)return<RouteLoading label="Yönetici yetkisi doğrulanıyor"/>;
-  if(isAdminLoggedIn)return<React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor"/>}><AdminPage onBack={goBack} onLogout={async()=>{await signOutCurrentSession();setCurrentUser(null);setAdminSession({checked:true,isAdmin:false,roles:[]});setCart([]);setCartItemCount(0);replaceWithHome();}}/></React.Suspense>;
+  if(isAdminLoggedIn)return<React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor"/>}><AdminPage initialTab={adminView} onBack={goBack} onLogout={async()=>{await signOutCurrentSession();setCurrentUser(null);setAdminSession({checked:true,isAdmin:false,roles:[]});setCart([]);setCartItemCount(0);replaceWithHome();}}/></React.Suspense>;
  }
 
  return<div className="min-h-screen bg-brand-main pb-28 font-sans text-brand-text">
