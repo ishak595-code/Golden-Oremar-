@@ -105,15 +105,19 @@ function AppContent(){
  },[]);
 
  const navigateToTab=useCallback((tab:Tab)=>{
+  if(tab==='admin'&&(!authReady||!adminSession.checked)){
+   pushRoute(tabUrl('admin'),'admin');
+   return;
+  }
   if(tab==='admin'&&!isAdminLoggedIn){
-   showToast(adminSession.checked?'Bu alan için doğrulanmış yönetici yetkisi gerekiyor.':'Yönetici yetkisi doğrulanıyor.');
+   showToast('Bu alan için doğrulanmış yönetici yetkisi gerekiyor.');
    setAccountView('menu');
    pushRoute(tabUrl('account'),'account');
    return;
   }
   if(tab==='home'){setSearchQuery('');setSearchCategorySlug(null);setSearchProducerId(null);setIsSearchFocused(false);}
   pushRoute(tabUrl(tab),tab);
- },[adminSession.checked,isAdminLoggedIn,pushRoute,showToast]);
+ },[adminSession.checked,authReady,isAdminLoggedIn,pushRoute,showToast]);
 
  const openProduct=useCallback((reference:string)=>{
   const normalized=String(reference||'').trim();
@@ -161,15 +165,16 @@ function AppContent(){
 
  useEffect(()=>{
   let active=true;
+  if(!authReady){setAdminSession(previous=>({...previous,checked:false}));return()=>{active=false;};}
   if(!currentUser?.id){setAdminSession({checked:true,isAdmin:false,roles:[]});return()=>{active=false;};}
   setAdminSession(previous=>({...previous,checked:false}));
   getAdminSessionStatus().then(status=>{if(active)setAdminSession({checked:true,isAdmin:status.is_admin===true,roles:status.roles});}).catch(error=>{console.error('Supabase admin session verification failed',error);if(active)setAdminSession({checked:true,isAdmin:false,roles:[]});});
   return()=>{active=false;};
- },[currentUser?.id]);
+ },[authReady,currentUser?.id]);
 
  useEffect(()=>{
-  if(currentTab==='admin'&&adminSession.checked&&!adminSession.isAdmin){setAccountView('menu');window.history.replaceState({goldenOremar:true,goldenOremarDepth:routeDepth,tab:'account'},'',tabUrl('account'));setCurrentTab('account');showToast('Bu alan için doğrulanmış yönetici yetkisi gerekiyor.');}
- },[currentTab,adminSession.checked,adminSession.isAdmin,routeDepth,showToast]);
+  if(authReady&&currentTab==='admin'&&adminSession.checked&&!adminSession.isAdmin){setAccountView('menu');window.history.replaceState({goldenOremar:true,goldenOremarDepth:routeDepth,tab:'account'},'',tabUrl('account'));setCurrentTab('account');showToast('Bu alan için doğrulanmış yönetici yetkisi gerekiyor.');}
+ },[authReady,currentTab,adminSession.checked,adminSession.isAdmin,routeDepth,showToast]);
 
  useEffect(()=>{
   let active=true;
