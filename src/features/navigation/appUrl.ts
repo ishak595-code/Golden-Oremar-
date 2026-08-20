@@ -28,6 +28,7 @@ const ACCOUNT_VIEWS = new Set([
   'payments', 'notifications', 'settings', 'seller', 'producer-products', 'producer-profile-edit', 'support',
   'messages', 'vendor-apply',
 ]);
+const SELLER_SUBVIEWS = new Set(['dashboard', 'orders', 'messages', 'traceability', 'finance', 'events', 'product-health']);
 const ADMIN_VIEWS = new Set([
   'dashboard', 'production-readiness', 'business-compliance', 'official-store-products', 'product-health', 'products',
   'product-approvals', 'product-removal', 'orders', 'returns', 'stock', 'shipping-readiness', 'finance',
@@ -120,15 +121,14 @@ export function resolveAppActionTarget(actionUrl: unknown, metadata: Record<stri
 
   const raw = typeof actionUrl === 'string' ? actionUrl.trim() : '';
   if (!raw) return { kind: 'notifications' };
-  let url: URL;
   const base = safeNavigationBaseUrl(baseHref);
+  let url: URL;
   try {
     url = new URL(raw, base);
   } catch {
     return { kind: 'notifications' };
   }
-  if (PUBLIC_PROTOCOLS.has(url.protocol) && PUBLIC_PROTOCOLS.has(base.protocol) && url.origin !== base.origin) return { kind: 'notifications' };
-  if (!NAVIGATION_PROTOCOLS.has(url.protocol)) return { kind: 'notifications' };
+  if (!isAllowedInternalActionUrl(url, base)) return { kind: 'notifications' };
 
   const route = parsePublicRoute(url.toString());
   if (route.tab === 'product-detail' && route.productReference) return { kind: 'product', reference: route.productReference };
@@ -191,9 +191,36 @@ function safeNavigationBaseUrl(href?: string) {
   return url;
 }
 
+function isAllowedInternalActionUrl(url: URL, base: URL) {
+  if (!NAVIGATION_PROTOCOLS.has(url.protocol)) return false;
+  if (url.protocol === 'capacitor:') return base.protocol === 'capacitor:' && url.host === base.host;
+  if (!PUBLIC_PROTOCOLS.has(url.protocol)) return false;
+  const allowedOrigin = internalPublicOrigin(base);
+  return Boolean(allowedOrigin && url.origin === allowedOrigin);
+}
+
+function internalPublicOrigin(base: URL) {
+  if (PUBLIC_PROTOCOLS.has(base.protocol)) return base.origin;
+  const configured = String(import.meta.env.VITE_PUBLIC_APP_ORIGIN || '').trim();
+  if (!configured) return null;
+  try {
+    const publicBase = new URL(configured);
+    return PUBLIC_PROTOCOLS.has(publicBase.protocol) ? publicBase.origin : null;
+  } catch {
+    return null;
+  }
+}
+
 function safeAccountView(value: unknown) {
   const normalized = String(value ?? '').trim();
-  return ACCOUNT_VIEWS.has(normalized) ? normalized : null;
+  if (ACCOUNT_VIEWS.has(normalized)) return normalized;
+  const separator = normalized.indexOf(':');
+  if (separator < 1) return null;
+  const prefix = normalized.slice(0, separator);
+  const suffix = normalized.slice(separator + 1);
+  if ((prefix === 'messages' || prefix === 'orders') && cleanPublicReference(suffix)) return `${prefix}:${suffix}`;
+  if (prefix === 'seller' && SELLER_SUBVIEWS.has(suffix)) return `seller:${suffix}`;
+  return null;
 }
 function safeAdminView(value: unknown) {
   const normalized = String(value ?? '').trim();
@@ -207,8 +234,14 @@ function routeFromPath(pathname: string) {
 
   if (first === 'product') return { tab: 'product-detail' as PublicAppTab, productReference: cleanPublicReference(second), producerReference: null, eventReference: null, accountView: null, adminView: null };
   if (first === 'events') return { tab: 'events' as PublicAppTab, productReference: null, producerReference: null, eventReference: cleanPublicReference(second), accountView: null, adminView: null };
-  if (first === 'messages') return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: second ? `messages:${cleanPublicReference(second) || ''}` : 'messages', adminView: null };
-  if (first === 'orders') return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: second ? `orders:${cleanPublicReference(second) || ''}` : 'orders', adminView: null };
+  if (first === 'messages') {
+    const reference = cleanPublicReference(second);
+    return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: reference ? `messages:${reference}` : 'messages', adminView: null };
+  }
+  if (first === 'orders') {
+    const reference = cleanPublicReference(second);
+    return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: reference ? `orders:${reference}` : 'orders', adminView: null };
+  }
   if (first === 'settings') return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: 'settings', adminView: null };
   if (first === 'account') {
     const view = second === 'orders' ? 'orders' : second === 'reviews' ? 'reviews' : second === 'messages' ? 'messages' : second === 'settings' ? 'settings' : 'menu';
@@ -216,7 +249,7 @@ function routeFromPath(pathname: string) {
   }
   if (first === 'producer') {
     if (second === 'products') return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: 'producer-products', adminView: null };
-    if (second === 'finance') return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: 'seller', adminView: null };
+    if (SELLER_SUBVIEWS.has(second)) return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: `seller:${second}`, adminView: null };
     const producerReference = cleanPublicReference(second);
     if (producerReference) return { tab: 'producer-profile' as PublicAppTab, productReference: null, producerReference, eventReference: null, accountView: null, adminView: null };
   }
