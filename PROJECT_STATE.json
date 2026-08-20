@@ -4,9 +4,9 @@
   "branch": "agent/admin-supabase-retire-node",
   "pullRequest": 47,
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "latestFunctionalHead": "e024e3428468ef1122068aa334d1b94369cab281",
-  "stateRecordedAt": "2026-08-20T23:26:34+02:00",
-  "releaseStatus": "BLOCKED_PENDING_EXTERNAL_PRODUCTION_INPUTS_AND_CURRENT_HEAD_EXECUTED_QUALITY_GATE",
+  "latestFunctionalHead": "25957603293726db49a79cda5459a8bc94805369",
+  "stateRecordedAt": "2026-08-20T23:41:00+02:00",
+  "releaseStatus": "SOFTWARE_INTEGRITY_READY_EXTERNAL_PRODUCTION_INPUTS_AND_EXECUTED_BUILD_GATE_PENDING",
   "applicationShell": {
     "nativeTarget": ["android", "ios"],
     "framework": "React/Vite/Capacitor",
@@ -24,6 +24,16 @@
     "sellerFinance": "provider marketplace settlement OR manual bank transfer, never duplicate entitlement",
     "notifications": "action_url/metadata -> resolveAppActionTarget -> app state-machine view"
   },
+  "repositoryIntegrity": {
+    "criticalRecentMigrationsCommitted": true,
+    "historicalLegalMigrationTimestampNormalized": true,
+    "removedSupersededMigration": "20260820205756_strengthen_golden_oremar_legal_disclosures_2026.sql",
+    "canonicalLegalMigration": "20260820211030_strengthen_golden_oremar_legal_disclosures_2026.sql",
+    "legacyFirebaseRuntimeReferences": 0,
+    "legacySqliteRuntimeReferences": 0,
+    "legacyProducerApplicationRouteReferences": 0,
+    "knownMockRuntimeDataReferences": 0
+  },
   "brand": {
     "name": "Golden Oremar",
     "supportEmail": "goldenoremar@gmail.com",
@@ -40,15 +50,19 @@
     "provider": "Supabase",
     "legacyFirebaseCustomerRuntimeRetired": true,
     "legacyNodeSqliteRuntimeRetired": true,
-    "liveMigrationCount": 276,
-    "latestMigration": "20260820212614_deny_direct_client_access_to_admin_audit_logs_v1",
+    "liveMigrationCount": 277,
+    "latestMigration": "20260820213352_add_runtime_integrity_to_production_readiness_v1",
     "securityAdvisorLints": 0,
+    "systemErrorDailyRows": 0,
+    "runtimeIntegrityReady": true,
     "missingPrivateFunctionReferences": 0,
     "missingPublicFunctionReferences": 0,
     "superAdminCompatibilityHelperRestored": true,
     "superAdminAuditLedgerPresent": true,
     "superAdminAuditLedgerDirectClientAccess": false,
+    "runtimeIntegrityHelperDirectClientAccess": false,
     "sensitivePrivateTableDirectAnonAuthenticatedGrants": 0,
+    "performanceAdvisorState": "INFO_ONLY_UNUSED_INDEXES_ON_LOW_OR_ZERO_TRAFFIC_TABLES_NOT_DROPPED_BLINDLY",
     "currentPublicReadRpcs": {
       "productDetail": "get_public_product_detail_v6",
       "producerProfile": "get_public_producer_profile_v3",
@@ -74,9 +88,17 @@
       "event-refund": {"status": "ACTIVE", "version": 2, "verifyJwt": true},
       "admin-event-refunds": {"status": "ACTIVE", "version": 1, "verifyJwt": true},
       "transactional-email-worker": {"status": "ACTIVE", "version": 1, "verifyJwt": false},
-      "production-readiness-health": {"status": "ACTIVE", "version": 1, "verifyJwt": true},
+      "production-readiness-health": {"status": "ACTIVE", "version": 2, "verifyJwt": true, "softwareIntegritySeparatedFromExternalInputs": true},
       "admin-order-settlement": {"status": "ACTIVE", "version": 1, "verifyJwt": true}
     }
+  },
+  "productionReadinessSemantics": {
+    "red": "actual software or database integrity error only",
+    "amber": "real external production input or manual provider configuration required",
+    "green": "verified ready",
+    "softwareIntegrityReady": true,
+    "productionInputsReady": false,
+    "falseRedExternalInputFailuresRemoved": true
   },
   "catalog": {
     "publishedProducts": 42,
@@ -157,7 +179,8 @@
     "orderSettlementReleaseAuthority": true,
     "ordinaryAdminSensitiveAccessLimited": true,
     "missingLegacyHelperBreakageFixed": true,
-    "auditWritesHaveBackingLedger": true
+    "auditWritesHaveBackingLedger": true,
+    "runtimeDependencyIntegritySelfCheck": true
   },
   "truthfulnessInvariants": [
     "no fake users, orders, payments, balances, followers, reviews, products, health claims, certificates or compliance data",
@@ -170,13 +193,11 @@
   ],
   "releaseValidation": {
     "lastVerifiedFunctionalHead": "9b077d399a9f1b837d86eeaf54bc1e6eb9750e41",
-    "currentFunctionalHead": "e024e3428468ef1122068aa334d1b94369cab281",
-    "githubActionsRun": 32419409997,
-    "githubActionsConclusion": "failure_before_steps",
-    "verifyWebAndroidJob": 96587903459,
-    "verifyIosJob": 96587903284,
-    "verifyWebAndroidSteps": 0,
-    "verifyIosSteps": 0,
+    "currentCodeCheckpointHead": "25957603293726db49a79cda5459a8bc94805369",
+    "lastObservedGithubActionsRun": 32419483035,
+    "lastObservedGithubActionsConclusion": "failure_before_steps",
+    "lastObservedVerifyWebAndroidSteps": 0,
+    "lastObservedVerifyIosSteps": 0,
     "codeFailureProvenByCi": false,
     "currentHeadQualityGateGreen": false,
     "runnerAllocationFailureStillPresent": true,
@@ -198,5 +219,5 @@
     "real owner Auth account plus server-verified super_admin role for end-to-end admin verification",
     "executed current-head release audit, TypeScript, production build, Capacitor sync reproducibility, Android bundle and iOS simulator compile"
   ],
-  "nextBlock": "obtain only real external release inputs and an executing build runner; do not replace them with invented values or merge PR 47 prematurely"
+  "nextBlock": "provide only real external production inputs and an executing build runner; do not replace them with invented values or merge PR 47 prematurely"
 }
