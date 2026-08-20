@@ -244,7 +244,7 @@ function routeFromPath(pathname: string) {
   }
   if (first === 'settings') return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: 'settings', adminView: null };
   if (first === 'account') {
-    const view = second === 'orders' ? 'orders' : second === 'reviews' ? 'reviews' : second === 'messages' ? 'messages' : second === 'settings' ? 'settings' : 'menu';
+    const view = second === 'producer-application' ? 'vendor-apply' : safeAccountView(second) || 'menu';
     return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: view, adminView: null };
   }
   if (first === 'producer') {
