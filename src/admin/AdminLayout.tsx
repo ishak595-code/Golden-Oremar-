@@ -44,6 +44,7 @@ const ADMIN_MENU_GROUPS: MenuGroup[] = [
   { title: 'E-Ticaret', items: [
     { id: 'official-store-products', label: 'Resmi Mağaza Ürünleri', icon: PackagePlus, superAdminOnly: true },
     { id: 'products', label: 'Ürün Yönetimi', icon: ShoppingBag },
+    { id: 'product-health', label: 'Ürün İçerik ve Sağlık', icon: FileText, superAdminOnly: true },
     { id: 'product-approvals', label: 'Ürün Onayları', icon: CheckSquare },
     { id: 'product-removal', label: 'Güvenli Ürün Kaldırma', icon: Trash2, superAdminOnly: true },
     { id: 'categories', label: 'Kategoriler', icon: Tags },
