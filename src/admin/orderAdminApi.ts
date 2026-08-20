@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 
 export type ManagedOrderStatus = 'draft' | 'pending_payment' | 'confirmed' | 'preparing' | 'partially_shipped' | 'shipped' | 'delivered' | 'completed' | 'cancelled' | 'refunded';
+export type SettlementStatus = 'not_required' | 'awaiting_completion' | 'blocked' | 'pending_approval' | 'processing' | 'released' | 'failed';
 
 export type ManagedOrderItem = {
   id: string;
@@ -36,6 +37,27 @@ export type ManagedPaymentMethod = {
   status: string;
 };
 
+export type ManagedSettlement = {
+  status: SettlementStatus;
+  reason: string;
+  eligible: boolean;
+  canRelease: boolean;
+  currency: string;
+  pendingSellerMinor: number;
+  availableSellerMinor: number;
+  saleCount: number;
+  pendingSaleCount: number;
+  availableSaleCount: number;
+  splitCount: number;
+  pendingSplitCount: number;
+  approvedSplitCount: number;
+  hasOpenReturn: boolean;
+  hasRefundBlock: boolean;
+  requestedAt: string | null;
+  releasedAt: string | null;
+  lastError: string | null;
+};
+
 export type ManagedOrder = {
   id: string;
   orderNumber: string;
@@ -49,7 +71,7 @@ export type ManagedOrder = {
   total: number;
   totalMinor: number;
   reservationExpiresAt: string | null;
-  shippingAddress: Record<string, any>;
+  shippingAddress: Record<string, unknown>;
   customerNote: string | null;
   items: ManagedOrderItem[];
   gift: ManagedGift | null;
@@ -57,9 +79,11 @@ export type ManagedOrder = {
   returnStatus: string | null;
   returnReason: string | null;
   returnId: string | null;
+  vendorId: string | null;
   userId: string;
   trackingNumber: string | null;
   trackingUrl: string | null;
+  settlement: ManagedSettlement | null;
 };
 
 export type ManagementOrdersSnapshot = {
@@ -69,229 +93,219 @@ export type ManagementOrdersSnapshot = {
   loadedAt: string;
 };
 
-const ORDER_STATUSES = new Set<ManagedOrderStatus>(['draft','pending_payment','confirmed','preparing','partially_shipped','shipped','delivered','completed','cancelled','refunded']);
+const ORDER_STATUSES: ManagedOrderStatus[] = ['draft', 'pending_payment', 'confirmed', 'preparing', 'partially_shipped', 'shipped', 'delivered', 'completed', 'cancelled', 'refunded'];
+const SETTLEMENT_STATUSES: SettlementStatus[] = ['not_required', 'awaiting_completion', 'blocked', 'pending_approval', 'processing', 'released', 'failed'];
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-function unwrap<T>(data: T | null, error: any): T {
-  if (error) throw error;
-  return data as T;
-}
+function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' && !Array.isArray(value); }
+function text(value: unknown, label: string, max = 500) { const result = typeof value === 'string' ? value.trim() : ''; if (!result || result.length > max || /[\u0000-\u001F\u007F]/.test(result)) throw new Error(`${label} doğrulanamadı.`); return result; }
+function optionalText(value: unknown, label: string, max = 1000) { if (value == null || value === '') return null; if (typeof value !== 'string') throw new Error(`${label} doğrulanamadı.`); const result = value.trim(); if (!result) return null; if (result.length > max || /[\u0000-\u001F\u007F]/.test(result)) throw new Error(`${label} doğrulanamadı.`); return result; }
+function bool(value: unknown, label: string) { if (typeof value !== 'boolean') throw new Error(`${label} doğrulanamadı.`); return value; }
+function integer(value: unknown, label: string, min = 0, max = Number.MAX_SAFE_INTEGER) { if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min || value > max) throw new Error(`${label} doğrulanamadı.`); return value; }
+function finite(value: unknown, label: string) { if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error(`${label} doğrulanamadı.`); return value; }
+function uuid(value: unknown, label: string, nullable = false) { if (nullable && (value == null || value === '')) return null; const result = text(value, label, 80); if (!UUID_RE.test(result)) throw new Error(`${label} doğrulanamadı.`); return result; }
+function currency(value: unknown) { const code = text(value, 'Para birimi', 3).toUpperCase(); if (!/^[A-Z]{3}$/.test(code)) throw new Error('Para birimi doğrulanamadı.'); return code; }
+function dateTime(value: unknown, label: string, nullable = false) { if (nullable && (value == null || value === '')) return null; const result = text(value, label, 80); if (Number.isNaN(Date.parse(result))) throw new Error(`${label} doğrulanamadı.`); return result; }
 
-function isRecord(value: unknown): value is Record<string, any> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function requiredText(value: unknown, label: string, max = 300) {
-  const text = typeof value === 'string' ? value.trim() : '';
-  if (!text || text.length > max || /[\u0000-\u001F\u007F]/.test(text)) throw new Error(`${label} doğrulanamadı.`);
-  return text;
-}
-
-function optionalText(value: unknown, max = 1000) {
-  if (value == null || value === '') return null;
-  const text = typeof value === 'string' ? value.trim() : '';
-  if (!text) return null;
-  if (text.length > max || /[\u0000-\u001F\u007F]/.test(text)) throw new Error('Sipariş metin alanı doğrulanamadı.');
-  return text;
-}
-
-function verifiedNumber(value: unknown, label: string, min = 0) {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < min) throw new Error(`${label} doğrulanamadı.`);
-  return value;
-}
-
-function verifiedInteger(value: unknown, label: string, min = 0) {
-  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min) throw new Error(`${label} doğrulanamadı.`);
-  return value;
-}
-
-function normalizeDate(value: unknown, label: string) {
-  const text = requiredText(value, label, 80);
-  if (Number.isNaN(Date.parse(text))) throw new Error(`${label} doğrulanamadı.`);
-  return text;
-}
-
-function normalizeCurrency(value: unknown) {
-  const currency = requiredText(value, 'Sipariş para birimi', 3).toUpperCase();
-  if (!/^[A-Z]{3}$/.test(currency)) throw new Error('Sipariş para birimi doğrulanamadı.');
-  return currency;
+function normalizeItem(value: unknown, index: number): ManagedOrderItem {
+  if (!isRecord(value)) throw new Error(`${index + 1}. sipariş kalemi doğrulanamadı.`);
+  return {
+    id: uuid(value.id, 'Sipariş kalemi kimliği') as string,
+    productId: uuid(value.productId, 'Ürün kimliği', true),
+    name: text(value.name ?? value.title, 'Ürün adı', 300),
+    title: text(value.title ?? value.name, 'Ürün başlığı', 300),
+    variantName: optionalText(value.variantName, 'Varyant adı', 240),
+    image: optionalText(value.image, 'Ürün görsel yolu', 1000),
+    quantity: integer(value.quantity, 'Ürün adedi', 1, 100000),
+    price: finite(value.price, 'Birim fiyat'),
+    lineTotal: finite(value.lineTotal, 'Satır toplamı'),
+    fulfillmentStatus: text(value.fulfillmentStatus, 'Kalem gönderim durumu', 60),
+    producerId: uuid(value.producerId, 'Satıcı kimliği', true),
+  };
 }
 
 function normalizeGift(value: unknown): ManagedGift | null {
   if (value == null) return null;
-  if (!isRecord(value)) throw new Error('Hediye hazırlama bilgisi doğrulanamadı.');
-  if (typeof value.hidePrice !== 'boolean') throw new Error('Hediye fiyat görünürlüğü doğrulanamadı.');
+  if (!isRecord(value)) throw new Error('Hediye talimatı doğrulanamadı.');
   return {
-    recipientName: requiredText(value.recipientName, 'Hediye alıcısı', 120),
-    message: optionalText(value.message, 1000),
-    senderName: optionalText(value.senderName, 120),
-    hidePrice: value.hidePrice,
-    occasion: optionalText(value.occasion, 40),
-    presentationStyle: optionalText(value.presentationStyle, 40),
-    cardTitle: optionalText(value.cardTitle, 100),
+    recipientName: text(value.recipientName, 'Hediye alıcısı', 240),
+    message: optionalText(value.message, 'Hediye mesajı', 1000),
+    senderName: optionalText(value.senderName, 'Hediye göndereni', 240),
+    hidePrice: bool(value.hidePrice, 'Fiyat gizleme tercihi'),
+    occasion: optionalText(value.occasion, 'Özel gün', 80),
+    presentationStyle: optionalText(value.presentationStyle, 'Hediye sunumu', 80),
+    cardTitle: optionalText(value.cardTitle, 'Kart başlığı', 160),
   };
 }
 
 function normalizePaymentMethod(value: unknown): ManagedPaymentMethod | null {
   if (value == null) return null;
-  if (!isRecord(value)) throw new Error('Sipariş ödeme yöntemi doğrulanamadı.');
-  const last4 = requiredText(value.last4, 'Kart son dört hanesi', 4);
+  if (!isRecord(value)) throw new Error('Ödeme yöntemi doğrulanamadı.');
+  const last4 = text(value.last4, 'Kart son dört hanesi', 4);
   if (!/^\d{4}$/.test(last4)) throw new Error('Kart son dört hanesi doğrulanamadı.');
-  const expMonth = value.expMonth == null ? null : verifiedInteger(value.expMonth, 'Kart son kullanma ayı', 1);
-  if (expMonth != null && expMonth > 12) throw new Error('Kart son kullanma ayı doğrulanamadı.');
-  const expYear = value.expYear == null ? null : verifiedInteger(value.expYear, 'Kart son kullanma yılı', 2024);
-  if (expYear != null && expYear > 2200) throw new Error('Kart son kullanma yılı doğrulanamadı.');
   return {
-    provider: requiredText(value.provider, 'Ödeme sağlayıcısı', 40),
-    brand: requiredText(value.brand, 'Kart markası', 40),
+    provider: text(value.provider, 'Ödeme sağlayıcısı', 80),
+    brand: text(value.brand, 'Kart markası', 80),
     last4,
-    nickname: optionalText(value.nickname, 40),
-    expMonth,
-    expYear,
-    status: requiredText(value.status, 'Kart durumu', 20),
+    nickname: optionalText(value.nickname, 'Kart rumuzu', 120),
+    expMonth: value.expMonth == null ? null : integer(value.expMonth, 'Son kullanma ayı', 1, 12),
+    expYear: value.expYear == null ? null : integer(value.expYear, 'Son kullanma yılı', 2000, 2200),
+    status: text(value.status, 'Ödeme yöntemi durumu', 40),
   };
 }
 
-function normalizeItem(item: unknown, index: number): ManagedOrderItem {
-  if (!isRecord(item)) throw new Error(`${index + 1}. sipariş kalemi doğrulanamadı.`);
-  const name = requiredText(item.name || item.title, `${index + 1}. ürün adı`, 300);
+function normalizeSettlement(value: unknown, orderCurrency: string): ManagedSettlement | null {
+  if (value == null) return null;
+  if (!isRecord(value)) throw new Error('Hakediş havuzu durumu doğrulanamadı.');
+  const status = text(value.status, 'Hakediş durumu', 40) as SettlementStatus;
+  if (!SETTLEMENT_STATUSES.includes(status)) throw new Error('Hakediş durumu doğrulanamadı.');
+  const settlementCurrency = currency(value.currency);
+  if (settlementCurrency !== orderCurrency) throw new Error('Hakediş para birimi siparişle eşleşmiyor.');
+  const splitCount = integer(value.splitCount, 'Ödeme kırılımı sayısı');
+  const pendingSplitCount = integer(value.pendingSplitCount, 'Bekleyen ödeme kırılımı');
+  const approvedSplitCount = integer(value.approvedSplitCount, 'Onaylı ödeme kırılımı');
+  if (pendingSplitCount + approvedSplitCount > splitCount) throw new Error('Hakediş kırılım sayıları tutarsız.');
   return {
-    id: requiredText(item.id, `${index + 1}. sipariş kalemi kimliği`, 160),
-    productId: optionalText(item.productId, 160),
-    name,
-    title: requiredText(item.title || item.name, `${index + 1}. ürün başlığı`, 300),
-    variantName: optionalText(item.variantName, 240),
-    image: optionalText(item.image, 1000),
-    quantity: verifiedInteger(item.quantity, `${index + 1}. ürün adedi`, 1),
-    price: verifiedNumber(item.price, `${index + 1}. birim fiyat`),
-    lineTotal: verifiedNumber(item.lineTotal, `${index + 1}. satır toplamı`),
-    fulfillmentStatus: requiredText(item.fulfillmentStatus, `${index + 1}. fulfillment durumu`, 80),
-    producerId: optionalText(item.producerId, 160),
+    status,
+    reason: text(value.reason, 'Hakediş gerekçesi', 120),
+    eligible: bool(value.eligible, 'Hakediş uygunluğu'),
+    canRelease: bool(value.canRelease, 'Hakediş yetkisi'),
+    currency: settlementCurrency,
+    pendingSellerMinor: integer(value.pendingSellerMinor, 'Bekleyen satıcı hakedişi'),
+    availableSellerMinor: integer(value.availableSellerMinor, 'Kullanılabilir satıcı hakedişi'),
+    saleCount: integer(value.saleCount, 'Satıcı satış kaydı sayısı'),
+    pendingSaleCount: integer(value.pendingSaleCount, 'Bekleyen satış kaydı sayısı'),
+    availableSaleCount: integer(value.availableSaleCount, 'Kullanılabilir satış kaydı sayısı'),
+    splitCount,
+    pendingSplitCount,
+    approvedSplitCount,
+    hasOpenReturn: bool(value.hasOpenReturn, 'Açık iade durumu'),
+    hasRefundBlock: bool(value.hasRefundBlock, 'Geri ödeme engeli'),
+    requestedAt: dateTime(value.requestedAt, 'Hakediş talep tarihi', true),
+    releasedAt: dateTime(value.releasedAt, 'Hakediş serbest bırakma tarihi', true),
+    lastError: optionalText(value.lastError, 'Hakediş hata bilgisi', 500),
   };
 }
 
-function normalizeOrder(order: unknown, index: number): ManagedOrder {
-  if (!isRecord(order)) throw new Error(`${index + 1}. sipariş doğrulanamadı.`);
-  const statusText = requiredText(order.status, 'Sipariş durumu', 40) as ManagedOrderStatus;
-  if (!ORDER_STATUSES.has(statusText)) throw new Error('Sipariş durumu doğrulanamadı.');
-  if (!isRecord(order.shippingAddress)) throw new Error('Teslimat adresi doğrulanamadı.');
-  if (!Array.isArray(order.items) || order.items.length > 200) throw new Error('Sipariş ürünleri doğrulanamadı.');
-  const totalMinor = verifiedInteger(order.totalMinor, 'Sipariş toplamı');
-  const total = verifiedNumber(order.total, 'Sipariş görüntüleme toplamı');
-  const expectedTotal = totalMinor / 100;
-  if (Math.abs(total - expectedTotal) > 0.0001) throw new Error('Sipariş toplamı minor-unit değeriyle eşleşmiyor.');
+function normalizeOrder(value: unknown, index: number): ManagedOrder {
+  if (!isRecord(value)) throw new Error(`${index + 1}. sipariş doğrulanamadı.`);
+  const status = text(value.status, 'Sipariş durumu', 40) as ManagedOrderStatus;
+  if (!ORDER_STATUSES.includes(status)) throw new Error(`${index + 1}. sipariş durumu doğrulanamadı.`);
+  const code = currency(value.currency);
+  if (!isRecord(value.shippingAddress)) throw new Error(`${index + 1}. teslimat adresi doğrulanamadı.`);
+  if (!Array.isArray(value.items) || value.items.length > 500) throw new Error(`${index + 1}. sipariş kalemleri doğrulanamadı.`);
   return {
-    id: requiredText(order.id, 'Sipariş kimliği', 160),
-    orderNumber: requiredText(order.orderNumber, 'Sipariş numarası', 160),
-    customer: requiredText(order.customer, 'Müşteri adı', 240),
-    customerEmail: optionalText(order.customerEmail, 254),
-    date: normalizeDate(order.date, 'Sipariş tarihi'),
-    status: statusText,
-    paymentStatus: requiredText(order.paymentStatus, 'Ödeme durumu', 80),
-    fulfillmentStatus: requiredText(order.fulfillmentStatus, 'Fulfillment durumu', 80),
-    currency: normalizeCurrency(order.currency),
-    total,
-    totalMinor,
-    reservationExpiresAt: order.reservationExpiresAt == null ? null : normalizeDate(order.reservationExpiresAt, 'Stok rezervasyon süresi'),
-    shippingAddress: order.shippingAddress,
-    customerNote: optionalText(order.customerNote, 1000),
-    items: order.items.map(normalizeItem),
-    gift: normalizeGift(order.gift),
-    paymentMethod: normalizePaymentMethod(order.paymentMethod),
-    returnStatus: optionalText(order.returnStatus, 80),
-    returnReason: optionalText(order.returnReason, 1000),
-    returnId: optionalText(order.returnId, 160),
-    userId: requiredText(order.userId, 'Müşteri kimliği', 160),
-    trackingNumber: optionalText(order.trackingNumber, 120),
-    trackingUrl: optionalText(order.trackingUrl, 1000),
+    id: uuid(value.id, 'Sipariş kimliği') as string,
+    orderNumber: text(value.orderNumber, 'Sipariş numarası', 160),
+    customer: text(value.customer, 'Müşteri adı', 240),
+    customerEmail: optionalText(value.customerEmail, 'Müşteri e-postası', 254),
+    date: dateTime(value.date, 'Sipariş tarihi') as string,
+    status,
+    paymentStatus: text(value.paymentStatus, 'Ödeme durumu', 60),
+    fulfillmentStatus: text(value.fulfillmentStatus, 'Sipariş gönderim durumu', 60),
+    currency: code,
+    total: finite(value.total, 'Sipariş toplamı'),
+    totalMinor: integer(value.totalMinor, 'Sipariş toplamı'),
+    reservationExpiresAt: dateTime(value.reservationExpiresAt, 'Rezervasyon sonu', true),
+    shippingAddress: value.shippingAddress,
+    customerNote: optionalText(value.customerNote, 'Müşteri notu', 3000),
+    items: value.items.map(normalizeItem),
+    gift: normalizeGift(value.gift),
+    paymentMethod: normalizePaymentMethod(value.paymentMethod),
+    returnStatus: optionalText(value.returnStatus, 'İade durumu', 80),
+    returnReason: optionalText(value.returnReason, 'İade gerekçesi', 3000),
+    returnId: uuid(value.returnId, 'İade kimliği', true),
+    vendorId: uuid(value.vendorId, 'Satıcı kimliği', true),
+    userId: uuid(value.userId, 'Müşteri kimliği') as string,
+    trackingNumber: optionalText(value.trackingNumber, 'Takip numarası', 160),
+    trackingUrl: optionalText(value.trackingUrl, 'Takip bağlantısı', 1000),
+    settlement: normalizeSettlement(value.settlement, code),
   };
 }
 
 export async function managementOrdersSnapshot(): Promise<ManagementOrdersSnapshot> {
   const { data, error } = await supabase.rpc('management_orders_snapshot_v2');
-  const raw = unwrap<unknown>(data, error);
-  if (!isRecord(raw) || !Array.isArray(raw.orders) || raw.orders.length > 5000) throw new Error('Sipariş yönetim cevabı doğrulanamadı.');
-  const role = raw.role === 'producer' ? 'producer' : raw.role === 'admin' ? 'admin' : null;
-  if (!role) throw new Error('Sipariş yönetim rolü doğrulanamadı.');
+  if (error) throw error;
+  if (!isRecord(data)) throw new Error('Sipariş yönetimi yanıtı doğrulanamadı.');
+  const role = text(data.role, 'Yönetim rolü', 20);
+  if (role !== 'admin' && role !== 'producer') throw new Error('Yönetim rolü doğrulanamadı.');
+  if (!Array.isArray(data.orders) || data.orders.length > 5000) throw new Error('Sipariş listesi doğrulanamadı.');
   return {
     role,
-    producerId: raw.producerId == null ? null : requiredText(raw.producerId, 'Üretici kimliği', 160),
-    loadedAt: normalizeDate(raw.loadedAt, 'Sipariş yönetim güncelleme zamanı'),
-    orders: raw.orders.map(normalizeOrder),
+    producerId: uuid(data.producerId, 'Satıcı kimliği', true),
+    loadedAt: dateTime(data.loadedAt, 'Yükleme tarihi') as string,
+    orders: data.orders.map(normalizeOrder),
   };
 }
 
-export async function managementUpdateOrderStatus(input: {
-  orderId: string;
-  status: ManagedOrderStatus;
-  trackingNumber?: string | null;
-  note?: string | null;
-}) {
-  const orderId = requiredText(input.orderId, 'Sipariş kimliği', 160);
-  if (!ORDER_STATUSES.has(input.status)) throw new Error('Sipariş geçiş durumu doğrulanamadı.');
-  const trackingNumber = input.trackingNumber?.trim() || null;
-  const note = input.note?.trim() || null;
-  if (trackingNumber && trackingNumber.length > 120) throw new Error('Kargo takip numarası 120 karakteri aşamaz.');
-  if (note && note.length > 1000) throw new Error('Sipariş işlem notu 1000 karakteri aşamaz.');
-  if (['partially_shipped', 'shipped'].includes(input.status) && (!trackingNumber || trackingNumber.length < 4)) throw new Error('Kargolama için geçerli bir takip numarası gerekir.');
+export async function managementUpdateOrderStatus(input: { orderId: string; status: ManagedOrderStatus; trackingNumber?: string | null; note?: string | null }) {
+  if (!UUID_RE.test(input.orderId)) throw new Error('Sipariş kimliği doğrulanamadı.');
+  if (!ORDER_STATUSES.includes(input.status)) throw new Error('Sipariş durumu doğrulanamadı.');
   const { data, error } = await supabase.rpc('management_update_order_status_v1', {
-    p_order_id: orderId,
+    p_order_id: input.orderId,
     p_status: input.status,
-    p_tracking_number: trackingNumber,
-    p_note: note,
+    p_tracking_number: input.trackingNumber?.trim() || null,
+    p_note: input.note?.trim() || null,
   });
-  return unwrap<any>(data, error);
+  if (error) throw error;
+  if (!isRecord(data) || uuid(data.id, 'Güncellenen sipariş kimliği') !== input.orderId || text(data.status, 'Güncellenen sipariş durumu', 40) !== input.status) {
+    throw new Error('Sipariş durumu sunucudan doğrulanamadı.');
+  }
+  return data;
+}
+
+export async function releaseOrderSettlement(orderId: string) {
+  if (!UUID_RE.test(orderId)) throw new Error('Sipariş kimliği doğrulanamadı.');
+  const { data, error } = await supabase.functions.invoke('admin-order-settlement', { body: { orderId } });
+  if (error) throw error;
+  if (!isRecord(data) || data.ok !== true || data.orderId !== orderId || typeof data.released !== 'boolean') throw new Error('Hakediş onayı sunucudan doğrulanamadı.');
+  if (!data.released) throw new Error('Hakediş sağlayıcı onayı tamamlanmadı. Yenileyip kalan kırılımları kontrol edin.');
+  return data;
 }
 
 export function allowedAdminOrderTransitions(status: ManagedOrderStatus): ManagedOrderStatus[] {
-  const map: Record<ManagedOrderStatus, ManagedOrderStatus[]> = {
-    draft: ['pending_payment', 'cancelled'],
-    pending_payment: ['confirmed', 'cancelled'],
-    confirmed: ['preparing', 'cancelled'],
-    preparing: ['partially_shipped', 'shipped', 'cancelled'],
-    partially_shipped: ['shipped'],
-    shipped: ['delivered'],
-    delivered: ['completed'],
-    completed: [],
-    cancelled: [],
-    refunded: [],
+  const transitions: Record<ManagedOrderStatus, ManagedOrderStatus[]> = {
+    draft: ['pending_payment', 'cancelled'], pending_payment: ['confirmed', 'cancelled'], confirmed: ['preparing', 'cancelled'],
+    preparing: ['partially_shipped', 'shipped', 'cancelled'], partially_shipped: ['shipped'], shipped: ['delivered'], delivered: ['completed'],
+    completed: [], cancelled: [], refunded: [],
   };
-  return map[status] || [];
+  return transitions[status];
 }
 
-export function orderAdminErrorMessage(error: unknown, fallback = 'Sipariş işlemi tamamlanamadı.') {
-  const message = String((error as any)?.message || '').trim();
+export function settlementLabel(status: SettlementStatus) {
+  return ({ not_required: 'Satıcı hakedişi yok', awaiting_completion: 'Sipariş tamamlanması bekleniyor', blocked: 'Hakediş kilitli', pending_approval: 'Super Admin onayı bekliyor', processing: 'Sağlayıcı onayı işleniyor', released: 'Satıcıya serbest bırakıldı', failed: 'Onay yeniden denenmeli' } as Record<SettlementStatus, string>)[status];
+}
+
+export function settlementReason(reason: string) {
+  const labels: Record<string, string> = {
+    no_seller_settlement: 'Bu siparişte satıcıya aktarılacak hakediş yok.', order_not_completed: 'Sipariş tamamlanmadan satıcı hakedişi açılamaz.',
+    payment_not_fully_paid: 'Ödeme tamamen tahsil edilmedi.', open_return: 'Açık iade talebi var.', refund_or_refund_review: 'Geri ödeme veya geri ödeme incelemesi var.',
+    seller_ledger_missing: 'Satıcı finans kaydı oluşmadı.', payment_split_missing: 'Ödeme sağlayıcı kırılımı oluşmadı.', ledger_split_mismatch: 'Satıcı defteri ile sağlayıcı kırılımı eşleşmiyor.',
+    provider_split_disapproved: 'Sağlayıcı kırılımı onaysız duruma alındı.', provider_approval_processing: 'Sağlayıcı onayı işleniyor.', provider_approval_failed: 'Sağlayıcı onayı tamamlanamadı.',
+    super_admin_approval_required: 'Ürün teslim edildi. Satıcı hakedişinin korumalı havuzdan çıkması için Super Admin onayı gerekiyor.', released: 'Sağlayıcı kırılımları onaylandı ve satıcı bakiyesi kullanılabilir hale geldi.',
+  };
+  return labels[reason] || 'Hakediş durumu sunucuda kontrol ediliyor.';
+}
+
+export function orderAdminErrorMessage(error: unknown, fallback = 'İşlem tamamlanamadı.') {
+  const message = error instanceof Error ? error.message.trim() : String((error as { message?: unknown } | null)?.message || '').trim();
   if (!message) return fallback;
-  const map: Array<[string, string]> = [
-    ['authentication_required', 'Oturumunuz doğrulanamadı. Lütfen yeniden giriş yapın.'],
-    ['management_role_required', 'Bu sipariş yönetim alanı için yetkiniz yok.'],
-    ['order_access_denied', 'Bu siparişe erişim yetkiniz yok.'],
-    ['order_not_found', 'Sipariş artık bulunamadı. Listeyi yenileyin.'],
-    ['invalid_order_status_transition', 'Bu sipariş durumu doğrudan seçilen duruma geçirilemez. İş akışını sırayla ilerletin.'],
-    ['verified_payment_required_before_confirmation', 'Doğrulanmış ödeme olmadan sipariş onaylanamaz.'],
-    ['paid_order_requires_refund_workflow', 'Ödemesi alınmış sipariş doğrudan iptal edilemez. İade ve geri ödeme akışını kullanın.'],
-    ['tracking_number_required', 'Kargolama için en az 4 karakterlik takip numarası gerekir.'],
-    ['order_is_terminal', 'Tamamlanmış, iptal edilmiş veya geri ödenmiş sipariş artık bu akıştan değiştirilemez.'],
-    ['order_not_ready_for_fulfillment', 'Sipariş henüz hazırlama veya sevkiyat aşamasına uygun değil.'],
-  ];
-  for (const [key, text] of map) if (message.includes(key)) return text;
-  return message.length <= 260 ? message : fallback;
+  if (message.includes('super_admin_required')) return 'Satıcı hakedişini yalnız Super Admin serbest bırakabilir.';
+  if (message.includes('settlement_not_releasable')) return 'Hakediş şu anda serbest bırakılamaz. Sipariş, ödeme, iade ve geri ödeme durumunu kontrol edin.';
+  if (message.includes('payment_provider_credentials_missing')) return 'Canlı ödeme sağlayıcısı kimlik bilgileri henüz hazır değil. Hakediş güvenli biçimde havuzda kalıyor.';
+  if (message.includes('settlement_provider')) return 'Ödeme sağlayıcısı hakediş onayını tamamlamadı. Para havuzda kaldı, işlem daha sonra yeniden denenebilir.';
+  return message.length <= 300 ? message : fallback;
 }
 
-export function formatOrderMoney(minor: number | null | undefined, currency: string) {
-  if (!Number.isSafeInteger(minor) || Number(minor) < 0 || !/^[A-Z]{3}$/.test(currency)) return 'Tutar doğrulanamadı';
-  return (Number(minor) / 100).toLocaleString('tr-TR', { style: 'currency', currency, maximumFractionDigits: 2 });
+export function formatOrderMoney(minor: number, code: string) {
+  try { return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: code, maximumFractionDigits: 2 }).format(minor / 100); }
+  catch { return `${(minor / 100).toFixed(2)} ${code}`; }
 }
 
-export function orderAddressLabel(address: Record<string, any>) {
-  const recipient = String(address.recipientName || address.recipient_name || '').trim();
-  const line1 = String(address.line1 || address.address_line1 || address.address_line || address.address || '').trim();
-  const district = String(address.district || address.city || '').trim();
-  const city = String(address.province || address.administrative_area || '').trim();
-  const postal = String(address.postalCode || address.postal_code || '').trim();
-  const country = String(address.countryCode || address.country_code || '').trim().toUpperCase();
-  return {
-    recipient,
-    address: [line1, district, city, postal, country].filter(Boolean).join(', '),
-    phone: String(address.phone || address.recipientPhone || '').trim(),
-  };
+export function orderAddressLabel(raw: Record<string, unknown>) {
+  const read = (...keys: string[]) => keys.map(key => typeof raw[key] === 'string' ? String(raw[key]).trim() : '').find(Boolean) || '';
+  const recipient = read('recipientName', 'recipient_name');
+  const phone = read('phone');
+  const lines = [read('addressLine1', 'address_line1', 'address_line'), read('addressLine2', 'address_line2'), read('neighborhood', 'locality'), read('district'), read('province', 'city'), read('postalCode', 'postal_code'), read('countryCode', 'country_code')].filter(Boolean);
+  return { recipient, phone, address: lines.join(', ') };
 }
