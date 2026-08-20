@@ -20,7 +20,7 @@ Deno.serve(async(req:Request)=>{
   if(userError||!userData.user?.id)return json(401,{ok:false,error:'authentication_required'});
   const{data,error}=await client.rpc('super_admin_get_production_readiness_snapshot_v1');
   if(error)throw error;
-  if(!rec(data)||data.ok!==true||!rec(data.businessIdentity)||!rec(data.assets)||!rec(data.legalContent)||!rec(data.shipping)||!rec(data.producerPayments)||!rec(data.paymentControl))throw new Error('production_readiness_snapshot_invalid');
+  if(!rec(data)||data.ok!==true||!rec(data.integrity)||!rec(data.businessIdentity)||!rec(data.assets)||!rec(data.legalContent)||!rec(data.shipping)||!rec(data.producerPayments)||!rec(data.paymentControl))throw new Error('production_readiness_snapshot_invalid');
 
   const iyzicoBase=env('IYZICO_BASE_URL');
   const iyzicoConfigured=allEnv('IYZICO_API_KEY','IYZICO_SECRET_KEY','IYZICO_BASE_URL')&&(iyzicoBase==='https://api.iyzipay.com'||iyzicoBase==='https://sandbox-api.iyzipay.com');
@@ -29,6 +29,7 @@ Deno.serve(async(req:Request)=>{
   const fcmConfigured=allEnv('FCM_PROJECT_ID','FCM_SERVICE_ACCOUNT_EMAIL','FCM_PRIVATE_KEY');
   const apnsConfigured=allEnv('APNS_TEAM_ID','APNS_KEY_ID','APNS_PRIVATE_KEY','APNS_BUNDLE_ID');
 
+  const softwareIntegrityReady=bool(data.integrity.ready,'integrity_ready');
   const businessReady=bool(data.businessIdentity.ready,'business_ready');
   const catalogReady=bool(data.assets.catalogReady,'catalog_ready');
   const experienceAssetsReady=int(data.assets.contentObjectCount,'content_objects')>0&&int(data.assets.eventObjectCount,'event_objects')>0;
@@ -37,13 +38,16 @@ Deno.serve(async(req:Request)=>{
   const producerPaymentsReady=bool(data.producerPayments.ready,'producer_payments_ready');
   const checkoutFlowEnabled=bool(data.paymentControl.atLeastOneCheckoutFlowEnabled,'checkout_flow_enabled');
   const paymentReady=iyzicoConfigured&&checkoutFlowEnabled&&producerPaymentsReady;
-  const automatedReady=businessReady&&catalogReady&&experienceAssetsReady&&legalReady&&shippingReady&&paymentReady&&transactionalEmailConfigured&&fcmConfigured&&apnsConfigured;
+  const productionInputsReady=businessReady&&catalogReady&&experienceAssetsReady&&legalReady&&shippingReady&&paymentReady&&transactionalEmailConfigured&&fcmConfigured&&apnsConfigured;
+  const automatedReady=softwareIntegrityReady&&productionInputsReady;
 
   return json(200,{
    ok:true,
    generatedAt:data.generatedAt,
+   softwareIntegrityReady,
+   productionInputsReady,
    automatedReady,
-   database:{businessIdentity:data.businessIdentity,assets:data.assets,legalContent:data.legalContent,shipping:data.shipping,producerPayments:data.producerPayments,paymentControl:data.paymentControl},
+   database:{integrity:data.integrity,businessIdentity:data.businessIdentity,assets:data.assets,legalContent:data.legalContent,shipping:data.shipping,producerPayments:data.producerPayments,paymentControl:data.paymentControl},
    runtime:{iyzicoConfigured,transactionalEmailConfigured,fcmConfigured,apnsConfigured,paymentReady},
    manualReleaseChecks:[
     {id:'android_signing',label:'Google Play production signing ve mağaza yayını',status:'manual_required'},
