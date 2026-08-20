@@ -337,10 +337,11 @@ export async function getCheckoutAccountOverview() {
 
 export async function resolveDefaultVariant(productReference: string) {
   const reference = requiredText(productReference, 'Ürün referansı', 220);
-  const { data, error } = await supabase.rpc('get_public_product_detail_v1', { p_reference: reference });
+  const { data, error } = await supabase.rpc('get_public_product_detail_v6', { p_reference: reference });
   const detail = unwrap<any>(data, error);
-  const variants = Array.isArray(detail?.variants) ? detail.variants.filter((v: any) => v.available !== false) : [];
-  const variant = variants.find((v: any) => v.default) || variants[0];
+  if (!isRecord(detail) || !Array.isArray(detail.variants)) throw new Error('Ürün seçenekleri doğrulanamadı.');
+  const variants = detail.variants.filter((v: any) => isRecord(v) && typeof v.id === 'string' && v.id.trim() && v.available === true);
+  const variant = variants.find((v: any) => v.default === true) || variants[0];
   if (!variant?.id) throw new Error('Satılabilir ürün varyantı bulunamadı.');
   return { detail, variant };
 }
