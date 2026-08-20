@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { getPublicHomeCatalog, listPublicCategories, publicCatalogUrl } from './api';
-import { getProducerStoreMetrics } from './producerMetricsApi';
 import { optionalProductHandlingProfile, type ProductHandlingProfile } from './productHandlingApi';
 import { NETWORK_RESTORED_EVENT } from '../resilience/useConnectivity';
 
@@ -33,13 +32,13 @@ export type LegacyHomeProduct = {
   vendor_id: string;
   producerId: string;
   producerName: string;
-  producerFollowerCount: number | null;
+  producerFollowerCount: number;
   producerVerified: boolean;
   producerOriginVerified: boolean;
-  producerStoreKind: 'official'|'independent'|null;
-  producerBadgeTone: 'ruby'|'blue'|null;
-  producerStorefrontTier: 'standard'|'verified'|'signature'|null;
-  handlingProfile: ProductHandlingProfile|null;
+  producerStoreKind: 'official'|'independent';
+  producerBadgeTone: 'ruby'|'blue';
+  producerStorefrontTier: 'standard'|'verified'|'signature';
+  handlingProfile: ProductHandlingProfile;
 };
 
 export type LegacyHomeCategory = {
@@ -105,20 +104,11 @@ export function useLiveHomeCatalog() {
 
         if (!isRecord(catalog) || !Array.isArray(catalog.items)) throw new Error('Ana katalog ürünleri sunucudan doğrulanamadı.');
         const catalogItems = catalog.items;
-        const coreInvalid = catalogItems.some((item: any) => !isRecord(item) || !safeText(item.id,160) || !safeText(item.slug,220) || !safeText(item.name,300) || !isRecord(item.category) || !safeText(item.category.slug,220) || !safeText(item.category.name,160) || !isRecord(item.producer) || !safeText(item.producer.id,160) || !safeText(item.producer.name,240) || !isRecord(item.variant) || !safeText(item.variant.id,160) || !safeText(item.variant.name,240));
+        const coreInvalid = catalogItems.some((item: any) => !isRecord(item) || !safeText(item.id,160) || !safeText(item.slug,220) || !safeText(item.name,300) || !isRecord(item.category) || !safeText(item.category.slug,220) || !safeText(item.category.name,160) || !isRecord(item.producer) || !safeText(item.producer.id,160) || !safeText(item.producer.name,240) || safeInteger(item.producer.followerCount)===null || typeof item.producer.verified!=='boolean' || typeof item.producer.originVerified!=='boolean' || !['official','independent'].includes(item.producer.storeKind) || !['ruby','blue'].includes(item.producer.badgeTone) || !['standard','verified','signature'].includes(item.producer.storefrontTier) || !isRecord(item.variant) || !safeText(item.variant.id,160) || !safeText(item.variant.name,240));
         if (coreInvalid) throw new Error('Ana katalogda kimliği doğrulanamayan ürün bulundu. Liste güvenli şekilde gösterilemedi.');
-
-        const producerIds: string[] = Array.from(new Set<string>(catalogItems.map((item: any) => safeText(item.producer.id,160)).filter(Boolean)));
-        const metrics = await getProducerStoreMetrics(producerIds).catch(metricsError => {
-          console.warn('Storefront metrics hydration failed; catalog remains usable without trust badges.', metricsError);
-          return [];
-        });
-        if (!active) return;
-        const metricByProducer = new Map(metrics.map(metric => [metric.producerId, metric] as const));
 
         setProducts(catalogItems.map((item: any) => {
           const producerId = safeText(item.producer.id,160);
-          const producerMetric = metricByProducer.get(producerId);
           const origin = safeText(item.origin,240) || null;
           const priceMinor = safeInteger(item.variant.priceMinor);
           const compareAtMinor = safeInteger(item.variant.compareAtPriceMinor);
@@ -127,7 +117,9 @@ export function useLiveHomeCatalog() {
           const stockMode = safeText(item.stockMode,80);
           const rating = safeRating(item.averageRating);
           const reviewCount = safeInteger(item.reviewCount);
+          const followerCount = safeInteger(item.producer.followerCount);
           const handlingProfile = optionalProductHandlingProfile(item.handlingProfile);
+          if (followerCount === null || !handlingProfile) throw new Error('Ana katalog kart kimliği doğrulanamadı.');
           const tags = compactSearchTerms([
             safeText(item.name,300),
             safeText(item.category.name,160),
@@ -139,7 +131,8 @@ export function useLiveHomeCatalog() {
             origin,
             safeText(item.unitLabel,120),
             safeText(item.variant.name,240),
-            handlingProfile?.productType,
+            handlingProfile.productType,
+            handlingProfile.safetyClass,
           ]);
           return {
             id: safeText(item.id,160),
@@ -170,12 +163,12 @@ export function useLiveHomeCatalog() {
             vendor_id: producerId,
             producerId,
             producerName: safeText(item.producer.name,240),
-            producerFollowerCount: producerMetric ? producerMetric.followerCount : null,
-            producerVerified: producerMetric?.verified === true,
-            producerOriginVerified: producerMetric?.originVerified === true,
-            producerStoreKind: producerMetric?.storeKind || null,
-            producerBadgeTone: producerMetric?.badgeTone || null,
-            producerStorefrontTier: producerMetric?.storefrontTier || null,
+            producerFollowerCount: followerCount,
+            producerVerified: item.producer.verified === true,
+            producerOriginVerified: item.producer.originVerified === true,
+            producerStoreKind: item.producer.storeKind as 'official'|'independent',
+            producerBadgeTone: item.producer.badgeTone as 'ruby'|'blue',
+            producerStorefrontTier: item.producer.storefrontTier as 'standard'|'verified'|'signature',
             handlingProfile,
           };
         }));
