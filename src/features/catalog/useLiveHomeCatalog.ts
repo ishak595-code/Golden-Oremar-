@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { getPublicHomeCatalog, listPublicCategories, publicCatalogUrl } from './api';
 import { getProducerStoreMetrics } from './producerMetricsApi';
+import { optionalProductHandlingProfile, type ProductHandlingProfile } from './productHandlingApi';
 import { NETWORK_RESTORED_EVENT } from '../resilience/useConnectivity';
 
 export type LegacyHomeProduct = {
@@ -36,8 +37,9 @@ export type LegacyHomeProduct = {
   producerVerified: boolean;
   producerOriginVerified: boolean;
   producerStoreKind: 'official'|'independent'|null;
-  producerBadgeTone: 'emerald'|'blue'|null;
+  producerBadgeTone: 'ruby'|'blue'|null;
   producerStorefrontTier: 'standard'|'verified'|'signature'|null;
+  handlingProfile: ProductHandlingProfile|null;
 };
 
 export type LegacyHomeCategory = {
@@ -125,6 +127,7 @@ export function useLiveHomeCatalog() {
           const stockMode = safeText(item.stockMode,80);
           const rating = safeRating(item.averageRating);
           const reviewCount = safeInteger(item.reviewCount);
+          const handlingProfile = optionalProductHandlingProfile(item.handlingProfile);
           const tags = compactSearchTerms([
             safeText(item.name,300),
             safeText(item.category.name,160),
@@ -136,6 +139,7 @@ export function useLiveHomeCatalog() {
             origin,
             safeText(item.unitLabel,120),
             safeText(item.variant.name,240),
+            handlingProfile?.productType,
           ]);
           return {
             id: safeText(item.id,160),
@@ -172,6 +176,7 @@ export function useLiveHomeCatalog() {
             producerStoreKind: producerMetric?.storeKind || null,
             producerBadgeTone: producerMetric?.badgeTone || null,
             producerStorefrontTier: producerMetric?.storefrontTier || null,
+            handlingProfile,
           };
         }));
 
