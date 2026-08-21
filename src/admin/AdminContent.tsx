@@ -1,697 +1,183 @@
-import React, { useState } from 'react';
-import { useData, BlogPost, ProductHealthInfo } from '../context/DataContext';
-import { STATIC_CONTENT } from '../data';
-import { FileText, Edit, Plus, Trash2, Save, X, Image as ImageIcon, Check, Star, Box } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Check, Edit2, FileText, HeartPulse, Loader2, Plus, RefreshCw, Search, Soup, Trash2, X } from 'lucide-react';
+import { adminListProducts, type AdminProduct } from './productAdminApi';
+import {
+  adminArchiveContent,
+  adminListContent,
+  adminSaveContent,
+  contentAdminErrorMessage,
+  type AdminContentEntry,
+  type AdminContentType,
+} from './contentAdminApi';
+import { useAccessibleDialog } from '../features/accessibility/useAccessibleDialog';
 
-export function AdminContent({ setActiveTab: setParentTab }: { setActiveTab?: (tab: string) => void }) {
-  const { blogPosts, addBlogPost, updateBlogPost, deleteBlogPost, recipes, addRecipe, updateRecipe, deleteRecipe, productHealthInfo, updateProductHealthInfo, staticContent, updateStaticContent, contactInfo, updateContactInfo, heroCategories, updateHeroCategories, homeSections, updateHomeSections } = useData();
-  const [activeTab, setActiveTabLocal] = useState<'blog' | 'recipes' | 'productHealth' | 'pages' | 'faq' | 'contact' | 'interface'>('blog');
-  
-  // Interface State
-  const [interfaceHeroCategories, setInterfaceHeroCategories] = useState<any[]>(heroCategories || []);
-  const [interfaceHomeSections, setInterfaceHomeSections] = useState<any[]>(homeSections || []);
+type EditorState = {
+  type: AdminContentType;
+  title: string;
+  summary: string;
+  content: string;
+  image: string;
+  relatedProductId: string;
+  category: string;
+  date: string;
+};
 
-  React.useEffect(() => {
-    if (heroCategories?.length) setInterfaceHeroCategories(heroCategories);
-    if (homeSections?.length) setInterfaceHomeSections(homeSections);
-  }, [heroCategories, homeSections]);
+const emptyEditor = (type: AdminContentType): EditorState => ({ type, title: '', summary: '', content: '', image: '', relatedProductId: '', category: '', date: new Date().toISOString().slice(0, 10) });
 
-  // Blog/Recipe State
-  const [modalType, setModalType] = useState<'blog' | 'recipe'>('blog');
-  const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
-  const [isBlogModalOpen, setIsBlogModalOpen] = useState(false);
-  const [blogFormData, setBlogFormData] = useState<Partial<BlogPost>>({
-    title: '', summary: '', content: '', image: '', date: ''
+function typeLabel(type: AdminContentType) {
+  return ({ blog: 'Sağlık yazısı', recipe: 'Tarif', health_guide: 'Sağlık rehberi', product_health: 'Ürün sağlık bilgisi' } as const)[type];
+}
+
+function typeIcon(type: AdminContentType) {
+  if (type === 'recipe') return <Soup className="h-5 w-5" aria-hidden="true" />;
+  if (type === 'product_health' || type === 'health_guide') return <HeartPulse className="h-5 w-5" aria-hidden="true" />;
+  return <FileText className="h-5 w-5" aria-hidden="true" />;
+}
+
+function formatContentDate(value: unknown) {
+  const raw = String(value || '').trim();
+  const date = raw ? new Date(raw) : null;
+  if (!date || Number.isNaN(date.getTime())) return 'Tarih doğrulanamadı';
+  try { return date.toLocaleString('tr-TR'); } catch { return 'Tarih doğrulanamadı'; }
+}
+
+function safeCount(value: unknown) {
+  const count = Number(value);
+  return Number.isSafeInteger(count) && count >= 0 ? count : 0;
+}
+
+export function AdminContent({ setActiveTab }: { setActiveTab?: (tab: string) => void }) {
+  const [entries, setEntries] = useState<AdminContentEntry[]>([]);
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | AdminContentType>('all');
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editing, setEditing] = useState<AdminContentEntry | null>(null);
+  const [form, setForm] = useState<EditorState>(emptyEditor('blog'));
+  const [archiveTarget, setArchiveTarget] = useState<AdminContentEntry | null>(null);
+  const editorRef = useAccessibleDialog<HTMLDivElement>(editorOpen, () => {
+    if (!busy) closeEditor();
   });
-
-  // Product Health State
-  const [isProductHealthModalOpen, setIsProductHealthModalOpen] = useState(false);
-  const [editingProductHealth, setEditingProductHealth] = useState<ProductHealthInfo | null>(null);
-  const [productHealthFormData, setProductHealthFormData] = useState<Partial<ProductHealthInfo>>({
-    productId: 0, title: '', content: ''
+  const archiveDialogRef = useAccessibleDialog<HTMLDivElement>(Boolean(archiveTarget), () => {
+    if (!busy) {
+      setArchiveTarget(null);
+      setError('');
+    }
   });
-
-  // Pages State
-  const [selectedPage, setSelectedPage] = useState<keyof typeof STATIC_CONTENT>('about');
-  const [pageContent, setPageContent] = useState(staticContent[selectedPage].content);
-  const [pageTitle, setPageTitle] = useState(staticContent[selectedPage].title);
-
-  // Contact State
-  const [contactData, setContactData] = useState(contactInfo);
-
-  const [toast, setToast] = useState<{message: string, visible: boolean}>({ message: '', visible: false });
 
   const showToast = (message: string) => {
-    setToast({ message, visible: true });
-    setTimeout(() => setToast({ message: '', visible: false }), 3000);
+    setToast(message);
+    window.setTimeout(() => setToast(''), 3000);
   };
 
-  const handleOpenBlogModal = (type: 'blog' | 'recipe', post?: BlogPost) => {
-    setModalType(type);
-    if (post) {
-      setEditingPost(post);
-      setBlogFormData(post);
-    } else {
-      setEditingPost(null);
-      setBlogFormData({
-        title: '', summary: '', content: '', image: 'https://picsum.photos/seed/blog/800/600', date: new Date().toISOString().split('T')[0]
-      });
+  const load = async (silent = false) => {
+    if (!silent) setLoading(true);
+    setError('');
+    try {
+      const [contentRows, productRows] = await Promise.all([adminListContent(), adminListProducts()]);
+      setEntries(Array.isArray(contentRows) ? contentRows : []);
+      setProducts(Array.isArray(productRows) ? productRows : []);
+    } catch (err) {
+      setError(contentAdminErrorMessage(err, 'İçerik kütüphanesi yüklenemedi.'));
+    } finally {
+      if (!silent) setLoading(false);
     }
-    setIsBlogModalOpen(true);
   };
 
-  const handleSaveBlog = () => {
-    if (modalType === 'blog') {
-      if (editingPost) {
-        updateBlogPost(editingPost.id, blogFormData);
-      } else {
-        addBlogPost({ id: Date.now(), ...blogFormData as BlogPost });
-      }
-    } else {
-      if (editingPost) {
-        updateRecipe(editingPost.id, blogFormData);
-      } else {
-        addRecipe({ id: Date.now(), ...blogFormData as BlogPost });
-      }
+  useEffect(() => { void load(); }, []);
+
+  const filtered = useMemo(() => {
+    const q = searchTerm.trim().toLocaleLowerCase('tr-TR');
+    return entries.filter(entry => {
+      if (typeFilter !== 'all' && entry.content_type !== typeFilter) return false;
+      if (!q) return true;
+      return `${entry.title} ${entry.summary || ''} ${entry.slug} ${entry.related_product_name || ''}`.toLocaleLowerCase('tr-TR').includes(q);
+    });
+  }, [entries, searchTerm, typeFilter]);
+
+  const counts = useMemo(() => ({
+    total: entries.length,
+    blog: entries.filter(entry => entry.content_type === 'blog').length,
+    recipe: entries.filter(entry => entry.content_type === 'recipe').length,
+    health: entries.filter(entry => ['health_guide', 'product_health'].includes(entry.content_type)).length,
+  }), [entries]);
+
+  const openCreate = (type: AdminContentType = typeFilter === 'all' ? 'blog' : typeFilter) => {
+    setEditing(null);
+    setForm(emptyEditor(type));
+    setError('');
+    setEditorOpen(true);
+  };
+
+  const openEdit = (entry: AdminContentEntry) => {
+    setEditing(entry);
+    setForm({ type: entry.content_type, title: entry.title, summary: entry.summary || '', content: entry.content, image: entry.image || '', relatedProductId: entry.related_product_id || '', category: String(entry.metadata?.originalCategory || ''), date: String(entry.metadata?.originalDate || entry.published_at?.slice(0, 10) || '') });
+    setError('');
+    setEditorOpen(true);
+  };
+
+  function closeEditor() {
+    if (busy) return;
+    setEditorOpen(false);
+    setEditing(null);
+    setError('');
+  }
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(editing?.id || 'new');
+    setError('');
+    try {
+      await adminSaveContent({ reference: editing?.id || null, type: form.type, title: form.title, summary: form.summary, content: form.content, image: form.image, relatedProductId: form.type === 'product_health' ? form.relatedProductId : null, category: form.category, date: form.date });
+      showToast(editing ? 'İçerik güncellendi.' : 'İçerik yayınlandı.');
+      setEditorOpen(false);
+      setEditing(null);
+      await load(true);
+    } catch (err) {
+      setError(contentAdminErrorMessage(err));
+    } finally {
+      setBusy('');
     }
-    setIsBlogModalOpen(false);
-    showToast('İçerik başarıyla kaydedildi!');
   };
 
-  const handleOpenProductHealthModal = (info?: ProductHealthInfo) => {
-    if (info) {
-      setEditingProductHealth(info);
-      setProductHealthFormData(info);
-    } else {
-      setEditingProductHealth(null);
-      setProductHealthFormData({ productId: Date.now(), title: '', content: '' });
+  const archive = async () => {
+    if (!archiveTarget || busy) return;
+    setBusy(archiveTarget.id);
+    setError('');
+    try {
+      await adminArchiveContent(archiveTarget.id);
+      showToast('İçerik arşivlendi.');
+      setArchiveTarget(null);
+      await load(true);
+    } catch (err) {
+      setError(contentAdminErrorMessage(err));
+    } finally {
+      setBusy('');
     }
-    setIsProductHealthModalOpen(true);
   };
 
-  const handleSaveProductHealth = () => {
-    if (productHealthFormData.productId) {
-      updateProductHealthInfo(productHealthFormData.productId, productHealthFormData);
-    }
-    setIsProductHealthModalOpen(false);
-    showToast('Ürün faydası kaydedildi!');
-  };
+  return <div className="space-y-6">
+    <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between"><div><h2 className="text-2xl font-bold text-gray-900 dark:text-white">İçerik Kütüphanesi</h2><p className="mt-1 max-w-3xl text-sm text-gray-500 dark:text-gray-400">Sağlık yazıları, tarifler, rehberler ve ürün sağlık açıklamaları gerçek Supabase içerik kayıtlarından yayınlanır. Sistem doğrulanmamış tıbbi iddiaları ve geçici görsel adreslerini sunucu tarafında reddeder.</p></div><div className="flex flex-col gap-2 sm:flex-row"><button type="button" onClick={() => setActiveTab?.('settings')} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">Site ve iletişim ayarları</button><button type="button" onClick={() => void load()} disabled={loading} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 text-gray-700 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"><RefreshCw aria-hidden="true" className={`mr-2 inline h-4 w-4 ${loading ? 'animate-spin' : ''}`}/>Yenile</button><button type="button" onClick={() => openCreate()} className="min-h-11 rounded-xl bg-brand-green px-4 font-semibold text-white"><Plus aria-hidden="true" className="mr-2 inline h-4 w-4"/>Yeni içerik</button></div></header>
 
-  const handleSavePage = () => {
-    updateStaticContent(selectedPage, { title: pageTitle, content: pageContent });
-    showToast('Sayfa içeriği güncellendi!');
-  };
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4"><Metric label="Toplam içerik" value={counts.total}/><Metric label="Sağlık yazısı" value={counts.blog}/><Metric label="Tarif" value={counts.recipe}/><Metric label="Sağlık rehberi / ürün" value={counts.health}/></div>
 
-  const handleSaveContact = () => {
-    updateContactInfo(contactData);
-    showToast('İletişim bilgileri güncellendi!');
-  };
+    {error && !editorOpen && !archiveTarget && <div role="alert" aria-live="assertive" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
 
-  const handleSaveInterface = () => {
-    updateHeroCategories(interfaceHeroCategories);
-    updateHomeSections(interfaceHomeSections);
-    showToast('Ana sayfa arayüz ayarları başarıyla güncellendi!');
-  };
+    <section className="rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800" aria-label="İçerik kütüphanesi"><div className="grid gap-3 border-b p-4 dark:border-gray-700 md:grid-cols-[minmax(0,1fr)_220px]"><label className="relative"><span className="sr-only">İçerik ara</span><Search aria-hidden="true" className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"/><input type="search" maxLength={160} value={searchTerm} onChange={event => setSearchTerm(event.target.value)} placeholder="Başlık, özet, ürün veya kısa ad ara..." className="min-h-11 w-full rounded-xl border bg-gray-50 pl-10 pr-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white"/></label><label><span className="sr-only">İçerik türü</span><select value={typeFilter} onChange={event => setTypeFilter(event.target.value as typeof typeFilter)} className="min-h-11 w-full rounded-xl border bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="all">Tüm içerikler</option><option value="blog">Sağlık yazıları</option><option value="recipe">Tarifler</option><option value="health_guide">Sağlık rehberleri</option><option value="product_health">Ürün sağlık bilgileri</option></select></label></div>{loading ? <div role="status" className="flex min-h-40 items-center justify-center gap-2 text-gray-500"><Loader2 aria-hidden="true" className="h-5 w-5 animate-spin"/>İçerikler yükleniyor...</div> : <div className="divide-y dark:divide-gray-700">{filtered.map(entry => <article key={entry.id} className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center"><div className="flex min-w-0 flex-1 items-start gap-3"><div className="rounded-xl bg-brand-green/10 p-2.5 text-brand-green">{typeIcon(entry.content_type)}</div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold text-gray-900 dark:text-white">{entry.title}</h3><span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs dark:bg-gray-700">{typeLabel(entry.content_type)}</span></div><p className="mt-1 text-xs text-gray-500">/{entry.slug} · {String(entry.locale || '').toUpperCase() || 'Dil doğrulanamadı'} · {entry.updated_at ? formatContentDate(entry.updated_at) : 'Tarih yok'}</p><p className="mt-2 line-clamp-2 text-sm text-gray-600 dark:text-gray-300">{entry.summary || entry.content || 'İçerik metni yok'}</p>{entry.related_product_name && <p className="mt-1 text-xs font-medium text-blue-700 dark:text-blue-300">İlişkili ürün: {entry.related_product_name}</p>}</div></div><div className="flex gap-2"><button type="button" onClick={() => openEdit(entry)} className="min-h-11 rounded-xl border px-4 font-semibold text-blue-700 dark:border-gray-700 dark:text-blue-300"><Edit2 aria-hidden="true" className="mr-2 inline h-4 w-4"/>Düzenle</button><button type="button" onClick={() => { setError(''); setArchiveTarget(entry); }} className="min-h-11 rounded-xl border border-red-200 px-4 font-semibold text-red-700 dark:text-red-300"><Trash2 aria-hidden="true" className="mr-2 inline h-4 w-4"/>Arşivle</button></div></article>)}{filtered.length === 0 && <div className="p-10 text-center text-gray-500">İçerik bulunamadı.</div>}</div>}</section>
 
-  return (
-    <div className="space-y-6">
-      <div className="flex gap-4 border-b border-gray-200 dark:border-gray-700 overflow-x-auto hide-scrollbar">
-        <button 
-          onClick={() => setActiveTabLocal('blog')}
-          className={`pb-3 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'blog' ? 'border-brand-green text-brand-green' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          Sağlık Yazıları
-        </button>
-        <button 
-          onClick={() => setActiveTabLocal('recipes')}
-          className={`pb-3 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'recipes' ? 'border-brand-green text-brand-green' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          Tarifler
-        </button>
-        <button 
-          onClick={() => setActiveTabLocal('productHealth')}
-          className={`pb-3 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'productHealth' ? 'border-brand-green text-brand-green' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          Ürün Sağlık Bilgileri
-        </button>
-        <button 
-          onClick={() => setActiveTabLocal('pages')}
-          className={`pb-3 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'pages' ? 'border-brand-green text-brand-green' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          Sabit Sayfalar
-        </button>
-        <button 
-          onClick={() => setActiveTabLocal('faq')}
-          className={`pb-3 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'faq' ? 'border-brand-green text-brand-green' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          Sıkça Sorulan Sorular
-        </button>
-        <button 
-          onClick={() => setActiveTabLocal('contact')}
-          className={`pb-3 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'contact' ? 'border-brand-green text-brand-green' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          İletişim Bilgileri
-        </button>
-        <button 
-          onClick={() => setActiveTabLocal('interface')}
-          className={`pb-3 px-4 font-medium transition-colors border-b-2 whitespace-nowrap ${activeTab === 'interface' ? 'border-brand-green text-brand-green' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-        >
-          Ana Sayfa / Arayüz
-        </button>
-      </div>
+    {editorOpen && <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget) closeEditor(); }}><div ref={editorRef} role="dialog" aria-modal="true" aria-labelledby="content-editor-title" aria-describedby="content-editor-description" tabIndex={-1} className="max-h-[96dvh] w-full max-w-3xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl outline-none dark:bg-gray-800 sm:rounded-2xl"><div className="flex justify-between gap-3"><div><h3 id="content-editor-title" className="text-lg font-bold dark:text-white">{editing ? 'İçeriği düzenle' : 'Yeni içerik'}</h3><p id="content-editor-description" className="mt-1 text-xs text-gray-500">Sağlık metinlerinde tedavi vaadi veya doğrulanmamış sağlık sonucu yazmayın.</p></div><button type="button" disabled={Boolean(busy)} onClick={closeEditor} className="min-h-11 min-w-11 rounded-xl" aria-label="İçerik düzenleyiciyi kapat"><X aria-hidden="true" className="mx-auto h-5 w-5"/></button></div><form onSubmit={submit} className="mt-5 space-y-4"><div className="grid gap-4 sm:grid-cols-2"><Field label="İçerik türü"><select disabled={Boolean(editing)} value={form.type} onChange={event => setForm({...form,type:event.target.value as AdminContentType,relatedProductId:''})}><option value="blog">Sağlık yazısı</option><option value="recipe">Tarif</option><option value="health_guide">Sağlık rehberi</option><option value="product_health">Ürün sağlık bilgisi</option></select></Field><Field label="Tarih"><input type="date" value={form.date} onChange={event => setForm({...form,date:event.target.value})}/></Field></div><Field label="Başlık"><input required minLength={2} maxLength={240} value={form.title} onChange={event => setForm({...form,title:event.target.value})}/></Field><Field label="Özet"><textarea rows={3} maxLength={2000} value={form.summary} onChange={event => setForm({...form,summary:event.target.value})}/></Field><Field label="İçerik"><textarea required rows={10} maxLength={200000} value={form.content} onChange={event => setForm({...form,content:event.target.value})}/></Field><div className="grid gap-4 sm:grid-cols-2"><Field label="Kategori etiketi"><input maxLength={120} value={form.category} onChange={event => setForm({...form,category:event.target.value})}/></Field><Field label="Kalıcı görsel yolu veya HTTPS URL"><input maxLength={2048} value={form.image} onChange={event => setForm({...form,image:event.target.value})}/></Field></div>{form.type === 'product_health' && <Field label="İlişkili ürün"><select required value={form.relatedProductId} onChange={event => setForm({...form,relatedProductId:event.target.value})}><option value="">Ürün seçin</option>{products.map(product => <option key={product.id} value={product.id}>{product.name} - {product.producer_name}</option>)}</select></Field>}{error && <div role="alert" aria-live="assertive" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}<div className="flex gap-3"><button type="button" disabled={Boolean(busy)} onClick={closeEditor} className="min-h-11 flex-1 rounded-xl border dark:border-gray-700">Vazgeç</button><button type="submit" disabled={Boolean(busy)} className="min-h-11 flex-1 rounded-xl bg-brand-green font-semibold text-white disabled:opacity-50">{busy ? 'Kaydediliyor...' : 'Yayınla'}</button></div></form></div></div>}
 
-      {activeTab === 'blog' && (
-        <div className="space-y-6">
-          <div className="flex justify-end">
-            <button 
-              onClick={() => handleOpenBlogModal('blog')}
-              className="bg-brand-green text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-green-800 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              Yeni Sağlık Yazısı Ekle
-            </button>
-          </div>
+    {archiveTarget && <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/65 sm:items-center sm:p-4" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy){setArchiveTarget(null);setError('');}}}><div ref={archiveDialogRef} role="alertdialog" aria-modal="true" aria-labelledby="archive-content-title" aria-describedby="archive-content-description" tabIndex={-1} className="w-full max-w-md rounded-t-3xl bg-white p-5 shadow-2xl outline-none dark:bg-gray-800 sm:rounded-2xl"><h3 id="archive-content-title" className="text-lg font-bold dark:text-white">İçeriği arşivle</h3><p id="archive-content-description" className="mt-2 text-sm text-gray-500"><strong>{archiveTarget.title}</strong> müşteri içerik kütüphanesinden kaldırılacak. Kayıt denetim için korunur.</p>{error && <div role="alert" aria-live="assertive" className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}<div className="mt-5 flex gap-3"><button type="button" disabled={Boolean(busy)} onClick={() => { setArchiveTarget(null); setError(''); }} className="min-h-11 flex-1 rounded-xl border dark:border-gray-700">Vazgeç</button><button type="button" disabled={Boolean(busy)} onClick={() => void archive()} className="min-h-11 flex-1 rounded-xl bg-red-700 font-semibold text-white disabled:opacity-50">{busy ? 'İşleniyor...' : 'Arşivle'}</button></div></div></div>}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {blogPosts.map(post => (
-              <div key={post.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden group">
-                <div className="h-48 relative">
-                  <img src={post.image} alt={post.title} className="w-full h-full object-cover" />
-                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleOpenBlogModal('blog', post)} aria-label="Düzenle" className="p-2 bg-white dark:bg-gray-800 text-blue-600 rounded-full shadow-sm hover:bg-blue-50 dark:hover:bg-gray-700"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => deleteBlogPost(post.id)} aria-label="Sil" className="p-2 bg-white dark:bg-gray-800 text-red-600 rounded-full shadow-sm hover:bg-red-50 dark:hover:bg-gray-700"><Trash2 className="w-4 h-4" /></button>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="text-xs text-gray-500 mb-2">{post.date}</div>
-                  <h3 className="font-bold text-gray-900 dark:text-white mb-2 line-clamp-1">{post.title}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{post.summary}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'recipes' && (
-        <div className="space-y-6">
-          <div className="flex justify-end">
-            <button 
-              onClick={() => handleOpenBlogModal('recipe')}
-              className="bg-brand-green text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-green-800 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              Yeni Tarif Ekle
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {recipes.map(post => (
-              <div key={post.id} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden group">
-                <div className="h-48 relative">
-                  <img src={post.image} alt={post.title} className="w-full h-full object-cover" />
-                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleOpenBlogModal('recipe', post)} aria-label="Düzenle" className="p-2 bg-white dark:bg-gray-800 text-blue-600 rounded-full shadow-sm hover:bg-blue-50 dark:hover:bg-gray-700"><Edit className="w-4 h-4" /></button>
-                    <button onClick={() => deleteRecipe(post.id)} aria-label="Sil" className="p-2 bg-white dark:bg-gray-800 text-red-600 rounded-full shadow-sm hover:bg-red-50 dark:hover:bg-gray-700"><Trash2 className="w-4 h-4" /></button>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="text-xs text-gray-500 mb-2">{post.date}</div>
-                  <h3 className="font-bold text-gray-900 dark:text-white mb-2 line-clamp-1">{post.title}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{post.summary}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'productHealth' && (
-        <div className="space-y-6">
-          <div className="flex justify-end">
-            <button 
-              onClick={() => handleOpenProductHealthModal()}
-              className="bg-brand-green text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-green-800 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              Yeni Ürün Sağlık Bilgisi Ekle
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {productHealthInfo.map(info => (
-              <div key={info.productId} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden group p-4 relative">
-                  <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleOpenProductHealthModal(info)} aria-label="Düzenle" className="p-2 bg-white dark:bg-gray-800 text-blue-600 rounded-full shadow-sm hover:bg-blue-50 dark:hover:bg-gray-700"><Edit className="w-4 h-4" /></button>
-                  </div>
-                  <h3 className="font-bold text-gray-900 dark:text-white mb-2 line-clamp-1">{info.title}</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{info.content}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'pages' && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden flex flex-col md:flex-row min-h-[600px]">
-          <div className="w-full md:w-64 border-r border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-4 space-y-2">
-            <h3 className="font-bold text-gray-500 text-xs uppercase mb-4 px-2">Sayfalar</h3>
-            {Object.keys(staticContent).filter(key => !['faq', 'interface'].includes(key)).map((key) => (
-              <button
-                key={key}
-                onClick={() => {
-                  const pageData = staticContent[key as keyof typeof staticContent] as any;
-                  setSelectedPage(key as keyof typeof staticContent);
-                  setPageTitle(pageData.title || '');
-                  setPageContent(pageData.content || '');
-                }}
-                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  selectedPage === key ? 'bg-white dark:bg-gray-800 shadow-sm text-brand-green' : 'text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
-              >
-                {key === 'about' ? 'Hakkımızda' : key === 'returns' ? 'İade Politikası' : key === 'privacy' ? 'Gizlilik Politikası' : key}
-              </button>
-            ))}
-          </div>
-          
-          <div className="flex-1 p-6 flex flex-col gap-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Sayfa Düzenle</h3>
-              <button onClick={handleSavePage} className="flex items-center gap-2 bg-brand-green text-white px-4 py-2 rounded-lg hover:bg-green-800 transition-colors">
-                <Save className="w-4 h-4" />
-                Kaydet
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Sayfa Başlığı</label>
-              <input 
-                type="text" 
-                className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20"
-                value={pageTitle}
-                onChange={(e) => setPageTitle(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2 flex-1 flex flex-col">
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300">İçerik (HTML)</label>
-              <textarea 
-                className="w-full flex-1 p-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20 font-mono text-sm resize-none"
-                value={pageContent}
-                onChange={(e) => setPageContent(e.target.value)}
-              />
-              <p className="text-xs text-gray-500">HTML etiketleri kullanabilirsiniz (&lt;h3&gt;, &lt;p&gt;, &lt;ul&gt; vb.)</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'faq' && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Sıkça Sorulan Sorular</h3>
-            <button 
-              onClick={() => {
-                updateStaticContent('faq', staticContent.faq);
-                showToast('Sıkça sorulan sorular güncellendi!');
-              }} 
-              className="flex items-center gap-2 bg-brand-green text-white px-4 py-2 rounded-lg hover:bg-green-800 transition-colors"
-            >
-              <Save className="w-4 h-4" />
-              Kaydet
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {staticContent.faq.map((item: any, index: number) => (
-              <div key={index} className="p-4 border border-gray-200 dark:border-gray-700 rounded-xl space-y-3 relative group">
-                <button 
-                  onClick={() => {
-                    const newFaq = [...staticContent.faq];
-                    newFaq.splice(index, 1);
-                    updateStaticContent('faq', newFaq);
-                  }}
-                  className="absolute top-2 right-2 p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-500 uppercase">Soru</label>
-                  <input 
-                    type="text" 
-                    className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20"
-                    value={item.q}
-                    onChange={(e) => {
-                      const newFaq = [...staticContent.faq];
-                      newFaq[index].q = e.target.value;
-                      updateStaticContent('faq', newFaq);
-                    }}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-500 uppercase">Cevap</label>
-                  <textarea 
-                    rows={3}
-                    className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20 resize-none"
-                    value={item.a}
-                    onChange={(e) => {
-                      const newFaq = [...staticContent.faq];
-                      newFaq[index].a = e.target.value;
-                      updateStaticContent('faq', newFaq);
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-            
-            <button 
-              onClick={() => {
-                updateStaticContent('faq', [...staticContent.faq, { q: 'Yeni Soru', a: 'Yeni Cevap' }]);
-              }}
-              className="w-full py-3 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl text-gray-500 hover:text-brand-green hover:border-brand-green hover:bg-brand-green/5 transition-colors flex items-center justify-center gap-2 font-bold"
-            >
-              <Plus className="w-5 h-5" />
-              Yeni Soru Ekle
-            </button>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'contact' && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 max-w-2xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">İletişim Bilgileri</h3>
-            <button onClick={handleSaveContact} className="flex items-center gap-2 bg-brand-green text-white px-4 py-2 rounded-lg hover:bg-green-800 transition-colors">
-              <Save className="w-4 h-4" />
-              Kaydet
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Adres</label>
-              <input 
-                type="text" 
-                className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none"
-                value={contactData.address}
-                onChange={(e) => setContactData({...contactData, address: e.target.value})}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Telefon</label>
-                <input 
-                  type="text" 
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none"
-                  value={contactData.phone}
-                  onChange={(e) => setContactData({...contactData, phone: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">E-posta</label>
-                <input 
-                  type="email" 
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none"
-                  value={contactData.email}
-                  onChange={(e) => setContactData({...contactData, email: e.target.value})}
-                />
-              </div>
-            </div>
-            
-            <h4 className="font-bold text-gray-900 dark:text-white pt-4 border-t border-gray-100 dark:border-gray-700">Sosyal Medya</h4>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Instagram</label>
-                <input 
-                  type="text" 
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none"
-                  value={contactData.social.instagram}
-                  onChange={(e) => setContactData({...contactData, social: {...contactData.social, instagram: e.target.value}})}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Facebook</label>
-                <input 
-                  type="text" 
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none"
-                  value={contactData.social.facebook}
-                  onChange={(e) => setContactData({...contactData, social: {...contactData.social, facebook: e.target.value}})}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Twitter</label>
-                <input 
-                  type="text" 
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none"
-                  value={contactData.social.twitter}
-                  onChange={(e) => setContactData({...contactData, social: {...contactData.social, twitter: e.target.value}})}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'interface' && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 max-w-4xl mx-auto space-y-8">
-          <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-700 pb-6">
-            <div>
-              <h3 className="text-2xl font-serif font-bold text-gray-900 dark:text-white">Ana Sayfa Yapısı Konfigürasyonu</h3>
-              <p className="text-gray-500 mt-1">Hızlı kategorileri ve ana sayfa bölümlerini buradan düzenleyebilirsiniz.</p>
-            </div>
-            <button onClick={handleSaveInterface} className="flex items-center gap-2 bg-brand-green text-white px-6 py-2.5 rounded-xl hover:bg-green-800 transition-colors shadow-lg shadow-brand-green/20">
-              <Save className="w-5 h-5" />
-              Tüm Değişiklikleri Kaydet
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Plus className="w-5 h-5 text-brand-gold" />
-                Hızlı Kategoriler
-              </h4>
-              <button 
-                onClick={() => {
-                  setInterfaceHeroCategories([...interfaceHeroCategories, { id: 'new_cat_' + Date.now(), title: 'Yeni Kategori', subtitle: 'Açıklama', targetCategory: 'Yöresel İçecekler', icon: 'Star', image: 'https://picsum.photos/400' }]);
-                }}
-                className="text-sm text-brand-green hover:underline flex items-center gap-1 font-medium"
-              >
-                <Plus className="w-4 h-4" /> Kategori Ekle
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {interfaceHeroCategories.map((cat, idx) => (
-                <div key={cat.id || idx} className="p-4 border border-gray-200 dark:border-gray-700 rounded-xl space-y-3 relative group bg-gray-50 dark:bg-gray-900/50">
-                  <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    <button onClick={() => {
-                        if (idx > 0) {
-                          const newArr = [...interfaceHeroCategories];
-                          const temp = newArr[idx - 1];
-                          newArr[idx - 1] = newArr[idx];
-                          newArr[idx] = temp;
-                          setInterfaceHeroCategories(newArr);
-                        }
-                      }} className="p-1.5 bg-white dark:bg-gray-800 text-gray-600 rounded-md shadow-sm">
-                      ^
-                    </button>
-                    <button onClick={() => {
-                        if (idx < interfaceHeroCategories.length - 1) {
-                          const newArr = [...interfaceHeroCategories];
-                          const temp = newArr[idx + 1];
-                          newArr[idx + 1] = newArr[idx];
-                          newArr[idx] = temp;
-                          setInterfaceHeroCategories(newArr);
-                        }
-                      }} className="p-1.5 bg-white dark:bg-gray-800 text-gray-600 rounded-md shadow-sm">
-                      v
-                    </button>
-                    <button onClick={() => {
-                      const newArr = [...interfaceHeroCategories];
-                      newArr.splice(idx, 1);
-                      setInterfaceHeroCategories(newArr);
-                    }} className="p-1.5 bg-white dark:bg-gray-800 text-red-600 rounded-md shadow-sm">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="flex gap-4">
-                    <img src={cat.image} className="w-16 h-16 rounded-lg object-cover" alt="" />
-                    <div className="flex-1 space-y-2">
-                       <input 
-                         type="text" 
-                         className="w-full text-sm p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 outline-none"
-                         value={cat.title}
-                         onChange={(e) => {
-                           const newArr = [...interfaceHeroCategories];
-                           newArr[idx].title = e.target.value;
-                           setInterfaceHeroCategories(newArr);
-                         }}
-                         placeholder="Başlık"
-                       />
-                       <input 
-                         type="text" 
-                         className="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 outline-none"
-                         value={cat.subtitle}
-                         onChange={(e) => {
-                           const newArr = [...interfaceHeroCategories];
-                           newArr[idx].subtitle = e.target.value;
-                           setInterfaceHeroCategories(newArr);
-                         }}
-                         placeholder="Bağlantı Alt Yazısı"
-                       />
-                       <input 
-                         type="text" 
-                         className="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 outline-none"
-                         value={cat.targetCategory}
-                         onChange={(e) => {
-                           const newArr = [...interfaceHeroCategories];
-                           newArr[idx].targetCategory = e.target.value;
-                           setInterfaceHeroCategories(newArr);
-                         }}
-                         title="Yönlendirilecek kategori ismi (Örn: Yöresel İçecekler)"
-                         placeholder="Hedef Kategori İsmi (Filtreleme için)"
-                       />
-                       <input 
-                         type="text" 
-                         className="w-full text-xs p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 outline-none"
-                         value={cat.image}
-                         onChange={(e) => {
-                           const newArr = [...interfaceHeroCategories];
-                           newArr[idx].image = e.target.value;
-                           setInterfaceHeroCategories(newArr);
-                         }}
-                         placeholder="Görsel URL"
-                       />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="h-px bg-gray-100 dark:bg-gray-700 w-full" />
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <Edit className="w-5 h-5 text-brand-green" />
-                Ana Sayfa Parçaları (Ürün Bölümleri)
-              </h4>
-              <button 
-                onClick={() => {
-                  setInterfaceHomeSections([...interfaceHomeSections, { id: 'new_section_' + Date.now(), title: 'Yeni Bölüm', active: true }]);
-                }}
-                className="text-sm text-brand-green hover:underline flex items-center gap-1 font-medium"
-              >
-                <Plus className="w-4 h-4" /> Bölüm Ekle
-              </button>
-            </div>
-            
-            <div className="space-y-3">
-              {interfaceHomeSections.map((section, idx) => (
-                <div key={section.id || idx} className="flex flex-col sm:flex-row items-start sm:items-center p-4 border border-gray-200 dark:border-gray-700 rounded-xl space-y-3 sm:space-y-0 gap-4 bg-gray-50 dark:bg-gray-900/50">
-                  <div className="flex flex-col gap-1 w-full sm:w-1/4">
-                    <label className="text-xs font-bold text-gray-500 uppercase">Bölüm ID (Sistem)</label>
-                    <input 
-                      type="text" 
-                      className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 outline-none text-xs font-mono"
-                      value={section.id}
-                      onChange={(e) => {
-                         const newArr = [...interfaceHomeSections];
-                         newArr[idx].id = e.target.value;
-                         setInterfaceHomeSections(newArr);
-                      }}
-                      placeholder="Örn: featured"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1 flex-1">
-                    <label className="text-xs font-bold text-gray-500 uppercase">Görünen Başlık</label>
-                    <input 
-                      type="text" 
-                      className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 outline-none text-sm font-bold"
-                      value={section.title}
-                      onChange={(e) => {
-                         const newArr = [...interfaceHomeSections];
-                         newArr[idx].title = e.target.value;
-                         setInterfaceHomeSections(newArr);
-                      }}
-                      placeholder="Örn: En Çok Satanlar"
-                    />
-                  </div>
-                  <div className="flex items-center gap-4 min-w-[120px]">
-                    <label className="flex items-center gap-2 text-sm cursor-pointer border p-2 rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700">
-                      <input 
-                        type="checkbox" 
-                        checked={section.active !== false}
-                        onChange={(e) => {
-                           const newArr = [...interfaceHomeSections];
-                           newArr[idx].active = e.target.checked;
-                           setInterfaceHomeSections(newArr);
-                        }}
-                        className="rounded border-gray-300 text-brand-green focus:ring-brand-green"
-                      />
-                      Görünür
-                    </label>
-                    <button onClick={() => {
-                        const newArr = [...interfaceHomeSections];
-                        newArr.splice(idx, 1);
-                        setInterfaceHomeSections(newArr);
-                    }} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              <p className="text-xs text-gray-500 bg-blue-50/50 p-3 rounded-lg border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800">
-                Lütfen ürünleri yeni bölümlere aktarmak için <strong>Ürün Gösterge Paneli</strong>'nden ürün düzenleme menüsüne gidin ve <strong>Ana Sayfa Bölümü</strong> (homeSection) değerini bağlamak istediğiniz "Bölüm ID"sine (Örn: <code>featured</code>) ayarlayın.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Blog Modal */}
-      {isBlogModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-gray-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">{editingPost ? 'Yazıyı Düzenle' : 'Yeni Yazı Ekle'}</h3>
-              <button onClick={() => setIsBlogModalOpen(false)} className="text-gray-500 hover:text-gray-700"><X className="w-6 h-6" /></button>
-            </div>
-            <div className="p-6 overflow-y-auto space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Başlık</label>
-                <input type="text" className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none" value={blogFormData.title} onChange={e => setBlogFormData({...blogFormData, title: e.target.value})} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Özet</label>
-                <textarea rows={2} className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none resize-none" value={blogFormData.summary} onChange={e => setBlogFormData({...blogFormData, summary: e.target.value})} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">İçerik</label>
-                <textarea rows={6} className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none resize-none" value={blogFormData.content} onChange={e => setBlogFormData({...blogFormData, content: e.target.value})} />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Görsel URL</label>
-                <input type="text" className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none" value={blogFormData.image} onChange={e => setBlogFormData({...blogFormData, image: e.target.value})} />
-              </div>
-            </div>
-            <div className="p-6 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-end gap-3">
-              <button onClick={() => setIsBlogModalOpen(false)} className="px-6 py-3 rounded-xl font-bold text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">İptal</button>
-              <button onClick={handleSaveBlog} className="px-6 py-3 rounded-xl font-bold bg-brand-green text-white hover:bg-green-800 transition-colors shadow-lg">Kaydet</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notification */}
-      {toast.visible && (
-        <div className="fixed bottom-4 right-4 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 animate-fade-in">
-          <Check className="w-5 h-5 text-green-400" />
-          <span className="font-medium">{toast.message}</span>
-        </div>
-      )}
-    </div>
-  );
+    {toast && <div role="status" aria-live="polite" aria-atomic="true" className="fixed bottom-4 right-4 z-[70] flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-white shadow-2xl"><Check aria-hidden="true" className="h-5 w-5 text-green-400"/>{toast}</div>}
+    <style>{`.content-field{width:100%;min-height:44px;border:1px solid rgb(209 213 219);border-radius:.75rem;padding:.7rem .8rem;background:transparent}.dark .content-field{border-color:rgb(55 65 81)}`}</style>
+  </div>;
 }
+
+function Metric({label,value}:{label:string;value:number}){return <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="text-xs text-gray-500">{label}</div><div className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{safeCount(value).toLocaleString('tr-TR')}</div></div>}
+function Field({label,children}:{label:string;children:React.ReactElement<{className?:string}>}){return <label className="block"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>{React.cloneElement(children,{className:'content-field'})}</label>}

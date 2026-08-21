@@ -1,47 +1,55 @@
 import { useEffect, useState } from 'react';
-import { getPublicStorefrontConfig } from './api';
+import { getPublicStorefrontConfig, type StorefrontConfig } from './api';
 
-const fallbackInterface = {
-  heroTitle: 'Köyden Sofraya',
-  heroSubtitle: 'Üretici, menşe ve ürün bilgileri doğrulanan yöresel ürünleri keşfedin.',
-  heroButtonText: 'Ürünleri Keşfet',
-  featuredTitle: 'Öne Çıkan Ürünler',
-  seasonalTitle: 'Mevsimlik Ürünler',
-  categoriesTitle: 'Ürün Kategorileri',
+type StorefrontState = {
+  staticContent: { interface: StorefrontConfig['interface'] | null };
+  heroCategories: StorefrontConfig['heroCategories'];
+  homeSections: StorefrontConfig['homeSections'];
+  eventSpotlight: StorefrontConfig['eventSpotlight'] | null;
+  salesReadiness: StorefrontConfig['salesReadiness'] | null;
+  brand: StorefrontConfig['brand'] | null;
+  updatedAt: string | null;
+  loading: boolean;
+  error: string;
+};
+
+const emptyState: StorefrontState = {
+  staticContent: { interface: null },
+  heroCategories: [],
+  homeSections: [],
+  eventSpotlight: null,
+  salesReadiness: null,
+  brand: null,
+  updatedAt: null,
+  loading: true,
+  error: '',
 };
 
 export function usePublicStorefrontConfig(locale = 'tr') {
-  const [state, setState] = useState<any>({
-    staticContent: { interface: fallbackInterface },
-    heroCategories: [],
-    homeSections: [],
-    salesReadiness: {},
-    loading: true,
-    error: '',
-  });
+  const [state, setState] = useState<StorefrontState>(emptyState);
 
   useEffect(() => {
     let active = true;
+    setState({ ...emptyState, loading: true });
     (async () => {
       try {
         const data = await getPublicStorefrontConfig(locale);
         if (!active) return;
         setState({
-          staticContent: { interface: { ...fallbackInterface, ...(data?.interface || {}) } },
-          heroCategories: Array.isArray(data?.heroCategories) ? data.heroCategories : [],
-          homeSections: Array.isArray(data?.homeSections) ? data.homeSections : [],
-          salesReadiness: data?.salesReadiness || {},
-          brand: data?.brand || null,
+          staticContent: { interface: data.interface },
+          heroCategories: data.heroCategories,
+          homeSections: data.homeSections,
+          eventSpotlight: data.eventSpotlight,
+          salesReadiness: data.salesReadiness,
+          brand: data.brand,
+          updatedAt: data.updatedAt,
           loading: false,
           error: '',
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (!active) return;
-        setState((previous: any) => ({
-          ...previous,
-          loading: false,
-          error: error?.message || 'Mağaza arayüz ayarları yüklenemedi.',
-        }));
+        const message = error instanceof Error && error.message ? error.message : 'Mağaza arayüz ayarları yüklenemedi.';
+        setState({ ...emptyState, loading: false, error: message });
       }
     })();
     return () => { active = false; };

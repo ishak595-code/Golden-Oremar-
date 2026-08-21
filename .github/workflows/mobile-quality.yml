@@ -1,10 +1,11 @@
 name: Mobile Quality Gate
 
 on:
+  workflow_dispatch:
   pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+    branches:
+      - main
+      - agent/admin-supabase-retire-node
 
 permissions:
   contents: read
@@ -14,9 +15,74 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  verify-mobile:
+  customer-e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
+    env:
+      VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
+      VITE_PUBLIC_APP_ORIGIN: http://127.0.0.1:4173
+      E2E_BASE_URL: http://127.0.0.1:4173
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked application dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install pinned Chromium E2E runtime
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.1
+          npx playwright install --with-deps chromium
+
+      - name: Build browser application against canonical Supabase
+        run: npm run build
+
+      - name: Start production preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run preview -- --host 127.0.0.1 --port 4173 >/tmp/golden-oremar-preview.log 2>&1 &
+          echo $! >/tmp/golden-oremar-preview.pid
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/golden-oremar-preview.log
+          exit 1
+
+      - name: Run real customer Chromium journey
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/customer-e2e.mjs
+
+      - name: Hard-delete disposable E2E user when service role is configured
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/cleanup-e2e-user.mjs
+
+      - name: Upload customer E2E evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-oremar-customer-e2e-${{ github.sha }}
+          path: e2e-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+
+  verify-web-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
     steps:
       - uses: actions/checkout@v7
 
@@ -33,7 +99,10 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
-      - name: Validate mobile baseline and preserved auth
+      - name: Release architecture audit
+        run: npm run audit:release
+
+      - name: Validate current native baseline and preserved OAuth
         shell: bash
         run: |
           set -euo pipefail
@@ -54,6 +123,7 @@ jobs:
           for (const [name, version] of Object.entries(expected)) {
             if (pkg.dependencies?.[name] !== version) throw new Error(`${name}: expected ${version}, got ${pkg.dependencies?.[name]}`);
           }
+          if (pkg.dependencies?.firebase) throw new Error('Firebase must not return to the runtime dependency graph.');
           if (pkg.devDependencies?.['@capacitor/cli'] !== '8.5.0') throw new Error('@capacitor/cli must be 8.5.0');
           NODE
           grep -q "com.android.tools.build:gradle:8.13.0" android/build.gradle
@@ -76,11 +146,26 @@ jobs:
           grep -q "from '@capacitor/browser'" src/features/auth/api.ts
           grep -q 'signInWithOAuth' src/features/auth/api.ts
           grep -q 'skipBrowserRedirect: native' src/features/auth/api.ts
+          if git grep -nE "firebase/(app|auth|firestore|storage)|from ['\"][^'\"]*firebase['\"]" -- 'src/**'; then
+            echo 'Firebase runtime source residue found.' >&2
+            exit 1
+          fi
+
+      - name: TypeScript check
+        run: npm run lint
 
       - name: Production web build
         run: npm run build
 
-      - name: Synchronize Android and iOS
+      - name: Upload deployable web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-oremar-web-dist-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Synchronize Android and iOS native projects
         run: npx cap sync android && npx cap sync ios
 
       - name: Ensure native sync is reproducible
@@ -88,7 +173,7 @@ jobs:
         run: |
           set -euo pipefail
           if ! git diff --quiet; then
-            echo 'Capacitor sync changed tracked native files. Commit the generated changes before merging.' >&2
+            echo 'Capacitor sync changed tracked native files. Commit generated native changes before merging.' >&2
             git diff --stat
             git diff
             exit 1
@@ -97,3 +182,81 @@ jobs:
       - name: Compile Android debug app
         working-directory: android
         run: chmod +x gradlew && ./gradlew :app:assembleDebug --no-daemon
+
+      - name: Upload installable Android debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-oremar-android-debug-apk-${{ github.sha }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Compile Android release bundle without signing
+        working-directory: android
+        run: ./gradlew :app:bundleRelease --no-daemon
+
+      - name: Upload unsigned Android release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-oremar-android-unsigned-release-aab-${{ github.sha }}
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
+  verify-ios:
+    runs-on: macos-26
+    timeout-minutes: 35
+    env:
+      VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Select Xcode 26.6
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Release architecture audit
+        run: npm run audit:release
+
+      - name: Build and synchronize iOS
+        run: npm run build && npx cap sync ios
+
+      - name: Ensure iOS sync is reproducible
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet; then
+            echo 'Capacitor iOS sync changed tracked files. Commit generated changes before merging.' >&2
+            git diff --stat
+            git diff
+            exit 1
+          fi
+
+      - name: Resolve Swift packages
+        run: xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj -scheme App
+
+      - name: Compile iOS simulator app
+        run: >-
+          xcodebuild
+          -project ios/App/App.xcodeproj
+          -scheme App
+          -configuration Debug
+          -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+      - name: Verify iOS deployment target and app identifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;' ios/App/App.xcodeproj/project.pbxproj
+          grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.goldenoremar.app;' ios/App/App.xcodeproj/project.pbxproj

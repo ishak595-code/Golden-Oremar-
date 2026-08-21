@@ -1,56 +1,104 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
+import { setPersonalTheme } from '../appearance/theme';
+import { setNotificationSound, setNotificationSoundEnabled } from '../notifications/premiumSounds';
+import { getMyAppPreferences } from '../preferences/api';
+import { NETWORK_RESTORED_EVENT } from '../resilience/useConnectivity';
 import { buildCurrentUserFromSession } from './api';
 
 export function useCustomerSession() {
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUserState, setCurrentUserState] = useState<any>(null);
   const [authReady, setAuthReady] = useState(false);
+  const verifiedUserRef = useRef<any>(null);
+
+  const setCurrentUser = useCallback((next: any) => {
+    setCurrentUserState(previous => {
+      const resolved = typeof next === 'function' ? next(previous) : next;
+      verifiedUserRef.current = resolved;
+      return resolved;
+    });
+  }, []);
 
   useEffect(() => {
     let active = true;
     let hydrationSequence = 0;
 
+    const hydratePreferences = async (sequence: number) => {
+      try {
+        const preferences = await getMyAppPreferences();
+        if (!active || sequence !== hydrationSequence) return;
+        if (preferences.theme) setPersonalTheme(preferences.theme);
+        setNotificationSound(preferences.notificationSound);
+        setNotificationSoundEnabled(preferences.notificationSoundEnabled);
+      } catch (error) {
+        // Preferences are deliberately non-blocking. Authentication remains valid and
+        // the device's last safe local preference remains active until the next retry.
+        console.error('Supabase app preference hydration failed', error);
+      }
+    };
+
     const hydrate = async (session: Session | null) => {
       const sequence = ++hydrationSequence;
       if (!session?.user) {
         if (active && sequence === hydrationSequence) {
-          setCurrentUser(null);
+          verifiedUserRef.current = null;
+          setCurrentUserState(null);
           setAuthReady(true);
         }
         return;
       }
       try {
         const nextUser = await buildCurrentUserFromSession(session);
-        if (active && sequence === hydrationSequence) setCurrentUser(nextUser);
+        if (active && sequence === hydrationSequence) {
+          verifiedUserRef.current = nextUser;
+          setCurrentUserState(nextUser);
+          setAuthReady(true);
+          void hydratePreferences(sequence);
+        }
       } catch (error) {
         console.error('Supabase customer session hydration failed', error);
-        if (active && sequence === hydrationSequence) setCurrentUser(null);
-      } finally {
-        if (active && sequence === hydrationSequence) setAuthReady(true);
+        if (active && sequence === hydrationSequence) {
+          // A temporary network/RPC failure must not visually sign out a user whose
+          // identity was already verified during this app session. We keep only the
+          // previously verified snapshot and retry as soon as connectivity returns.
+          if (verifiedUserRef.current) setCurrentUserState(verifiedUserRef.current);
+          setAuthReady(true);
+        }
       }
     };
 
-    void supabase.auth.getSession().then(({ data, error }) => {
-      if (error) {
-        console.error('Supabase initial customer session failed', error);
-        if (active) setAuthReady(true);
-        return;
+    const hydrateCurrentSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        await hydrate(data.session);
+      } catch (error) {
+        console.error('Supabase customer session lookup failed', error);
+        if (active) {
+          if (verifiedUserRef.current) setCurrentUserState(verifiedUserRef.current);
+          setAuthReady(true);
+        }
       }
-      void hydrate(data.session);
-    });
+    };
+
+    void hydrateCurrentSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       // Keep network-backed role/profile hydration outside the synchronous auth callback.
       window.setTimeout(() => { void hydrate(session); }, 0);
     });
 
+    const retryAfterConnectivityRestore = () => { void hydrateCurrentSession(); };
+    window.addEventListener(NETWORK_RESTORED_EVENT, retryAfterConnectivityRestore);
+
     return () => {
       active = false;
       hydrationSequence += 1;
       subscription.unsubscribe();
+      window.removeEventListener(NETWORK_RESTORED_EVENT, retryAfterConnectivityRestore);
     };
   }, []);
 
-  return { currentUser, setCurrentUser, authReady };
+  return { currentUser: currentUserState, setCurrentUser, authReady };
 }

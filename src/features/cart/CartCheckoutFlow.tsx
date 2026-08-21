@@ -1,409 +1,63 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Minus, Plus, ShieldCheck, ShoppingCart, Trash2 } from 'lucide-react';
-import { useAccessibleDialog } from '../accessibility/useAccessibleDialog';
-import {
-  clearCart,
-  createOrder,
-  getCart,
-  getCheckoutAccountOverview,
-  previewCheckout,
-  publicCatalogUrl,
-  removeCartItem,
-  setCartItem,
-  startShippingQuoteSupport,
-  type CartSnapshot,
-  type CheckoutPreview,
-} from './api';
+import React,{useEffect,useMemo,useRef,useState}from'react';
+import{ArrowLeft,CheckCircle2,CreditCard,MapPin,Minus,Plus,RefreshCw,ShieldCheck,ShoppingCart,Trash2}from'lucide-react';
+import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
+import{Money}from'../account/ui';
+import{saveCustomerAddress}from'../addresses/api';
+import HostedPaymentDialog from'../payments/HostedPaymentDialog';
+import PaymentMethodEnrollmentDialog from'../payments/PaymentMethodEnrollmentDialog';
+import{paymentMethodLabel}from'../payments/api';
+import{commercePaymentErrorMessage,getCheckoutPaymentCapabilities,initializeHostedOrderPayment,payPendingOrder,setPendingOrderPaymentMethod,type BuyerIdentityType,type CheckoutPaymentCapabilities}from'../payments/commerceApi';
+import{getMyOrderPaymentState}from'../payments/orderPaymentStateApi';
+import{clearCart,createOrder,getCart,getCheckoutAccountOverview,previewCheckout,publicCatalogUrl,removeCartItem,setCartItem,startShippingQuoteSupport,type CartSnapshot,type CheckoutPreview}from'./api';
 
-function Money({ minor, currency }: { minor: number; currency: string }) {
-  return <>{new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(Number(minor || 0) / 100)}</>;
-}
+type PaymentFlow='checkout_form'|'saved_card';
+type PendingOrder={orderId:string;orderNumber:string;paymentMethodId:string|null;};
+type SuccessOrder={orderId:string;orderNumber:string;paymentStatus:string;};
+function isRecord(value:unknown):value is Record<string,any>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}function int(value:unknown){return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;}function text(value:unknown,max=500){return typeof value==='string'?value.trim().slice(0,max):'';}function uuid(value:unknown){const n=text(value,80);return/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(n)?n:'';}function friendlyReason(reason?:string|null){const map:Record<string,string>={cart_empty:'Sepetiniz boş.',product_not_available:'Sepette artık satışta olmayan bir ürün var. Sepeti güncelleyin.',insufficient_stock:'Sepetteki ürünlerden biri için yeterli stok kalmadı.',international_shipping_weight_missing:'Yurt dışı gönderim için bir veya daha fazla ürünün doğrulanmış kargo ağırlığı eksik.',manual_shipping_quote_required:'Bu ülke için kargo fiyatı manuel olarak belirlenmelidir.',shipping_rate_not_configured:'Bu ülke için otomatik kargo tarifesi henüz tanımlanmadı.',shipping_zone_not_configured:'Bu ülkeye gönderim bölgesi henüz tanımlanmadı.',coupon_invalid_or_unavailable:'Kupon kodu geçersiz veya artık kullanılamıyor.',coupon_usage_limit_reached:'Bu kuponun kullanım hakkı dolmuş.',coupon_not_applicable:'Bu kupon mevcut sepet koşullarına uygulanamıyor.',invalid_address:'Teslimat adresini kontrol edin.',address_limit_exceeded:'Hesabınıza en fazla 20 teslimat adresi kaydedebilirsiniz.'};return reason?(map[reason]||`Checkout şu anda tamamlanamıyor: ${reason}`):'';}
+function normalizeAddress(value:any){return{label:text(value?.label,60)||'Teslimat',recipient_name:text(value?.recipient_name,120),phone:text(value?.phone,40),country_code:text(value?.country_code,2).toUpperCase(),province:text(value?.province,120),district:text(value?.district,120),neighborhood:text(value?.neighborhood,160),address_line:text(value?.address_line,1000),postal_code:text(value?.postal_code,30),delivery_notes:text(value?.delivery_notes,500)};}
+const blankAddress={label:'Teslimat',recipient_name:'',phone:'',country_code:'',province:'',district:'',neighborhood:'',address_line:'',postal_code:'',delivery_notes:''};
+const manualFields=[{key:'recipient_name',label:'Teslim alacak kişi',required:true,maxLength:120,autoComplete:'name'},{key:'phone',label:'Telefon',required:true,maxLength:40,autoComplete:'tel'},{key:'country_code',label:'Ülke kodu',required:true,maxLength:2,autoComplete:'country'},{key:'province',label:'İl/Bölge',required:false,maxLength:120,autoComplete:'address-level1'},{key:'district',label:'Şehir/İlçe',required:true,maxLength:120,autoComplete:'address-level2'},{key:'neighborhood',label:'Mahalle/Köy',required:false,maxLength:160,autoComplete:'address-level3'},{key:'postal_code',label:'Posta kodu',required:true,maxLength:30,autoComplete:'postal-code'}]as const;
+function newKey(prefix:string){return`${prefix}_${crypto.randomUUID().replace(/-/g,'')}`;}
 
-function friendlyReason(reason?: string | null) {
-  switch (reason) {
-    case 'cart_empty': return 'Sepetiniz boş.';
-    case 'product_not_available': return 'Sepette artık satışta olmayan bir ürün var. Lütfen sepetinizi güncelleyin.';
-    case 'insufficient_stock': return 'Sepetteki ürünlerden biri için yeterli stok kalmadı.';
-    case 'international_shipping_weight_missing': return 'Yurt dışı gönderim için bir veya daha fazla ürünün doğrulanmış kargo ağırlığı eksik.';
-    case 'manual_shipping_quote_required': return 'Bu ülke için kargo fiyatı manuel olarak belirlenmelidir.';
-    case 'shipping_rate_not_configured': return 'Bu ülke için otomatik kargo tarifesi henüz tanımlanmadı.';
-    case 'shipping_zone_not_configured': return 'Bu ülkeye gönderim bölgesi henüz tanımlanmadı.';
-    case 'coupon_invalid_or_unavailable': return 'Kupon kodu geçersiz veya artık kullanılamıyor.';
-    case 'coupon_usage_limit_reached': return 'Bu kuponun kullanım hakkı dolmuş.';
-    case 'coupon_not_applicable': return 'Bu kupon mevcut sepet koşullarına uygulanamıyor.';
-    default: return reason ? `Checkout şu anda tamamlanamıyor: ${reason}` : '';
-  }
-}
-
-function normalizeSavedAddress(a: any) {
-  return {
-    label: a.label || 'Teslimat',
-    recipient_name: a.recipient_name,
-    phone: a.phone,
-    country_code: a.country_code || 'TR',
-    province: a.province || '',
-    district: a.district || '',
-    neighborhood: a.neighborhood || '',
-    address_line: a.address_line || '',
-    postal_code: a.postal_code || '',
-    delivery_notes: a.delivery_notes || '',
-  };
-}
-
-const blankAddress = {
-  label: 'Teslimat', recipient_name: '', phone: '', country_code: 'TR', province: '', district: '',
-  neighborhood: '', address_line: '', postal_code: '', delivery_notes: '',
-};
-
-export default function CartCheckoutFlow({
-  onBack,
-  onOrderCreated,
-  onOpenAddresses,
-}: {
-  onBack?: () => void;
-  onOrderCreated?: (order: any) => void;
-  onOpenAddresses?: () => void;
-}) {
-  const [cart, setCart] = useState<CartSnapshot | null>(null);
-  const [overview, setOverview] = useState<any>(null);
-  const [selectedAddressId, setSelectedAddressId] = useState('');
-  const [manualAddress, setManualAddress] = useState<any>(blankAddress);
-  const [useManualAddress, setUseManualAddress] = useState(false);
-  const [couponInput, setCouponInput] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState('');
-  const [customerNote, setCustomerNote] = useState('');
-  const [preview, setPreview] = useState<CheckoutPreview | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [previewBusy, setPreviewBusy] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [quoteBusy, setQuoteBusy] = useState(false);
-  const [quoteSent, setQuoteSent] = useState(false);
-  const [error, setError] = useState('');
-  const [actionStatus, setActionStatus] = useState('');
-  const [rowBusyId, setRowBusyId] = useState<string | null>(null);
-  const [clearBusy, setClearBusy] = useState(false);
-  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
-  const [success, setSuccess] = useState<any>(null);
-  const idempotencyRef = useRef<string | null>(null);
-  const errorRef = useRef<HTMLDivElement | null>(null);
-  const clearDialogRef = useAccessibleDialog<HTMLDivElement>(clearConfirmOpen, () => { if (!clearBusy) setClearConfirmOpen(false); });
-
-  useEffect(() => {
-    if (!error) return;
-    queueMicrotask(() => errorRef.current?.focus({ preventScroll: false }));
-  }, [error]);
-
-  async function load() {
-    try {
-      setLoading(true);
-      setError('');
-      const [nextCart, nextOverview] = await Promise.all([getCart(), getCheckoutAccountOverview()]);
-      setCart(nextCart);
-      setOverview(nextOverview);
-      const addresses = nextOverview?.addresses || [];
-      const defaultAddress = addresses.find((a: any) => a.is_default) || addresses[0];
-      if (defaultAddress && !selectedAddressId) setSelectedAddressId(defaultAddress.id);
-      if (!defaultAddress) {
-        setUseManualAddress(true);
-        setManualAddress((prev: any) => ({
-          ...prev,
-          recipient_name: nextOverview?.profile?.display_name || '',
-          phone: nextOverview?.profile?.phone || '',
-        }));
-      }
-    } catch (e: any) {
-      setError(e?.message || 'Sepet yüklenemedi.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { void load(); }, []);
-
-  const selectedSavedAddress = useMemo(
-    () => overview?.addresses?.find((a: any) => a.id === selectedAddressId) || null,
-    [overview, selectedAddressId]
-  );
-  const checkoutAddress = useManualAddress ? manualAddress : (selectedSavedAddress ? normalizeSavedAddress(selectedSavedAddress) : null);
-  const countryCode = (checkoutAddress?.country_code || 'TR').toUpperCase();
-
-  async function refreshPreview(nextCoupon = appliedCoupon) {
-    if (!cart?.items?.length) {
-      setPreview(null);
-      return;
-    }
-    try {
-      setPreviewBusy(true);
-      setError('');
-      const p = await previewCheckout(countryCode, nextCoupon || null);
-      setPreview(p);
-    } catch (e: any) {
-      setPreview(null);
-      setError(e?.message || 'Sipariş özeti hesaplanamadı.');
-    } finally {
-      setPreviewBusy(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!loading && cart?.items?.length) void refreshPreview(appliedCoupon);
-    // country / cart totals change should refresh; coupon only changes after explicit apply.
-  }, [countryCode, cart?.subtotalMinor, cart?.itemCount, appliedCoupon, loading]);
-
-  async function updateQuantity(item: CartSnapshot['items'][number], nextQuantity: number) {
-    if (rowBusyId) return;
-    try {
-      setRowBusyId(item.cartItemId);
-      setError('');
-      setActionStatus('');
-      const maxAllowed = item.sellableQuantity != null ? Math.max(0, Number(item.sellableQuantity)) : null;
-      if (maxAllowed != null && nextQuantity > maxAllowed) {
-        setError(`Bu ürün için en fazla ${maxAllowed} adet sepete eklenebilir.`);
-        return;
-      }
-      if (nextQuantity <= 0) {
-        setCart(await removeCartItem(item.cartItemId));
-        setActionStatus(`${item.productName} sepetten çıkarıldı.`);
-      } else {
-        setCart(await setCartItem({
-          variantId: item.variantId,
-          quantity: nextQuantity,
-          selectedOptions: item.selectedOptions || {},
-        }));
-        setActionStatus(`${item.productName} adedi ${nextQuantity} olarak güncellendi.`);
-      }
-    } catch (e: any) {
-      setError(e?.message || 'Sepet güncellenemedi.');
-    } finally {
-      setRowBusyId(null);
-    }
-  }
-
-  async function remove(item: CartSnapshot['items'][number]) {
-    if (rowBusyId) return;
-    try {
-      setRowBusyId(item.cartItemId);
-      setError('');
-      setActionStatus('');
-      setCart(await removeCartItem(item.cartItemId));
-      setActionStatus(`${item.productName} sepetten çıkarıldı.`);
-    } catch (e: any) {
-      setError(e?.message || 'Ürün sepetten çıkarılamadı.');
-    } finally {
-      setRowBusyId(null);
-    }
-  }
-
-  async function confirmEmptyCart() {
-    if (clearBusy) return;
-    try {
-      setClearBusy(true);
-      setError('');
-      setActionStatus('');
-      setCart(await clearCart());
-      setPreview(null);
-      setClearConfirmOpen(false);
-      setActionStatus('Sepet temizlendi.');
-    } catch (e: any) {
-      setClearConfirmOpen(false);
-      setError(e?.message || 'Sepet temizlenemedi.');
-    } finally {
-      setClearBusy(false);
-    }
-  }
-
-  async function applyCoupon() {
-    if (previewBusy) return;
-    const code = couponInput.trim().toUpperCase();
-    setAppliedCoupon(code);
-    await refreshPreview(code);
-  }
-
-  function validateAddress() {
-    if (!checkoutAddress) return 'Teslimat adresi seçin.';
-    if ((checkoutAddress.recipient_name || '').trim().length < 2) return 'Teslim alacak kişinin adını yazın.';
-    if ((checkoutAddress.phone || '').trim().length < 7) return 'Teslimat telefonu geçersiz.';
-    if (!/^[A-Z]{2}$/.test(countryCode)) return 'Ülke kodu geçersiz.';
-    const city = (checkoutAddress.city || checkoutAddress.district || checkoutAddress.province || '').trim();
-    if (!city) return 'Şehir/ilçe bilgisini yazın.';
-    if ((checkoutAddress.address_line1 || checkoutAddress.address_line || '').trim().length < 5) return 'Açık teslimat adresini yazın.';
-    return '';
-  }
-
-  async function submit() {
-    if (submitting || !cart?.items?.length) return;
-    setSubmitting(true);
-    setError('');
-    setActionStatus('');
-    try {
-      const addressIssue = validateAddress();
-      if (addressIssue) { setError(addressIssue); return; }
-      const currentPreview = await previewCheckout(countryCode, appliedCoupon || null).catch((e: any) => {
-        setError(e?.message || 'Sipariş son kez doğrulanamadı.');
-        return null;
-      });
-      if (!currentPreview) return;
-      setPreview(currentPreview);
-      if (!currentPreview.canCheckout) {
-        setError(friendlyReason(currentPreview.blockingReason) || 'Sipariş şu anda oluşturulamıyor.');
-        return;
-      }
-      if (!idempotencyRef.current) {
-        idempotencyRef.current = `checkout_${globalThis.crypto.randomUUID().replace(/-/g, '')}`;
-      }
-      const result = await createOrder({
-        items: cart.items,
-        shippingAddress: checkoutAddress,
-        customerNote,
-        couponCode: appliedCoupon || null,
-        idempotencyKey: idempotencyRef.current,
-      });
-      setSuccess(result);
-      setCart({ cartId: null, currency: cart.currency, itemCount: 0, subtotalMinor: 0, items: [] });
-      setPreview(null);
-      idempotencyRef.current = null;
-      onOrderCreated?.(result);
-    } catch (e: any) {
-      const raw = e?.message || 'Sipariş oluşturulamadı.';
-      setError(friendlyReason(raw.split(':')[0]) || raw);
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  async function requestShippingQuote() {
-    if (!cart?.items?.length || quoteBusy || quoteSent) return;
-    try {
-      setQuoteBusy(true);
-      setError('');
-      const cityLabel = [checkoutAddress?.district, checkoutAddress?.province].filter(Boolean).join(' / ');
-      await startShippingQuoteSupport({ countryCode, cityLabel, cart, preview });
-      setQuoteSent(true);
-    } catch (e: any) {
-      setError(e?.message || 'Kargo teklif talebi oluşturulamadı.');
-    } finally {
-      setQuoteBusy(false);
-    }
-  }
-
-  if (loading) return <div role="status" aria-live="polite" className="mx-auto max-w-4xl p-6 text-center">Sepetiniz yükleniyor…</div>;
-
-  if (success) {
-    return <section className="mx-auto max-w-xl p-4 sm:p-6" aria-labelledby="checkout-success-title">
-      <div className="rounded-3xl border border-green-200 bg-white dark:bg-gray-900 p-6 text-center shadow-sm">
-        <CheckCircle2 aria-hidden="true" className="mx-auto h-14 w-14 text-green-600" />
-        <h1 id="checkout-success-title" className="mt-4 text-2xl font-bold">Siparişiniz oluşturuldu</h1>
-        <p className="mt-2 text-sm text-gray-500">Sipariş no: <strong>{success.orderNumber}</strong></p>
-        <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">Stok rezervasyonu yapıldı. Ödeme gerçekten doğrulanana kadar sipariş “ödendi” sayılmaz.</p>
-        <button type="button" onClick={onBack} className="mt-5 min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Alışverişe dön</button>
-      </div>
-    </section>;
-  }
-
-  if (!cart?.items?.length) {
-    return <section className="mx-auto max-w-xl p-4 sm:p-6 text-center">
-      <ShoppingCart aria-hidden="true" className="mx-auto h-12 w-12 text-gray-300" />
-      <h1 className="mt-4 text-2xl font-bold">Sepetiniz boş</h1>
-      <p className="mt-2 text-gray-500">Beğendiğiniz köy ürünlerini sepete ekleyerek devam edebilirsiniz.</p>
-      <button type="button" onClick={onBack} className="mt-5 min-h-12 rounded-xl bg-brand-green px-6 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Ürünleri keşfet</button>
-    </section>;
-  }
-
-  return <main className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6" aria-labelledby="cart-title">
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-3">
-        {onBack ? <button type="button" onClick={onBack} aria-label="Alışverişe dön" className="min-h-11 min-w-11 rounded-xl border p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><ArrowLeft aria-hidden="true" className="mx-auto h-5 w-5" /></button> : null}
-        <div><h1 id="cart-title" className="text-2xl font-bold">Sepetim</h1><p className="text-sm text-gray-500">{cart.itemCount} ürün</p></div>
-      </div>
-      <button type="button" onClick={() => { setError(''); setActionStatus(''); setClearConfirmOpen(true); }} className="min-h-11 rounded-xl border border-red-200 px-3 text-sm font-semibold text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Sepeti temizle</button>
-    </div>
-
-    {error ? <div ref={errorRef} role="alert" tabIndex={-1} className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 outline-none dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div> : null}
-    {actionStatus ? <div role="status" aria-live="polite" className="rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{actionStatus}</div> : null}
-
-    <section aria-labelledby="cart-items-title" className="rounded-2xl border bg-white dark:bg-gray-900 p-4 sm:p-5">
-      <h2 id="cart-items-title" className="sr-only">Sepetteki ürünler</h2>
-      <div className="space-y-4">{cart.items.map(item => { const rowBusy = rowBusyId === item.cartItemId; return <article key={item.cartItemId} aria-busy={rowBusy} className="flex gap-3 border-b pb-4 last:border-b-0 last:pb-0">
-        {item.imagePath ? <img src={publicCatalogUrl(item.imagePath)} alt="" className="h-24 w-24 shrink-0 rounded-xl object-cover" /> : <div className="h-24 w-24 shrink-0 rounded-xl bg-gray-100" />}
-        <div className="min-w-0 flex-1">
-          <h3 className="font-bold">{item.productName}</h3>
-          <p className="mt-1 text-sm text-gray-500">{item.variantName} • {item.producer?.name}</p>
-          {!item.available ? <p className="mt-1 text-sm font-semibold text-red-700">Bu ürün artık satışa uygun değil.</p> : null}
-          {item.sellableQuantity != null && item.quantity > item.sellableQuantity ? <p className="mt-1 text-sm font-semibold text-red-700">Yeterli stok yok. Satılabilir: {item.sellableQuantity}</p> : null}
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center rounded-xl border" aria-label={`${item.productName} adet seçimi`}>
-              <button type="button" disabled={rowBusy} onClick={() => void updateQuantity(item, item.quantity - 1)} aria-label="Adedi azalt" className="min-h-11 min-w-11 p-2 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><Minus aria-hidden="true" className="mx-auto h-4 w-4" /></button>
-              <span className="min-w-10 text-center font-bold" aria-live="polite">{item.quantity}</span>
-              <button type="button" onClick={() => void updateQuantity(item, item.quantity + 1)} disabled={rowBusy || (!item.available) || (item.sellableQuantity != null && item.quantity >= Number(item.sellableQuantity))} aria-label="Adedi artır" className="min-h-11 min-w-11 p-2 disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><Plus aria-hidden="true" className="mx-auto h-4 w-4" /></button>
-            </div>
-            <div className="flex items-center gap-3">
-              <strong><Money minor={item.lineTotalMinor} currency={cart.currency} /></strong>
-              <button type="button" disabled={rowBusy} onClick={() => void remove(item)} aria-label={`${item.productName} ürününü sepetten çıkar`} className="min-h-11 min-w-11 rounded-xl border border-red-200 p-2 text-red-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300"><Trash2 aria-hidden="true" className="mx-auto h-4 w-4" /></button>
-            </div>
-          </div>
-        </div>
-      </article>; })}</div>
-    </section>
-
-    <section className="rounded-2xl border bg-white dark:bg-gray-900 p-4 sm:p-5" aria-labelledby="address-title">
-      <h2 id="address-title" className="text-lg font-bold">Teslimat adresi</h2>
-      {overview?.addresses?.length ? <div className="mt-4 space-y-3">
-        <label className="block"><span className="text-sm font-semibold">Kayıtlı adres</span>
-          <select value={useManualAddress ? '__new__' : selectedAddressId} onChange={e => {
-            if (e.target.value === '__new__') setUseManualAddress(true);
-            else { setUseManualAddress(false); setSelectedAddressId(e.target.value); }
-          }} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3">
-            {overview.addresses.map((a: any) => <option key={a.id} value={a.id}>{a.label} — {a.district}/{a.province}</option>)}
-            <option value="__new__">Farklı teslimat adresi kullan</option>
-          </select>
-        </label>
-        {onOpenAddresses ? <button type="button" onClick={onOpenAddresses} className="min-h-11 rounded-xl border px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Adreslerimi yönet</button> : null}
-      </div> : null}
-
-      {useManualAddress ? <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        {[
-          ['recipient_name','Teslim alacak kişi'],['phone','Telefon'],['country_code','Ülke kodu'],['province','İl/Bölge'],
-          ['district','Şehir/İlçe'],['neighborhood','Mahalle/Köy'],['postal_code','Posta kodu']
-        ].map(([key,label]) => <label key={key} className="block"><span className="text-sm font-semibold">{label}</span><input value={manualAddress[key] || ''} onChange={e => setManualAddress({ ...manualAddress, [key]: key==='country_code' ? e.target.value.toUpperCase() : e.target.value })} className="mt-1 min-h-11 w-full rounded-xl border bg-transparent px-3" /></label>)}
-        <label className="block sm:col-span-2"><span className="text-sm font-semibold">Açık adres</span><textarea value={manualAddress.address_line} onChange={e => setManualAddress({ ...manualAddress, address_line: e.target.value })} rows={3} className="mt-1 w-full rounded-xl border bg-transparent p-3" /></label>
-        <label className="block sm:col-span-2"><span className="text-sm font-semibold">Teslimat notu</span><textarea value={manualAddress.delivery_notes} onChange={e => setManualAddress({ ...manualAddress, delivery_notes: e.target.value })} rows={2} className="mt-1 w-full rounded-xl border bg-transparent p-3" /></label>
-      </div> : selectedSavedAddress ? <div className="mt-4 rounded-xl bg-gray-50 dark:bg-gray-800 p-4 text-sm">
-        <strong>{selectedSavedAddress.recipient_name}</strong><br />
-        {selectedSavedAddress.address_line}, {selectedSavedAddress.neighborhood ? `${selectedSavedAddress.neighborhood}, ` : ''}{selectedSavedAddress.district}/{selectedSavedAddress.province} • {selectedSavedAddress.country_code}
-      </div> : null}
-    </section>
-
-    <section className="rounded-2xl border bg-white dark:bg-gray-900 p-4 sm:p-5" aria-labelledby="coupon-title">
-      <h2 id="coupon-title" className="text-lg font-bold">Kupon ve sipariş notu</h2>
-      <div className="mt-4 flex gap-2">
-        <label className="min-w-0 flex-1"><span className="sr-only">Kupon kodu</span><input value={couponInput} onChange={e => setCouponInput(e.target.value.toUpperCase())} placeholder="Kupon kodu" autoCapitalize="characters" className="min-h-11 w-full rounded-xl border bg-transparent px-3" /></label>
-        <button type="button" onClick={() => void applyCoupon()} disabled={previewBusy || submitting} className="min-h-11 rounded-xl border px-4 font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{previewBusy ? 'Kontrol…' : 'Uygula'}</button>
-      </div>
-      {appliedCoupon ? <button type="button" disabled={previewBusy || submitting} onClick={() => { setCouponInput(''); setAppliedCoupon(''); }} className="mt-2 min-h-11 rounded-lg px-2 text-sm font-semibold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Kuponu kaldır</button> : null}
-      <label className="mt-4 block"><span className="text-sm font-semibold">Sipariş notu (opsiyonel)</span><textarea value={customerNote} onChange={e => setCustomerNote(e.target.value)} maxLength={1000} rows={3} className="mt-1 w-full rounded-xl border bg-transparent p-3" /></label>
-    </section>
-
-    <section className="rounded-2xl border bg-white dark:bg-gray-900 p-4 sm:p-5" aria-labelledby="summary-title">
-      <div className="flex items-center justify-between gap-3"><h2 id="summary-title" className="text-lg font-bold">Sipariş özeti</h2>{previewBusy ? <span role="status" className="text-sm text-gray-500">Güncelleniyor…</span> : null}</div>
-      <div className="mt-4 space-y-2 text-sm">
-        <div className="flex justify-between"><span>Ara toplam</span><strong><Money minor={preview?.subtotalMinor ?? cart.subtotalMinor} currency={cart.currency} /></strong></div>
-        <div className="flex justify-between"><span>Kargo</span><strong>{preview?.shipping?.manualQuoteRequired ? 'Manuel teklif' : <Money minor={preview?.shippingMinor || 0} currency={cart.currency} />}</strong></div>
-        {(preview?.discountMinor || 0) > 0 ? <div className="flex justify-between text-green-700"><span>{preview?.promotion?.title || 'İndirim'}</span><strong>-<Money minor={preview?.discountMinor || 0} currency={cart.currency} /></strong></div> : null}
-        <div className="flex justify-between border-t pt-3 text-lg"><span>Toplam</span><strong><Money minor={preview?.totalMinor ?? cart.subtotalMinor} currency={cart.currency} /></strong></div>
-      </div>
-      {preview?.shipping?.publicNote ? <p className="mt-3 text-xs text-gray-500">{preview.shipping.publicNote}</p> : null}
-      {preview && !preview.canCheckout ? <div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{friendlyReason(preview.blockingReason)}</div> : null}
-      {preview && !preview.canCheckout && countryCode !== 'TR' && ['manual_shipping_quote_required','shipping_rate_not_configured','shipping_zone_not_configured','international_shipping_weight_missing'].includes(preview.blockingReason || '') ? <div className="mt-3 rounded-xl border border-brand-green/30 bg-brand-green/5 p-3">
-        <p className="text-sm text-gray-700 dark:text-gray-200">Otomatik fiyat verilemiyorsa destek ekibine bu sepet ve hedef ülke bilgisiyle kargo teklif talebi gönderebilirsiniz.</p>
-        <button type="button" onClick={() => void requestShippingQuote()} disabled={quoteBusy || quoteSent || submitting} className="mt-3 min-h-11 w-full rounded-xl border border-brand-green px-4 font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{quoteSent ? 'Kargo teklif talebi gönderildi' : quoteBusy ? 'Talep gönderiliyor…' : 'Kargo teklifi talebini gönder'}</button>
-        {quoteSent ? <p role="status" aria-live="polite" className="mt-2 text-xs text-green-700">Talebiniz güvenli destek konuşmasına iletildi. Destek ekibi hedef ülke ve ürün koşullarını inceleyecek.</p> : null}
-      </div> : null}
-      {(preview?.missingWeightQuantity || 0) > 0 && countryCode === 'TR' ? <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">Bazı ürünlerde kargo ağırlığı eksik. Türkiye içi mevcut geçici kargo kuralı çalışabilir; yurt dışı checkout bu ürünlerle engellenir.</div> : null}
-      <div className="mt-4 flex gap-2 rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800"><ShieldCheck aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-green" /><p>Fiyat, stok, kargo ve indirim sunucudan hesaplanır. “Siparişi oluştur” dediğinizde her şey yeniden doğrulanır.</p></div>
-      <button type="button" onClick={() => void submit()} disabled={submitting || previewBusy || rowBusyId !== null || !preview?.canCheckout} className="mt-5 min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{submitting ? 'Sipariş oluşturuluyor…' : 'Siparişi Oluştur'}</button>
-      <p className="mt-2 text-center text-xs text-gray-500">Bu adım karttan para çekmez. Canlı ödeme sağlayıcısı bağlanmadan ödeme başarılı gösterilmez.</p>
-    </section>
-
-    {clearConfirmOpen ? <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4"><div ref={clearDialogRef} role="alertdialog" aria-modal="true" aria-labelledby="clear-cart-title" aria-describedby="clear-cart-description" tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white p-5 text-brand-text shadow-xl outline-none dark:bg-gray-900"><h2 id="clear-cart-title" className="text-lg font-bold">Sepetin tamamı temizlensin mi?</h2><p id="clear-cart-description" className="mt-2 text-sm text-gray-600 dark:text-gray-300">Sepetinizdeki {cart.itemCount} ürün satırı kaldırılacak. Ürünleri daha sonra yeniden ekleyebilirsiniz.</p><div aria-live="polite" className="sr-only">{clearBusy ? 'Sepet temizleniyor.' : ''}</div><div className="mt-5 grid grid-cols-2 gap-3"><button type="button" disabled={clearBusy} onClick={() => setClearConfirmOpen(false)} className="min-h-11 rounded-xl border font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Vazgeç</button><button type="button" disabled={clearBusy} onClick={() => void confirmEmptyCart()} className="min-h-11 rounded-xl bg-red-700 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500">{clearBusy ? 'Temizleniyor…' : 'Sepeti Temizle'}</button></div></div></div> : null}
-  </main>;
+export default function CartCheckoutFlow({onBack,onOrderCreated,onOpenAddresses,onOpenPayments,onCartChanged}:{onBack?:()=>void;onOrderCreated?:(order:any)=>void;onOpenAddresses?:()=>void;onOpenPayments?:()=>void;onCartChanged?:(cart:CartSnapshot)=>void}){
+ const[cart,setCart]=useState<CartSnapshot|null>(null),[overview,setOverview]=useState<any>(null),[capabilities,setCapabilities]=useState<CheckoutPaymentCapabilities|null>(null),[paymentFlow,setPaymentFlow]=useState<PaymentFlow|null>(null),[selectedAddressId,setSelectedAddressId]=useState(''),[selectedPaymentMethodId,setSelectedPaymentMethodId]=useState(''),[paymentEnrollmentOpen,setPaymentEnrollmentOpen]=useState(false),[identityType,setIdentityType]=useState<BuyerIdentityType|null>(null),[identityNumber,setIdentityNumber]=useState(''),[manualAddress,setManualAddress]=useState<any>(blankAddress),[useManualAddress,setUseManualAddress]=useState(false),[saveManualAddress,setSaveManualAddress]=useState(false),[makeDefaultAddress,setMakeDefaultAddress]=useState(false),[manualAddressLabel,setManualAddressLabel]=useState('Teslimat'),[couponInput,setCouponInput]=useState(''),[appliedCoupon,setAppliedCoupon]=useState(''),[customerNote,setCustomerNote]=useState(''),[preview,setPreview]=useState<CheckoutPreview|null>(null),[pendingOrder,setPendingOrder]=useState<PendingOrder|null>(null),[success,setSuccess]=useState<SuccessOrder|null>(null),[hostedPaymentUrl,setHostedPaymentUrl]=useState<string|null>(null),[hostedPaymentOrder,setHostedPaymentOrder]=useState<PendingOrder|null>(null),[loading,setLoading]=useState(true),[previewBusy,setPreviewBusy]=useState(false),[submitting,setSubmitting]=useState(false),[quoteBusy,setQuoteBusy]=useState(false),[quoteSent,setQuoteSent]=useState(false),[rowBusyId,setRowBusyId]=useState<string|null>(null),[clearBusy,setClearBusy]=useState(false),[clearOpen,setClearOpen]=useState(false),[error,setError]=useState(''),[status,setStatus]=useState('');
+ const orderKeyRef=useRef<string|null>(null),paymentKeyRef=useRef<string|null>(null),errorRef=useRef<HTMLDivElement|null>(null);const clearDialogRef=useAccessibleDialog<HTMLDivElement>(clearOpen,()=>{if(!clearBusy)setClearOpen(false);});
+ function applyCart(next:CartSnapshot){setCart(next);onCartChanged?.(next);return next;}
+ useEffect(()=>{if(error)queueMicrotask(()=>errorRef.current?.focus());},[error]);
+ async function load(){try{setLoading(true);setError('');const[nextCart,nextOverview,nextCapabilities]=await Promise.all([getCart(),getCheckoutAccountOverview(),getCheckoutPaymentCapabilities()]);if(!isRecord(nextOverview)||!Array.isArray(nextOverview.addresses)||!Array.isArray(nextOverview.paymentMethods)||!isRecord(nextOverview.paymentReadiness)||!isRecord(nextOverview.profile))throw new Error('Checkout hesap bilgileri doğrulanamadı.');const addresses=nextOverview.addresses.filter((a:any)=>isRecord(a)&&uuid(a.id)),methods=nextOverview.paymentMethods.filter((m:any)=>isRecord(m)&&uuid(m.id));setOverview({...nextOverview,addresses,paymentMethods:methods});setCapabilities(nextCapabilities);applyCart(nextCart);const defaultAddress=addresses.find((a:any)=>a.is_default===true)||addresses[0];if(defaultAddress){setSelectedAddressId(defaultAddress.id);setUseManualAddress(false);}else{setUseManualAddress(true);setManualAddress((p:any)=>({...p,recipient_name:text(nextOverview.profile.display_name,120),phone:text(nextOverview.profile.phone,40)}));}const defaultCard=methods.find((m:any)=>m.status==='active'&&m.isDefault===true)||methods.find((m:any)=>m.status==='active');if(defaultCard)setSelectedPaymentMethodId(defaultCard.id);setPaymentFlow(nextCapabilities.hostedCheckout?'checkout_form':nextCapabilities.savedCardPayment?'saved_card':null);}catch(e:any){setError(e?.message||'Sepet yüklenemedi.');}finally{setLoading(false);}}
+ useEffect(()=>{void load();},[]);
+ useEffect(()=>{const stored=uuid(localStorage.getItem('golden_oremar_pending_payment_order'));if(!stored)return;void(async()=>{try{setStatus('Bekleyen ödeme sunucudan kontrol ediliyor…');const state=await getMyOrderPaymentState(stored);if(state.paymentStatus==='paid'){setSuccess({orderId:state.orderId,orderNumber:state.orderNumber,paymentStatus:state.paymentStatus});localStorage.removeItem('golden_oremar_pending_payment_order');try{applyCart(await getCart());}catch{}onOrderCreated?.(state);}else if(state.paymentStatus==='failed'){setPendingOrder({orderId:state.orderId,orderNumber:state.orderNumber,paymentMethodId:null});setError('Ödeme tamamlanmadı. Aynı sipariş için güvenli şekilde tekrar deneyebilirsiniz.');}else{setPendingOrder({orderId:state.orderId,orderNumber:state.orderNumber,paymentMethodId:null});setStatus('Siparişiniz mevcut. Ödeme henüz kesinleşmedi.');}}catch(e:any){setError(e?.message||'Bekleyen ödeme doğrulanamadı.');}finally{setStatus('');}})();},[]);
+ useEffect(()=>{if(!hostedPaymentUrl||!hostedPaymentOrder)return;let active=true,running=false;const check=async()=>{if(running||!active)return;running=true;try{const state=await getMyOrderPaymentState(hostedPaymentOrder.orderId);if(!active)return;if(state.paymentStatus==='paid'){setStatus('Ödeme doğrulandı. Sipariş tamamlanıyor…');setHostedPaymentUrl(null);setHostedPaymentOrder(null);await completePaid(state.orderId,state.orderNumber);return;}if(state.paymentStatus==='failed'){setHostedPaymentUrl(null);setHostedPaymentOrder(null);setStatus('');setError('Ödeme tamamlanmadı. Siparişiniz korundu, tekrar deneyebilirsiniz.');return;}setStatus('Ödeme sonucu güvenli şekilde doğrulanıyor…');}catch{}finally{running=false;}};void check();const timer=window.setInterval(()=>void check(),2000);return()=>{active=false;window.clearInterval(timer);};},[hostedPaymentUrl,hostedPaymentOrder?.orderId]);
+ const addresses=Array.isArray(overview?.addresses)?overview.addresses:[],methods=Array.isArray(overview?.paymentMethods)?overview.paymentMethods:[],readiness=isRecord(overview?.paymentReadiness)?overview.paymentReadiness:null,selectedMethod=methods.find((m:any)=>m.id===selectedPaymentMethodId&&m.status==='active')||null,selectedSaved=addresses.find((a:any)=>a.id===selectedAddressId)||null,checkoutAddress=useMemo(()=>useManualAddress?manualAddress:selectedSaved?normalizeAddress(selectedSaved):null,[useManualAddress,manualAddress,selectedSaved]),countryCode=text(checkoutAddress?.country_code,2).toUpperCase(),validCountry=/^[A-Z]{2}$/.test(countryCode),hasPayment=Boolean(capabilities?.hostedCheckout||capabilities?.savedCardPayment),discountMinor=preview?int(preview.discountMinor):null;
+ useEffect(()=>{paymentKeyRef.current=null;},[paymentFlow,selectedPaymentMethodId,identityType,identityNumber]);useEffect(()=>{setQuoteSent(false);},[countryCode,cart?.cartId,cart?.itemCount,appliedCoupon]);
+ async function refreshPreview(nextCoupon=appliedCoupon){if(!cart?.items?.length||!validCountry){setPreview(null);return;}try{setPreviewBusy(true);setError('');setPreview(await previewCheckout(countryCode,nextCoupon||null));}catch(e:any){setPreview(null);setError(e?.message||'Sipariş özeti hesaplanamadı.');}finally{setPreviewBusy(false);}}
+ useEffect(()=>{if(!loading)void refreshPreview(appliedCoupon);},[countryCode,cart?.subtotalMinor,cart?.itemCount,appliedCoupon,loading]);
+ async function changeQty(item:CartSnapshot['items'][number],quantity:number){if(rowBusyId||pendingOrder)return;try{setRowBusyId(item.cartItemId);setError('');const max=item.sellableQuantity==null?null:int(item.sellableQuantity);if(item.sellableQuantity!=null&&max==null)throw new Error('Stok sınırı doğrulanamadı.');if(max!=null&&quantity>max)throw new Error(`Bu ürün için en fazla ${max} adet seçilebilir.`);const next=quantity<=0?await removeCartItem(item.cartItemId):await setCartItem({variantId:item.variantId,quantity,selectedOptions:item.selectedOptions||{}});applyCart(next);}catch(e:any){setError(e?.message||'Sepet güncellenemedi.');}finally{setRowBusyId(null);}}
+ async function emptyCart(){try{setClearBusy(true);applyCart(await clearCart());setPreview(null);setClearOpen(false);setStatus('Sepet temizlendi.');}catch(e:any){setError(e?.message||'Sepet temizlenemedi.');}finally{setClearBusy(false);}}
+ function validateAddress(){if(!checkoutAddress)return'Teslimat adresi seçin.';if(text(checkoutAddress.recipient_name,120).length<2)return'Teslim alacak kişinin adını yazın.';const digits=text(checkoutAddress.phone,40).replace(/\D/g,'').length;if(digits<7||digits>20)return'Teslimat telefonunu kontrol edin.';if(!validCountry)return'Ülke kodu iki harfli ISO kodu olmalıdır.';if(!text(checkoutAddress.district||checkoutAddress.province,120))return'Şehir veya ilçe bilgisini yazın.';if(text(checkoutAddress.address_line,1000).length<5)return'Açık teslimat adresini yazın.';if(!text(checkoutAddress.postal_code,30))return'Ödeme için teslimat posta kodunu yazın.';return'';}
+ function validatePayment(){if(!hasPayment)return'Şu anda tahsilata hazır bir iyzico ödeme yöntemi yok.';if(!paymentFlow)return'Ödeme yöntemini seçin.';if(paymentFlow==='saved_card'&&!selectedMethod)return'Kayıtlı kart seçin veya yeni kart kaydedin.';if(!identityType)return'Ödeme için T.C. kimlik veya pasaport türünü seçin.';const identity=identityNumber.replace(/\s+/g,'').trim();if(identity.length<5)return'Kimlik veya pasaport numarasını yazın.';return'';}
+ async function completePaid(orderId:string,orderNumber:string){const state=await getMyOrderPaymentState(orderId);if(state.paymentStatus!=='paid'){setPendingOrder({orderId,orderNumber:state.orderNumber,paymentMethodId:selectedMethod?.id||null});setStatus('Ödeme sağlayıcısı yanıtı alındı, kesin ödeme kaydı doğrulanıyor.');return;}setSuccess({orderId:state.orderId,orderNumber:state.orderNumber,paymentStatus:state.paymentStatus});setPendingOrder(null);localStorage.removeItem('golden_oremar_pending_payment_order');try{applyCart(await clearCart());}catch{try{applyCart(await getCart());}catch{}}onOrderCreated?.(state);}
+ async function payExisting(order:PendingOrder){const issue=validatePayment();if(issue){setError(issue);return;}try{setSubmitting(true);setError('');setStatus('Ödeme hazırlanıyor…');if(!paymentKeyRef.current)paymentKeyRef.current=newKey('payment');if(paymentFlow==='saved_card'){if(!selectedMethod)throw new Error('Kayıtlı kart seçin.');if(order.paymentMethodId!==selectedMethod.id)await setPendingOrderPaymentMethod(order.orderId,selectedMethod.id);const result=await payPendingOrder({orderId:order.orderId,idempotencyKey:paymentKeyRef.current,buyerIdentityType:identityType!,buyerIdentityNumber:identityNumber});if(result.state==='captured'||(result.state==='terminal'&&result.paymentStatus==='paid')){await completePaid(order.orderId,order.orderNumber);return;}setPendingOrder({...order,paymentMethodId:selectedMethod.id});setStatus(result.reconciliationPending||result.state==='processing'||result.state==='authorized'?'Ödeme sonucu doğrulanıyor. Aynı işlem ikinci kez çekilmeyecek.':'');if(result.state==='failed')setError(commercePaymentErrorMessage(new Error(result.error||'payment_failed')));}else{const hosted=await initializeHostedOrderPayment({orderId:order.orderId,idempotencyKey:paymentKeyRef.current,buyerIdentityType:identityType!,buyerIdentityNumber:identityNumber});if(hosted.state==='captured'){await completePaid(order.orderId,order.orderNumber);return;}if(hosted.paymentPageUrl){localStorage.setItem('golden_oremar_pending_payment_order',order.orderId);setHostedPaymentOrder(order);setHostedPaymentUrl(hosted.paymentPageUrl);setStatus('Ödemeyi Golden Oremar içindeki güvenli iyzico penceresinde tamamlayın.');return;}setStatus('Ödeme oturumu daha önce başlatılmış. Sonuç sağlayıcıdan doğrulanıyor.');}}catch(e:any){setError(commercePaymentErrorMessage(e));}finally{setSubmitting(false);}}
+ async function submit(){if(submitting||!cart?.items?.length)return;const addressIssue=validateAddress(),paymentIssue=validatePayment();if(addressIssue||paymentIssue){setError(addressIssue||paymentIssue);return;}if(pendingOrder){await payExisting(pendingOrder);return;}try{setSubmitting(true);setError('');setStatus('Sipariş son kez doğrulanıyor…');const current=await previewCheckout(countryCode,appliedCoupon||null);setPreview(current);if(!current.canCheckout){setError(friendlyReason(current.blockingReason)||'Sipariş oluşturulamıyor.');return;}if(useManualAddress&&saveManualAddress){const saved=await saveCustomerAddress({label:manualAddressLabel.trim()||'Teslimat',recipientName:text(manualAddress.recipient_name,120),phone:text(manualAddress.phone,40),countryCode,administrativeArea:text(manualAddress.province,120)||null,city:text(manualAddress.district,120),locality:text(manualAddress.neighborhood,160)||null,addressLine1:text(manualAddress.address_line,1000),addressLine2:null,postalCode:text(manualAddress.postal_code,30)||null,deliveryNotes:text(manualAddress.delivery_notes,500)||null,isDefault:makeDefaultAddress});setSelectedAddressId(saved.id);}
+ if(!orderKeyRef.current)orderKeyRef.current=newKey('checkout');const result=await createOrder({items:cart.items,shippingAddress:checkoutAddress,customerNote,couponCode:appliedCoupon||null,paymentMethodId:paymentFlow==='saved_card'?selectedMethod?.id||null:null,idempotencyKey:orderKeyRef.current});const orderId=uuid(result?.orderId),orderNumber=text(result?.orderNumber,160);if(!orderId||!orderNumber)throw new Error('Sipariş oluşturma sonucu doğrulanamadı.');const order={orderId,orderNumber,paymentMethodId:paymentFlow==='saved_card'?selectedMethod?.id||null:null};setPendingOrder(order);localStorage.setItem('golden_oremar_pending_payment_order',orderId);paymentKeyRef.current=newKey('payment');setStatus('Sipariş rezervasyonu oluşturuldu. Ödeme başlatılıyor…');await payExisting(order);}catch(e:any){setError(commercePaymentErrorMessage(e,e?.message||'Sipariş ve ödeme başlatılamadı.'));}finally{setSubmitting(false);}}
+ async function refreshPending(){if(!pendingOrder)return;try{setSubmitting(true);setError('');const state=await getMyOrderPaymentState(pendingOrder.orderId);if(state.paymentStatus==='paid')await completePaid(state.orderId,state.orderNumber);else if(state.paymentStatus==='failed'){setStatus('');setError('Ödeme tamamlanmadı. Aynı sipariş için yeniden deneyebilirsiniz.');}else setStatus('Ödeme henüz kesinleşmedi. Tekrar ödeme çekilmeden mevcut işlem kontrol ediliyor.');}catch(e:any){setError(e?.message||'Ödeme durumu yenilenemedi.');}finally{setSubmitting(false);}}
+ async function quote(){if(!cart?.items?.length||quoteBusy||quoteSent||!validCountry)return;try{setQuoteBusy(true);await startShippingQuoteSupport({countryCode,cityLabel:[checkoutAddress?.district,checkoutAddress?.province].filter(Boolean).join(' / '),cart,preview});setQuoteSent(true);}catch(e:any){setError(e?.message||'Kargo teklif talebi gönderilemedi.');}finally{setQuoteBusy(false);}}
+ if(loading)return<div role="status" className="mx-auto max-w-4xl p-6 text-center">Sepetiniz yükleniyor…</div>;
+ if(success)return<section className="mx-auto max-w-xl p-4 sm:p-6"><div className="rounded-3xl border border-green-200 bg-white p-6 text-center shadow-sm dark:bg-gray-900"><CheckCircle2 aria-hidden="true" className="mx-auto h-14 w-14 text-green-600"/><h1 className="mt-4 text-2xl font-bold">Ödemeniz başarıyla doğrulandı</h1><p className="mt-2 text-sm text-gray-500">Sipariş no: <strong>{success.orderNumber}</strong></p><p className="mt-3 text-sm text-gray-600 dark:text-gray-300">Siparişiniz işleme alındı. Ödeme belgesi ve sipariş bilgileri hesabınızda saklanır.</p><button type="button" onClick={onBack} className="mt-5 min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white">Alışverişe dön</button></div></section>;
+ if(!cart?.items?.length&&!pendingOrder)return<section className="mx-auto max-w-xl p-6 text-center"><ShoppingCart aria-hidden="true" className="mx-auto h-12 w-12 text-gray-300"/><h1 className="mt-4 text-2xl font-bold">Sepetiniz boş</h1><button type="button" onClick={onBack} className="mt-5 min-h-12 rounded-xl bg-brand-green px-6 font-bold text-white">Ürünleri keşfet</button></section>;
+ return<main className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6" aria-labelledby="cart-title">
+  <header className="rounded-3xl bg-brand-green p-5 text-white"><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-3">{onBack?<button type="button" onClick={onBack} aria-label="Alışverişe dön" className="min-h-11 min-w-11 rounded-xl border border-white/30 p-2"><ArrowLeft className="mx-auto h-5 w-5" aria-hidden="true"/></button>:null}<div><h1 id="cart-title" className="text-2xl font-bold">Sepetim</h1><p className="text-sm text-white/80">{pendingOrder?`Sipariş ${pendingOrder.orderNumber} ödeme bekliyor`:`${cart?.itemCount||0} ürün`}</p></div></div>{!pendingOrder?<button type="button" disabled={submitting||clearBusy} onClick={()=>setClearOpen(true)} className="min-h-11 rounded-xl border border-white/30 px-3 text-sm font-semibold">Sepeti temizle</button>:null}</div></header>
+  {error?<div ref={errorRef} role="alert" tabIndex={-1} className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>:null}{status?<div role="status" className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">{status}{pendingOrder&&!hostedPaymentUrl?<button type="button" onClick={()=>void refreshPending()} disabled={submitting} className="ml-3 min-h-10 rounded-lg border px-3 font-semibold"><RefreshCw className="mr-1 inline h-4 w-4" aria-hidden="true"/>Durumu kontrol et</button>:null}</div>:null}
+  {!pendingOrder?<section className="rounded-3xl border bg-white p-5 dark:bg-gray-900"><h2 className="text-lg font-bold">Sepetteki ürünler</h2><div className="mt-4 space-y-4">{(cart?.items||[]).map(item=>{const busy=rowBusyId===item.cartItemId,max=item.sellableQuantity==null?null:int(item.sellableQuantity),image=item.imagePath?publicCatalogUrl(item.imagePath):'';return<article key={item.cartItemId} className="flex gap-3 border-b pb-4 last:border-0">{image?<img src={image} alt={`${item.productName} ürün görseli`} className="h-24 w-24 rounded-2xl object-cover"/>:<div className="grid h-24 w-24 place-items-center rounded-2xl bg-gray-100 text-xs text-gray-500">Görsel yok</div>}<div className="min-w-0 flex-1"><h3 className="font-bold">{item.productName}</h3><p className="text-sm text-gray-500">{item.variantName} • {item.producer.name}</p><div className="mt-3 flex flex-wrap items-center justify-between gap-3"><div className="flex items-center rounded-xl border"><button type="button" disabled={busy||submitting} onClick={()=>void changeQty(item,item.quantity-1)} aria-label={`${item.productName} adet azalt`} className="min-h-11 min-w-11"><Minus className="mx-auto h-4 w-4" aria-hidden="true"/></button><span className="min-w-10 text-center font-bold">{item.quantity}</span><button type="button" disabled={busy||submitting||!item.available||(max!=null&&item.quantity>=max)} onClick={()=>void changeQty(item,item.quantity+1)} aria-label={`${item.productName} adet artır`} className="min-h-11 min-w-11"><Plus className="mx-auto h-4 w-4" aria-hidden="true"/></button></div><div className="flex items-center gap-3"><strong><Money minor={item.lineTotalMinor} currency={cart!.currency}/></strong><button type="button" disabled={busy||submitting} onClick={()=>void changeQty(item,0)} aria-label={`${item.productName} ürününü çıkar`} className="min-h-11 min-w-11 rounded-xl border border-red-200 text-red-700"><Trash2 className="mx-auto h-4 w-4" aria-hidden="true"/></button></div></div></div></article>;})}</div></section>:null}
+  {!pendingOrder?<section className="rounded-3xl border bg-white p-5 dark:bg-gray-900"><div className="flex items-center justify-between"><div><h2 className="text-lg font-bold">Teslimat</h2><p className="text-sm text-gray-500">Kayıtlı adres seçin veya yeni adres yazın.</p></div><MapPin className="h-5 w-5 text-brand-green" aria-hidden="true"/></div>{addresses.length?<select value={useManualAddress?'__new__':selectedAddressId} onChange={e=>{if(e.target.value==='__new__')setUseManualAddress(true);else{setUseManualAddress(false);setSelectedAddressId(e.target.value);}}} className="mt-4 min-h-12 w-full rounded-xl border px-3">{addresses.map((a:any)=><option key={a.id} value={a.id}>{text(a.label,60)} - {[text(a.district,120),text(a.province,120)].filter(Boolean).join('/')}</option>)}<option value="__new__">Yeni teslimat adresi</option></select>:null}{useManualAddress?<div className="mt-4 grid gap-3 sm:grid-cols-2">{manualFields.map(field=><label key={field.key}><span className="text-sm font-semibold">{field.label}{field.required?' *':''}</span><input required={field.required} value={manualAddress[field.key]||''} onChange={e=>setManualAddress({...manualAddress,[field.key]:field.key==='country_code'?e.target.value.replace(/[^a-z]/gi,'').toUpperCase().slice(0,2):e.target.value})} maxLength={field.maxLength} autoComplete={field.autoComplete} className="mt-1 min-h-12 w-full rounded-xl border px-3"/></label>)}<label className="sm:col-span-2"><span className="text-sm font-semibold">Açık adres *</span><textarea value={manualAddress.address_line} onChange={e=>setManualAddress({...manualAddress,address_line:e.target.value})} maxLength={1000} rows={3} className="mt-1 w-full rounded-xl border p-3"/></label><label className="sm:col-span-2"><span className="text-sm font-semibold">Teslimat notu</span><textarea value={manualAddress.delivery_notes} onChange={e=>setManualAddress({...manualAddress,delivery_notes:e.target.value})} maxLength={500} rows={2} className="mt-1 w-full rounded-xl border p-3"/></label><label className="sm:col-span-2 flex items-start gap-3 rounded-xl border p-3"><input type="checkbox" checked={saveManualAddress} onChange={e=>setSaveManualAddress(e.target.checked)} className="mt-1 h-5 w-5"/><span>Bu adresi hesabıma kaydet</span></label>{saveManualAddress?<><input value={manualAddressLabel} onChange={e=>setManualAddressLabel(e.target.value.slice(0,60))} placeholder="Adres etiketi" className="min-h-11 rounded-xl border px-3"/><label className="flex items-center gap-2"><input type="checkbox" checked={makeDefaultAddress} onChange={e=>setMakeDefaultAddress(e.target.checked)} className="h-5 w-5"/>Varsayılan yap</label></>:null}</div>:selectedSaved?<address className="mt-4 rounded-2xl bg-gray-50 p-4 not-italic dark:bg-gray-800">{text(selectedSaved.recipient_name,120)}<br/>{text(selectedSaved.address_line,1000)}<br/>{[text(selectedSaved.district,120),text(selectedSaved.province,120),text(selectedSaved.country_code,2)].filter(Boolean).join(' / ')}</address>:null}{onOpenAddresses?<button type="button" onClick={onOpenAddresses} className="mt-3 min-h-11 rounded-xl border px-4 font-semibold">Adreslerimi yönet</button>:null}</section>:null}
+  <section className="rounded-3xl border bg-white p-5 dark:bg-gray-900"><div className="flex items-center justify-between"><div><h2 className="text-lg font-bold">Ödeme</h2><p className="text-sm text-gray-500">Tek seferlik ödeme veya isteğe bağlı kayıtlı kart.</p></div><CreditCard className="h-5 w-5 text-brand-green" aria-hidden="true"/></div>{!hasPayment?<div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Şu anda tahsilata hazır iyzico yöntemi yok. Super Admin ödeme altyapısını etkinleştirdiğinde seçenekler burada açılır.</div>:<fieldset className="mt-4 space-y-3"><legend className="sr-only">Ödeme yöntemi</legend>{capabilities?.hostedCheckout?<label className={`flex min-h-14 items-start gap-3 rounded-2xl border p-3 ${paymentFlow==='checkout_form'?'border-brand-gold bg-brand-gold/10':''}`}><input type="radio" name="pay-flow" checked={paymentFlow==='checkout_form'} onChange={()=>setPaymentFlow('checkout_form')} className="mt-1 h-5 w-5"/><span><strong className="block">Tek seferlik güvenli ödeme</strong><span className="text-xs text-gray-500">Kartınızı kaydetmeden, uygulamanın içindeki iyzico ekranında ödeyin.</span></span></label>:null}{capabilities?.savedCardPayment?<label className={`flex min-h-14 items-start gap-3 rounded-2xl border p-3 ${paymentFlow==='saved_card'?'border-brand-gold bg-brand-gold/10':''}`}><input type="radio" name="pay-flow" checked={paymentFlow==='saved_card'} onChange={()=>setPaymentFlow('saved_card')} className="mt-1 h-5 w-5"/><span><strong className="block">Kayıtlı kartımla öde</strong><span className="text-xs text-gray-500">Daha önce açık onayınızla kaydettiğiniz kartı seçin.</span></span></label>:null}</fieldset>}
+   {paymentFlow==='saved_card'&&capabilities?.savedCardPayment?<div className="mt-4 space-y-2">{methods.filter((m:any)=>m.status==='active').map((m:any)=><label key={m.id} className={`flex min-h-14 items-center gap-3 rounded-xl border p-3 ${selectedPaymentMethodId===m.id?'border-brand-gold bg-brand-gold/10':''}`}><input type="radio" name="saved-card" checked={selectedPaymentMethodId===m.id} onChange={()=>setSelectedPaymentMethodId(m.id)} className="h-5 w-5"/><span className="font-semibold">{paymentMethodLabel(m)}</span></label>)}{capabilities.cardEnrollment?<button type="button" onClick={()=>setPaymentEnrollmentOpen(true)} className="min-h-11 rounded-xl border border-brand-green px-4 font-bold text-brand-green">Yeni kart kaydet</button>:null}{onOpenPayments?<button type="button" onClick={onOpenPayments} className="ml-2 min-h-11 rounded-xl border px-4 font-semibold">Kayıtlı kartlarım</button>:null}</div>:null}
+   {hasPayment?<div className="mt-5 grid gap-3 sm:grid-cols-2"><label><span className="text-sm font-semibold">Kimlik türü</span><select value={identityType||''} onChange={e=>setIdentityType((e.target.value||null)as BuyerIdentityType|null)} className="mt-1 min-h-12 w-full rounded-xl border px-3"><option value="">Seçin</option><option value="tc_identity">T.C. kimlik</option><option value="passport">Pasaport</option></select></label><label><span className="text-sm font-semibold">Kimlik / pasaport numarası</span><input value={identityNumber} onChange={e=>setIdentityNumber(e.target.value.replace(/[^A-Za-z0-9-]/g,'').toUpperCase().slice(0,40))} autoComplete="off" className="mt-1 min-h-12 w-full rounded-xl border px-3"/></label><p className="sm:col-span-2 text-xs text-gray-500">Bu bilgi yalnız ödeme sağlayıcısının zorunlu alıcı doğrulaması için işlem sırasında kullanılır.</p></div>:null}
+  </section>
+  {!pendingOrder?<section className="rounded-3xl border bg-white p-5 dark:bg-gray-900"><h2 className="text-lg font-bold">Kupon ve sipariş notu</h2><div className="mt-3 flex gap-2"><input value={couponInput} onChange={e=>setCouponInput(e.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g,'').slice(0,64))} placeholder="Kupon kodu" className="min-h-11 min-w-0 flex-1 rounded-xl border px-3"/><button type="button" onClick={()=>{const code=couponInput.trim();setAppliedCoupon(code);void refreshPreview(code);}} disabled={previewBusy} className="rounded-xl border px-4 font-bold">Uygula</button></div><textarea value={customerNote} onChange={e=>setCustomerNote(e.target.value.slice(0,1000))} placeholder="Sipariş notu" rows={3} className="mt-3 w-full rounded-xl border p-3"/></section>:null}
+  <section className="rounded-3xl border bg-white p-5 dark:bg-gray-900"><h2 className="text-lg font-bold">Sipariş özeti</h2>{cart?<div className="mt-4 space-y-2 text-sm"><div className="flex justify-between"><span>Ara toplam</span><strong><Money minor={preview?.subtotalMinor??cart.subtotalMinor} currency={cart.currency}/></strong></div><div className="flex justify-between"><span>Kargo</span><strong>{preview?.shipping?.manualQuoteRequired?'Manuel teklif':preview?<Money minor={preview.shippingMinor} currency={cart.currency}/>:validCountry?'Hesaplanıyor…':'Ülke gerekli'}</strong></div>{discountMinor!=null&&discountMinor>0?<div className="flex justify-between text-green-700"><span>{text(preview?.promotion?.title,160)||'Kampanya'}</span><strong>-<Money minor={discountMinor} currency={cart.currency}/></strong></div>:null}<div className="flex justify-between border-t pt-3 text-lg"><span>Toplam</span><strong>{preview?<Money minor={preview.totalMinor} currency={cart.currency}/>:null}</strong></div></div>:null}{preview&&!preview.canCheckout?<div role="alert" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{friendlyReason(preview.blockingReason)}</div>:null}{preview&&!preview.canCheckout&&countryCode!=='TR'&&['manual_shipping_quote_required','shipping_rate_not_configured','shipping_zone_not_configured','international_shipping_weight_missing'].includes(preview.blockingReason||'')?<button type="button" onClick={()=>void quote()} disabled={quoteBusy||quoteSent} className="mt-3 min-h-11 w-full rounded-xl border border-brand-green px-4 font-bold text-brand-green">{quoteSent?'Kargo teklifi talebi gönderildi':quoteBusy?'Gönderiliyor…':'Kargo teklifi talep et'}</button>:null}<div className="mt-4 flex gap-2 rounded-2xl bg-gray-50 p-3 text-sm dark:bg-gray-800"><ShieldCheck className="h-5 w-5 shrink-0 text-brand-green" aria-hidden="true"/><p>Fiyat, stok, komisyon, kargo ve ödeme sunucuda doğrulanır. Ödeme kesinleşmeden sipariş ödendi sayılmaz ve aynı ödeme isteği iki kez tahsil edilmez.</p></div><button type="button" onClick={()=>void submit()} disabled={submitting||previewBusy||(!pendingOrder&&!preview?.canCheckout)||!hasPayment} className="mt-5 min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50">{submitting?'İşlem yapılıyor…':pendingOrder?'Ödemeyi Güvenle Tamamla':paymentFlow==='checkout_form'?'Güvenli Ödemeye Geç':'Kayıtlı Kartla Öde'}</button>{paymentFlow==='checkout_form'&&capabilities?.hostedCheckout?<p className="mt-2 text-center text-xs text-gray-500">iyzico ödeme ekranı Golden Oremar içinde açılır. Sonuç sunucudan otomatik doğrulanır.</p>:null}</section>
+  <PaymentMethodEnrollmentDialog open={paymentEnrollmentOpen} readiness={readiness as any} onClose={()=>setPaymentEnrollmentOpen(false)} onSaved={method=>{setOverview((p:any)=>({...p,paymentMethods:[method,...(p?.paymentMethods||[]).filter((m:any)=>m.id!==method.id)]}));setSelectedPaymentMethodId(method.id);setPaymentFlow('saved_card');setStatus('Kart hesabınıza güvenli şekilde kaydedildi ve seçildi.');}}/>
+  <HostedPaymentDialog open={Boolean(hostedPaymentUrl)} paymentPageUrl={hostedPaymentUrl} title="Sipariş Ödemesi" description={hostedPaymentOrder?`${hostedPaymentOrder.orderNumber} numaralı siparişinizi uygulamadan ayrılmadan tamamlayın.`:undefined} statusText={status} onClose={()=>{setHostedPaymentUrl(null);setHostedPaymentOrder(null);setStatus('Ödeme penceresi kapatıldı. Siparişiniz korunuyor; ödeme durumunu kontrol edebilir veya yeniden deneyebilirsiniz.');}}/>
+  {clearOpen?<div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4"><div ref={clearDialogRef} role="alertdialog" aria-modal="true" aria-labelledby="clear-cart-title" aria-describedby="clear-cart-description" tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white p-5 dark:bg-gray-900"><h2 id="clear-cart-title" className="text-lg font-bold">Sepet temizlensin mi?</h2><p id="clear-cart-description" className="mt-2 text-sm text-gray-600 dark:text-gray-300">Sepetteki ürünler kaldırılacak.</p><div className="mt-5 grid grid-cols-2 gap-3"><button type="button" disabled={clearBusy} onClick={()=>setClearOpen(false)} className="min-h-11 rounded-xl border font-semibold">Vazgeç</button><button type="button" disabled={clearBusy} onClick={()=>void emptyCart()} className="min-h-11 rounded-xl bg-red-700 font-bold text-white">Temizle</button></div></div></div>:null}
+ </main>;
 }

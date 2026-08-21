@@ -3,50 +3,73 @@ import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { listNotifications } from './api';
 import { getNotificationSoundEnabled, playNotificationSound, primeNotificationAudio } from '../notifications/premiumSounds';
+import { clearNativeDeliveredNotifications, subscribeNativePushReceipts } from '../notifications/nativePush';
 
-function normalizeUnreadCount(value: unknown) {
+function verifiedUnreadCount(value: unknown) {
   const count = Number(value);
-  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+  return Number.isSafeInteger(count) && count >= 0 ? count : null;
 }
 
 export function useUnreadNotificationCount(authenticated: boolean) {
   const [unreadCount, setUnreadCountState] = useState(0);
   const lastKnownUnread = useRef<number | null>(null);
 
-  const setUnreadCount = useCallback((value: number) => {
-    const next = normalizeUnreadCount(value);
-    lastKnownUnread.current = next;
-    setUnreadCountState(next);
+  const commitUnreadCount = useCallback((value: unknown) => {
+    const verified = verifiedUnreadCount(value);
+    const previous = lastKnownUnread.current;
+
+    // A malformed server payload must never erase a previously verified red
+    // badge or clear delivered native notifications as if the count were zero.
+    if (verified === null) {
+      return { next: previous ?? 0, previous, accepted: false };
+    }
+
+    lastKnownUnread.current = verified;
+    setUnreadCountState(verified);
+
+    // Supabase is authoritative for unread state. Clear stale delivered native
+    // notifications both when unread transitions to zero and when the first
+    // authenticated hydration validly reports zero after a cold app launch.
+    if (verified === 0 && previous !== 0) void clearNativeDeliveredNotifications();
+    return { next: verified, previous, accepted: true };
   }, []);
+
+  const resetUnreadSession = useCallback((clearDelivered = false) => {
+    lastKnownUnread.current = null;
+    setUnreadCountState(0);
+    if (clearDelivered && Capacitor.isNativePlatform()) void clearNativeDeliveredNotifications();
+  }, []);
+
+  const setUnreadCount = useCallback((value: number) => {
+    commitUnreadCount(value);
+  }, [commitUnreadCount]);
 
   const refresh = useCallback(async () => {
     if (!authenticated) {
-      lastKnownUnread.current = null;
-      setUnreadCountState(0);
+      resetUnreadSession(false);
       return 0;
     }
     const data = await listNotifications(1);
-    const next = normalizeUnreadCount(data?.unreadCount);
-    const previous = lastKnownUnread.current;
-    lastKnownUnread.current = next;
-    setUnreadCountState(next);
+    const { next, previous, accepted } = commitUnreadCount(data?.unreadCount);
 
-    // The first hydration is only a baseline. Play a signature only when a new unread item arrives.
-    if (previous !== null && next > previous && getNotificationSoundEnabled() && document.visibilityState === 'visible') {
+    // The first valid hydration is only a baseline. Play a signature only when
+    // a newly verified unread count grows while the app is visible.
+    if (accepted && previous !== null && next > previous && getNotificationSoundEnabled() && document.visibilityState === 'visible') {
       void playNotificationSound();
     }
     return next;
-  }, [authenticated]);
+  }, [authenticated, commitUnreadCount, resetUnreadSession]);
 
   useEffect(() => {
     if (!authenticated) {
-      lastKnownUnread.current = null;
-      setUnreadCountState(0);
+      // Signed-out sessions must not retain notifications from the previous customer.
+      resetUnreadSession(true);
       return;
     }
 
     let disposed = false;
     let appStateHandle: PluginListenerHandle | undefined;
+    let unsubscribePushReceipt: (() => void) | undefined;
 
     const safeRefresh = async () => {
       try {
@@ -67,6 +90,7 @@ export function useUnreadNotificationCount(authenticated: boolean) {
     window.addEventListener('focus', onWindowFocus);
 
     if (Capacitor.isNativePlatform()) {
+      unsubscribePushReceipt = subscribeNativePushReceipts(() => { void safeRefresh(); });
       void CapApp.addListener('appStateChange', ({ isActive }) => {
         if (isActive) void safeRefresh();
       }).then(handle => {
@@ -80,9 +104,10 @@ export function useUnreadNotificationCount(authenticated: boolean) {
       window.removeEventListener('pointerdown', prime);
       window.removeEventListener('keydown', prime);
       window.removeEventListener('focus', onWindowFocus);
+      unsubscribePushReceipt?.();
       if (appStateHandle) void appStateHandle.remove();
     };
-  }, [authenticated, refresh]);
+  }, [authenticated, refresh, resetUnreadSession]);
 
   return { unreadCount, setUnreadCount, refreshUnreadCount: refresh };
 }

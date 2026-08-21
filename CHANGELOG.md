@@ -1,6 +1,6 @@
 # Golden Oremar cumulative development log
 
-## Current checkpoint — 2026-08-16
+## Current checkpoint - 2026-08-16
 
 ### Backend
 - 78 live Supabase migrations.
@@ -27,7 +27,7 @@
 - Real catalog/search application wiring using the already-existing Supabase search RPCs.
 - Then remaining product detail/favorites global wiring and native mobile polish.
 
-## 2026-08-16 — cumulative frontend migration continuation
+## 2026-08-16 - cumulative frontend migration continuation
 
 - Added server-authoritative checkout preview and cart option normalization.
 - Migrated categories, home catalog, autocomplete/search, product detail and public producer profiles to Supabase.
@@ -46,3 +46,16 @@
 - Added producer profile editing and admin-reviewed verified-origin change requests.
 - Added verified-purchase-only customer review center with private review media.
 - Live Supabase schema now contains 90 migrations; latest Security Advisor run reports 0 lints.
+
+## 2026-08-16 - secure admin Supabase continuation and Node retirement
+
+- Migrated campaign administration from local `/api` endpoints to the protected Supabase `admin_list_campaigns` and `admin_upsert_campaign` RPC contracts.
+- Corrected the historical campaign-unit bug: percentage discounts are now converted between human percentages and backend basis points, while fixed discounts and minimum basket amounts are converted between TRY and minor units at one typed API boundary.
+- Added live product/category campaign targeting, scheduled/active/paused/ended states, free-shipping campaigns, usage limits, mobile cards, accessible controls and explicit backend error handling.
+- Migrated finance administration to `admin_finance_report`, including verified gross sales, refunds, net sales, commission, estimated vendor payout, mobile/desktop presentation and CSV export.
+- Migrated review moderation to `admin_list_reviews` and `admin_moderate_review_v1`, preserving verified-purchase state and the real published/rejected/hidden moderation lifecycle.
+- Removed the obsolete local Express/SQLite runtime and its reset/test scripts after CI proved that no production `/api` callers remained.
+- Removed server-only dependencies including Express, better-sqlite3, bcryptjs, jsonwebtoken, Stripe SDK, CORS and dotenv from the application package.
+- Switched local development to Vite directly.
+- One-shot retirement CI passed dependency installation, legacy caller scan, changed-admin TypeScript gate and production build before committing the runtime removal.
+- Remaining work is intentionally not mislabeled as complete: legacy admin DataContext/Firestore surfaces still require staged Supabase migration, and mobile release hardware/signing checks remain separate release gates.

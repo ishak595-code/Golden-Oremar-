@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Capacitor, type PluginListenerHandle } from '@capacitor/core';
 import { App as CapApp } from '@capacitor/app';
 import { supabase } from '../../lib/supabase';
@@ -10,10 +10,24 @@ import {
   isPasswordRecoveryCallbackUrl,
 } from './api';
 
+const CALLBACK_RETRY_DEBOUNCE_MS = 5000;
+
+function callbackKey(url: string) {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.protocol}//${parsed.host}${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return url.trim().slice(0, 32768);
+  }
+}
+
 export function useAuthRecoveryCoordinator() {
   const [recoveryPending, setRecoveryPending] = useState(false);
   const [callbackHandled, setCallbackHandled] = useState(false);
   const [error, setError] = useState('');
+  const completedCallbacksRef = useRef(new Set<string>());
+  const callbackAttemptsRef = useRef(new Map<string, number>());
+  const processingCallbacksRef = useRef(new Set<string>());
 
   const finishRecovery = useCallback(() => {
     setRecoveryPending(false);
@@ -34,20 +48,33 @@ export function useAuthRecoveryCoordinator() {
     };
 
     const handleNativeUrl = async (url?: string) => {
-      if (!url) return;
-      const isAuthCallback = isNativeAuthCallbackUrl(url);
+      if (!url || !isNativeAuthCallbackUrl(url)) return;
+      const key = callbackKey(url);
+      if (!key || completedCallbacksRef.current.has(key) || processingCallbacksRef.current.has(key)) return;
+      const now = Date.now();
+      const lastAttempt = callbackAttemptsRef.current.get(key) || 0;
+      if (now - lastAttempt < CALLBACK_RETRY_DEBOUNCE_MS) return;
+      callbackAttemptsRef.current.set(key, now);
+      processingCallbacksRef.current.add(key);
+
       try {
         const result = await consumeNativeAuthCallbackUrl(url);
         if (!result.handled || disposed) return;
+        completedCallbacksRef.current.add(key);
+        callbackAttemptsRef.current.delete(key);
         await closeNativeAuthBrowser();
+        if (disposed) return;
+        setError('');
         setCallbackHandled(true);
         if (result.recovery) setRecoveryPending(true);
       } catch (e: any) {
-        if (isAuthCallback) await closeNativeAuthBrowser();
+        await closeNativeAuthBrowser();
         if (!disposed) {
           setCallbackHandled(true);
           setError(String(e?.message || 'Kimlik doğrulama bağlantısı işlenemedi.'));
         }
+      } finally {
+        processingCallbacksRef.current.delete(key);
       }
     };
 
@@ -82,6 +109,7 @@ export function useAuthRecoveryCoordinator() {
     return () => {
       disposed = true;
       subscription.unsubscribe();
+      processingCallbacksRef.current.clear();
       if (appUrlHandle) void appUrlHandle.remove();
     };
   }, []);

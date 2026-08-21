@@ -1,101 +1,33 @@
-import React from 'react';
-import { AlertTriangle, CheckCircle2, ExternalLink, Info, ShieldCheck } from 'lucide-react';
+import React from'react';
+import{AlertTriangle,BookOpen,CheckCircle2,Info,Play,ShieldCheck,Utensils}from'lucide-react';
 
-type SafetySection = { title?: string; items?: unknown[] };
-type SafetyWarning = { code?: string; severity?: string; text?: string };
-type SafetySource = { authority?: string; title?: string; url?: string; topic?: string; accessedAt?: string };
+type SafetySection={title?:string;items?:unknown[]};
+type SafetyWarning={code?:string;severity?:string;text?:string};
+type SafetySource={authority?:string;title?:string;url?:string;topic?:string;accessedAt?:string};
+type SafetyPayload={schemaVersion?:number;guidanceKind?:string;safetyClass?:string;storage?:SafetySection;preparation?:SafetySection;warnings?:SafetyWarning[];allergens?:{known?:unknown[];verifyLabel?:boolean;text?:string};verificationNeeded?:unknown[];claimPolicy?:string;sources?:SafetySource[];productInfo?:ProductInfoPayload;recipe?:RecipePayload;videoPath?:string;videoUrl?:string};
+type ProductInfoPayload={ingredients?:unknown[];usageNotes?:unknown[];nutrition?:Record<string,unknown>};
+type RecipePayload={enabled?:boolean;title?:string;servings?:number;prepMinutes?:number;cookMinutes?:number;ingredients?:unknown[];steps?:unknown[]};
 
-type SafetyPayload = {
-  schemaVersion?: number;
-  guidanceKind?: string;
-  safetyClass?: string;
-  storage?: SafetySection;
-  preparation?: SafetySection;
-  warnings?: SafetyWarning[];
-  allergens?: { known?: unknown[]; verifyLabel?: boolean; text?: string };
-  verificationNeeded?: unknown[];
-  claimPolicy?: string;
-  sources?: SafetySource[];
-};
-
-export default function ProductSafetyPanel({
-  safety,
-  summary,
-  heading = 'Güvenli saklama ve kullanım',
-  className = '',
-}: {
-  safety?: SafetyPayload | null;
-  summary?: string | null;
-  heading?: string;
-  className?: string;
-}) {
-  if (!safety || Number(safety.schemaVersion || 0) < 2) return null;
-
-  const storage = strings(safety.storage?.items);
-  const preparation = strings(safety.preparation?.items);
-  const verification = strings(safety.verificationNeeded);
-  const knownAllergens = strings(safety.allergens?.known);
-  const warnings = Array.isArray(safety.warnings)
-    ? safety.warnings.filter(item => item && typeof item.text === 'string' && item.text.trim())
-    : [];
-  const sources = Array.isArray(safety.sources)
-    ? safety.sources.filter(item => item && typeof item.url === 'string' && /^https:\/\//i.test(item.url))
-    : [];
-  const isNonFood = safety.guidanceKind === 'non_food_safety';
-
-  return <section aria-labelledby="product-safety-title" className={`rounded-2xl border border-brand-green/20 bg-brand-green/[0.03] p-5 ${className}`}>
-    <div className="flex items-start gap-3">
-      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-green/10 text-brand-green"><ShieldCheck aria-hidden="true" className="h-5 w-5" /></div>
-      <div className="min-w-0">
-        <h2 id="product-safety-title" className="text-xl font-bold">{heading}</h2>
-        {summary ? <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">{summary}</p> : null}
-      </div>
-    </div>
-
-    {warnings.length ? <div className="mt-4 space-y-2">
-      {warnings.map((warning, index) => {
-        const high = warning.severity === 'high';
-        return <div key={`${warning.code || 'warning'}:${index}`} className={`rounded-xl border p-3 text-sm leading-6 ${high ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100' : 'border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100'}`}>
-          <div className="flex gap-2">{high ? <AlertTriangle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0" /> : <Info aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0" />}<span>{warning.text}</span></div>
-        </div>;
-      })}
-    </div> : null}
-
-    <div className="mt-4 grid gap-3 md:grid-cols-2">
-      <InfoCard title={safety.storage?.title || 'Saklama'} items={storage} />
-      <InfoCard title={safety.preparation?.title || (isNonFood ? 'Güvenli kullanım' : 'Hazırlama / kullanım')} items={preparation} />
-    </div>
-
-    {safety.allergens?.text || knownAllergens.length ? <div className="mt-3 rounded-xl border bg-white p-4 dark:bg-gray-900">
-      <h3 className="font-bold">{isNonFood ? 'Ürün sınıfı' : 'Alerjen bilgisi'}</h3>
-      {knownAllergens.length ? <p className="mt-1 text-sm"><strong>Bilinen:</strong> {knownAllergens.join(', ')}</p> : null}
-      {safety.allergens?.text ? <p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">{safety.allergens.text}</p> : null}
-    </div> : null}
-
-    {verification.length ? <div className="mt-3 rounded-xl border border-dashed bg-white p-4 dark:bg-gray-900">
-      <h3 className="flex items-center gap-2 font-bold"><CheckCircle2 aria-hidden="true" className="h-4 w-4 text-brand-green" />Ürüne özel doğrulanması gerekenler</h3>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-gray-600 dark:text-gray-300">{verification.map((item, index) => <li key={`${item}:${index}`}>{item}</li>)}</ul>
-    </div> : null}
-
-    {safety.claimPolicy ? <p className="mt-4 rounded-xl bg-gray-50 p-3 text-xs leading-5 text-gray-600 dark:bg-gray-800 dark:text-gray-300">{safety.claimPolicy}</p> : null}
-
-    {sources.length ? <details className="mt-4 rounded-xl border bg-white p-4 dark:bg-gray-900">
-      <summary className="min-h-11 cursor-pointer font-bold">Resmî kaynaklar ({sources.length})</summary>
-      <ul className="mt-2 space-y-2">{sources.map((source, index) => <li key={`${source.url}:${index}`}>
-        <a href={source.url} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-brand-green underline underline-offset-2">
-          <span>{source.authority ? `${source.authority}: ` : ''}{source.title || source.topic || 'Kaynak'}</span><ExternalLink aria-hidden="true" className="h-4 w-4 shrink-0" />
-        </a>
-        {source.topic ? <div className="text-xs text-gray-500">{source.topic}</div> : null}
-      </li>)}</ul>
-    </details> : null}
-  </section>;
+export default function ProductSafetyPanel({safety,summary,productInfo,recipe,heading='Güvenli saklama ve kullanım',className=''}:{safety?:SafetyPayload|null;summary?:string|null;productInfo?:ProductInfoPayload|null;recipe?:RecipePayload|null;heading?:string;className?:string}){
+ const info=productInfo||safety?.productInfo||null,recipeData=recipe||safety?.recipe||null,videoUrl=safeHttpsUrl(safety?.videoUrl);
+ const validSafety=Boolean(safety&&Number(safety.schemaVersion||0)>=2),ingredients=strings(info?.ingredients),usageNotes=strings(info?.usageNotes),nutrition=nutritionRows(info?.nutrition),recipeIngredients=strings(recipeData?.ingredients),recipeSteps=strings(recipeData?.steps),recipeEnabled=recipeData?.enabled===true&&typeof recipeData?.title==='string'&&recipeData.title.trim()&&recipeIngredients.length>0&&recipeSteps.length>0;
+ if(!validSafety&&!ingredients.length&&!usageNotes.length&&!nutrition.length&&!recipeEnabled&&!videoUrl)return null;
+ const storage=strings(safety?.storage?.items),preparation=strings(safety?.preparation?.items),verification=strings(safety?.verificationNeeded),knownAllergens=strings(safety?.allergens?.known);const warnings=Array.isArray(safety?.warnings)?safety!.warnings!.filter(item=>item&&typeof item.text==='string'&&item.text.trim()):[];const sources=Array.isArray(safety?.sources)?safety!.sources!.filter(item=>item&&(clean(item.authority)||clean(item.title)||clean(item.topic))):[];const isNonFood=safety?.guidanceKind==='non_food_safety',classLabel=safetyClassLabel(safety?.safetyClass);
+ return<section aria-labelledby="product-safety-title" className={`rounded-2xl border border-brand-green/20 bg-brand-green/[0.03] p-5 ${className}`}>
+  <div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-brand-green/10 text-brand-green"><ShieldCheck aria-hidden="true" className="h-5 w-5"/></div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 id="product-safety-title" className="text-xl font-bold">{heading}</h2>{classLabel?<span className="rounded-full border border-brand-gold/30 bg-brand-gold/10 px-2.5 py-1 text-xs font-black text-brand-text">{classLabel}</span>:null}</div>{summary?<p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">{summary}</p>:null}</div></div>
+  {videoUrl?<section className="mt-4 overflow-hidden rounded-2xl border bg-black" aria-labelledby="product-video-title"><div className="flex items-center gap-2 bg-white p-3 font-black dark:bg-gray-900"><Play aria-hidden="true" className="h-4 w-4 text-brand-green"/><h3 id="product-video-title">Ürün videosu</h3></div><video controls playsInline preload="metadata" className="aspect-video w-full bg-black" src={videoUrl}>Tarayıcınız ürün videosunu oynatamıyor.</video></section>:null}
+  {ingredients.length||nutrition.length||usageNotes.length?<section className="mt-4 rounded-2xl border bg-white p-4 dark:bg-gray-900" aria-labelledby="product-composition-title"><h3 id="product-composition-title" className="flex items-center gap-2 font-black"><BookOpen aria-hidden="true" className="h-4 w-4 text-brand-gold"/>İçerik ve ürün bilgisi</h3>{ingredients.length?<div className="mt-3"><div className="text-sm font-bold">İçindekiler</div><p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">{ingredients.join(', ')}</p></div>:null}{nutrition.length?<div className="mt-3"><div className="text-sm font-bold">Besin değerleri</div><dl className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">{nutrition.map(row=><div key={row.label} className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><dt className="text-xs text-gray-500">{row.label}</dt><dd className="mt-1 font-bold">{row.value}</dd></div>)}</dl></div>:null}{usageNotes.length?<InfoCard title="Kullanım notları" items={usageNotes}/>:null}</section>:null}
+  {warnings.length?<div className="mt-4 space-y-2">{warnings.map((warning,index)=>{const high=warning.severity==='high';return<div key={`${warning.code||'warning'}:${index}`} className={`rounded-xl border p-3 text-sm leading-6 ${high?'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100':'border-blue-200 bg-blue-50 text-blue-950 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100'}`}><div className="flex gap-2">{high?<AlertTriangle aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0"/>:<Info aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0"/>}<span>{warning.text}</span></div></div>;})}</div>:null}
+  {validSafety?<><div className="mt-4 grid gap-3 md:grid-cols-2"><InfoCard title={safety?.storage?.title||'Saklama'} items={storage}/><InfoCard title={safety?.preparation?.title||(isNonFood?'Güvenli kullanım':'Hazırlama / kullanım')} items={preparation}/></div>{safety?.allergens?.text||knownAllergens.length?<div className="mt-3 rounded-xl border bg-white p-4 dark:bg-gray-900"><h3 className="font-bold">{isNonFood?'Ürün sınıfı':'Alerjen bilgisi'}</h3>{knownAllergens.length?<p className="mt-1 text-sm"><strong>Bilinen:</strong> {knownAllergens.join(', ')}</p>:null}{safety?.allergens?.text?<p className="mt-1 text-sm leading-6 text-gray-600 dark:text-gray-300">{safety.allergens.text}</p>:null}</div>:null}{verification.length?<div className="mt-3 rounded-xl border border-dashed bg-white p-4 dark:bg-gray-900"><h3 className="flex items-center gap-2 font-bold"><CheckCircle2 aria-hidden="true" className="h-4 w-4 text-brand-green"/>Ürüne özel doğrulanması gerekenler</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-gray-600 dark:text-gray-300">{verification.map((item,index)=><li key={`${item}:${index}`}>{item}</li>)}</ul></div>:null}{safety?.claimPolicy?<p className="mt-4 rounded-xl bg-gray-50 p-3 text-xs leading-5 text-gray-600 dark:bg-gray-800 dark:text-gray-300">{safety.claimPolicy}</p>:null}</>:null}
+  {recipeEnabled?<section className="mt-4 rounded-2xl border border-brand-gold/30 bg-white p-4 dark:bg-gray-900" aria-labelledby="product-recipe-title"><h3 id="product-recipe-title" className="flex items-center gap-2 text-lg font-black"><Utensils aria-hidden="true" className="h-5 w-5 text-brand-gold"/>{clean(recipeData?.title)||'Tarif'}</h3><div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-gray-500">{positiveInteger(recipeData?.servings)?<span>{positiveInteger(recipeData?.servings)} porsiyon</span>:null}{nonNegativeInteger(recipeData?.prepMinutes)!==null?<span>Hazırlık {nonNegativeInteger(recipeData?.prepMinutes)} dk</span>:null}{nonNegativeInteger(recipeData?.cookMinutes)!==null?<span>Pişirme {nonNegativeInteger(recipeData?.cookMinutes)} dk</span>:null}</div><div className="mt-4 grid gap-4 md:grid-cols-2"><InfoCard title="Malzemeler" items={recipeIngredients}/><div className="rounded-xl border p-4"><h4 className="font-bold">Yapılış</h4><ol className="mt-2 list-decimal space-y-2 pl-5 text-sm leading-6 text-gray-600 dark:text-gray-300">{recipeSteps.map((step,index)=><li key={`${index}:${step}`}>{step}</li>)}</ol></div></div></section>:null}
+  {sources.length?<details className="mt-4 rounded-xl border bg-white p-4 dark:bg-gray-900"><summary className="min-h-11 cursor-pointer font-bold">Bilgi kaynakları ({sources.length})</summary><p className="mb-2 text-xs text-gray-500">Kaynak bilgisi uygulama içinde yalnız referans olarak gösterilir. Dış siteye yönlendirme yapılmaz.</p><ul className="space-y-2">{sources.map((source,index)=><li key={`${clean(source.authority)}:${clean(source.title)}:${index}`} className="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800"><div className="font-semibold">{clean(source.authority)?`${clean(source.authority)}: `:''}{clean(source.title)||clean(source.topic)||'Kaynak'}</div>{clean(source.topic)&&clean(source.topic)!==clean(source.title)?<div className="mt-1 text-xs text-gray-500">{clean(source.topic)}</div>:null}</li>)}</ul></details>:null}
+ </section>;
 }
-
-function InfoCard({ title, items }: { title: string; items: string[] }) {
-  if (!items.length) return null;
-  return <div className="rounded-xl border bg-white p-4 dark:bg-gray-900"><h3 className="font-bold">{title}</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-gray-600 dark:text-gray-300">{items.map((item, index) => <li key={`${item}:${index}`}>{item}</li>)}</ul></div>;
-}
-
-function strings(values: unknown[] | undefined) {
-  return Array.isArray(values) ? values.filter((value): value is string => typeof value === 'string' && !!value.trim()) : [];
-}
+function InfoCard({title,items}:{title:string;items:string[]}){if(!items.length)return null;return<div className="rounded-xl border bg-white p-4 dark:bg-gray-900"><h3 className="font-bold">{title}</h3><ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-gray-600 dark:text-gray-300">{items.map((item,index)=><li key={`${item}:${index}`}>{item}</li>)}</ul></div>;}
+function safetyClassLabel(value:unknown){const key=clean(value);const labels:Record<string,string>={general_food:'Gıda',honey:'Bal',raw_milk:'Çiğ Süt',dairy:'Süt Ürünü',lamb:'Kuzu Eti',goat:'Oğlak Eti',poultry:'Kanatlı',fish:'Balık',egg:'Yumurta',animal_fat:'Hayvansal Yağ',wild_mushroom:'Yabani Mantar',fresh_produce:'Taze Ürün',water:'Kaynak Suyu',salt:'Kaya Tuzu',distillate:'Distile İçecek',processed_beverage:'İçecek',dry_pantry:'Kiler Ürünü',non_food_safety:'Gıda Dışı'};return labels[key]||'';}
+function strings(values:unknown[]|undefined){return Array.isArray(values)?values.filter((value):value is string=>typeof value==='string'&&!!value.trim()).map(value=>value.trim()):[];}
+function clean(value:unknown){return typeof value==='string'?value.trim().slice(0,500):'';}
+function nonNegativeInteger(value:unknown){return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;}
+function positiveInteger(value:unknown){const parsed=nonNegativeInteger(value);return parsed!==null&&parsed>0?parsed:null;}
+function safeHttpsUrl(value:unknown){if(typeof value!=='string')return'';const url=value.trim();return /^https:\/\//i.test(url)&&url.length<=2000?url:'';}
+function nutritionRows(value:Record<string,unknown>|undefined){if(!value||typeof value!=='object')return[];const rows:Array<{key:string;label:string;unit:string}>=[{key:'energyKcal',label:'Enerji',unit:'kcal'},{key:'proteinG',label:'Protein',unit:'g'},{key:'carbohydrateG',label:'Karbonhidrat',unit:'g'},{key:'sugarsG',label:'Şeker',unit:'g'},{key:'fatG',label:'Yağ',unit:'g'},{key:'saturatedFatG',label:'Doymuş yağ',unit:'g'},{key:'fiberG',label:'Lif',unit:'g'},{key:'saltG',label:'Tuz',unit:'g'}];const result=rows.flatMap(row=>{const numeric=value[row.key];return typeof numeric==='number'&&Number.isFinite(numeric)&&numeric>=0?[{label:row.label,value:`${numeric.toLocaleString('tr-TR')} ${row.unit}`}]:[];});const serving=clean(value.servingSize);if(serving)result.unshift({label:'Porsiyon',value:serving});return result;}

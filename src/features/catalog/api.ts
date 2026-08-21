@@ -1,206 +1,32 @@
 import { supabase } from '../../lib/supabase';
+import { normalizeProductHandlingProfile, type ProductHandlingProfile } from './productHandlingApi';
 
-export type CatalogSuggestion = {
-  kind: 'product' | 'producer' | 'category';
-  id: string;
-  label: string;
-  value: string;
-};
-
-export type ProducerFollowMetric = {
-  producerId: string;
-  followerCount: number;
-  following: boolean;
-  verified: boolean;
-  originVerified: boolean;
-};
-
-export type CatalogItem = {
-  id: string;
-  legacyId?: string | null;
-  slug: string;
-  name: string;
-  shortDescription?: string | null;
-  origin?: string | null;
-  unitLabel?: string | null;
-  category: { id: string; slug: string; name: string };
-  producer: { id: string; name: string; province?: string | null; district?: string | null; village?: string | null };
-  variant: { id: string; name: string; sku?: string | null; priceMinor: number; compareAtPriceMinor?: number | null };
-  currency: string;
-  stockMode: string;
-  availableQuantity?: number | null;
-  featured: boolean;
-  imagePath?: string | null;
-  averageRating: number;
-  reviewCount: number;
-};
-
-export type CatalogSearchResponse = {
-  total: number;
-  query: string;
-  limit: number;
-  offset: number;
-  items: CatalogItem[];
-};
-
-export type CatalogSearchInput = {
-  query?: string | null;
-  categorySlug?: string | null;
-  producerId?: string | null;
-  province?: string | null;
-  district?: string | null;
-  village?: string | null;
-  minPriceMinor?: number | null;
-  maxPriceMinor?: number | null;
-  inStock?: boolean;
-  featured?: boolean | null;
-  sort?: 'relevance' | 'newest' | 'price_asc' | 'price_desc' | 'rating';
-  limit?: number;
-  offset?: number;
-};
-
-function unwrap<T>(data: T | null, error: any): T {
-  if (error) throw error;
-  return data as T;
-}
-
-export async function searchCatalog(input: CatalogSearchInput = {}): Promise<CatalogSearchResponse> {
-  const { data, error } = await supabase.rpc('search_catalog_v1', {
-    p_query: input.query?.trim() || null,
-    p_category_slug: input.categorySlug?.trim() || null,
-    p_producer_id: input.producerId || null,
-    p_province: input.province?.trim() || null,
-    p_district: input.district?.trim() || null,
-    p_village: input.village?.trim() || null,
-    p_min_price_minor: input.minPriceMinor ?? null,
-    p_max_price_minor: input.maxPriceMinor ?? null,
-    p_in_stock: input.inStock ?? false,
-    p_featured: input.featured ?? null,
-    p_sort: input.sort ?? 'relevance',
-    p_limit: input.limit ?? 20,
-    p_offset: input.offset ?? 0,
-  });
-  return unwrap<CatalogSearchResponse>(data, error);
-}
-
-export async function catalogSuggestions(query: string, limit = 10): Promise<CatalogSuggestion[]> {
-  const normalized = query.trim();
-  if (!normalized) return [];
-  const { data, error } = await supabase.rpc('catalog_search_suggestions_v1', {
-    p_query: normalized,
-    p_limit: limit,
-  });
-  return unwrap<CatalogSuggestion[]>(data, error);
-}
-
-export async function getProductDetail(reference: string) {
-  const { data, error } = await supabase.rpc('get_public_product_detail_v1', {
-    p_reference: reference,
-  });
-  return unwrap<any>(data, error);
-}
-
-export async function toggleProductFavorite(reference: string) {
-  const { data, error } = await supabase.rpc('toggle_customer_favorite', {
-    p_product_reference: reference,
-  });
-  return unwrap<any>(data, error);
-}
-
-export async function listProductReviews(productId: string, limit = 20, offset = 0) {
-  const { data, error } = await supabase.rpc('get_product_reviews_v1', {
-    p_product_id: productId,
-    p_limit: limit,
-    p_offset: offset,
-  });
-  return unwrap<any>(data, error);
-}
-
-export function publicCatalogUrl(path?: string | null) {
-  if (!path) return '';
-  if (/^https?:\/\//i.test(path)) return path;
-  return supabase.storage.from('catalog-public').getPublicUrl(path.replace(/^\/+/, '')).data.publicUrl;
-}
-
-export async function getPublicProducerProfile(reference: string) {
-  const { data, error } = await supabase.rpc('get_public_producer_profile_v2', {
-    p_reference: reference,
-  });
-  return unwrap<any>(data, error);
-}
-
-export async function getProducerFollowMetrics(producerIds: string[]): Promise<ProducerFollowMetric[]> {
-  const unique = [...new Set(producerIds.map(String).filter(Boolean))].slice(0, 100);
-  if (!unique.length) return [];
-  const { data, error } = await supabase.rpc('get_public_producer_follow_metrics_v1', {
-    p_producer_ids: unique,
-  });
-  const rows = unwrap<any[]>(data, error);
-  return (Array.isArray(rows) ? rows : []).map(row => ({
-    producerId: String(row.producerId),
-    followerCount: Math.max(0, Number(row.followerCount || 0)),
-    following: row.following === true,
-    verified: row.verified === true,
-    originVerified: row.originVerified === true,
-  }));
-}
-
-export async function toggleProducerFollow(producerId: string) {
-  const { data, error } = await supabase.rpc('toggle_producer_follow_v1', {
-    p_producer_id: producerId,
-  });
-  return unwrap<any>(data, error);
-}
-
-export async function listFollowedProducerIds(): Promise<string[]> {
-  const { data, error } = await supabase.rpc('list_my_followed_producers_v1');
-  if (error) throw error;
-  return (Array.isArray(data) ? data : []).map((row: any) => String(row.id));
-}
-
-export async function startProducerProductConversation(input: {
-  producerId: string;
-  productId: string;
-  productName: string;
-  message: string;
-}) {
-  const body = input.message.trim();
-  if (!body || body.length > 5000) throw new Error('Mesaj 1 ile 5000 karakter arasında olmalıdır.');
-  const subject = `Ürün hakkında: ${input.productName}`.slice(0, 200);
-  const { data, error } = await supabase.rpc('start_producer_conversation_v1', {
-    p_producer_id: input.producerId,
-    p_product_id: input.productId,
-    p_order_id: null,
-    p_subject: subject,
-    p_initial_message: body,
-  });
-  return unwrap<any>(data, error);
-}
-
-export type PublicCategory = {
-  id: string;
-  parentId?: string | null;
-  slug: string;
-  name: string;
-  description?: string | null;
-  icon?: string | null;
-  imagePath?: string | null;
-  sortOrder: number;
-  productCount: number;
-};
-
-export async function listPublicCategories(): Promise<PublicCategory[]> {
-  const { data, error } = await supabase.rpc('list_public_categories_v1');
-  return unwrap<PublicCategory[]>(data, error);
-}
-
-export async function getPublicHomeCatalog() {
-  const { data, error } = await supabase.rpc('get_public_home_catalog_v1');
-  return unwrap<any>(data, error);
-}
-
-export async function listFavoriteReferences(): Promise<string[]> {
-  const { data, error } = await supabase.rpc('list_customer_favorite_references');
-  if (error) throw error;
-  return (Array.isArray(data) ? data : []).map((row: any) => String(row.product_reference));
-}
+export type CatalogSuggestion={kind:'product'|'producer'|'category';id:string;label:string;value:string};
+export type ProducerFollowMetric={producerId:string;followerCount:number;following:boolean;verified:boolean;originVerified:boolean};
+export type CatalogProducer={id:string;name:string;province?:string|null;district?:string|null;village?:string|null;verified:boolean;originVerified:boolean;storeKind:'official'|'independent';storefrontTier:'standard'|'verified'|'signature';badgeTone:'ruby'|'blue';storeBadgeLabel:string;followerCount:number};
+export type CatalogItem={id:string;legacyId?:string|null;slug:string;name:string;shortDescription?:string|null;origin?:string|null;unitLabel?:string|null;category:{id:string;slug:string;name:string};producer:CatalogProducer;variant:{id:string;name:string;sku?:string|null;priceMinor:number;compareAtPriceMinor?:number|null};currency:string;stockMode:string;availableQuantity?:number|null;featured:boolean;imagePath?:string|null;averageRating:number;reviewCount:number;handlingProfile:ProductHandlingProfile};
+export type CatalogSearchResponse={total:number;query:string;limit:number;offset:number;items:CatalogItem[]};
+export type CatalogSearchInput={query?:string|null;categorySlug?:string|null;producerId?:string|null;province?:string|null;district?:string|null;village?:string|null;minPriceMinor?:number|null;maxPriceMinor?:number|null;inStock?:boolean;featured?:boolean|null;sort?:'relevance'|'newest'|'price_asc'|'price_desc'|'rating';limit?:number;offset?:number};
+export type PublicCategory={id:string;parentId?:string|null;slug:string;name:string;description?:string|null;icon?:string|null;imagePath?:string|null;sortOrder:number;productCount:number};
+const STORE_KINDS=new Set(['independent','official']);const STOREFRONT_TIERS=new Set(['standard','verified','signature']);const BADGE_TONES=new Set(['blue','ruby','gold','emerald']);
+function unwrap<T>(data:T|null,error:any):T{if(error)throw error;return data as T;}function isRecord(value:unknown):value is Record<string,any>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}function requiredText(value:unknown,label:string,max=240){const normalized=typeof value==='string'?value.trim():'';if(!normalized||normalized.length>max||/[\u0000-\u001F\u007F]/.test(normalized))throw new Error(`${label} doğrulanamadı.`);return normalized;}function optionalText(value:unknown,max=1000){if(value==null)return null;if(typeof value!=='string')return null;const normalized=value.trim();if(!normalized)return null;if(normalized.length>max||/[\u0000-\u001F\u007F]/.test(normalized))throw new Error('Metin alanı doğrulanamadı.');return normalized;}function safeInteger(value:unknown,label:string,min=0,max=Number.MAX_SAFE_INTEGER){if(typeof value!=='number'||!Number.isSafeInteger(value)||value<min||value>max)throw new Error(`${label} doğrulanamadı.`);return value;}function optionalSafeInteger(value:unknown,label:string,min=0,max=Number.MAX_SAFE_INTEGER){if(value==null)return null;return safeInteger(value,label,min,max);}function safeRating(value:unknown,label='Puan'){if(typeof value!=='number'||!Number.isFinite(value)||value<0||value>5)throw new Error(`${label} doğrulanamadı.`);return value;}function normalizedCurrency(value:unknown){const currency=typeof value==='string'?value.trim().toUpperCase():'';if(!/^[A-Z]{3}$/.test(currency))throw new Error('Para birimi doğrulanamadı.');return currency;}function requireReference(value:unknown,label='Referans',max=220){return requiredText(value,label,max);}function optionalBoolean(value:unknown,label:string){if(value==null)return null;if(typeof value!=='boolean')throw new Error(`${label} doğrulanamadı.`);return value;}function requireBoolean(value:unknown,label:string){if(typeof value!=='boolean')throw new Error(`${label} doğrulanamadı.`);return value;}function boundedIntegerInput(value:unknown,fallback:number,min:number,max:number){return typeof value==='number'&&Number.isSafeInteger(value)?Math.min(max,Math.max(min,value)):fallback;}function optionalMinorInput(value:unknown,label:string){if(value==null)return null;return safeInteger(value,label,0,Number.MAX_SAFE_INTEGER);}function optionalUuid(value:unknown,label:string){if(value==null||String(value).trim()==='')return null;const id=requiredText(value,label,160);if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))throw new Error(`${label} doğrulanamadı.`);return id;}
+function validateCatalogProducer(value:unknown):CatalogProducer{if(!isRecord(value))throw new Error('Katalog üretici kimliği doğrulanamadı.');const storeKind=requiredText(value.storeKind,'Mağaza türü',30) as CatalogProducer['storeKind'],storefrontTier=requiredText(value.storefrontTier,'Vitrin seviyesi',30) as CatalogProducer['storefrontTier'],badgeTone=requiredText(value.badgeTone,'Mağaza rozeti tonu',30) as CatalogProducer['badgeTone'];if(!STORE_KINDS.has(storeKind)||!STOREFRONT_TIERS.has(storefrontTier)||!['ruby','blue'].includes(badgeTone))throw new Error('Katalog mağaza kimliği doğrulanamadı.');if((storeKind==='official'&&badgeTone!=='ruby')||(storeKind==='independent'&&badgeTone!=='blue'))throw new Error('Katalog mağaza rozeti mağaza türüyle uyuşmuyor.');return{id:requiredText(value.id,'Üretici kimliği',160),name:requiredText(value.name,'Üretici adı',240),province:optionalText(value.province,120),district:optionalText(value.district,120),village:optionalText(value.village,160),verified:requireBoolean(value.verified,'Üretici doğrulama durumu'),originVerified:requireBoolean(value.originVerified,'Menşe doğrulama durumu'),storeKind,storefrontTier,badgeTone,storeBadgeLabel:requiredText(value.storeBadgeLabel,'Mağaza rozeti etiketi',180),followerCount:safeInteger(value.followerCount,'Gerçek takipçi sayısı',0,1000000000)};}
+function validateCatalogItem(value:unknown,index=0):CatalogItem{if(!isRecord(value)||!isRecord(value.category)||!isRecord(value.variant))throw new Error(`${index+1}. katalog ürünü doğrulanamadı.`);return{id:requiredText(value.id,'Ürün kimliği',160),legacyId:optionalText(value.legacyId,160),slug:requiredText(value.slug,'Ürün bağlantısı',220),name:requiredText(value.name,'Ürün adı',300),shortDescription:optionalText(value.shortDescription,1000),origin:optionalText(value.origin,240),unitLabel:optionalText(value.unitLabel,120),category:{id:requiredText(value.category.id,'Kategori kimliği',160),slug:requiredText(value.category.slug,'Kategori bağlantısı',220),name:requiredText(value.category.name,'Kategori adı',160)},producer:validateCatalogProducer(value.producer),variant:{id:requiredText(value.variant.id,'Varyant kimliği',160),name:requiredText(value.variant.name,'Varyant adı',240),sku:optionalText(value.variant.sku,160),priceMinor:safeInteger(value.variant.priceMinor,'Ürün fiyatı'),compareAtPriceMinor:optionalSafeInteger(value.variant.compareAtPriceMinor,'Karşılaştırma fiyatı')},currency:normalizedCurrency(value.currency),stockMode:requiredText(value.stockMode,'Stok modu',80),availableQuantity:optionalSafeInteger(value.availableQuantity,'Satılabilir stok',0,999999999),featured:requireBoolean(value.featured,'Öne çıkarma durumu'),imagePath:optionalText(value.imagePath,1200),averageRating:safeRating(value.averageRating,'Ürün puanı'),reviewCount:safeInteger(value.reviewCount,'Değerlendirme sayısı',0,1000000000),handlingProfile:normalizeProductHandlingProfile(value.handlingProfile)};}
+function validateTrustBadges(value:unknown,storeKind:string){if(!Array.isArray(value)||value.length>20)throw new Error('Ürün güven rozetleri doğrulanamadı.');let official=false;value.forEach((badge,index)=>{if(!isRecord(badge))throw new Error(`${index+1}. güven rozeti doğrulanamadı.`);const key=requiredText(badge.key,'Rozet anahtarı',80),tone=requiredText(badge.tone,'Rozet tonu',30);requiredText(badge.label,'Rozet etiketi',180);requireBoolean(badge.active,'Rozet aktiflik durumu');if(!BADGE_TONES.has(tone))throw new Error('Rozet tonu doğrulanamadı.');if(key==='official_store'&&badge.active===true)official=true;if(storeKind==='official'&&['official_store','verified_origin'].includes(key)&&tone!=='ruby')throw new Error('Resmi mağaza rozeti kimliği tutarsız.');});if(storeKind==='official'&&!official)throw new Error('Resmi mağaza doğrulama rozeti eksik.');}
+function validateProvenance(value:unknown,storeKind:string){if(value==null){if(storeKind==='official')throw new Error('Resmi mağaza ürün menşe kaydı eksik.');return;}if(!isRecord(value)||!isRecord(value.origin))throw new Error('Ürün menşe kaydı doğrulanamadı.');const sellerModel=requiredText(value.sellerModel,'Satıcı modeli',80),sourceMode=requiredText(value.sourceMode,'Kaynak modeli',120);requiredText(value.sourceDisplayName,'Kaynak görünen adı',240);requireBoolean(value.originVerified,'Menşe doğrulama durumu');requiredText(value.organicClaim,'Organik iddia durumu',120);optionalText(value.publicNote,2000);const origin=value.origin;const country=requiredText(origin.countryCode,'Menşe ülke kodu',2).toUpperCase();if(!/^[A-Z]{2}$/.test(country))throw new Error('Menşe ülke kodu doğrulanamadı.');requiredText(origin.label,'Menşe etiketi',500);optionalText(origin.province,160);optionalText(origin.district,160);optionalText(origin.village,240);optionalText(origin.localityDetail,500);if(storeKind==='official'&&(sellerModel!=='official_store'||sourceMode!=='platform_village_catalog'))throw new Error('Resmi mağaza ürün kaynağı tutarsız.');}
+function validateProductDetail(value:unknown){if(!isRecord(value))throw new Error('Ürün detayı sunucudan doğrulanamadı.');requiredText(value.id,'Ürün kimliği',160);requiredText(value.slug,'Ürün bağlantısı',220);requiredText(value.name,'Ürün adı',300);normalizedCurrency(value.currency);normalizeProductHandlingProfile(value.handlingProfile);if(!Array.isArray(value.variants)||value.variants.length<1||value.variants.length>100)throw new Error('Ürün seçenekleri sunucudan doğrulanamadı.');value.variants.forEach((variant:unknown,index:number)=>{if(!isRecord(variant))throw new Error(`${index+1}. ürün seçeneği doğrulanamadı.`);requiredText(variant.id,'Varyant kimliği',160);requiredText(variant.name,'Varyant adı',240);safeInteger(variant.priceMinor,'Varyant fiyatı');optionalSafeInteger(variant.compareAtPriceMinor,'Karşılaştırma fiyatı');optionalSafeInteger(variant.availableQuantity,'Satılabilir stok',0,999999999);optionalSafeInteger(variant.weightGrams,'Sevkiyat ağırlığı',0,100000000);requireBoolean(variant.available,'Varyant satış durumu');optionalBoolean(variant.default,'Varsayılan varyant durumu');});let storeKind='independent';if(value.producer!=null){if(!isRecord(value.producer))throw new Error('Üretici bilgisi doğrulanamadı.');requiredText(value.producer.id,'Üretici kimliği',160);requiredText(value.producer.name,'Üretici adı',240);requiredText(value.producer.slug,'Üretici bağlantısı',220);requireBoolean(value.producer.verified,'Üretici doğrulama durumu');requireBoolean(value.producer.originVerified,'Menşe doğrulama durumu');storeKind=requiredText(value.producer.storeKind,'Mağaza türü',30);const tier=requiredText(value.producer.storefrontTier,'Vitrin seviyesi',30),tone=requiredText(value.producer.badgeTone,'Mağaza rozeti tonu',30);if(!STORE_KINDS.has(storeKind)||!STOREFRONT_TIERS.has(tier)||!BADGE_TONES.has(tone))throw new Error('Mağaza kimliği doğrulanamadı.');if((storeKind==='official'&&tone!=='ruby')||(storeKind==='independent'&&tone!=='blue'))throw new Error('Mağaza rozeti mağaza türüyle uyuşmuyor.');}else throw new Error('Üretici bilgisi eksik.');if(value.images!=null&&(!Array.isArray(value.images)||value.images.length>24))throw new Error('Ürün görselleri doğrulanamadı.');if(Array.isArray(value.images))value.images.forEach((image:unknown)=>{if(!isRecord(image))throw new Error('Ürün görseli doğrulanamadı.');requiredText(image.path,'Ürün görsel yolu',1200);optionalBoolean(image.primary,'Ürün ana görsel durumu');});validateTrustBadges(value.trustBadges,storeKind);validateProvenance(value.provenance,storeKind);if(value.traceability!=null&&!isRecord(value.traceability))throw new Error('Ürün izlenebilirlik bilgisi doğrulanamadı.');if(isRecord(value.traceability)){if(!Array.isArray(value.traceability.batches)||value.traceability.batches.length>100)throw new Error('Ürün lot bilgileri doğrulanamadı.');requireBoolean(value.traceability.hasReleasedBatches,'Ürün lot yayın durumu');}return value;}
+function validateProducerProfile(value:unknown){if(!isRecord(value))throw new Error('Üretici profili sunucudan doğrulanamadı.');requiredText(value.id,'Üretici kimliği',160);requiredText(value.slug,'Üretici bağlantısı',220);requiredText(value.display_name,'Üretici adı',240);optionalBoolean(value.following,'Takip durumu');optionalSafeInteger(value.product_count,'Ürün sayısı',0,1000000);optionalSafeInteger(value.follower_count,'Takipçi sayısı',0,1000000000);optionalSafeInteger(value.rating_count,'Değerlendirme sayısı',0,1000000000);if(value.rating_average!=null)safeRating(value.rating_average,'Üretici puanı');const kind=requiredText(value.store_kind,'Mağaza türü',30),tier=requiredText(value.storefront_tier,'Vitrin seviyesi',30);if(!STORE_KINDS.has(kind)||!STOREFRONT_TIERS.has(tier))throw new Error('Üretici mağaza kimliği doğrulanamadı.');if(value.badges!=null&&!Array.isArray(value.badges))throw new Error('Üretici güven rozetleri doğrulanamadı.');if(!Array.isArray(value.products)||value.products.length>200)throw new Error('Üretici ürünleri sunucudan doğrulanamadı.');value.products.forEach((product:unknown,index:number)=>{if(!isRecord(product))throw new Error(`${index+1}. üretici ürünü doğrulanamadı.`);requiredText(product.id,'Ürün kimliği',160);requiredText(product.slug,'Ürün bağlantısı',220);requiredText(product.name,'Ürün adı',300);requiredText(product.variant_id,'Varyant kimliği',160);requiredText(product.variant_name,'Varyant adı',240);normalizedCurrency(product.currency);safeInteger(product.price_minor,'Ürün fiyatı');optionalSafeInteger(product.compare_at_price_minor,'Karşılaştırma fiyatı');optionalSafeInteger(product.available_quantity,'Satılabilir stok',0,999999999);optionalSafeInteger(product.weight_grams,'Sevkiyat ağırlığı',0,100000000);optionalSafeInteger(product.review_count,'Değerlendirme sayısı',0,1000000000);if(product.average_rating!=null)safeRating(product.average_rating,'Ürün puanı');requireBoolean(product.available,'Ürün satış durumu');});return value;}
+export async function searchCatalog(input:CatalogSearchInput={}):Promise<CatalogSearchResponse>{const query=input.query?.trim().slice(0,160)||null,categorySlug=input.categorySlug?.trim().slice(0,220)||null,producerId=optionalUuid(input.producerId,'Üretici filtresi'),limit=boundedIntegerInput(input.limit,20,1,100),offset=boundedIntegerInput(input.offset,0,0,100000),minPrice=optionalMinorInput(input.minPriceMinor,'Minimum fiyat'),maxPrice=optionalMinorInput(input.maxPriceMinor,'Maksimum fiyat');if(minPrice!=null&&maxPrice!=null&&minPrice>maxPrice)throw new Error('Minimum fiyat maksimum fiyattan büyük olamaz.');const sort=input.sort??'relevance';if(!['relevance','newest','price_asc','price_desc','rating'].includes(sort))throw new Error('Katalog sıralaması doğrulanamadı.');if(input.inStock!=null&&typeof input.inStock!=='boolean')throw new Error('Stok filtresi doğrulanamadı.');if(input.featured!=null&&typeof input.featured!=='boolean')throw new Error('Öne çıkan filtresi doğrulanamadı.');const{data,error}=await supabase.rpc('search_catalog_v3',{p_query:query,p_category_slug:categorySlug,p_producer_id:producerId,p_province:input.province?.trim().slice(0,120)||null,p_district:input.district?.trim().slice(0,120)||null,p_village:input.village?.trim().slice(0,160)||null,p_min_price_minor:minPrice,p_max_price_minor:maxPrice,p_in_stock:input.inStock??false,p_featured:input.featured??null,p_sort:sort,p_limit:limit,p_offset:offset});const result=unwrap<unknown>(data,error);if(!isRecord(result)||!Array.isArray(result.items))throw new Error('Katalog arama sonucu doğrulanamadı.');const total=safeInteger(result.total,'Katalog toplamı',0,1000000000),responseLimit=safeInteger(result.limit,'Katalog sayfa sınırı',1,100),responseOffset=safeInteger(result.offset,'Katalog sayfa başlangıcı',0,100000);if(responseLimit!==limit||responseOffset!==offset)throw new Error('Katalog sayfalama cevabı istekle eşleşmiyor.');const items=result.items.map((item,index)=>validateCatalogItem(item,index));if(items.length>responseLimit||(items.length>0&&responseOffset+items.length>total))throw new Error('Katalog sayfalama toplamı tutarsız.');return{total,query:typeof result.query==='string'?result.query.slice(0,160):'',limit:responseLimit,offset:responseOffset,items};}
+export async function catalogSuggestions(query:string,limit=10):Promise<CatalogSuggestion[]>{const normalized=query.trim().slice(0,160);if(!normalized)return[];const safeLimit=boundedIntegerInput(limit,10,1,20);const{data,error}=await supabase.rpc('catalog_search_suggestions_v1',{p_query:normalized,p_limit:safeLimit});const rows=unwrap<unknown>(data,error);if(!Array.isArray(rows))throw new Error('Arama önerileri doğrulanamadı.');return rows.slice(0,safeLimit).flatMap((row:any)=>{if(!isRecord(row)||!['product','producer','category'].includes(row.kind))return[];const id=optionalText(row.id,160),label=optionalText(row.label,240),value=optionalText(row.value,240);return id&&label&&value?[{kind:row.kind,id,label,value}as CatalogSuggestion]:[];});}
+export async function getProductDetail(reference:string){const{data,error}=await supabase.rpc('get_public_product_detail_v6',{p_reference:requireReference(reference,'Ürün referansı')});return validateProductDetail(unwrap<unknown>(data,error));}
+export async function toggleProductFavorite(reference:string){const{data,error}=await supabase.rpc('toggle_customer_favorite',{p_product_reference:requireReference(reference,'Ürün referansı')});const result=unwrap<unknown>(data,error);if(!isRecord(result)||typeof result.isFavorite!=='boolean')throw new Error('Favori sonucu doğrulanamadı.');return result;}
+export async function listProductReviews(productId:string,limit=20,offset=0){const safeLimit=boundedIntegerInput(limit,20,1,100),safeOffset=boundedIntegerInput(offset,0,0,100000);const{data,error}=await supabase.rpc('get_product_reviews_v1',{p_product_id:requireReference(productId,'Ürün kimliği',160),p_limit:safeLimit,p_offset:safeOffset});const result=unwrap<unknown>(data,error);if(!isRecord(result)||!Array.isArray(result.items)||result.items.length>safeLimit)throw new Error('Ürün yorumları doğrulanamadı.');return result;}
+export function publicCatalogUrl(path?:string|null){const raw=typeof path==='string'?path.trim():'';if(!raw||/[\u0000-\u001F\u007F]/.test(raw))return'';if(/^https:\/\//i.test(raw)){try{return new URL(raw).toString();}catch{return'';}}if(/^[a-z][a-z0-9+.-]*:/i.test(raw))return'';const normalized=raw.replace(/^\/+/, '');if(!normalized||normalized.split('/').some(part=>part==='..'||part==='.'||!part))return'';return supabase.storage.from('catalog-public').getPublicUrl(normalized).data.publicUrl;}
+export async function getPublicProducerProfile(reference:string){const{data,error}=await supabase.rpc('get_public_producer_profile_v3',{p_reference:requireReference(reference,'Üretici referansı')});return validateProducerProfile(unwrap<unknown>(data,error));}
+export async function getProducerFollowMetrics(producerIds:string[]):Promise<ProducerFollowMetric[]>{const unique=[...new Set(producerIds.map(value=>optionalText(value,160)).filter((value):value is string=>Boolean(value)))].slice(0,100);if(!unique.length)return[];const{data,error}=await supabase.rpc('get_public_producer_follow_metrics_v1',{p_producer_ids:unique});const rows=unwrap<unknown>(data,error);if(!Array.isArray(rows))throw new Error('Üretici takip metrikleri doğrulanamadı.');return rows.flatMap((row:any)=>{if(!isRecord(row))return[];const producerId=optionalText(row.producerId,160),followerCount=typeof row.followerCount==='number'&&Number.isSafeInteger(row.followerCount)&&row.followerCount>=0?row.followerCount:null;if(!producerId||followerCount===null||typeof row.following!=='boolean'||typeof row.verified!=='boolean'||typeof row.originVerified!=='boolean')return[];return[{producerId,followerCount,following:row.following,verified:row.verified,originVerified:row.originVerified}];});}
+export async function toggleProducerFollow(producerId:string){const{data,error}=await supabase.rpc('toggle_producer_follow_v1',{p_producer_id:requireReference(producerId,'Üretici kimliği',160)});const result=unwrap<unknown>(data,error);if(!isRecord(result)||typeof result.following!=='boolean')throw new Error('Takip sonucu doğrulanamadı.');return result;}
+export async function listFollowedProducerIds():Promise<string[]>{const{data,error}=await supabase.rpc('list_my_followed_producers_v1');if(error)throw error;if(!Array.isArray(data))throw new Error('Takip edilen üreticiler doğrulanamadı.');return data.flatMap((row:any)=>{const id=isRecord(row)?optionalText(row.id,160):null;return id?[id]:[];});}
+export async function startProducerProductConversation(input:{producerId:string;productId:string;productName:string;message:string}){const body=input.message.trim();if(!body||body.length>5000)throw new Error('Mesaj 1 ile 5000 karakter arasında olmalıdır.');const producerId=requireReference(input.producerId,'Üretici kimliği',160),productId=requireReference(input.productId,'Ürün kimliği',160),productName=requiredText(input.productName,'Ürün adı',240),subject=`Ürün hakkında: ${productName}`.slice(0,200);const{data,error}=await supabase.rpc('start_producer_conversation_v1',{p_producer_id:producerId,p_product_id:productId,p_order_id:null,p_subject:subject,p_initial_message:body});const result=unwrap<unknown>(data,error);if(!isRecord(result))throw new Error('Konuşma sonucu doğrulanamadı.');return result;}
+export async function listPublicCategories():Promise<PublicCategory[]>{const{data,error}=await supabase.rpc('list_public_categories_v2');const rows=unwrap<unknown>(data,error);if(!Array.isArray(rows)||rows.length>500)throw new Error('Kategori listesi doğrulanamadı.');return rows.map((row:any,index:number)=>{if(!isRecord(row))throw new Error(`${index+1}. kategori doğrulanamadı.`);return{id:requiredText(row.id,'Kategori kimliği',160),parentId:optionalText(row.parentId,160),slug:requiredText(row.slug,'Kategori bağlantısı',220),name:requiredText(row.name,'Kategori adı',160),description:optionalText(row.description,1000),icon:optionalText(row.icon,120),imagePath:optionalText(row.imagePath,1200),sortOrder:safeInteger(row.sortOrder,'Kategori sırası',0,1000000),productCount:safeInteger(row.productCount,'Kategori ürün sayısı',0,1000000000)};});}
+export async function getPublicHomeCatalog(){const{data,error}=await supabase.rpc('get_public_home_catalog_v3');const result=unwrap<unknown>(data,error);if(!isRecord(result)||!Array.isArray(result.items)||result.items.length>500)throw new Error('Ana katalog sunucudan doğrulanamadı.');result.items.forEach((item:unknown,index:number)=>validateCatalogItem(item,index));if(result.generatedAt!=null){const generatedAt=requiredText(result.generatedAt,'Katalog oluşturma zamanı',80);if(Number.isNaN(Date.parse(generatedAt)))throw new Error('Katalog oluşturma zamanı doğrulanamadı.');}return result;}
+export async function listFavoriteReferences():Promise<string[]>{const{data,error}=await supabase.rpc('list_customer_favorite_references');if(error)throw error;if(!Array.isArray(data))throw new Error('Favori ürün referansları doğrulanamadı.');return data.flatMap((row:any)=>{const reference=isRecord(row)?optionalText(row.product_reference,220):null;return reference?[reference]:[];});}

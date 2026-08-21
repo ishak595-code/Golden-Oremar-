@@ -1,12 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,500&family=Outfit:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
-  --font-serif: "Cormorant Garamond", serif;
-  --font-sans: "Outfit", sans-serif;
-  
+  --font-serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+
   --color-gray-50: #F4F7F5;
   --color-gray-100: #E5EBE7;
   --color-gray-200: #D5DDD8;
@@ -17,11 +16,13 @@
   --color-gray-700: #35483F;
   --color-gray-800: #24332D;
   --color-gray-900: #121C18;
-  
+
   --color-brand-gold: var(--brand-gold);
   --color-brand-green: var(--brand-green);
   --color-brand-earth: var(--brand-earth);
-  
+  --color-brand-on-gold: var(--text-on-gold);
+  --color-brand-on-green: var(--text-on-green);
+
   --color-brand-main: var(--bg-main);
   --color-brand-card: var(--bg-card);
   --color-brand-text: var(--text-main);
@@ -41,9 +42,10 @@
   --brand-gold: #8A6810;
   --brand-green: #145A32;
   --brand-earth: #7A431F;
+  --text-on-gold: #FFFFFF;
+  --text-on-green: #FFFFFF;
 }
 
-/* İnci Beyazı: clean premium ivory with forest typography. */
 :root[data-theme="light"] {
   color-scheme: light;
   --bg-main: #F7F8F6;
@@ -56,9 +58,10 @@
   --brand-gold: #8A6810;
   --brand-green: #145A32;
   --brand-earth: #7A431F;
+  --text-on-gold: #FFFFFF;
+  --text-on-green: #FFFFFF;
 }
 
-/* Zümrüt Oremar: refined emerald accent without sacrificing reading contrast. */
 :root[data-theme="emerald"] {
   color-scheme: light;
   --bg-main: #F1F6F2;
@@ -68,12 +71,13 @@
   --text-muted-darker: #2B5141;
   --border-main: #C8DDD2;
   --border-light: #E1ECE6;
-  --brand-gold: #A87D19;
+  --brand-gold: #8A6614;
   --brand-green: #087A55;
   --brand-earth: #765033;
+  --text-on-gold: #FFFFFF;
+  --text-on-green: #FFFFFF;
 }
 
-/* Yakut Prestige: pearl surface, ruby accent and warm champagne companion. */
 :root[data-theme="ruby"] {
   color-scheme: light;
   --bg-main: #FBF6F7;
@@ -83,12 +87,13 @@
   --text-muted-darker: #5D3442;
   --border-main: #E7D3D9;
   --border-light: #F2E4E8;
-  --brand-gold: #A77C30;
+  --brand-gold: #8A641F;
   --brand-green: #8F1D3B;
   --brand-earth: #7B3B37;
+  --text-on-gold: #FFFFFF;
+  --text-on-green: #FFFFFF;
 }
 
-/* Obsidyen Gece: deep forest-black surface with warm gold. */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg-main: #060F0C;
@@ -101,9 +106,10 @@
   --brand-gold: #EDC967;
   --brand-green: #27AE60;
   --brand-earth: #C36A31;
+  --text-on-gold: #10251B;
+  --text-on-green: #06100C;
 }
 
-/* Şampanya Altın: warm cream surface with restrained bronze-gold accents. */
 :root[data-theme="champagne"] {
   color-scheme: light;
   --bg-main: #FBF6E9;
@@ -113,9 +119,30 @@
   --text-muted-darker: #51462F;
   --border-main: #E5D8B8;
   --border-light: #F0E7D1;
-  --brand-gold: #9A7118;
+  --brand-gold: #85600F;
   --brand-green: #705C27;
   --brand-earth: #805338;
+  --text-on-gold: #FFFFFF;
+  --text-on-green: #FFFFFF;
+}
+
+/* Compatibility bridge for existing accent utility pairs. New components should
+   use text-brand-on-gold / text-brand-on-green directly, while old canonical
+   screens remain contrast-correct during incremental cleanup. */
+.bg-brand-gold.text-brand-main,
+.bg-brand-gold.text-brand-green,
+.bg-brand-gold.text-white {
+  color: var(--text-on-gold);
+}
+
+.bg-brand-green.text-white,
+.bg-brand-green.text-brand-main {
+  color: var(--text-on-green);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -125,8 +152,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.3s ease, color 0.3s ease;
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  padding-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
@@ -135,34 +162,146 @@ h1, h2, h3, h4, h5, h6, .font-serif {
   font-family: var(--font-serif);
 }
 
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--brand-gold);
+  outline-offset: 3px;
+}
+
+:where(button, [role="button"], a[href]) {
+  -webkit-touch-callout: none;
+}
+
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: var(--brand-gold);
   border-radius: 6px;
 }
 
 .pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 20px);
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 20px));
 }
 
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
+/* The application header owns the top system-bar inset. Body must not add it a
+   second time. Capacitor 8 injects --safe-area-inset-* on affected Android
+   WebViews and env(...) remains the iOS/modern-browser fallback. */
+header {
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) !important;
+}
+
+/* Fixed bottom navigation is viewport-relative, so it also owns its bottom and
+   landscape side insets rather than relying on body padding. */
+nav[aria-label="Ana gezinme"] {
+  bottom: calc(0.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
+  left: calc(0.75rem + var(--safe-area-inset-left, env(safe-area-inset-left, 0px))) !important;
+  right: calc(0.75rem + var(--safe-area-inset-right, env(safe-area-inset-right, 0px))) !important;
+}
+
+/* Native app header: unread notifications are visually urgent only when a real
+   unread server count exists. */
+header button[aria-label^="Bildirimler,"] {
+  color: #B91C1C;
+  background: #FEF2F2;
+}
+
+:root[data-theme="dark"] header button[aria-label^="Bildirimler,"] {
+  color: #FCA5A5;
+  background: rgb(127 29 29 / 0.28);
+}
+
+/* Count pills are intentionally high contrast and large enough to read on phone
+   and tablet screens. Values above 99 render as 99+ in the React shell. */
+header button[aria-label^="Bildirimler"] > span[aria-hidden="true"],
+header button[aria-label^="Sepetim"] > span[aria-hidden="true"],
+nav[aria-label="Ana gezinme"] button > span.relative > span[aria-hidden="true"] {
+  min-width: 1.25rem !important;
+  height: 1.25rem !important;
+  padding-inline: 0.25rem !important;
+  border: 2px solid var(--bg-card);
+  background: #DC2626 !important;
+  color: #FFFFFF !important;
+  font-size: 0.625rem !important;
+  line-height: 1 !important;
+  font-weight: 800 !important;
+}
+
+/* Capacitor runs on touch-first Android and iOS surfaces. On coarse pointers,
+   interactive controls must retain a minimum physical target even when an admin
+   or seller component forgets to add an explicit Tailwind min-height. */
+@media (pointer: coarse) {
+  :where(button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], select, summary) {
+    min-height: 44px;
+  }
+
+  :where(button, [role="button"]):has(> svg:only-child) {
+    min-width: 44px;
+  }
+
+  :where(input[type="checkbox"], input[type="radio"]) {
+    min-width: 20px;
+    min-height: 20px;
+  }
+}
+
+/* The software keyboard owns the lower screen area while text entry is active. */
+:root[data-native-keyboard="open"] nav[aria-label="Ana gezinme"] {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  header > div > div {
+    gap: 0.35rem !important;
+  }
+
+  header button[aria-label="Golden Oremar ana sayfası"] {
+    min-width: 2.5rem;
+  }
+
+  header button[aria-label="Golden Oremar ana sayfası"] img {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html:focus-within { scroll-behavior: auto; }
+
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 3px solid Highlight;
+  }
+
+  :where(button, [role="button"], input, select, textarea) {
+    forced-color-adjust: auto;
+  }
+
+  [aria-disabled="true"], :disabled {
+    opacity: 1;
+    color: GrayText;
   }
 }

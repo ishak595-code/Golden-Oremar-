@@ -1,500 +1,59 @@
-import React, { useState, useRef } from 'react';
-import { useData } from '../context/DataContext';
-import { Settings, Bell, Palette, Globe, Lock, Save, Send, Mail, Upload, Image as ImageIcon, Plus, Trash2, CheckCircle, Check } from 'lucide-react';
-import { updateEmail, updatePassword } from 'firebase/auth';
-import { auth } from '../firebase';
+import React,{useEffect,useState}from'react';
+import{CalendarRange,Check,ChevronDown,ChevronUp,Globe2,Loader2,Palette,RefreshCw,Save,Settings2,ShieldCheck,Store,X}from'lucide-react';
+import{adminGetBrandConfiguration,adminUpdateBrandSection,contentAdminErrorMessage,type AdminBrandConfig}from'./contentAdminApi';
+import{adminGetMessageModeration,adminUpdateMessageModeration,messageModerationAdminError,type MessageModerationSettings}from'./messageModerationAdminApi';
+import{adminGetEventSpotlight,adminUpdateEventSpotlight,eventSpotlightError,type EventSpotlightSettings}from'./eventSpotlightAdminApi';
+import{adminGetHomeInterface,adminUpdateHomeInterface,homeInterfaceError,type HomeInterfaceSettings}from'./homeExperienceAdminApi';
+import{adminListEvents,type AdminEvent}from'./eventAdminApi';
 
-export function AdminSettings({ setActiveTab }: { setActiveTab?: (tab: string) => void }) {
-  const { settings, updateSettings, seedDatabase, contactInfo, updateContactInfo } = useData();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+type Tab='general'|'contact'|'home'|'messaging';
+type GeneralState={siteName:string;logoUrl:string;theme:'light'|'dark';maintenanceMode:boolean};
+type ContactState={address:string;phone:string;whatsapp:string;email:string;mapUrl:string;social:Record<string,string>};
+type HeroItem={id:string;title:string;subtitle:string;image:string;icon:string;targetCategory:string};
+type HomeSection={id:string;title:string;active:boolean};
+const SOCIALS=['instagram','facebook','twitter','tiktok','youtube','linkedin']as const;
+function moveItem<T>(items:T[],from:number,to:number){if(to<0||to>=items.length||from===to)return items;const next=[...items],picked=next.splice(from,1)[0];next.splice(to,0,picked);return next;}
 
-  // Mock sections state for demonstration
-  const [sections, setSections] = useState([
-    { id: 'featured', title: 'Haftanın Yıldızları' },
-    { id: 'seasonal', title: 'İlkbahar Hasadı 🌿' }
-  ]);
-  const [newSectionTitle, setNewSectionTitle] = useState('');
-  const [newSectionId, setNewSectionId] = useState('');
-
-  const [isSaved, setIsSaved] = useState(false);
-
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [isUpdatingCredentials, setIsUpdatingCredentials] = useState(false);
-  const [toast, setToast] = useState<{message: string, visible: boolean}>({ message: '', visible: false });
-
-  const showToast = (message: string) => {
-    setToast({ message, visible: true });
-    setTimeout(() => setToast({ message: '', visible: false }), 3000);
-  };
-
-  const handleUpdateCredentials = async () => {
-    if (!adminEmail && !adminPassword) return;
-    if (!auth.currentUser) return;
-    
-    setIsUpdatingCredentials(true);
-    try {
-      if (adminEmail) {
-        await updateEmail(auth.currentUser, adminEmail);
-      }
-      if (adminPassword) {
-        await updatePassword(auth.currentUser, adminPassword);
-      }
-      
-      showToast('Yönetici bilgileri başarıyla güncellendi!');
-      setAdminEmail('');
-      setAdminPassword('');
-    } catch (err: any) {
-      console.error('Error updating credentials:', err);
-      showToast(err.message || 'Bilgiler güncellenirken bir hata oluştu. Lütfen yeniden giriş yapıp tekrar deneyin.');
-    } finally {
-      setIsUpdatingCredentials(false);
-    }
-  };
-
-  const handleSaveSettings = async () => {
-    try {
-      await updateSettings(settings);
-      setIsSaved(true);
-      setTimeout(() => {
-        setIsSaved(false);
-        if (setActiveTab) setActiveTab('dashboard');
-      }, 1500);
-    } catch (err) {
-      showToast('Ayarlar kaydedilirken bir hata oluştu.');
-    }
-  };
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 200;
-          const MAX_HEIGHT = 200;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // Compress to JPEG with 0.8 quality to save space
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-          updateSettings({ logoUrl: dataUrl });
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, message: string, onConfirm: () => void}>({ isOpen: false, message: '', onConfirm: () => {} });
-
-  const handleAddSection = () => {
-    if (newSectionTitle && newSectionId) {
-      setSections([...sections, { id: newSectionId, title: newSectionTitle }]);
-      setNewSectionTitle('');
-      setNewSectionId('');
-    }
-  };
-
-  const handleRemoveSection = (id: string) => {
-    setSections(sections.filter(s => s.id !== id));
-  };
-
-  return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Genel Ayarlar</h2>
-        <button
-          onClick={() => {
-            setConfirmModal({
-              isOpen: true,
-              message: 'Veritabanını varsayılan verilerle doldurmak istediğinize emin misiniz? Bu işlem mevcut verilerinizi silmez ancak yeni veriler ekler.',
-              onConfirm: async () => {
-                await seedDatabase();
-                setConfirmModal({ isOpen: false, message: '', onConfirm: () => {} });
-              }
-            });
-          }}
-          className="px-4 py-2 bg-brand-gold text-white font-medium rounded-xl hover:bg-yellow-600 transition-colors"
-        >
-          Varsayılan Verileri Yükle
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* General App Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 space-y-6">
-          <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-4">
-            <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600">
-              <Globe className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Uygulama Ayarları</h3>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Site Başlığı</label>
-              <input 
-                type="text" 
-                className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20"
-                value={settings.siteName}
-                onChange={(e) => updateSettings({ siteName: e.target.value })}
-                aria-label="Site Başlığı"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Logo</label>
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden bg-white dark:bg-gray-800 flex items-center justify-center shrink-0 p-1">
-                  <img src={settings.logoUrl || '/logo.svg'} alt="Logo" className="max-w-full max-h-full object-contain" />
-                </div>
-                <div className="flex-1 space-y-2">
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="Logo URL'si veya cihazdan seçin"
-                      className="flex-1 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20"
-                      value={settings.logoUrl || ''}
-                      onChange={(e) => updateSettings({ logoUrl: e.target.value })}
-                      aria-label="Logo URL"
-                    />
-                    <button 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-4 py-3 bg-brand-green/10 text-brand-green rounded-xl font-bold hover:bg-brand-green/20 transition-colors flex items-center gap-2"
-                      aria-label="Cihazdan Logo Seç"
-                    >
-                      <Upload className="w-5 h-5" />
-                      <span className="hidden sm:inline">Seç</span>
-                    </button>
-                    <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      className="hidden" 
-                      accept="image/*" 
-                      onChange={handleLogoUpload}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gray-200 dark:bg-gray-700 rounded-lg">
-                  <Palette className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                </div>
-                <div>
-                  <div className="font-bold text-sm">Tema Tercihi</div>
-                  <div className="text-xs text-gray-500">Varsayılan tema ayarı</div>
-                </div>
-              </div>
-              <select 
-                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 text-sm outline-none"
-                value={settings.theme}
-                onChange={(e) => updateSettings({ theme: e.target.value as 'light' | 'dark' })}
-              >
-                <option value="light">Açık (Light)</option>
-                <option value="dark">Koyu (Dark)</option>
-              </select>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
-                  <Lock className="w-5 h-5 text-orange-600" />
-                </div>
-                <div>
-                  <div className="font-bold text-sm">Bakım Modu</div>
-                  <div className="text-xs text-gray-500">Siteyi geçici olarak kapat</div>
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  className="sr-only peer" 
-                  checked={settings.maintenanceMode}
-                  onChange={(e) => updateSettings({ maintenanceMode: e.target.checked })}
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-brand-green/20 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:bg-gray-800 after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-brand-green"></div>
-              </label>
-            </div>
-          </div>
-
-          <button 
-            onClick={handleSaveSettings}
-            className={`w-full py-3 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2 ${isSaved ? 'bg-green-600' : 'bg-brand-green hover:bg-green-800'}`}
-          >
-            {isSaved ? <CheckCircle className="w-5 h-5" /> : <Save className="w-5 h-5" />}
-            {isSaved ? 'Kaydedildi' : 'Ayarları Kaydet'}
-          </button>
-        </div>
-
-        {/* Contact Info Settings */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 space-y-6">
-          <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-4">
-            <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600">
-              <Globe className="w-5 h-5" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">İletişim & Sosyal Medya</h3>
-          </div>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Açık Adres</label>
-              <textarea 
-                className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20"
-                value={contactInfo.address}
-                onChange={(e) => updateContactInfo({ ...contactInfo, address: e.target.value })}
-                rows={2}
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Telefon</label>
-                <input 
-                  type="text" 
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20"
-                  value={contactInfo.phone}
-                  onChange={(e) => updateContactInfo({ ...contactInfo, phone: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">WhatsApp</label>
-                <input 
-                  type="text" 
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20"
-                  value={contactInfo.whatsapp || ''}
-                  onChange={(e) => updateContactInfo({ ...contactInfo, whatsapp: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="text-sm font-bold text-gray-700 dark:text-gray-300">E-posta</label>
-              <input 
-                type="email" 
-                className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20"
-                value={contactInfo.email}
-                onChange={(e) => updateContactInfo({ ...contactInfo, email: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-              <h4 className="text-sm font-bold text-gray-900 dark:text-white">Sosyal Medya Linkleri</h4>
-              
-              {['instagram', 'facebook', 'twitter', 'tiktok', 'youtube', 'linkedin'].map((platform) => (
-                <div key={platform}>
-                  <label className="text-xs font-bold text-gray-500 capitalize">{platform}</label>
-                  <input 
-                    type="text" 
-                    className="w-full p-2 mt-1 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20 text-sm"
-                    value={(contactInfo.social as any)[platform] || ''}
-                    onChange={(e) => updateContactInfo({ 
-                      ...contactInfo, 
-                      social: { ...contactInfo.social, [platform]: e.target.value } 
-                    })}
-                    placeholder={`https://${platform}.com/...`}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          <button 
-            onClick={() => {
-              updateContactInfo(contactInfo);
-              showToast('İletişim bilgileri başarıyla güncellendi');
-            }}
-            className="w-full py-3 bg-brand-green hover:bg-green-800 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2"
-          >
-            <Save className="w-5 h-5" />
-            İletişim Bilgilerini Kaydet
-          </button>
-        </div>
-
-        {/* Campaign & Notifications */}
-        <div className="space-y-8">
-          {/* Sections Management */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 space-y-6">
-            <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-4">
-              <div className="p-2 bg-brand-gold/10 rounded-lg text-brand-gold">
-                <Plus className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Vitrin Bölümleri</h3>
-            </div>
-
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Ana sayfada gösterilecek özel ürün bölümlerini yönetin (Örn: İlkbahar Hasadı, Yazın Hasadı).
-              </p>
-              
-              <div className="space-y-3">
-                {sections.map(section => (
-                  <div key={section.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700">
-                    <div>
-                      <div className="font-bold text-sm text-gray-900 dark:text-white">{section.title}</div>
-                      <div className="text-xs text-gray-500 font-mono">ID: {section.id}</div>
-                    </div>
-                    <button 
-                      onClick={() => handleRemoveSection(section.id)}
-                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      aria-label="Bölümü Sil"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-4 border-t border-gray-100 dark:border-gray-700 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <input 
-                    type="text" 
-                    placeholder="Bölüm Başlığı (Örn: Yazın Hasadı)"
-                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20 text-sm"
-                    value={newSectionTitle}
-                    onChange={(e) => setNewSectionTitle(e.target.value)}
-                  />
-                  <input 
-                    type="text" 
-                    placeholder="Bölüm ID (Örn: yaz-hasadi)"
-                    className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20 text-sm font-mono"
-                    value={newSectionId}
-                    onChange={(e) => setNewSectionId(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
-                  />
-                </div>
-                <button 
-                  onClick={handleAddSection}
-                  disabled={!newSectionTitle || !newSectionId}
-                  className="w-full py-3 bg-brand-gold text-white rounded-xl font-bold hover:bg-yellow-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Plus className="w-5 h-5" />
-                  Yeni Bölüm Ekle
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 space-y-6">
-            <div className="flex items-center gap-3 border-b border-gray-100 dark:border-gray-700 pb-4">
-              <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg text-purple-600">
-                <Lock className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Yönetici Giriş Bilgileri</h3>
-            </div>
-
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Yönetici paneline giriş yapmak için kullandığınız e-posta ve şifreyi güncelleyin.
-              </p>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Yeni E-posta Adresi</label>
-                <input 
-                  type="email"
-                  placeholder="Yönetici E-posta"
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20"
-                  value={adminEmail}
-                  onChange={(e) => setAdminEmail(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700 dark:text-gray-300">Yeni Şifre</label>
-                <input 
-                  type="password"
-                  placeholder="Yeni Şifre"
-                  className="w-full p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 outline-none focus:ring-2 focus:ring-brand-green/20"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                />
-              </div>
-
-              <div className="bg-yellow-50 dark:bg-yellow-900/10 p-4 rounded-xl border border-yellow-100 dark:border-yellow-900/20 text-sm text-yellow-800 dark:text-yellow-200 flex gap-3">
-                <Bell className="w-5 h-5 shrink-0" />
-                <p>Güvenliğiniz için güçlü bir şifre belirleyin. Bu bilgileri unutursanız sisteme erişemeyebilirsiniz.</p>
-              </div>
-
-              <button 
-                onClick={handleUpdateCredentials}
-                disabled={isUpdatingCredentials || (!adminEmail && !adminPassword)}
-                className={`w-full py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 ${
-                  isUpdatingCredentials || (!adminEmail && !adminPassword)
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                    : 'bg-purple-600 text-white hover:bg-purple-700 shadow-lg shadow-purple-600/20'
-                }`}
-              >
-                {isUpdatingCredentials ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Güncelleniyor...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-5 h-5" />
-                    Bilgileri Güncelle
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Confirm Modal */}
-      {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="p-6">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Onay</h3>
-              <p className="text-gray-600 dark:text-gray-300">{confirmModal.message}</p>
-              <div className="flex justify-end gap-3 mt-6">
-                <button 
-                  onClick={() => setConfirmModal({ isOpen: false, message: '', onConfirm: () => {} })}
-                  className="px-6 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium"
-                >
-                  İptal
-                </button>
-                <button 
-                  onClick={confirmModal.onConfirm}
-                  className="px-6 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors font-medium"
-                >
-                  Onayla
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notification */}
-      {toast.visible && (
-        <div className="fixed bottom-4 right-4 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 animate-fade-in">
-          <Check className="w-5 h-5 text-green-400" />
-          <span className="font-medium">{toast.message}</span>
-        </div>
-      )}
-    </div>
-  );
+export function AdminSettings({setActiveTab}:{setActiveTab?:(tab:string)=>void}){
+ const[tab,setTab]=useState<Tab>('general'),[config,setConfig]=useState<AdminBrandConfig|null>(null);
+ const[general,setGeneral]=useState<GeneralState>({siteName:'Golden Oremar',logoUrl:'',theme:'light',maintenanceMode:false}),[contact,setContact]=useState<ContactState>({address:'',phone:'',whatsapp:'',email:'',mapUrl:'',social:{}}),[heroCategories,setHeroCategories]=useState<HeroItem[]>([]),[homeSections,setHomeSections]=useState<HomeSection[]>([]);
+ const[homeInterface,setHomeInterface]=useState<HomeInterfaceSettings|null>(null),[homeInterfaceErrorText,setHomeInterfaceErrorText]=useState('');
+ const[spotlight,setSpotlight]=useState<EventSpotlightSettings|null>(null),[spotlightEvents,setSpotlightEvents]=useState<AdminEvent[]>([]),[spotlightError,setSpotlightError]=useState('');
+ const[moderation,setModeration]=useState<MessageModerationSettings|null>(null),[moderationError,setModerationError]=useState(''),[phrasesText,setPhrasesText]=useState('');
+ const[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[error,setError]=useState(''),[toast,setToast]=useState('');
+ const showToast=(message:string)=>{setToast(message);window.setTimeout(()=>setToast(''),3000);};
+ const hydrate=(next:AdminBrandConfig)=>{const publicConfig=next.publicConfig||{},appSettings=publicConfig.appSettings||{},contactInfo=publicConfig.contactInfo||{};setConfig(next);setGeneral({siteName:next.brandName||'Golden Oremar',logoUrl:String(appSettings.logoUrl||''),theme:appSettings.theme==='dark'?'dark':'light',maintenanceMode:next.maintenanceMode===true});setContact({address:String(contactInfo.address||''),phone:String(contactInfo.phone||next.supportPhone||''),whatsapp:String(contactInfo.whatsapp||''),email:String(contactInfo.email||next.supportEmail||''),mapUrl:String(contactInfo.mapUrl||''),social:contactInfo.social&&typeof contactInfo.social==='object'?Object.fromEntries(Object.entries(contactInfo.social).map(([key,value])=>[key,String(value||'')])):{}});setHeroCategories(Array.isArray(publicConfig.heroCategories)?publicConfig.heroCategories.map(item=>({...item})):[]);setHomeSections(Array.isArray(publicConfig.homeSections)?publicConfig.homeSections.map(item=>({...item})):[]);};
+ const hydrateModeration=(next:MessageModerationSettings)=>{setModeration(next);setPhrasesText(next.customBlockedPhrases.join('\n'));setModerationError('');};
+ const load=async()=>{setLoading(true);setError('');setModerationError('');setSpotlightError('');setHomeInterfaceErrorText('');const results=await Promise.allSettled([adminGetBrandConfiguration(),adminGetMessageModeration(),adminGetEventSpotlight(),adminListEvents(),adminGetHomeInterface()]);const[brandResult,moderationResult,spotlightResult,eventResult,homeResult]=results;if(brandResult.status==='fulfilled')hydrate(brandResult.value);else setError(contentAdminErrorMessage(brandResult.reason,'Site ayarları yüklenemedi.'));if(moderationResult.status==='fulfilled')hydrateModeration(moderationResult.value);else{setModeration(null);setModerationError(messageModerationAdminError(moderationResult.reason));}if(spotlightResult.status==='fulfilled')setSpotlight(spotlightResult.value);else{setSpotlight(null);setSpotlightError(eventSpotlightError(spotlightResult.reason));}if(eventResult.status==='fulfilled')setSpotlightEvents(eventResult.value.events);else setSpotlightError(current=>current||'Etkinlik listesi vitrin seçimi için yüklenemedi.');if(homeResult.status==='fulfilled')setHomeInterface(homeResult.value);else{setHomeInterface(null);setHomeInterfaceErrorText(homeInterfaceError(homeResult.reason));}setLoading(false);};
+ useEffect(()=>{void load();},[]);
+ const saveGeneral=async()=>{if(saving)return;setSaving(true);setError('');try{await adminUpdateBrandSection('general',{siteName:general.siteName.trim(),logoUrl:general.logoUrl.trim(),theme:general.theme,maintenanceMode:general.maintenanceMode});hydrate(await adminGetBrandConfiguration());showToast('Genel uygulama ayarları kaydedildi.');}catch(err){setError(contentAdminErrorMessage(err,'Genel ayarlar kaydedilemedi.'));}finally{setSaving(false);}};
+ const saveContact=async()=>{if(saving)return;setSaving(true);setError('');try{await adminUpdateBrandSection('contactInfo',{address:contact.address.trim(),phone:contact.phone.trim(),whatsapp:contact.whatsapp.trim(),email:contact.email.trim(),mapUrl:contact.mapUrl.trim(),social:Object.fromEntries(SOCIALS.map(platform=>[platform,String(contact.social[platform]||'').trim()]))});hydrate(await adminGetBrandConfiguration());showToast('İletişim ve sosyal medya bilgileri kaydedildi.');}catch(err){setError(contentAdminErrorMessage(err,'İletişim ayarları kaydedilemedi.'));}finally{setSaving(false);}};
+ const saveHome=async()=>{if(saving)return;setSaving(true);setError('');try{await adminUpdateBrandSection('heroCategories',{items:heroCategories});await adminUpdateBrandSection('homeSections',{items:homeSections});hydrate(await adminGetBrandConfiguration());showToast('Koleksiyon sırası ve ürün vitrinleri kaydedildi.');}catch(err){setError(contentAdminErrorMessage(err,'Ana sayfa ayarları kaydedilemedi.'));}finally{setSaving(false);}};
+ const saveHomeInterface=async()=>{if(saving||!homeInterface)return;setSaving(true);setHomeInterfaceErrorText('');try{setHomeInterface(await adminUpdateHomeInterface(homeInterface));showToast('Ana vitrin metinleri kaydedildi.');}catch(err){setHomeInterfaceErrorText(homeInterfaceError(err));}finally{setSaving(false);}};
+ const saveSpotlight=async()=>{if(saving||!spotlight)return;setSaving(true);setSpotlightError('');try{setSpotlight(await adminUpdateEventSpotlight(spotlight));showToast('Etkinlik vitrini ayarları kaydedildi ve ana sayfaya yansıtıldı.');}catch(err){setSpotlightError(eventSpotlightError(err));}finally{setSaving(false);}};
+ const saveModeration=async()=>{if(saving||!moderation)return;const customBlockedPhrases=Array.from(new Set(phrasesText.split(/\r?\n/).map(item=>item.trim().toLowerCase()).filter(Boolean)));if(customBlockedPhrases.some(item=>item.length<2||item.length>80)){setModerationError('Özel engelli ifadeler satır başına 2 ile 80 karakter arasında olmalıdır.');return;}if(customBlockedPhrases.length>100){setModerationError('En fazla 100 özel engelli ifade tanımlanabilir.');return;}setSaving(true);setModerationError('');try{const{updatedAt:_,...payload}=moderation;hydrateModeration(await adminUpdateMessageModeration({...payload,customBlockedPhrases}));showToast('Mesaj güvenliği politikası kaydedildi ve backend filtresi anında güncellendi.');}catch(err){setModerationError(messageModerationAdminError(err));}finally{setSaving(false);}};
+ const updateHero=(index:number,patch:Partial<HeroItem>)=>setHeroCategories(current=>current.map((item,itemIndex)=>itemIndex===index?{...item,...patch}:item)),updateSection=(index:number,patch:Partial<HomeSection>)=>setHomeSections(current=>current.map((item,itemIndex)=>itemIndex===index?{...item,...patch}:item)),patchModeration=(patch:Partial<MessageModerationSettings>)=>setModeration(current=>current?{...current,...patch}:current),patchSpotlight=(patch:Partial<EventSpotlightSettings>)=>setSpotlight(current=>current?{...current,...patch}:current),patchHomeInterface=(patch:Partial<HomeInterfaceSettings>)=>setHomeInterface(current=>current?{...current,...patch}:current);
+ if(loading)return<div role="status" className="flex min-h-64 items-center justify-center gap-2 text-gray-500"><Loader2 className="h-5 w-5 animate-spin" aria-hidden="true"/>Canlı ayarlar yükleniyor...</div>;
+ return<div className="space-y-6">
+  <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><h2 className="text-2xl font-bold text-gray-900 dark:text-white">Uygulama, Marka ve Güvenlik Ayarları</h2><p className="mt-1 max-w-3xl text-sm text-gray-500 dark:text-gray-400">Canlı Supabase yapılandırmasını yönetir. Mesaj güvenliği, ana vitrin metni ve etkinlik vitrini kritik ayarları Super Admin yetkisiyle yazılır.</p></div><button type="button" onClick={()=>void load()} className="min-h-11 rounded-xl border border-gray-200 px-4 font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-200"><RefreshCw className="mr-2 inline h-4 w-4" aria-hidden="true"/>Yenile</button></header>
+  {config?.publicConfig?.launchReadiness?.status?<section className={`rounded-2xl border p-4 text-sm ${String(config.publicConfig.launchReadiness.status).startsWith('blocked')?'border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100':'border-green-200 bg-green-50 text-green-950'}`}><strong>Canlı satış hazırlığı:</strong> {String(config.publicConfig.launchReadiness.status)}{config.publicConfig.launchReadiness.reason?` - ${String(config.publicConfig.launchReadiness.reason)}`:''}</section>:null}
+  {error?<div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>:null}
+  <nav className="flex gap-2 overflow-x-auto border-b border-gray-200 dark:border-gray-700" aria-label="Ayar bölümleri"><TabButton active={tab==='general'} onClick={()=>setTab('general')} icon={<Settings2 className="h-4 w-4"/>}>Genel</TabButton><TabButton active={tab==='contact'} onClick={()=>setTab('contact')} icon={<Globe2 className="h-4 w-4"/>}>İletişim</TabButton><TabButton active={tab==='home'} onClick={()=>setTab('home')} icon={<Store className="h-4 w-4"/>}>Ana Sayfa Vitrini</TabButton><TabButton active={tab==='messaging'} onClick={()=>setTab('messaging')} icon={<ShieldCheck className="h-4 w-4"/>}>Mesaj Güvenliği</TabButton></nav>
+  {tab==='general'?<section className="max-w-3xl rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="flex items-center gap-2"><Palette className="h-5 w-5 text-brand-green"/><h3 className="font-bold text-gray-900 dark:text-white">Genel görünüm ve erişim</h3></div><div className="mt-5 space-y-4"><Field label="Marka / uygulama adı"><input minLength={2} maxLength={80} value={general.siteName} onChange={event=>setGeneral({...general,siteName:event.target.value})}/></Field><Field label="Kalıcı logo yolu veya HTTPS URL"><input maxLength={2048} value={general.logoUrl} onChange={event=>setGeneral({...general,logoUrl:event.target.value})}/></Field><Field label="Varsayılan tema"><select value={general.theme} onChange={event=>setGeneral({...general,theme:event.target.value as'light'|'dark'})}><option value="light">Açık</option><option value="dark">Koyu</option></select></Field><Toggle label="Bakım modu" description="Müşteri tarafını geçici olarak bakım durumuna alır." checked={general.maintenanceMode} onChange={checked=>setGeneral({...general,maintenanceMode:checked})}/><SaveButton saving={saving} onClick={()=>void saveGeneral()}>Genel ayarları kaydet</SaveButton></div></section>:null}
+  {tab==='contact'?<section className="max-w-4xl rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"><h3 className="font-bold text-gray-900 dark:text-white">İletişim ve sosyal kanallar</h3><div className="mt-5 grid gap-4 sm:grid-cols-2"><Field label="Destek e-postası"><input type="email" maxLength={320} value={contact.email} onChange={event=>setContact({...contact,email:event.target.value})}/></Field><Field label="Telefon"><input maxLength={40} value={contact.phone} onChange={event=>setContact({...contact,phone:event.target.value})}/></Field><Field label="WhatsApp"><input maxLength={40} value={contact.whatsapp} onChange={event=>setContact({...contact,whatsapp:event.target.value})}/></Field><Field label="Harita bağlantısı"><input maxLength={2048} value={contact.mapUrl} onChange={event=>setContact({...contact,mapUrl:event.target.value})}/></Field><div className="sm:col-span-2"><Field label="Açık adres"><textarea rows={3} maxLength={500} value={contact.address} onChange={event=>setContact({...contact,address:event.target.value})}/></Field></div>{SOCIALS.map(platform=><Field key={platform} label={platform.charAt(0).toUpperCase()+platform.slice(1)}><input maxLength={2048} value={contact.social[platform]||''} onChange={event=>setContact({...contact,social:{...contact.social,[platform]:event.target.value}})}/></Field>)}</div><div className="mt-5"><SaveButton saving={saving} onClick={()=>void saveContact()}>İletişim ayarlarını kaydet</SaveButton></div></section>:null}
+  {tab==='home'?<div className="space-y-5">
+   <section className="rounded-2xl border border-brand-gold/30 bg-brand-gold/5 p-5"><div><h3 className="font-bold text-gray-900 dark:text-white">Ana vitrin metni - Super Admin</h3><p className="mt-1 max-w-3xl text-sm text-gray-500">Ana sayfanın ilk izlenimini kod açmadan yönetir. Ürün ve üretici görselleri canlı katalogdan gelmeye devam eder.</p></div>{homeInterfaceErrorText?<div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">{homeInterfaceErrorText}</div>:null}{homeInterface?<div className="mt-5 grid gap-4 md:grid-cols-2"><div className="md:col-span-2"><Field label="Ana vitrin başlığı"><input minLength={2} maxLength={180} value={homeInterface.heroTitle} onChange={event=>patchHomeInterface({heroTitle:event.target.value})}/></Field></div><div className="md:col-span-2"><Field label="Ana vitrin açıklaması"><textarea rows={3} minLength={2} maxLength={500} value={homeInterface.heroSubtitle} onChange={event=>patchHomeInterface({heroSubtitle:event.target.value})}/></Field></div><Field label="Ana buton metni"><input minLength={2} maxLength={80} value={homeInterface.heroButtonText} onChange={event=>patchHomeInterface({heroButtonText:event.target.value})}/></Field><Field label="Koleksiyonlar başlığı"><input minLength={2} maxLength={160} value={homeInterface.categoriesTitle} onChange={event=>patchHomeInterface({categoriesTitle:event.target.value})}/></Field><div className="md:col-span-2"><Field label="Alt bilgi metni"><input maxLength={500} value={homeInterface.footerText} onChange={event=>patchHomeInterface({footerText:event.target.value})}/></Field></div><div className="md:col-span-2"><SaveButton saving={saving} onClick={()=>void saveHomeInterface()}>Ana vitrin metnini kaydet</SaveButton></div></div>:null}</section>
+   <section className="rounded-2xl border border-brand-gold/30 bg-brand-gold/5 p-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="flex gap-3"><CalendarRange className="mt-0.5 h-6 w-6 shrink-0 text-brand-gold"/><div><h3 className="font-bold text-gray-900 dark:text-white">Etkinlik vitrini - Super Admin</h3><p className="mt-1 max-w-3xl text-sm text-gray-500">Ana sayfadaki etkinlik alanının görünürlüğünü, yerini ve davranışını kod yazmadan yönetir.</p></div></div>{setActiveTab?<button type="button" onClick={()=>setActiveTab('events')} className="min-h-11 rounded-xl border border-brand-green px-4 font-semibold text-brand-green">Etkinlikleri ekle / düzenle</button>:null}</div>{spotlightError?<div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">{spotlightError}</div>:null}{spotlight?<div className="mt-5 space-y-4"><Toggle label="Ana sayfada etkinlik vitrini" description="Kapalıysa etkinlikler ekranı çalışır, yalnız ana sayfa alanı gizlenir." checked={spotlight.enabled} onChange={checked=>patchSpotlight({enabled:checked})}/><div className="grid gap-4 md:grid-cols-2"><Field label="Vitrin başlığı"><input minLength={2} maxLength={120} value={spotlight.title} onChange={event=>patchSpotlight({title:event.target.value})}/></Field><Field label="Ana sayfadaki konum"><select value={spotlight.placement} onChange={event=>patchSpotlight({placement:event.target.value as EventSpotlightSettings['placement']})}><option value="after_hero">Ana hero bölümünün hemen altında</option><option value="after_categories">Koleksiyonlardan sonra</option><option value="before_products">Ürün listesinden hemen önce</option></select></Field><div className="md:col-span-2"><Field label="Vitrin açıklaması"><textarea rows={3} maxLength={300} value={spotlight.subtitle} onChange={event=>patchSpotlight({subtitle:event.target.value})}/></Field></div><Field label="Gösterilecek maksimum etkinlik"><input type="number" min={1} max={6} value={spotlight.maxItems} onChange={event=>patchSpotlight({maxItems:Number(event.target.value)})}/></Field><Field label="Öne çıkarılacak etkinlik"><select value={spotlight.featuredEventReference||''} onChange={event=>patchSpotlight({featuredEventReference:event.target.value||null})}><option value="">Otomatik - en yakın yaklaşan etkinlik</option>{spotlightEvents.map(event=><option key={event.id} value={event.slug}>{event.title} - {event.status}</option>)}</select></Field></div><div className="grid gap-3 md:grid-cols-2"><Toggle label="Geri sayımı göster" description="Kayıt bitimine veya başlangıca kalan süreyi gösterir." checked={spotlight.showCountdown} onChange={checked=>patchSpotlight({showCountdown:checked})}/><Toggle label="Kontenjanı göster" description="Kalan yer ve doluluk çubuğunu gösterir." checked={spotlight.showCapacity} onChange={checked=>patchSpotlight({showCapacity:checked})}/><Toggle label="Paylaşımı göster" description="Native paylaşım, desteklenmiyorsa bağlantı kopyalama kullanılır." checked={spotlight.showShare} onChange={checked=>patchSpotlight({showShare:checked})}/><Toggle label="Tüm etkinlikler bağlantısı" description="Etkinlikler ekranına geçiş butonunu gösterir." checked={spotlight.showAllLink} onChange={checked=>patchSpotlight({showAllLink:checked})}/></div><SaveButton saving={saving} onClick={()=>void saveSpotlight()}>Etkinlik vitrini ayarlarını kaydet</SaveButton></div>:null}</section>
+   <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"><h3 className="font-bold text-gray-900 dark:text-white">Koleksiyon kartları</h3><p className="mt-1 text-xs text-gray-500">Sıra, başlık, açıklama, kategori hedefi ve isteğe bağlı content-public görsel yolu ana sayfaya doğrudan yansır.</p><div className="mt-4 grid gap-4 lg:grid-cols-2">{heroCategories.map((item,index)=><div key={`${item.id}-${index}`} className="rounded-xl border border-gray-200 p-4 dark:border-gray-700"><div className="flex items-start justify-between gap-3"><strong>Koleksiyon {index+1}</strong><div className="flex gap-1"><OrderButton label="Yukarı taşı" disabled={index===0} onClick={()=>setHeroCategories(current=>moveItem(current,index,index-1))}><ChevronUp className="h-4 w-4"/></OrderButton><OrderButton label="Aşağı taşı" disabled={index===heroCategories.length-1} onClick={()=>setHeroCategories(current=>moveItem(current,index,index+1))}><ChevronDown className="h-4 w-4"/></OrderButton><button type="button" onClick={()=>setHeroCategories(current=>current.filter((_,i)=>i!==index))} disabled={heroCategories.length<=1} className="min-h-11 min-w-11 rounded-xl text-red-600 disabled:opacity-30" aria-label={`Koleksiyon ${index+1} sil`}><X className="mx-auto h-4 w-4"/></button></div></div><div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="Kimlik"><input maxLength={80} value={item.id} onChange={event=>updateHero(index,{id:event.target.value})}/></Field><Field label="Başlık"><input maxLength={120} value={item.title} onChange={event=>updateHero(index,{title:event.target.value})}/></Field><Field label="Alt başlık"><input maxLength={180} value={item.subtitle} onChange={event=>updateHero(index,{subtitle:event.target.value})}/></Field><Field label="Kategori hedefi"><input maxLength={120} value={item.targetCategory} onChange={event=>updateHero(index,{targetCategory:event.target.value})}/></Field><div className="sm:col-span-2"><Field label="content-public kalıcı görsel yolu - boşsa canlı ürün görseli"><input maxLength={1200} value={item.image} onChange={event=>updateHero(index,{image:event.target.value})}/></Field></div></div></div>)}</div><button type="button" disabled={heroCategories.length>=12} onClick={()=>setHeroCategories(current=>[...current,{id:`koleksiyon-${current.length+1}`,title:'Yeni Koleksiyon',subtitle:'',image:'',icon:'Gem',targetCategory:''}])} className="mt-4 min-h-11 rounded-xl border border-brand-green px-4 font-semibold text-brand-green disabled:opacity-40">Yeni koleksiyon ekle</button></section>
+   <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"><h3 className="font-bold text-gray-900 dark:text-white">Ana sayfa ürün vitrinleri</h3><p className="mt-1 text-xs text-gray-500">Sıra doğrudan ana sayfa akışıdır. Gereksiz bölümü kapatabilir, başlığını değiştirebilir veya sırasını taşıyabilirsin.</p><div className="mt-4 space-y-3">{homeSections.map((section,index)=><div key={`${section.id}-${index}`} className="grid gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700 sm:grid-cols-[160px_minmax(0,1fr)_auto_auto]"><Field label="Kimlik"><input maxLength={80} value={section.id} onChange={event=>updateSection(index,{id:event.target.value})}/></Field><Field label="Başlık"><input maxLength={160} value={section.title} onChange={event=>updateSection(index,{title:event.target.value})}/></Field><label className="flex min-h-11 items-center gap-2 self-end"><input type="checkbox" checked={section.active} onChange={event=>updateSection(index,{active:event.target.checked})}/>Aktif</label><div className="flex items-end gap-1"><OrderButton label="Yukarı taşı" disabled={index===0} onClick={()=>setHomeSections(current=>moveItem(current,index,index-1))}><ChevronUp className="h-4 w-4"/></OrderButton><OrderButton label="Aşağı taşı" disabled={index===homeSections.length-1} onClick={()=>setHomeSections(current=>moveItem(current,index,index+1))}><ChevronDown className="h-4 w-4"/></OrderButton></div></div>)}</div><button type="button" disabled={homeSections.length>=20} onClick={()=>setHomeSections(current=>[...current,{id:`section-${current.length+1}`,title:'Yeni Seçki',active:true}])} className="mt-4 min-h-11 rounded-xl border border-brand-green px-4 font-semibold text-brand-green disabled:opacity-40">Yeni vitrin bölümü ekle</button></section>
+   <SaveButton saving={saving} onClick={()=>void saveHome()}>Koleksiyon ve ürün vitrini sırasını kaydet</SaveButton>
+  </div>:null}
+  {tab==='messaging'?<section className="max-w-5xl rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-700 dark:bg-gray-800"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-6 w-6 shrink-0 text-brand-green"/><div><h3 className="font-bold text-gray-900 dark:text-white">Platform dışı ticaret ve mesaj güvenliği</h3><p className="mt-1 text-sm text-gray-500">Bu bölüm yalnız Super Admin içindir. Değişiklikler mağaza mesajlarında backend seviyesinde anında uygulanır.</p></div></div>{moderationError?<div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">{moderationError}</div>:null}{moderation?<div className="mt-5 space-y-5"><Toggle label="Mesaj güvenliği aktif" description="Kapalıysa aşağıdaki ticaret filtreleri uygulanmaz." checked={moderation.enabled} onChange={checked=>patchModeration({enabled:checked})}/><div className="grid gap-3 md:grid-cols-2"><Toggle label="E-posta adreslerini engelle" description="Müşteri ve mağaza e-posta paylaşamaz." checked={moderation.blockEmail} onChange={checked=>patchModeration({blockEmail:checked})}/><Toggle label="Telefon numaralarını engelle" description="Uluslararası ve yerel telefon biçimlerini engeller." checked={moderation.blockPhone} onChange={checked=>patchModeration({blockPhone:checked})}/><Toggle label="WhatsApp / Telegram / Signal / Viber" description="Harici mesajlaşma kanalına yönlendirmeyi engeller." checked={moderation.blockMessagingApps} onChange={checked=>patchModeration({blockMessagingApps:checked})}/><Toggle label="Dış bağlantıları engelle" description="http, https ve www bağlantılarını mağaza konuşmalarında engeller." checked={moderation.blockExternalLinks} onChange={checked=>patchModeration({blockExternalLinks:checked})}/><Toggle label="Sosyal medya kullanıcı adlarını engelle" description="Sosyal platform yönlendirmelerini engeller." checked={moderation.blockSocialHandles} onChange={checked=>patchModeration({blockSocialHandles:checked})}/><Toggle label="Banka ve IBAN bilgilerini engelle" description="IBAN, SWIFT, BIC ve banka hesabı paylaşımını engeller." checked={moderation.blockBankDetails} onChange={checked=>patchModeration({blockBankDetails:checked})}/><Toggle label="Harici ödeme yöntemlerini engelle" description="Platform dışı ödeme yönlendirmelerini engeller." checked={moderation.blockExternalPayments} onChange={checked=>patchModeration({blockExternalPayments:checked})}/><Toggle label="QR / karekod yönlendirmelerini engelle" description="Platform dışı QR yönlendirmelerini engeller." checked={moderation.blockQrCodes} onChange={checked=>patchModeration({blockQrCodes:checked})}/></div><div><Field label="Özel engelli ifadeler - her satıra bir ifade"><textarea rows={7} maxLength={8200} value={phrasesText} onChange={event=>setPhrasesText(event.target.value)}/></Field><p className="mt-1 text-xs text-gray-500">En fazla 100 ifade. Kod değiştirmeden yeni kaçak ticaret ifadeleri ekleyebilirsin.</p></div><Toggle label="Destek konuşmalarına da uygula" description="Varsayılan kapalıdır." checked={moderation.applyToSupport} onChange={checked=>patchModeration({applyToSupport:checked})}/><div className="rounded-2xl border border-gray-200 p-4 dark:border-gray-700"><h4 className="font-bold">Görsel / PDF ek politikası</h4><div className="mt-3 grid gap-3 md:grid-cols-2"><Toggle label="Dosya eklemeye izin ver" description="Kapalıysa mağaza konuşmalarına dosya eklenemez." checked={moderation.allowAttachments} onChange={checked=>patchModeration({allowAttachments:checked})}/><Toggle label="Görsellere izin ver" description="JPEG, PNG, WebP ve AVIF." checked={moderation.allowImages} onChange={checked=>patchModeration({allowImages:checked})}/><Toggle label="PDF'ye izin ver" description="Belge incelemesi için PDF." checked={moderation.allowPdf} onChange={checked=>patchModeration({allowPdf:checked})}/><Field label="Mesaj başına maksimum dosya"><input type="number" min={0} max={5} value={moderation.maxAttachments} onChange={event=>patchModeration({maxAttachments:Number(event.target.value)})}/></Field><Field label="Dosya başına maksimum MB"><input type="number" min={1} max={20} value={moderation.maxAttachmentMb} onChange={event=>patchModeration({maxAttachmentMb:Number(event.target.value)})}/></Field></div></div><SaveButton saving={saving} onClick={()=>void saveModeration()}>Mesaj güvenliği politikasını kaydet</SaveButton></div>:null}</section>:null}
+  {toast?<div role="status" className="fixed bottom-4 right-4 z-[70] flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-white shadow-2xl"><Check className="h-5 w-5 text-green-400"/>{toast}</div>:null}<style>{`.settings-field{width:100%;min-height:44px;border:1px solid rgb(209 213 219);border-radius:.75rem;padding:.7rem .8rem;background:transparent}.dark .settings-field{border-color:rgb(55 65 81)}`}</style>
+ </div>;
 }
+function Field({label,children}:{label:string;children:React.ReactElement<{className?:string}>;key?:React.Key}){return<label className="block"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">{label}</span>{React.cloneElement(children,{className:'settings-field'})}</label>}
+function Toggle({label,description,checked,onChange}:{label:string;description:string;checked:boolean;onChange:(checked:boolean)=>void}){return<label className="flex min-h-16 items-center justify-between gap-4 rounded-xl border border-gray-200 p-4 dark:border-gray-700"><span><span className="block font-semibold text-gray-900 dark:text-white">{label}</span><span className="mt-1 block text-xs text-gray-500">{description}</span></span><input type="checkbox" checked={checked} onChange={event=>onChange(event.target.checked)} className="h-5 w-5 shrink-0"/></label>}
+function TabButton({active,onClick,icon,children}:{active:boolean;onClick:()=>void;icon:React.ReactNode;children:React.ReactNode}){return<button type="button" onClick={onClick} className={`flex min-h-11 items-center gap-2 whitespace-nowrap border-b-2 px-4 font-semibold ${active?'border-brand-green text-brand-green':'border-transparent text-gray-500'}`}>{icon}{children}</button>}
+function SaveButton({saving,onClick,children}:{saving:boolean;onClick:()=>void;children:React.ReactNode}){return<button type="button" disabled={saving} onClick={onClick} className="min-h-12 rounded-xl bg-brand-green px-6 font-bold text-white disabled:opacity-50"><Save className="mr-2 inline h-5 w-5"/>{saving?'Kaydediliyor...':children}</button>}
+function OrderButton({label,disabled,onClick,children}:{label:string;disabled:boolean;onClick:()=>void;children:React.ReactNode}){return<button type="button" disabled={disabled} onClick={onClick} aria-label={label} className="grid min-h-11 min-w-11 place-items-center rounded-xl border border-gray-200 disabled:opacity-30 dark:border-gray-700">{children}</button>}

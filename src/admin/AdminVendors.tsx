@@ -1,399 +1,51 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Search, Store, Mail, Phone, MapPin, FileText, Check } from 'lucide-react';
-import { collection, query, where, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import React,{useEffect,useMemo,useState}from'react';
+import{BadgeCheck,CircleDollarSign,Eye,Loader2,MapPin,RefreshCw,Search,ShieldCheck,Store,X}from'lucide-react';
+import{useCustomerSession}from'../features/auth/useCustomerSession';
+import{useAccessibleDialog}from'../features/accessibility/useAccessibleDialog';
+import{adminListProducers,adminSetProducerCommission,adminSetProducerOriginVerified,adminSetProducerStatus,adminSetProducerTrustBadge,basisPointsToPercent,producerAdminErrorMessage,type AdminProducer,type AdminProducerManagedStatus}from'./producerAdminApi';
 
-export function AdminVendors({ setActiveTab }: { setActiveTab?: (tab: string) => void }) {
-  const [vendors, setVendors] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, vendorId: string | null}>({ isOpen: false, vendorId: null });
-  const [selectedVendor, setSelectedVendor] = useState<any>(null);
-  const [editingVendor, setEditingVendor] = useState<any>(null);
-  const [formData, setFormData] = useState({
-    storeName: '',
-    fullName: '',
-    email: '',
-    phone: '',
-    city: '',
-    district: '',
-    tcNo: '',
-    bank_info: '',
-    commission_rate: 10,
-    is_active: true
-  });
+type ActionState=
+ |{type:'commission';producer:AdminProducer}
+ |{type:'status';producer:AdminProducer;status:AdminProducerManagedStatus}
+ |{type:'origin';producer:AdminProducer;verified:boolean}
+ |{type:'badge';producer:AdminProducer;active:boolean}
+ |null;
 
-  const [toast, setToast] = useState<{message: string, visible: boolean}>({ message: '', visible: false });
+const ACTIVITY_LABELS:Record<string,string>={beekeeping:'Arıcılık',livestock:'Hayvancılık',dairy:'Süt üretimi',poultry:'Kümes hayvancılığı',field_farming:'Tarla tarımı',fruit_growing:'Meyvecilik',vegetable_growing:'Sebzecilik',wild_harvest:'Dağ ve doğa mahsulleri',fishing:'Balıkçılık',food_processing:'Geleneksel gıda işleme',beverage_production:'Yöresel içecek üretimi',natural_materials:'Doğal malzeme üretimi'};
+function statusLabel(status:AdminProducer['status']){return({pending:'Onay bekliyor',active:'Aktif',suspended:'Askıda',rejected:'Reddedildi',closed:'Kapatıldı'}as const)[status];}
+function statusClass(status:AdminProducer['status']){if(status==='active')return'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-200';if(status==='suspended')return'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200';if(status==='pending')return'bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-200';if(status==='rejected')return'bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-200';return'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-100';}
+function formatDate(value:string|null|undefined){if(!value)return'Belirlenmedi';const parsed=new Date(value);return Number.isNaN(parsed.getTime())?'Doğrulanamadı':parsed.toLocaleDateString('tr-TR',{dateStyle:'medium'});}
+function nextYearDate(){const date=new Date();date.setFullYear(date.getFullYear()+1);return date.toISOString().slice(0,10);}
+function verifiedBadge(){return<span className="inline-flex items-center gap-1.5 rounded-full bg-sky-600 px-3 py-1 text-xs font-black text-white shadow-sm ring-1 ring-sky-300/60"><BadgeCheck aria-hidden="true" className="h-4 w-4"/>Doğrulanmış Üretici</span>;}
 
-  const showToast = (message: string) => {
-    setToast({ message, visible: true });
-    setTimeout(() => setToast({ message: '', visible: false }), 3000);
-  };
-
-  useEffect(() => {
-    fetchVendors();
-  }, []);
-
-  const fetchVendors = async () => {
-    try {
-      const q = query(collection(db, 'vendors'), where('status', '==', 'active'));
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setVendors(data);
-    } catch (error) {
-      console.error('Error fetching vendors:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!confirmModal.vendorId) return;
-    try {
-      await updateDoc(doc(db, 'vendors', confirmModal.vendorId), { status: 'deleted' });
-      fetchVendors();
-      setConfirmModal({ isOpen: false, vendorId: null });
-      showToast('Satıcı başarıyla silindi.');
-    } catch (error) {
-      console.error('Error deleting vendor:', error);
-      showToast('Silme işlemi sırasında bir hata oluştu.');
-    }
-  };
-
-  const handleOpenModal = (vendor = null) => {
-    if (vendor) {
-      setEditingVendor(vendor);
-      setFormData({
-        storeName: vendor.storeName || '',
-        fullName: vendor.fullName || '',
-        email: vendor.email || '',
-        phone: vendor.phone || '',
-        city: vendor.city || '',
-        district: vendor.district || '',
-        tcNo: vendor.tcNo || '',
-        bank_info: vendor.bank_info || '',
-        commission_rate: vendor.commission_rate || 10,
-        is_active: vendor.status === 'active'
-      });
-    } else {
-      setEditingVendor(null);
-      setFormData({
-        storeName: '',
-        fullName: '',
-        email: '',
-        phone: '',
-        city: '',
-        district: '',
-        tcNo: '',
-        bank_info: '',
-        commission_rate: 10,
-        is_active: true
-      });
-    }
-    setIsModalOpen(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (editingVendor) {
-        await updateDoc(doc(db, 'vendors', editingVendor.id), formData);
-      } else {
-        const newDocRef = doc(collection(db, 'vendors'));
-        await setDoc(newDocRef, { ...formData, status: 'active' });
-      }
-      fetchVendors();
-      setIsModalOpen(false);
-      showToast('Satıcı başarıyla kaydedildi.');
-    } catch (error) {
-      console.error('Error saving vendor:', error);
-      showToast('Bir hata oluştu.');
-    }
-  };
-
-  const filteredVendors = vendors.filter(v => 
-    (v.storeName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (v.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  if (loading) return <div className="p-8 text-center">Yükleniyor...</div>;
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Satıcı Yönetimi</h2>
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => handleOpenModal()}
-            className="bg-brand-green text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-green-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Yeni Satıcı
-          </button>
-        </div>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-          <div className="relative max-w-md">
-            <input
-              type="text"
-              placeholder="Mağaza adı veya e-posta ara..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-green outline-none"
-            />
-            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600 dark:text-gray-400">
-            <thead className="bg-gray-50 dark:bg-gray-900/50 text-xs uppercase font-semibold text-gray-500">
-              <tr>
-                <th className="px-6 py-4">Mağaza Bilgileri</th>
-                <th className="px-6 py-4">İletişim</th>
-                <th className="px-6 py-4">Konum / TC</th>
-                <th className="px-6 py-4">Durum</th>
-                <th className="px-6 py-4 text-right">İşlemler</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {filteredVendors.map((vendor) => (
-                <tr key={vendor.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
-                        <Store className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="font-bold text-gray-900 dark:text-white">{vendor.storeName}</div>
-                        <div className="text-xs text-gray-500 line-clamp-1">{vendor.district}, {vendor.city}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-gray-900 dark:text-white font-medium">
-                        {vendor.fullName}
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-500 text-xs">
-                        <Mail className="w-3 h-3" /> {vendor.email}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-gray-900 dark:text-white">
-                        <MapPin className="w-3 h-3 text-gray-400" /> {vendor.city}
-                      </div>
-                      <div className="text-xs text-gray-500">TC: {vendor.tcNo || '-'}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      vendor.status === 'active' ? 'bg-green-100 text-green-700' : 
-                      vendor.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                    }`}>
-                      {vendor.status === 'active' ? 'Onaylı' : 
-                       vendor.status === 'pending' ? 'Onay Bekliyor' : 'Reddedildi'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <button 
-                        onClick={() => handleOpenModal(vendor)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => setConfirmModal({ isOpen: true, vendorId: vendor.id })}
-                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-700 shrink-0">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                {editingVendor ? 'Satıcıyı Düzenle' : 'Yeni Satıcı Ekle'}
-              </h3>
-            </div>
-            <div className="p-6 overflow-y-auto flex-1">
-              <form id="vendorForm" onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mağaza Adı</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.storeName}
-                      onChange={(e) => setFormData({...formData, storeName: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Yetkili Kişi</label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.fullName}
-                      onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">E-posta</label>
-                    <input
-                      type="email"
-                      required
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Telefon</label>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">İl</label>
-                    <input
-                      type="text"
-                      value={formData.city}
-                      onChange={(e) => setFormData({...formData, city: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">İlçe</label>
-                    <input
-                      type="text"
-                      value={formData.district}
-                      onChange={(e) => setFormData({...formData, district: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">T.C. Kimlik / Vergi No</label>
-                    <input
-                      type="text"
-                      value={formData.tcNo}
-                      onChange={(e) => setFormData({...formData, tcNo: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Banka Bilgileri (IBAN)</label>
-                    <textarea
-                      value={formData.bank_info}
-                      onChange={(e) => setFormData({...formData, bank_info: e.target.value})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                      rows={2}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Komisyon Oranı (%)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      required
-                      value={formData.commission_rate}
-                      onChange={(e) => setFormData({...formData, commission_rate: Number(e.target.value)})}
-                      className="w-full px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-brand-green"
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-2 mt-4">
-                  <input
-                    type="checkbox"
-                    id="is_active"
-                    checked={formData.is_active}
-                    onChange={(e) => setFormData({...formData, is_active: e.target.checked})}
-                    className="w-4 h-4 text-brand-green rounded border-gray-300 focus:ring-brand-green"
-                  />
-                  <label htmlFor="is_active" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Aktif
-                  </label>
-                </div>
-              </form>
-            </div>
-            <div className="p-6 border-t border-gray-100 dark:border-gray-700 shrink-0 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
-              >
-                İptal
-              </button>
-              <button
-                type="submit"
-                form="vendorForm"
-                className="px-4 py-2 rounded-xl bg-brand-green text-white hover:bg-green-700 transition-colors"
-              >
-                Kaydet
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirm Modal */}
-      {confirmModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6 text-center animate-fade-in">
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-8 h-8 text-red-600 dark:text-red-500" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Emin misiniz?</h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
-              Bu satıcıyı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setConfirmModal({ isOpen: false, vendorId: null })}
-                className="flex-1 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-              >
-                İptal
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
-              >
-                Evet, Sil
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notification */}
-      {toast.visible && (
-        <div className="fixed bottom-4 right-4 bg-gray-900 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 animate-fade-in">
-          <Check className="w-5 h-5 text-green-400" />
-          <span className="font-medium">{toast.message}</span>
-        </div>
-      )}
-    </div>
-  );
+export function AdminVendors({setActiveTab}:{setActiveTab?:(tab:string)=>void}){
+ const{currentUser}=useCustomerSession();
+ const roles=Array.isArray(currentUser?.roles)?currentUser.roles.map(String):[];
+ const isSuperAdmin=roles.includes('super_admin');
+ const[producers,setProducers]=useState<AdminProducer[]>([]);const[loading,setLoading]=useState(true);const[busyId,setBusyId]=useState('');const[error,setError]=useState('');const[toast,setToast]=useState('');const[searchTerm,setSearchTerm]=useState('');const[statusFilter,setStatusFilter]=useState<'all'|AdminProducer['status']>('all');const[selected,setSelected]=useState<AdminProducer|null>(null);const[action,setAction]=useState<ActionState>(null);const[reason,setReason]=useState('');const[commissionPercent,setCommissionPercent]=useState(10);const[reviewDue,setReviewDue]=useState(nextYearDate());
+ const detailRef=useAccessibleDialog<HTMLDivElement>(Boolean(selected)&&!action,()=>{if(!busyId)setSelected(null);});
+ const actionRef=useAccessibleDialog<HTMLDivElement>(Boolean(action),()=>{if(!busyId)closeAction();});
+ function showToast(message:string){setToast(message);window.setTimeout(()=>setToast(''),3200);}
+ function closeAction(){setAction(null);setReason('');setError('');}
+ async function load(silent=false){if(!silent)setLoading(true);setError('');try{const rows=await adminListProducers();setProducers(rows);setSelected(current=>current?rows.find(row=>row.id===current.id)||null:null);}catch(nextError){setError(producerAdminErrorMessage(nextError,'Satıcılar yüklenemedi.'));}finally{if(!silent)setLoading(false);}}
+ useEffect(()=>{void load();},[]);
+ const filtered=useMemo(()=>{const q=searchTerm.trim().toLocaleLowerCase('tr-TR');return producers.filter(producer=>{if(statusFilter!=='all'&&producer.status!==statusFilter)return false;if(!q)return true;return`${producer.display_name} ${producer.email} ${producer.production_location} ${producer.production_village||''} ${producer.activity_types.map(value=>ACTIVITY_LABELS[value]||value).join(' ')}`.toLocaleLowerCase('tr-TR').includes(q);});},[producers,searchTerm,statusFilter]);
+ const totals=useMemo(()=>({active:producers.filter(item=>item.status==='active').length,badged:producers.filter(item=>item.trust_badge_active).length,originVerified:producers.filter(item=>item.origin_verified).length,followers:producers.reduce((sum,item)=>sum+item.follower_count,0)}),[producers]);
+ function openAction(next:NonNullable<ActionState>){if(next.type==='commission'&&!isSuperAdmin){setError('Komisyon ayarları yalnız Super Admin tarafından yönetilebilir.');return;}setAction(next);setReason('');setError('');if(next.type==='commission'){if(next.producer.commission_basis_points==null){setError('Komisyon bilgisi Super Admin oturumunda doğrulanamadı.');setAction(null);return;}setCommissionPercent(basisPointsToPercent(next.producer.commission_basis_points));}if(next.type==='badge'&&next.active)setReviewDue(next.producer.verification_due_at?.slice(0,10)||nextYearDate());}
+ async function submitAction(event:React.FormEvent){event.preventDefault();if(!action||busyId)return;setBusyId(action.producer.id);setError('');try{if(action.type==='commission'){if(!isSuperAdmin)throw new Error('super_admin_required');await adminSetProducerCommission(action.producer.id,commissionPercent);showToast('Platform ticari oranı güncellendi.');}else if(action.type==='status'){await adminSetProducerStatus(action.producer.id,action.status,reason);showToast(action.status==='active'?'Satıcı yeniden etkinleştirildi. Rozet gerekiyorsa ayrıca yeniden doğrulayın.':'Satıcı askıya alındı. Aktif doğrulama rozeti otomatik kaldırıldı.');}else if(action.type==='origin'){await adminSetProducerOriginVerified(action.producer.id,action.verified,reason);showToast(action.verified?'Üretim menşei doğrulandı.':'Menşe doğrulaması kaldırıldı. Aktif rozet varsa otomatik geri alındı.');}else{await adminSetProducerTrustBadge(action.producer.id,action.active,reason,action.active?`${reviewDue}T23:59:59Z`:null);showToast(action.active?'Golden Oremar Doğrulanmış Üretici rozeti verildi.':'Doğrulanmış Üretici rozeti kaldırıldı.');}closeAction();await load(true);}catch(nextError){setError(producerAdminErrorMessage(nextError));}finally{setBusyId('');}}
+ const actionTitle=action?.type==='commission'?'Ticari oranı güncelle':action?.type==='status'?(action.status==='active'?'Satıcıyı yeniden etkinleştir':'Satıcıyı askıya al'):action?.type==='origin'?(action.verified?'Üretim menşeini doğrula':'Menşe doğrulamasını kaldır'):action?.active?'Doğrulanmış Üretici rozeti ver':'Doğrulanmış Üretici rozetini kaldır';
+ return<div className="space-y-6">
+  <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between"><div><h2 className="text-2xl font-bold">Satıcı ve Güven Yönetimi</h2><p className="mt-1 max-w-4xl text-sm text-gray-500">Satıcı hesabı, kimlik, menşe ve doğrulama rozeti ayrı güven katmanlarıdır. Ticari oranlar yalnız Super Admin oturumunda görünür ve değiştirilebilir.</p></div><div className="flex flex-col gap-2 sm:flex-row"><button type="button" onClick={()=>void load()} disabled={loading} className="min-h-11 rounded-xl border px-4"><RefreshCw aria-hidden="true" className={`mr-2 inline h-4 w-4 ${loading?'animate-spin':''}`}/>Yenile</button><button type="button" onClick={()=>setActiveTab?.('vendor-applications')} className="min-h-11 rounded-xl bg-brand-green px-4 font-semibold text-brand-on-green"><Store aria-hidden="true" className="mr-2 inline h-4 w-4"/>Satıcı başvuruları</button></div></header>
+  <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[['Aktif mağaza',totals.active],['Aktif doğrulama rozeti',totals.badged],['Menşei doğrulanmış',totals.originVerified],['Toplam takipçi',totals.followers]].map(([label,value])=><Metric key={String(label)} label={String(label)} value={Number(value)}/>)}</div>
+  {error&&!action?<div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>:null}
+  <div className="grid gap-3 rounded-2xl border bg-white p-4 dark:bg-gray-800 md:grid-cols-[minmax(0,1fr)_200px]"><label className="relative"><span className="sr-only">Satıcı ara</span><Search aria-hidden="true" className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400"/><input type="search" value={searchTerm} onChange={event=>setSearchTerm(event.target.value)} placeholder="Mağaza, köy, faaliyet veya e-posta ara..." className="min-h-11 w-full rounded-xl border bg-gray-50 py-2 pl-10 pr-4 dark:bg-gray-900"/></label><label><span className="sr-only">Satıcı durumu</span><select value={statusFilter} onChange={event=>setStatusFilter(event.target.value as typeof statusFilter)} className="min-h-11 w-full rounded-xl border bg-gray-50 px-4 dark:bg-gray-900"><option value="all">Tüm durumlar</option><option value="pending">Onay bekleyen</option><option value="active">Aktif</option><option value="suspended">Askıda</option><option value="rejected">Reddedildi</option><option value="closed">Kapatıldı</option></select></label></div>
+  {loading?<div role="status" className="flex min-h-40 items-center justify-center gap-2 rounded-2xl border"><Loader2 aria-hidden="true" className="h-5 w-5 animate-spin"/>Satıcılar yükleniyor...</div>:<section className="space-y-3" aria-label="Satıcı listesi">{filtered.map(producer=><article key={producer.id} className="rounded-2xl border bg-white p-4 dark:bg-gray-800"><div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"><div className="flex min-w-0 gap-3"><div className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-brand-green/10 text-brand-green"><Store aria-hidden="true" className="h-5 w-5"/></div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="font-bold">{producer.display_name}</h3><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass(producer.status)}`}>{statusLabel(producer.status)}</span>{producer.trust_badge_active?verifiedBadge():null}</div><p className="mt-1 text-sm text-gray-500">{producer.email}</p><p className="mt-1 inline-flex items-center gap-1 text-xs text-gray-500"><MapPin aria-hidden="true" className="h-3.5 w-3.5"/>{producer.production_location||'Üretim yeri belirtilmemiş'}</p><p className="mt-1 text-xs text-gray-500">{producer.activity_types.map(value=>ACTIVITY_LABELS[value]||value).join(', ')||'Faaliyet tanımlı değil'}</p></div></div><button type="button" onClick={()=>setSelected(producer)} className="min-h-11 rounded-xl border px-4 font-semibold"><Eye aria-hidden="true" className="mr-1 inline h-4 w-4"/>İncele</button></div></article>)}{!filtered.length?<div className="rounded-2xl border p-8 text-center text-gray-500">Filtreyle eşleşen satıcı yok.</div>:null}</section>}
+  {selected&&!action?<div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 sm:items-center sm:p-4"><div ref={detailRef} role="dialog" aria-modal="true" aria-labelledby="vendor-detail-title" tabIndex={-1} className="max-h-[96dvh] w-full max-w-3xl overflow-y-auto rounded-t-3xl bg-white p-5 shadow-2xl outline-none dark:bg-gray-900 sm:rounded-2xl sm:p-6"><div className="flex items-start justify-between gap-4"><div><div className="flex flex-wrap items-center gap-2"><h3 id="vendor-detail-title" className="text-xl font-bold">{selected.display_name}</h3>{selected.trust_badge_active?verifiedBadge():null}</div><p className="mt-1 text-sm text-gray-500">{selected.production_location}</p></div><button type="button" disabled={Boolean(busyId)} onClick={()=>setSelected(null)} aria-label="Satıcı detayını kapat" className="min-h-11 min-w-11 rounded-xl"><X aria-hidden="true" className="mx-auto h-5 w-5"/></button></div><div className="mt-5 grid gap-3 sm:grid-cols-2"><Info label="Kimlik doğrulaması" value={selected.is_verified?`Doğrulandı · ${formatDate(selected.verified_at)}`:'Doğrulanmadı'}/><Info label="Menşe doğrulaması" value={selected.origin_verified?`Doğrulandı · ${formatDate(selected.origin_verified_at)}`:'Doğrulanmadı'}/><Info label="Doğrulama rozeti" value={selected.trust_badge_active?`Aktif · yeniden inceleme ${formatDate(selected.trust_badge_review_due_at)}`:`Aktif değil · ${selected.trust_badge_reason||'gerekçe yok'}`}/><Info label="Kategori yetkileri" value={selected.approved_category_slugs.join(', ')||'Kategori yok'}/><Info label="Ürün / sipariş" value={`${selected.product_count} ürün · ${selected.order_count} sipariş`}/>{isSuperAdmin&&selected.commission_basis_points!=null?<Info label="Platform ticari oranı" value={`%${basisPointsToPercent(selected.commission_basis_points).toLocaleString('tr-TR')}`}/>:null}</div>{selected.trust_badge_reason?<div className="mt-4 rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800"><strong>Son rozet gerekçesi:</strong> {selected.trust_badge_reason}</div>:null}<div className="mt-5 grid gap-2 sm:grid-cols-2">{isSuperAdmin?<button type="button" disabled={selected.commission_basis_points==null} onClick={()=>openAction({type:'commission',producer:selected})} className="min-h-11 rounded-xl border font-semibold disabled:opacity-40"><CircleDollarSign aria-hidden="true" className="mr-1 inline h-4 w-4"/>Ticari oran</button>:null}<button type="button" onClick={()=>openAction({type:'origin',producer:selected,verified:!selected.origin_verified})} className="min-h-11 rounded-xl border font-semibold"><ShieldCheck aria-hidden="true" className="mr-1 inline h-4 w-4"/>{selected.origin_verified?'Menşe doğrulamasını kaldır':'Menşei doğrula'}</button><button type="button" onClick={()=>openAction({type:'badge',producer:selected,active:!selected.trust_badge_active})} className={`min-h-11 rounded-xl border font-semibold ${selected.trust_badge_active?'border-red-200 text-red-700':'border-sky-200 text-sky-700'}`}><BadgeCheck aria-hidden="true" className="mr-1 inline h-4 w-4"/>{selected.trust_badge_active?'Rozeti kaldır':'Doğrulama rozeti ver'}</button><button type="button" onClick={()=>openAction({type:'status',producer:selected,status:selected.status==='suspended'?'active':'suspended'})} className="min-h-11 rounded-xl border font-semibold">{selected.status==='suspended'?'Yeniden etkinleştir':'Askıya al'}</button></div></div></div>:null}
+  {action?<ActionDialog action={action} actionTitle={actionTitle} busy={Boolean(busyId)} reason={reason} setReason={setReason} commissionPercent={commissionPercent} setCommissionPercent={setCommissionPercent} reviewDue={reviewDue} setReviewDue={setReviewDue} error={error} onClose={closeAction} onSubmit={submitAction} dialogRef={actionRef}/>:null}
+  {toast?<div role="status" className="fixed bottom-4 right-4 z-[80] max-w-sm rounded-xl bg-gray-950 px-5 py-3 text-white shadow-2xl">{toast}</div>:null}
+ </div>;
 }
+
+function ActionDialog({action,actionTitle,busy,reason,setReason,commissionPercent,setCommissionPercent,reviewDue,setReviewDue,error,onClose,onSubmit,dialogRef}:{action:NonNullable<ActionState>;actionTitle:string;busy:boolean;reason:string;setReason:(v:string)=>void;commissionPercent:number;setCommissionPercent:(v:number)=>void;reviewDue:string;setReviewDue:(v:string)=>void;error:string;onClose:()=>void;onSubmit:(e:React.FormEvent)=>void;dialogRef:React.RefObject<HTMLDivElement|null>}){const reasonRequired=action.type==='status'&&action.status==='suspended'||action.type==='origin'||action.type==='badge';return<div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/70 sm:items-center sm:p-4"><div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="vendor-action-title" tabIndex={-1} className="w-full max-w-lg rounded-t-3xl bg-white p-5 shadow-2xl outline-none dark:bg-gray-900 sm:rounded-3xl"><div className="flex items-start justify-between gap-3"><div><h3 id="vendor-action-title" className="text-xl font-bold">{actionTitle}</h3><p className="mt-1 text-sm text-gray-500">{action.producer.display_name}</p></div><button type="button" disabled={busy} onClick={onClose} className="min-h-11 min-w-11 rounded-xl" aria-label="İşlem penceresini kapat"><X aria-hidden="true" className="mx-auto h-5 w-5"/></button></div><form onSubmit={onSubmit} className="mt-5 space-y-4">{action.type==='commission'?<label className="block"><span className="mb-1 block text-sm font-semibold">Platform ticari oranı (%)</span><input type="number" min="0" max="30" step="0.01" value={commissionPercent} onChange={e=>setCommissionPercent(Number(e.target.value))} className="min-h-11 w-full rounded-xl border px-3"/><span className="mt-1 block text-xs text-gray-500">Bu alan yalnız Super Admin’e açıktır ve satıcı portalına gönderilmez.</span></label>:<><label className="block"><span className="mb-1 block text-sm font-semibold">Yönetim gerekçesi{reasonRequired?' *':''}</span><textarea required={reasonRequired} minLength={reasonRequired?10:0} maxLength={1000} rows={4} value={reason} onChange={e=>setReason(e.target.value)} className="w-full rounded-xl border p-3" placeholder="Kararın nedenini açıkça yazın."/></label>{action.type==='badge'&&action.active?<label className="block"><span className="mb-1 block text-sm font-semibold">Yeniden inceleme tarihi</span><input type="date" min={new Date().toISOString().slice(0,10)} value={reviewDue} onChange={e=>setReviewDue(e.target.value)} className="min-h-11 w-full rounded-xl border px-3"/></label>:null}</>}{error?<div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>:null}<div className="grid grid-cols-2 gap-3"><button type="button" disabled={busy} onClick={onClose} className="min-h-11 rounded-xl border font-semibold">Vazgeç</button><button type="submit" disabled={busy||(reasonRequired&&reason.trim().length<10)||(action.type==='commission'&&(!Number.isFinite(commissionPercent)||commissionPercent<0||commissionPercent>30))} className="min-h-11 rounded-xl bg-brand-green font-bold text-brand-on-green disabled:opacity-40">{busy?'Kaydediliyor…':'Uygula'}</button></div></form></div></div>;}
+function Metric({label,value}:{label:string;value:number}){return<div className="rounded-2xl border bg-white p-4 dark:bg-gray-800"><div className="text-xs text-gray-500">{label}</div><div className="mt-1 text-2xl font-bold">{value.toLocaleString('tr-TR')}</div></div>;}
+function Info({label,value}:{label:string;value:string}){return<div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xs text-gray-500">{label}</div><div className="mt-1 font-semibold">{value}</div></div>;}

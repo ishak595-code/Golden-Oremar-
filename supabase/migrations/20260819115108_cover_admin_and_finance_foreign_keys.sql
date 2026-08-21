@@ -1,0 +1,14 @@
+create index if not exists account_enforcement_events_actor_idx on private.account_enforcement_events(actor_user_id) where actor_user_id is not null;
+create index if not exists accounting_periods_closed_by_idx on private.accounting_periods(closed_by) where closed_by is not null;
+create index if not exists platform_expenses_created_by_idx on private.platform_expenses(created_by) where created_by is not null;
+create index if not exists platform_expenses_voided_by_idx on private.platform_expenses(voided_by) where voided_by is not null;
+create index if not exists producer_event_submissions_event_idx on private.producer_event_submissions(event_id) where event_id is not null;
+create index if not exists producer_event_submissions_reviewed_by_idx on private.producer_event_submissions(reviewed_by) where reviewed_by is not null;
+create index if not exists producer_event_submissions_submitted_by_idx on private.producer_event_submissions(submitted_by);
+create index if not exists producer_trust_badge_events_actor_idx on private.producer_trust_badge_events(actor_user_id) where actor_user_id is not null;
+create index if not exists product_moderation_events_actor_idx on private.product_moderation_events(actor_user_id) where actor_user_id is not null;
+create index if not exists product_moderation_events_change_request_idx on private.product_moderation_events(change_request_id) where change_request_id is not null;
+create index if not exists security_block_rules_created_by_idx on private.security_block_rules(created_by) where created_by is not null;
+create index if not exists security_block_rules_revoked_by_idx on private.security_block_rules(revoked_by) where revoked_by is not null;
+create index if not exists system_error_daily_last_user_idx on private.system_error_daily(last_user_id) where last_user_id is not null;
+create index if not exists orders_accounting_period_idx on public.orders(accounting_period_id) where accounting_period_id is not null;

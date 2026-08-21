@@ -1,30 +1,51 @@
 import React,{useEffect,useState}from'react';
-import{BellRing,Check,Volume2,VolumeX}from'lucide-react';
+import{BellRing,Check,Loader2,Volume2,VolumeX}from'lucide-react';
 import{APP_THEME_OPTIONS,type AppTheme}from'../appearance/theme';
 import{NOTIFICATION_SOUND_OPTIONS,getNotificationSound,getNotificationSoundEnabled,playNotificationSound,setNotificationSound,setNotificationSoundEnabled,subscribeNotificationSoundPreference,type NotificationSoundId}from'../notifications/premiumSounds';
+import{updateMyAppPreferences}from'../preferences/api';
 import{Panel}from'./ui';
 
 export default function PremiumPreferencesPanel({theme,onThemeChange}:{theme:AppTheme;onThemeChange?:(theme:AppTheme)=>void}){
  const[sound,setSound]=useState<NotificationSoundId>(()=>getNotificationSound());
  const[enabled,setEnabled]=useState(()=>getNotificationSoundEnabled());
  const[previewing,setPreviewing]=useState<NotificationSoundId|null>(null);
+ const[saving,setSaving]=useState<'theme'|'sound'|'enabled'|null>(null);
  const[status,setStatus]=useState('');
+ const[error,setError]=useState('');
 
  useEffect(()=>subscribeNotificationSoundPreference(()=>{
   setSound(getNotificationSound());
   setEnabled(getNotificationSoundEnabled());
  }),[]);
 
- function chooseTheme(next:AppTheme){
+ async function chooseTheme(next:AppTheme){
+  if(saving)return;
   onThemeChange?.(next);
-  setStatus(`${APP_THEME_OPTIONS.find(item=>item.id===next)?.label||'Tema'} etkinleştirildi.`);
+  setError('');
+  setStatus(`${APP_THEME_OPTIONS.find(item=>item.id===next)?.label||'Tema'} bu cihazda etkinleştirildi. Hesabınıza kaydediliyor…`);
+  try{
+   setSaving('theme');
+   await updateMyAppPreferences({theme:next});
+   setStatus(`${APP_THEME_OPTIONS.find(item=>item.id===next)?.label||'Tema'} hesabınıza kaydedildi ve diğer cihazlarda da kullanılacak.`);
+  }catch(e:any){
+   setError(e?.message||'Tema bu cihazda değişti ancak hesap tercihi sunucuya kaydedilemedi. Bağlantı geldiğinde tekrar seçin.');
+  }finally{setSaving(null);}
  }
 
- function chooseSound(next:NotificationSoundId){
+ async function chooseSound(next:NotificationSoundId){
+  if(saving)return;
   setNotificationSound(next);
   setSound(next);
-  setStatus(`${NOTIFICATION_SOUND_OPTIONS.find(item=>item.id===next)?.label||'Bildirim sesi'} seçildi.`);
+  setError('');
+  setStatus(`${NOTIFICATION_SOUND_OPTIONS.find(item=>item.id===next)?.label||'Bildirim sesi'} seçildi. Hesabınıza kaydediliyor…`);
   void preview(next);
+  try{
+   setSaving('sound');
+   await updateMyAppPreferences({notificationSound:next});
+   setStatus(`${NOTIFICATION_SOUND_OPTIONS.find(item=>item.id===next)?.label||'Bildirim sesi'} hesabınıza kaydedildi.`);
+  }catch(e:any){
+   setError(e?.message||'Ses bu cihazda seçildi ancak hesap tercihi sunucuya kaydedilemedi.');
+  }finally{setSaving(null);}
  }
 
  async function preview(next:NotificationSoundId){
@@ -32,58 +53,68 @@ export default function PremiumPreferencesPanel({theme,onThemeChange}:{theme:App
   try{
    setPreviewing(next);
    const played=await playNotificationSound(next,{force:true});
-   if(!played)setStatus('Ses önizlemesi tarayıcı veya cihaz tarafından engellendi. Ses açıkken tekrar deneyin.');
+   if(!played)setStatus('Ses önizlemesi sistem veya cihaz ses politikası tarafından engellendi. Medya sesini kontrol edip tekrar deneyin.');
   }finally{
    window.setTimeout(()=>setPreviewing(null),900);
   }
  }
 
- function toggleEnabled(next:boolean){
+ async function toggleEnabled(next:boolean){
+  if(saving)return;
   setNotificationSoundEnabled(next);
   setEnabled(next);
-  setStatus(next?'Bildirim sesleri açıldı.':'Bildirim sesleri sessize alındı.');
+  setError('');
+  setStatus(next?'Bildirim sesleri bu cihazda açıldı. Hesabınıza kaydediliyor…':'Bildirim sesleri bu cihazda sessize alındı. Hesabınıza kaydediliyor…');
   if(next)void preview(sound);
+  try{
+   setSaving('enabled');
+   await updateMyAppPreferences({notificationSoundEnabled:next});
+   setStatus(next?'Bildirim sesleri hesabınızda açıldı.':'Bildirim sesleri hesabınızda sessize alındı.');
+  }catch(e:any){
+   setError(e?.message||'Ses durumu bu cihazda değişti ancak hesap tercihi sunucuya kaydedilemedi.');
+  }finally{setSaving(null);}
  }
 
  return<div className="space-y-5">
-  <Panel title="Premium Görünüm" description="Tema yalnız bu cihazda saklanır. Ürün ve güven durumları değişmez; yalnız görsel karakter değişir.">
-   <div role="radiogroup" aria-label="Premium tema seçimi" className="grid gap-3 sm:grid-cols-2">
+  <Panel title="Premium Görünüm" description="Tema hesabınıza kaydedilir ve giriş yaptığınız cihazlarda senkronize edilir. Ürün, fiyat, stok ve güven verileri değişmez; yalnız uygulamanın görsel karakteri değişir.">
+   <div role="radiogroup" aria-label="Premium tema seçimi" aria-busy={saving==='theme'} className="grid gap-3 sm:grid-cols-2">
     {APP_THEME_OPTIONS.map(option=>{
      const selected=theme===option.id;
-     return<button key={option.id} type="button" role="radio" aria-checked={selected} onClick={()=>chooseTheme(option.id)} className={`min-h-24 rounded-2xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${selected?'border-brand-gold ring-1 ring-brand-gold/40':'border-gray-200 dark:border-gray-700'}`}>
+     return<button key={option.id} type="button" role="radio" aria-checked={selected} disabled={saving!==null} onClick={()=>void chooseTheme(option.id)} className={`min-h-24 rounded-2xl border p-4 text-left transition disabled:cursor-wait disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${selected?'border-brand-gold ring-1 ring-brand-gold/40':'border-gray-200 dark:border-gray-700'}`}>
       <div className="flex items-start gap-3">
        <div aria-hidden="true" className="mt-0.5 flex h-10 w-10 shrink-0 overflow-hidden rounded-full border shadow-sm" style={{background:option.surface,borderColor:option.accent}}>
         <span className="h-full w-1/2" style={{background:option.accent}}/>
         <span className="h-full w-1/2" style={{background:option.text}}/>
        </div>
-       <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="font-bold">{option.label}</span>{selected?<Check aria-hidden="true" className="h-4 w-4 text-brand-gold"/>:null}</div><p className="mt-1 text-sm text-gray-500">{option.description}</p></div>
+       <div className="min-w-0 flex-1"><div className="flex items-center gap-2"><span className="font-bold">{option.label}</span>{selected?<Check aria-hidden="true" className="h-4 w-4 text-brand-gold"/>:null}{saving==='theme'&&selected?<Loader2 aria-hidden="true" className="h-4 w-4 animate-spin"/>:null}</div><p className="mt-1 text-sm text-gray-500">{option.description}</p></div>
       </div>
      </button>;
     })}
    </div>
   </Panel>
 
-  <Panel title="Premium Bildirim Sesi" description="Varsayılan Oremar Damlası’dır. Uygulama açıkken yeni bir bildirim geldiğinde seçtiğiniz kısa imza çalar.">
+  <Panel title="Premium Bildirim Sesi" description="Seçiminiz hesabınıza kaydedilir. Uygulama ön plandayken yeni bir bildirim geldiğinde seçtiğiniz kısa Golden Oremar imzası çalar.">
    <label className="mb-4 flex min-h-12 items-center justify-between gap-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
-    <span className="flex items-center gap-3"><span aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2 text-brand-green">{enabled?<Volume2 className="h-5 w-5"/>:<VolumeX className="h-5 w-5"/>}</span><span><span className="block font-bold">Bildirim sesleri</span><span className="block text-sm text-gray-500">İsterseniz bütün uygulama içi bildirim seslerini kapatın.</span></span></span>
-    <input type="checkbox" className="h-5 w-5 shrink-0" checked={enabled} onChange={e=>toggleEnabled(e.target.checked)} aria-label="Bildirim seslerini aç veya kapat"/>
+    <span className="flex items-center gap-3"><span aria-hidden="true" className="rounded-xl bg-brand-green/10 p-2 text-brand-green">{enabled?<Volume2 className="h-5 w-5"/>:<VolumeX className="h-5 w-5"/>}</span><span><span className="block font-bold">Bildirim sesleri</span><span className="block text-sm text-gray-500">Uygulama içi bildirim imzasını açın veya tamamen sessize alın.</span></span></span>
+    <input type="checkbox" className="h-5 w-5 shrink-0" checked={enabled} disabled={saving!==null} onChange={e=>void toggleEnabled(e.target.checked)} aria-label="Bildirim seslerini aç veya kapat"/>
    </label>
 
-   <div role="radiogroup" aria-label="Bildirim sesi seçimi" className="space-y-2">
+   <div role="radiogroup" aria-label="Bildirim sesi seçimi" aria-busy={saving==='sound'} className="space-y-2">
     {NOTIFICATION_SOUND_OPTIONS.map(option=>{
      const selected=sound===option.id;
      return<div key={option.id} className={`flex items-center gap-3 rounded-xl border p-3 ${selected?'border-brand-gold bg-brand-gold/5':'border-gray-200 dark:border-gray-700'}`}>
-      <button type="button" role="radio" aria-checked={selected} onClick={()=>chooseSound(option.id)} className="min-h-11 min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
-       <span className="flex items-center gap-2 font-bold"><BellRing aria-hidden="true" className="h-4 w-4 text-brand-green"/>{option.label}{selected?<Check aria-hidden="true" className="h-4 w-4 text-brand-gold"/>:null}</span>
+      <button type="button" role="radio" aria-checked={selected} disabled={saving!==null} onClick={()=>void chooseSound(option.id)} className="min-h-11 min-w-0 flex-1 text-left disabled:cursor-wait disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
+       <span className="flex items-center gap-2 font-bold"><BellRing aria-hidden="true" className="h-4 w-4 text-brand-green"/>{option.label}{selected?<Check aria-hidden="true" className="h-4 w-4 text-brand-gold"/>:null}{saving==='sound'&&selected?<Loader2 aria-hidden="true" className="h-4 w-4 animate-spin"/>:null}</span>
        <span className="mt-1 block text-sm text-gray-500">{option.description}</span>
       </button>
-      <button type="button" disabled={previewing!==null} onClick={()=>void preview(option.id)} className="min-h-11 shrink-0 rounded-xl border px-3 font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold" aria-label={`${option.label} sesini dinle`}>{previewing===option.id?'Çalıyor…':'Dinle'}</button>
+      <button type="button" disabled={previewing!==null||saving!==null} onClick={()=>void preview(option.id)} className="min-h-11 shrink-0 rounded-xl border px-3 font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold" aria-label={`${option.label} sesini dinle`}>{previewing===option.id?'Çalıyor…':'Dinle'}</button>
      </div>;
     })}
    </div>
-   <p className="mt-3 text-xs text-gray-500">Arka plandaki işletim sistemi push sesi cihaz ve bildirim kanalı kurallarına bağlıdır. Bu seçim Golden Oremar uygulaması açıkken gelen bildirim imzasını yönetir.</p>
+   <p className="mt-3 text-xs text-gray-500">Arka plandaki işletim sistemi push sesi cihaz ve bildirim kanalı kurallarına bağlıdır. Bu seçim Golden Oremar uygulaması ön plandayken çalan uygulama içi imzayı yönetir.</p>
   </Panel>
 
+  {error?<div role="alert" aria-live="assertive" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div>:null}
   {status?<div role="status" aria-live="polite" className="rounded-xl border border-brand-green/20 bg-brand-green/5 p-3 text-sm font-semibold text-brand-green">{status}</div>:null}
  </div>;
 }

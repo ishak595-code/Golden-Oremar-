@@ -1,31 +1,89 @@
 {
-  "generatedAt": "2026-08-16T05:08:58.246816+00:00",
+  "generatedAt": "2026-08-19T01:35:00+02:00",
   "packageMode": "single-cumulative",
+  "productFormFactor": "android-ios-application",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "liveMigrationCount": 90,
-  "latestMigration": "20260816050443_minimize_public_storefront_readiness_v1",
+  "latestFunctionalHead": "983d6c1350e4e46259c68cf948edb7956ebb519e",
+  "liveMigrationCount": 151,
+  "latestMigration": "20260818232517_verify_producer_product_gallery_assets",
+  "migrationReconciliation": "PASS_LIVE_CURRENT_HARDENING_MIGRATIONS_RECORDED_IN_FEATURE_BRANCH",
   "securityAdvisorLints": 0,
   "edgeFunctions": {
-    "contact-submit": {
-      "status": "ACTIVE",
-      "version": 1
-    },
-    "event-reservation": {
-      "status": "ACTIVE",
-      "version": 2
-    }
+    "contact-submit": { "status": "ACTIVE", "version": 1 },
+    "event-reservation": { "status": "ACTIVE", "version": 2 },
+    "push-dispatch": { "status": "ACTIVE", "version": 3 },
+    "payment-method-vault": { "status": "ACTIVE", "version": 1, "verifyJwt": true, "repositorySourcePresent": true }
   },
   "validation": {
-    "typescriptTsxFilesParserChecked": 44,
-    "typescriptSyntaxErrors": 0,
-    "integrationScriptSyntax": "PASS",
-    "generatedForbiddenMarkers": "PASS",
-    "criticalCumulativeFiles": "PASS"
+    "latestHeadCi": "NOT_EXECUTED_GITHUB_ACTIONS_RUNNER_ALLOCATION_BILLING_OR_SPENDING_LIMIT_BLOCKER",
+    "lastRecordedBlockedWorkflowRunId": 32029478472,
+    "supabaseSecurityAdvisor": "PASS_ZERO_LINTS_AFTER_MIGRATION_151",
+    "checkoutEntrypoints": {
+      "create_customer_order": "NO_AUTHENTICATED_NO_ANON_EXECUTE",
+      "create_customer_order_v2": "NO_AUTHENTICATED_NO_ANON_EXECUTE",
+      "create_customer_order_v3": "NO_AUTHENTICATED_NO_ANON_EXECUTE",
+      "create_customer_order_v4": "NO_AUTHENTICATED_NO_ANON_EXECUTE",
+      "create_customer_order_v5": "AUTHENTICATED_EXECUTE_ONLY_ANON_DISABLED"
+    },
+    "catalogPublicStorage": "PASS_FAIL_CLOSED_OBJECT_COUNT_OBSERVED_0",
+    "contentPublicStorage": "PASS_FAIL_CLOSED_OBJECT_COUNT_OBSERVED_0",
+    "adminProductApprovalRealAssetGate": "IMPLEMENTED_LIVE",
+    "producerCatalogStoragePolicies": "IMPLEMENTED_VERIFIED_ACTIVE_OWN_PRODUCTS_PREFIX_UNUSED_DELETE_NO_OVERWRITE",
+    "producerGalleryRealObjectFilter": "IMPLEMENTED_LIVE",
+    "producerProductClientBoundary": "IMPLEMENTED_PENDING_CURRENT_HEAD_CI_RECHECK",
+    "storefrontConfigStrictBoundary": "IMPLEMENTED_PENDING_CURRENT_HEAD_CI_RECHECK",
+    "eventPersonalReservationSafeRpc": "IMPLEMENTED_PENDING_CURRENT_HEAD_CI_RECHECK",
+    "savedPaymentMethodCheckoutBinding": "IMPLEMENTED_LIVE_V5",
+    "paymentMethodVault": "ACTIVE_VERIFY_JWT_TRUE_PROVIDER_CONFIGURATION_REQUIRED",
+    "giftPresentationPersistence": "IMPLEMENTED_LIVE",
+    "managementGiftMaskedPaymentSnapshot": "IMPLEMENTED_LIVE",
+    "accountThemeSoundPersistence": "IMPLEMENTED_LIVE",
+    "themeRuntimeSynchronization": "IMPLEMENTED_PENDING_CURRENT_HEAD_CI_RECHECK",
+    "androidReleaseBundleBaseline": "PASS_PREVIOUS_BASELINE_NOT_CURRENT_HEAD",
+    "iosSimulatorCompileBaseline": "PASS_PREVIOUS_BASELINE_NOT_CURRENT_HEAD"
   },
   "truthfulnessChecks": {
-    "upcomingEvents": 0,
-    "pastEvents": 5,
-    "structuredHakkariYuksekovaVillageSuggestions": 0,
-    "placeholderContentImagesRemoved": 34
+    "desktopTopNavigationRemoved": true,
+    "hamburgerMenuRemoved": true,
+    "repositorySearchPreserved": true,
+    "bottomNavigationPersistentPhoneTablet": true,
+    "notificationBadgeServerAuthoritative": true,
+    "cartBadgeUsesTotalQuantity": true,
+    "missingMoneyDoesNotBecomeZero": true,
+    "missingCurrencyDoesNotBecomeTry": true,
+    "invalidTrackedStockLocksPurchase": true,
+    "missingStorageObjectDoesNotBecomeBrokenPublicImage": true,
+    "databaseImagePathAloneDoesNotCountAsAsset": true,
+    "paymentProviderNotInvented": true,
+    "providerCardSecretsNotExposed": true,
+    "businessSupportIdentityNotInvented": true,
+    "finalLegalCopyNotInvented": true,
+    "shippingWeightsNotInvented": true,
+    "newestHeadNotClaimedCiGreen": true
+  },
+  "liveDataAudit": {
+    "publishedActiveProductsObserved": 42,
+    "categoriesObserved": 9,
+    "catalogPublicObjectCountObserved": 0,
+    "contentPublicObjectCountObserved": 0,
+    "activeVariantsMissingShippingWeightForPerishableProducts": 14,
+    "note": "Missing real images and shipping weights are exposed as production blockers and are not fabricated."
+  },
+  "externalBlockers": {
+    "githubActions": "Runner allocation remains blocked by the GitHub account billing, minute or spending-limit condition. No new Actions run is being triggered while this remains unresolved.",
+    "catalogAssets": "catalog-public currently contains zero real objects; existing database image paths are therefore hidden by fail-closed RPCs until real assets are uploaded.",
+    "contentAssets": "content-public currently contains zero real objects; content and event image paths are hidden until real assets are uploaded.",
+    "liveSalesIdentity": "Legal business and support identity are not configured.",
+    "finalLegalCopy": "Final applicable legal terms must be supplied before live sales.",
+    "paymentProvider": "Production merchant/provider credentials remain external; card enrollment cannot be represented as production-ready until configured.",
+    "nativePushProviders": "Production FCM/APNs provider credentials remain external.",
+    "oauthProviders": "Production Google and Facebook provider configuration remains external.",
+    "mobileSigning": "Play Store and App Store signing/release configuration remains external.",
+    "publicWebOrigin": "A real public HTTPS share origin remains external.",
+    "shippingWeights": "Fourteen active perishable variants still require real shipping weights."
+  },
+  "historicalReportPreservation": {
+    "gitHistoryPreservesPriorVersions": true,
+    "previousTestReportBlob": "6d1b24a1b84e684b958948f9d4cef269c1269b49"
   }
 }

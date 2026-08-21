@@ -4,15 +4,19 @@ import { getPrivateAssetSignedUrl, removeCustomerAvatar, updateProfile, uploadCu
 import type { AccountOverview } from './types';
 import { useAccessibleDialog } from '../accessibility/useAccessibleDialog';
 
+const PROFILE_LOCALES = new Set(['tr','en','de','fr','ku','ar']);
+const AVATAR_TYPES = new Set(['image/jpeg','image/png','image/webp','image/avif']);
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
+
 export default function ProfilePanel({ overview, onChanged }: {
   overview: AccountOverview;
   onChanged: () => Promise<void> | void;
 }) {
   const p = overview.profile;
-  const [displayName, setDisplayName] = useState(p.display_name || '');
-  const [phone, setPhone] = useState(p.phone || '');
-  const [locale, setLocale] = useState(p.locale || 'tr');
-  const [marketingConsent, setMarketingConsent] = useState(!!p.marketing_consent);
+  const [displayName, setDisplayName] = useState(p.display_name);
+  const [phone, setPhone] = useState(p.phone ?? '');
+  const [locale, setLocale] = useState(p.locale);
+  const [marketingConsent, setMarketingConsent] = useState(p.marketing_consent);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -24,10 +28,10 @@ export default function ProfilePanel({ overview, onChanged }: {
   });
 
   useEffect(() => {
-    setDisplayName(p.display_name || '');
-    setPhone(p.phone || '');
-    setLocale(p.locale || 'tr');
-    setMarketingConsent(!!p.marketing_consent);
+    setDisplayName(p.display_name);
+    setPhone(p.phone ?? '');
+    setLocale(p.locale);
+    setMarketingConsent(p.marketing_consent);
   }, [p.display_name, p.phone, p.locale, p.marketing_consent]);
 
   useEffect(() => {
@@ -44,28 +48,35 @@ export default function ProfilePanel({ overview, onChanged }: {
 
   async function changeAvatar(file?: File) {
     if (!file || avatarBusy) return;
+    setError('');
+    setMessage('');
+    if (!AVATAR_TYPES.has(file.type)) {
+      setError('Profil fotoğrafı JPEG, PNG, WebP veya AVIF olmalıdır.');
+      return;
+    }
+    if (file.size <= 0 || file.size > MAX_AVATAR_BYTES) {
+      setError('Profil fotoğrafı boş olmamalı ve en fazla 5 MB olabilir.');
+      return;
+    }
     try {
       setAvatarBusy(true);
-      setError('');
-      setMessage('');
       const previous = p.avatar_path;
       const result = await uploadCustomerAvatar(p.id, file);
       if (previous && previous !== result.avatar_path) {
-        // Delete the old object only after the database points to the new object.
         const { supabase } = await import('../../lib/supabase');
         await supabase.storage.from('user-private').remove([previous]).catch(()=>{});
       }
       await onChanged();
       setMessage('Profil fotoğrafınız güncellendi.');
-    } catch (err: any) {
-      setError(err?.message || 'Profil fotoğrafı güncellenemedi.');
+    } catch (err: unknown) {
+      setError(err instanceof Error && err.message ? err.message : 'Profil fotoğrafı güncellenemedi.');
     } finally {
       setAvatarBusy(false);
     }
   }
 
   async function confirmRemoveAvatar() {
-    if (avatarBusy) return;
+    if (avatarBusy || !p.avatar_path) return;
     try {
       setAvatarBusy(true);
       setError('');
@@ -74,9 +85,9 @@ export default function ProfilePanel({ overview, onChanged }: {
       setAvatarConfirmOpen(false);
       await onChanged();
       setMessage('Profil fotoğrafınız kaldırıldı.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       setAvatarConfirmOpen(false);
-      setError(err?.message || 'Profil fotoğrafı kaldırılamadı.');
+      setError(err instanceof Error && err.message ? err.message : 'Profil fotoğrafı kaldırılamadı.');
     } finally {
       setAvatarBusy(false);
     }
@@ -87,22 +98,47 @@ export default function ProfilePanel({ overview, onChanged }: {
     if (saving) return;
     setError('');
     setMessage('');
-    if (displayName.trim().length < 2) {
+    const normalizedName = displayName.trim().replace(/\s+/g, ' ');
+    const normalizedPhone = phone.trim();
+    const phoneDigits = normalizedPhone.replace(/\D/g, '');
+    if (normalizedName.length < 2) {
       setError('Ad soyad en az 2 karakter olmalıdır.');
+      return;
+    }
+    if (normalizedName.length > 120) {
+      setError('Ad soyad en fazla 120 karakter olabilir.');
+      return;
+    }
+    if (normalizedPhone.length > 40) {
+      setError('Telefon numarası en fazla 40 karakter olabilir.');
+      return;
+    }
+    if (normalizedPhone && !/^[+()0-9 .\-]{10,40}$/.test(normalizedPhone)) {
+      setError('Telefon numarası yalnız rakam ve standart telefon işaretlerini içermelidir.');
+      return;
+    }
+    if (normalizedPhone && (phoneDigits.length < 10 || phoneDigits.length > 15)) {
+      setError('Telefon numarası 10 ile 15 rakam içermelidir.');
+      return;
+    }
+    if (!PROFILE_LOCALES.has(locale)) {
+      setError('Uygulama dili doğrulanamadı. Lütfen desteklenen bir dil seçin.');
       return;
     }
     try {
       setSaving(true);
       await updateProfile({
-        displayName: displayName.trim(),
-        phone: phone.trim() || null,
+        displayName: normalizedName,
+        phone: normalizedPhone || null,
         locale,
         marketingConsent,
       });
       await onChanged();
+      setDisplayName(normalizedName);
+      setPhone(normalizedPhone);
       setMessage('Profil bilgileriniz güncellendi.');
-    } catch (err: any) {
-      setError(err?.message || 'Profil güncellenemedi.');
+    } catch (err: unknown) {
+      setError(err instanceof Error && err.message ? err.message : 'Profil güncellenemedi.');
     } finally {
       setSaving(false);
     }
@@ -136,25 +172,26 @@ export default function ProfilePanel({ overview, onChanged }: {
 
         <label className="block">
           <span className="text-sm font-semibold">E-posta</span>
-          <input value={p.email || ''} readOnly autoComplete="email" className="mt-1 min-h-11 w-full rounded-xl border bg-gray-100 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-200" />
+          <input value={p.email} readOnly autoComplete="email" className="mt-1 min-h-11 w-full rounded-xl border bg-gray-100 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-200" />
           <span className="mt-1 block text-xs text-gray-500">E-posta kimlik hesabınızdan gelir; burada doğrudan değiştirilemez.</span>
         </label>
 
         <label className="block">
           <span className="text-sm font-semibold">Ad Soyad</span>
-          <input disabled={saving} value={displayName} onChange={e => setDisplayName(e.target.value)} autoComplete="name"
+          <input required minLength={2} maxLength={120} disabled={saving} value={displayName} onChange={e => setDisplayName(e.target.value)} autoComplete="name"
             className="mt-1 min-h-11 w-full rounded-xl border border-gray-300 bg-transparent px-3 disabled:opacity-60 dark:border-gray-700" />
         </label>
 
         <label className="block">
           <span className="text-sm font-semibold">Telefon</span>
-          <input disabled={saving} value={phone} onChange={e => setPhone(e.target.value)} autoComplete="tel" inputMode="tel"
+          <input maxLength={40} disabled={saving} value={phone} onChange={e => setPhone(e.target.value)} autoComplete="tel" inputMode="tel"
             className="mt-1 min-h-11 w-full rounded-xl border border-gray-300 bg-transparent px-3 disabled:opacity-60 dark:border-gray-700" />
+          <span className="mt-1 block text-xs text-gray-500">Telefon giriyorsanız 10-15 rakam içermelidir.</span>
         </label>
 
         <label className="block">
           <span className="text-sm font-semibold">Uygulama dili</span>
-          <select disabled={saving} value={locale} onChange={e => setLocale(e.target.value)}
+          <select required disabled={saving} value={locale} onChange={e => setLocale(e.target.value as AccountOverview['profile']['locale'])}
             className="mt-1 min-h-11 w-full rounded-xl border border-gray-300 bg-transparent px-3 disabled:opacity-60 dark:border-gray-700">
             <option value="tr">Türkçe</option><option value="en">English</option><option value="de">Deutsch</option>
             <option value="fr">Français</option><option value="ku">Kurdî</option><option value="ar">العربية</option>

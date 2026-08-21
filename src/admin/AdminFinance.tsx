@@ -1,181 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { DollarSign, TrendingUp, TrendingDown, Calendar, Search, Download } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import React,{useEffect,useMemo,useState}from'react';
+import{Archive,Download,FileDown,Loader2,Plus,Printer,RefreshCw,ShieldCheck,Trash2,X}from'lucide-react';
+import{useCustomerSession}from'../features/auth/useCustomerSession';
+import{accountingErrorMessage,addPlatformExpense,cleanupOperationalHistory,closeAccountingPeriod,getFinanceReportV2,listAccountingPeriods,listPlatformExpenses,voidPlatformExpense,type AccountingPeriod,type ExpenseCategory,type FinanceReportV2,type PlatformExpense}from'./accountingAdminApi';
+import{useAccessibleDialog}from'../features/accessibility/useAccessibleDialog';
 
-export function AdminFinance() {
-  const [reports, setReports] = useState<any>({ dailySales: [], vendorIncome: [] });
-  const [loading, setLoading] = useState(true);
-  const [dateRange, setDateRange] = useState('7days');
+type RangeKey='7days'|'30days'|'thisMonth'|'lastMonth'|'custom';
+const CATEGORY_LABELS:Record<ExpenseCategory,string>={payment_fee:'Ödeme sağlayıcı ücreti',shipping_subsidy:'Kargo desteği',marketing:'Pazarlama',software:'Yazılım ve altyapı',staff:'Personel',tax_accounting:'Vergi ve muhasebe',refund_loss:'İade zararı',bank_fee:'Banka ücreti',legal:'Hukuk',other:'Diğer'};
+function dateKey(date:Date){return`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;}
+function resolveRange(key:RangeKey,customFrom:string,customTo:string){const today=new Date();today.setHours(12,0,0,0);if(key==='custom')return{from:customFrom,to:customTo};if(key==='thisMonth')return{from:dateKey(new Date(today.getFullYear(),today.getMonth(),1,12)),to:dateKey(today)};if(key==='lastMonth'){const from=new Date(today.getFullYear(),today.getMonth()-1,1,12),to=new Date(today.getFullYear(),today.getMonth(),0,12);return{from:dateKey(from),to:dateKey(to)};}const from=new Date(today);from.setDate(today.getDate()-(key==='30days'?29:6));return{from:dateKey(from),to:dateKey(today)};}
+function money(minor:number,currency:string){try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency,maximumFractionDigits:2}).format(minor/100);}catch{return`${(minor/100).toFixed(2)} ${currency}`;}}
+function csvCell(value:unknown){let text=String(value??'');if(/^[\s]*[=+\-@]/.test(text))text=`'${text}`;return`"${text.replace(/"/g,'""')}"`;}
+function major(value:number){return(value/100).toFixed(2);}
 
-  useEffect(() => {
-    fetchFinanceReports();
-  }, [dateRange]);
-
-  const fetchFinanceReports = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/admin/finance/reports', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setReports(data);
-      }
-    } catch (error) {
-      console.error('Error fetching finance reports:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) return <div className="p-8 text-center">Yükleniyor...</div>;
-
-  const totalRevenue = reports.dailySales.reduce((sum: number, day: any) => sum + (Number(day.total_sales) || 0), 0);
-  const totalCommission = reports.vendorIncome.reduce((sum: number, vendor: any) => sum + (Number(vendor.total_commission) || 0), 0);
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Finans Raporları</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Gelir, gider ve komisyon detaylarını inceleyin.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <select
-            value={dateRange}
-            onChange={(e) => setDateRange(e.target.value)}
-            className="px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-green outline-none"
-          >
-            <option value="7days">Son 7 Gün</option>
-            <option value="30days">Son 30 Gün</option>
-            <option value="thisMonth">Bu Ay</option>
-            <option value="lastMonth">Geçen Ay</option>
-          </select>
-          <button className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-            <Download className="w-5 h-5" />
-            Dışa Aktar
-          </button>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <DollarSign className="w-24 h-24 text-blue-600" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600">
-                <DollarSign className="w-6 h-6" />
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Toplam Ciro</div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{totalRevenue.toLocaleString('tr-TR')} ₺</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <TrendingUp className="w-24 h-24 text-green-600" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl text-green-600">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Toplam Komisyon Geliri</div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{totalCommission.toLocaleString('tr-TR')} ₺</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <TrendingDown className="w-24 h-24 text-orange-600" />
-          </div>
-          <div className="relative z-10 flex flex-col h-full justify-between">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-orange-50 dark:bg-orange-900/20 rounded-xl text-orange-600">
-                <TrendingDown className="w-6 h-6" />
-              </div>
-            </div>
-            <div>
-              <div className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Satıcılara Ödenecek</div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">{(totalRevenue - totalCommission).toLocaleString('tr-TR')} ₺</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-        <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Günlük Satış Trendi</h3>
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={reports.dailySales} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#6b7280' }} />
-              <Tooltip 
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                formatter={(value: number) => [`${value} ₺`, 'Satış']}
-              />
-              <Area type="monotone" dataKey="total_sales" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorSales)" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Vendor Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <div className="p-6 border-b border-gray-100 dark:border-gray-700">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Satıcı Gelirleri</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-gray-600 dark:text-gray-400">
-            <thead className="bg-gray-50 dark:bg-gray-900/50 text-xs uppercase font-semibold text-gray-500">
-              <tr>
-                <th className="px-6 py-4">Satıcı</th>
-                <th className="px-6 py-4">Toplam Satış</th>
-                <th className="px-6 py-4">Komisyon Kesintisi</th>
-                <th className="px-6 py-4">Net Hakediş</th>
-                <th className="px-6 py-4 text-right">Durum</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-              {reports.vendorIncome.map((vendor: any, index: number) => (
-                <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                  <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{vendor.vendor_name}</td>
-                  <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{Number(vendor.total_sales) || 0} ₺</td>
-                  <td className="px-6 py-4 text-red-600">-{vendor.total_commission} ₺</td>
-                  <td className="px-6 py-4 font-bold text-green-600">{Number(vendor.total_sales - vendor.total_commission) || 0} ₺</td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">
-                      Ödeme Bekliyor
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {reports.vendorIncome.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-gray-500">Kayıt bulunamadı.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
+export function AdminFinance(){
+ const{currentUser}=useCustomerSession();const isSuperAdmin=Array.isArray(currentUser?.roles)&&currentUser.roles.map(String).includes('super_admin');
+ const today=dateKey(new Date()),monthStart=dateKey(new Date(new Date().getFullYear(),new Date().getMonth(),1));
+ const[report,setReport]=useState<FinanceReportV2|null>(null),[periods,setPeriods]=useState<AccountingPeriod[]>([]),[expenses,setExpenses]=useState<PlatformExpense[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(''),[error,setError]=useState(''),[toast,setToast]=useState(''),[dateRange,setDateRange]=useState<RangeKey>('7days'),[customFrom,setCustomFrom]=useState(monthStart),[customTo,setCustomTo]=useState(today),[currency,setCurrency]=useState('TRY'),[closeConfirm,setCloseConfirm]=useState(''),[expenseOpen,setExpenseOpen]=useState(false),[expenseDate,setExpenseDate]=useState(today),[expenseCategory,setExpenseCategory]=useState<ExpenseCategory>('payment_fee'),[expenseAmount,setExpenseAmount]=useState(''),[expenseDescription,setExpenseDescription]=useState(''),[expenseReference,setExpenseReference]=useState(''),[voidTarget,setVoidTarget]=useState<PlatformExpense|null>(null),[voidReason,setVoidReason]=useState('');
+ const expenseDialog=useAccessibleDialog<HTMLDivElement>(expenseOpen,()=>{if(!busy)setExpenseOpen(false);});const voidDialog=useAccessibleDialog<HTMLDivElement>(Boolean(voidTarget),()=>{if(!busy)setVoidTarget(null);});
+ const range=useMemo(()=>resolveRange(dateRange,customFrom,customTo),[dateRange,customFrom,customTo]);
+ function show(message:string){setToast(message);window.setTimeout(()=>setToast(''),4500);}
+ async function load(){if(!range.from||!range.to)return;setLoading(true);setError('');try{const[nextReport,nextExpenses]=await Promise.all([getFinanceReportV2(range.from,range.to,currency),listPlatformExpenses(range.from,range.to,currency)]);setReport(nextReport);setExpenses(nextExpenses);if(isSuperAdmin)setPeriods(await listAccountingPeriods());}catch(next){setReport(null);setError(accountingErrorMessage(next,'Muhasebe verileri yüklenemedi.'));}finally{setLoading(false);}}
+ useEffect(()=>{void load();},[range.from,range.to,currency,isSuperAdmin]);
+ async function saveExpense(event:React.FormEvent){event.preventDefault();if(busy)return;const amount=Number(expenseAmount.replace(',','.'));if(!Number.isFinite(amount)||amount<=0){setError('Gider tutarı sıfırdan büyük olmalıdır.');return;}setBusy('expense');setError('');try{await addPlatformExpense({spentOn:expenseDate,category:expenseCategory,description:expenseDescription,amountMajor:amount,currency,externalReference:expenseReference||null});setExpenseOpen(false);setExpenseAmount('');setExpenseDescription('');setExpenseReference('');show('Platform gideri muhasebe defterine kaydedildi. Kâr ve nakit akışı yeniden hesaplandı.');await load();}catch(next){setError(accountingErrorMessage(next));}finally{setBusy('');}}
+ async function voidExpense(){if(!voidTarget||voidReason.trim().length<8||busy)return;setBusy(voidTarget.id);setError('');try{await voidPlatformExpense(voidTarget.id,voidReason);setVoidTarget(null);setVoidReason('');show('Gider kaydı iptal edildi. Muhasebe raporu yeniden hesaplandı.');await load();}catch(next){setError(accountingErrorMessage(next));}finally{setBusy('');}}
+ async function closePeriod(){if(!report||closeConfirm!=='DÖNEMİ KAPAT'||busy)return;setBusy('close');setError('');try{const result=await closeAccountingPeriod(report.from,report.to,report.currency);setCloseConfirm('');show(`${result.currency} dönemi kapatıldı. ${result.archivedOrderCount.toLocaleString('tr-TR')} sipariş canlı operasyon listesinden arşive taşındı.`);await load();}catch(next){setError(accountingErrorMessage(next));}finally{setBusy('');}}
+ async function cleanup(period:AccountingPeriod){if(busy)return;setBusy(period.id);setError('');try{const result=await cleanupOperationalHistory(period.id);show(`Teknik geçmiş temizlendi. Bildirim ${result.notificationsDeleted}, idempotency ${result.idempotencyDeleted}, outbox ${result.outboxDeleted}, eski hata günü ${result.errorDaysDeleted}. Finans snapshot'ı korundu.`);await load();}catch(next){setError(accountingErrorMessage(next));}finally{setBusy('');}}
+ function exportCsv(){if(!report)return;const t=report.totals;const rows:Array<Array<string|number>>=[['Golden Oremar Muhasebe Raporu',`${report.from} / ${report.to}`],['Para Birimi',report.currency],['Sipariş',t.order_count],['Brüt Satış',major(t.gross_sales_minor)],['İade',major(t.refund_minor)],['Net Satış',major(t.net_sales_minor)],['Platform Komisyonu',major(t.commission_minor)],['Platform Gideri',major(t.expense_minor)],['Platform Kârı',major(t.platform_profit_minor)],['Satıcı Net Hakedişi',major(t.estimated_payout_minor)],['Ödenen Hakediş',major(t.paid_payout_minor)],['Bekleyen Hakediş',major(t.pending_payout_minor)],['Tahsilat',major(t.captured_payment_minor)],['Nakit Çıkışı',major(t.cash_out_minor)],['Net Nakit Hareketi',major(t.cash_delta_minor)],['Mutabakat Farkı',major(t.reconciliation_delta_minor)],[],['Gider Tarihi','Kategori','Açıklama','Tutar','Durum','Referans'],...expenses.map(e=>[e.spentOn,CATEGORY_LABELS[e.category],e.description,major(e.amountMinor),e.status,e.externalReference||'']),[],['Satıcı','Sipariş','Brüt','Komisyon','Net Hakediş'],...report.vendor_income.map(v=>[v.vendor_name,v.order_count,major(v.gross_sales_minor),major(v.commission_minor),major(v.estimated_payout_minor)])];const blob=new Blob([`\uFEFF${rows.map(r=>r.map(csvCell).join(';')).join('\n')}`],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`golden-oremar-muhasebe-${report.currency}-${report.from}-${report.to}.csv`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
+ function exportJson(){if(!report)return;const blob=new Blob([JSON.stringify({report,expenses},null,2)],{type:'application/json'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`golden-oremar-mutabakat-${report.currency}-${report.from}-${report.to}.json`;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);}
+ const t=report?.totals;
+ return<div className="space-y-6 print:bg-white print:text-black">
+  <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between"><div><h2 className="text-2xl font-bold">Muhasebe ve Finans Kontrol Merkezi</h2><p className="mt-1 max-w-4xl text-sm text-gray-500">Binlerce siparişte komisyon satış anındaki snapshot ile hesaplanır. Tahsilat, iade, satıcı hakedişi, ödenen hakediş, platform gideri, platform kârı ve net nakit hareketi ayrı izlenir.</p></div><div className="flex flex-wrap gap-2 print:hidden"><button type="button" onClick={()=>void load()} disabled={loading} className="min-h-11 rounded-xl border px-4"><RefreshCw aria-hidden="true" className={`mr-1 inline h-4 w-4 ${loading?'animate-spin':''}`}/>Yenile</button>{isSuperAdmin?<button type="button" onClick={()=>setExpenseOpen(true)} className="min-h-11 rounded-xl border px-4 font-bold"><Plus aria-hidden="true" className="mr-1 inline h-4 w-4"/>Gider ekle</button>:null}<button type="button" onClick={exportCsv} disabled={!report} className="min-h-11 rounded-xl bg-brand-green px-4 font-bold text-brand-on-green disabled:opacity-40"><Download aria-hidden="true" className="mr-1 inline h-4 w-4"/>CSV</button><button type="button" onClick={exportJson} disabled={!report} className="min-h-11 rounded-xl border px-4"><FileDown aria-hidden="true" className="mr-1 inline h-4 w-4"/>JSON</button><button type="button" onClick={()=>window.print()} disabled={!report} className="min-h-11 rounded-xl border px-4"><Printer aria-hidden="true" className="mr-1 inline h-4 w-4"/>Yazdır / PDF</button></div></header>
+  <section className="grid gap-3 rounded-2xl border bg-white p-4 dark:bg-gray-800 md:grid-cols-2 xl:grid-cols-5"><label><span className="mb-1 block text-xs font-semibold">Rapor aralığı</span><select value={dateRange} onChange={e=>setDateRange(e.target.value as RangeKey)} className="min-h-11 w-full rounded-xl border px-3"><option value="7days">Son 7 gün</option><option value="30days">Son 30 gün</option><option value="thisMonth">Bu ay</option><option value="lastMonth">Geçen ay</option><option value="custom">Özel tarih</option></select></label>{dateRange==='custom'?<><label><span className="mb-1 block text-xs font-semibold">Başlangıç</span><input type="date" value={customFrom} max={customTo} onChange={e=>setCustomFrom(e.target.value)} className="min-h-11 w-full rounded-xl border px-3"/></label><label><span className="mb-1 block text-xs font-semibold">Bitiş</span><input type="date" value={customTo} min={customFrom} max={today} onChange={e=>setCustomTo(e.target.value)} className="min-h-11 w-full rounded-xl border px-3"/></label></>:<><Info label="Başlangıç" value={range.from}/><Info label="Bitiş" value={range.to}/></>}<label><span className="mb-1 block text-xs font-semibold">Para birimi</span><select value={currency} onChange={e=>setCurrency(e.target.value)} className="min-h-11 w-full rounded-xl border px-3">{[...new Set([currency,...(report?.available_currencies||[]),'TRY','EUR','CHF','USD'])].map(code=><option key={code}>{code}</option>)}</select></label></section>
+  {error?<div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">{error}</div>:null}{toast?<div role="status" className="rounded-xl bg-green-50 p-4 text-green-800">{toast}</div>:null}
+  {loading?<div role="status" className="flex min-h-36 items-center justify-center gap-2 rounded-2xl border"><Loader2 aria-hidden="true" className="h-5 w-5 animate-spin"/>Muhasebe hesaplanıyor...</div>:report&&t?<>
+   <section className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6"><Money label="Brüt satış" value={money(t.gross_sales_minor,report.currency)}/><Money label="İade" value={money(t.refund_minor,report.currency)}/><Money label="Net satış" value={money(t.net_sales_minor,report.currency)}/><Money label="Platform komisyonu" value={money(t.commission_minor,report.currency)}/><Money label="Platform gideri" value={money(t.expense_minor,report.currency)}/><Money label="Platform kârı" value={money(t.platform_profit_minor,report.currency)} alert={t.platform_profit_minor<0}/><Money label="Satıcı net hakedişi" value={money(t.estimated_payout_minor,report.currency)}/><Money label="Ödenen hakediş" value={money(t.paid_payout_minor,report.currency)}/><Money label="Bekleyen hakediş" value={money(t.pending_payout_minor,report.currency)}/><Money label="Tahsilat" value={money(t.captured_payment_minor,report.currency)}/><Money label="Nakit çıkışı" value={money(t.cash_out_minor,report.currency)}/><Money label="Net nakit hareketi" value={money(t.cash_delta_minor,report.currency)} alert={t.cash_delta_minor<0}/><Money label="Mutabakat farkı" value={money(t.reconciliation_delta_minor,report.currency)} alert={t.reconciliation_delta_minor!==0}/><Money label="Sipariş" value={t.order_count.toLocaleString('tr-TR')}/></section>
+   <section className={`rounded-2xl border p-4 ${t.reconciliation_delta_minor===0?'border-green-200 bg-green-50':'border-red-200 bg-red-50'}`}><ShieldCheck aria-hidden="true" className="mr-2 inline h-5 w-5"/><strong>Mutabakat:</strong> {t.reconciliation_delta_minor===0?'Tahsilat ve brüt satış eşleşiyor.':`Fark ${money(t.reconciliation_delta_minor,report.currency)}. Dönem kapanmadan ödeme kayıtlarını inceleyin.`}</section>
+   <section className="rounded-2xl border bg-white dark:bg-gray-800"><div className="border-b p-4"><h3 className="font-bold">Platform giderleri</h3><p className="mt-1 text-xs text-gray-500">Kâr hesabı = platform komisyonu - aktif platform giderleri.</p></div><div className="divide-y">{expenses.map(e=><article key={e.id} className="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between"><div><div className="flex flex-wrap gap-2"><strong>{CATEGORY_LABELS[e.category]}</strong><span className={`rounded-full px-2 py-0.5 text-xs ${e.status==='posted'?'bg-green-100 text-green-800':'bg-gray-200 text-gray-700'}`}>{e.status==='posted'?'Aktif':'İptal'}</span></div><p className="mt-1 text-sm">{e.description}</p><p className="mt-1 text-xs text-gray-500">{e.spentOn}{e.externalReference?` · ${e.externalReference}`:''}</p></div><div className="flex items-center gap-3"><strong>{money(e.amountMinor,e.currency)}</strong>{isSuperAdmin&&e.status==='posted'?<button type="button" onClick={()=>{setVoidTarget(e);setVoidReason('');}} className="min-h-11 rounded-xl border border-red-200 px-3 text-sm font-bold text-red-700">İptal et</button>:null}</div></article>)}{!expenses.length?<div className="p-6 text-center text-gray-500">Bu aralıkta kayıtlı platform gideri yok.</div>:null}</div></section>
+   <section className="overflow-hidden rounded-2xl border bg-white dark:bg-gray-800"><div className="border-b p-4"><h3 className="font-bold">Satıcı bazlı muhasebe</h3><p className="mt-1 text-xs text-gray-500">Komisyon geçmiş satış anındaki oran snapshot'ından gelir. Satıcı komisyon yüzdesini kendi panelinde görmez.</p></div><div className="hidden overflow-x-auto md:block"><table className="w-full text-left text-sm"><thead className="bg-gray-50 dark:bg-gray-900"><tr><th className="px-4 py-3">Satıcı</th><th className="px-4 py-3">Sipariş</th><th className="px-4 py-3">Brüt</th><th className="px-4 py-3">Komisyon</th><th className="px-4 py-3">Net hakediş</th></tr></thead><tbody>{report.vendor_income.map(v=><tr key={v.producer_id} className="border-t"><td className="px-4 py-3 font-semibold">{v.vendor_name}</td><td className="px-4 py-3">{v.order_count}</td><td className="px-4 py-3">{money(v.gross_sales_minor,report.currency)}</td><td className="px-4 py-3">{money(v.commission_minor,report.currency)}</td><td className="px-4 py-3 font-bold">{money(v.estimated_payout_minor,report.currency)}</td></tr>)}</tbody></table></div><div className="divide-y md:hidden">{report.vendor_income.map(v=><article key={v.producer_id} className="p-4"><strong>{v.vendor_name}</strong><p className="mt-2 text-sm">Brüt {money(v.gross_sales_minor,report.currency)} · Komisyon {money(v.commission_minor,report.currency)} · Net {money(v.estimated_payout_minor,report.currency)}</p></article>)}</div></section>
+  </>:null}
+  {isSuperAdmin?<section className="space-y-4 print:hidden"><div className="rounded-2xl border border-amber-200 bg-amber-50 p-4"><h3 className="font-bold">Muhasebe dönemini kapat</h3><p className="mt-1 text-sm">Açık sipariş ve açık iade yoksa dönem snapshot'ı kilitlenir. Tamamlanmış siparişler günlük operasyon ekranından çıkar.</p><div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px]"><input value={closeConfirm} onChange={e=>setCloseConfirm(e.target.value)} placeholder="DÖNEMİ KAPAT yazın" className="min-h-11 rounded-xl border px-3"/><button type="button" disabled={!report||closeConfirm!=='DÖNEMİ KAPAT'||Boolean(busy)} onClick={()=>void closePeriod()} className="min-h-11 rounded-xl bg-amber-700 px-4 font-bold text-white disabled:opacity-40"><Archive aria-hidden="true" className="mr-1 inline h-4 w-4"/>{busy==='close'?'Kapatılıyor...':'Dönemi kapat'}</button></div></div><div><h3 className="mb-3 text-lg font-bold">Kapatılmış dönemler</h3><div className="space-y-3">{periods.map(period=><article key={period.id} className="rounded-2xl border bg-white p-4 dark:bg-gray-800"><div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><strong>{period.from} - {period.to} · {period.currency}</strong><p className="mt-1 text-sm text-gray-500">Net satış {money(period.snapshot.totals.net_sales_minor,period.currency)} · Kâr {money(period.snapshot.totals.platform_profit_minor,period.currency)} · Nakit hareketi {money(period.snapshot.totals.cash_delta_minor,period.currency)}</p></div><button type="button" disabled={period.status==='archived'||Boolean(busy)} onClick={()=>void cleanup(period)} className="min-h-11 rounded-xl border border-red-200 px-4 font-bold text-red-700 disabled:opacity-35"><Trash2 aria-hidden="true" className="mr-1 inline h-4 w-4"/>{busy===period.id?'Temizleniyor...':'Teknik geçmişi temizle'}</button></div></article>)}{!periods.length?<div className="rounded-xl border p-6 text-center text-gray-500">Henüz kapatılmış dönem yok.</div>:null}</div></div></section>:null}
+  {expenseOpen?<div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/70 sm:items-center sm:p-4"><div ref={expenseDialog} role="dialog" aria-modal="true" aria-labelledby="expense-title" tabIndex={-1} className="w-full max-w-xl rounded-t-3xl bg-white p-5 outline-none dark:bg-gray-900 sm:rounded-3xl"><div className="flex justify-between"><h3 id="expense-title" className="text-xl font-bold">Platform gideri ekle</h3><button type="button" onClick={()=>setExpenseOpen(false)} className="min-h-11 min-w-11 rounded-xl" aria-label="Kapat"><X aria-hidden="true" className="mx-auto h-5 w-5"/></button></div><form onSubmit={saveExpense} className="mt-4 space-y-3"><div className="grid gap-3 sm:grid-cols-2"><Field label="Tarih"><input type="date" required max={today} value={expenseDate} onChange={e=>setExpenseDate(e.target.value)} className="input"/></Field><Field label="Kategori"><select value={expenseCategory} onChange={e=>setExpenseCategory(e.target.value as ExpenseCategory)} className="input">{Object.entries(CATEGORY_LABELS).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></Field><Field label={`Tutar (${currency})`}><input type="number" required min="0.01" step="0.01" value={expenseAmount} onChange={e=>setExpenseAmount(e.target.value)} className="input"/></Field><Field label="Referans, isteğe bağlı"><input maxLength={300} value={expenseReference} onChange={e=>setExpenseReference(e.target.value)} className="input" placeholder="Fatura no / işlem no"/></Field></div><Field label="Açıklama"><textarea required minLength={3} maxLength={1000} rows={4} value={expenseDescription} onChange={e=>setExpenseDescription(e.target.value)} className="input"/></Field><button disabled={busy==='expense'} className="min-h-11 w-full rounded-xl bg-brand-green font-bold text-brand-on-green">{busy==='expense'?'Kaydediliyor...':'Gideri kaydet'}</button></form></div></div>:null}
+  {voidTarget?<div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/70 sm:items-center sm:p-4"><div ref={voidDialog} role="alertdialog" aria-modal="true" aria-labelledby="void-expense-title" tabIndex={-1} className="w-full max-w-lg rounded-t-3xl bg-white p-5 outline-none dark:bg-gray-900 sm:rounded-3xl"><div className="flex justify-between"><div><h3 id="void-expense-title" className="text-lg font-bold">Gider kaydını iptal et</h3><p className="mt-1 text-sm text-gray-500">{CATEGORY_LABELS[voidTarget.category]} · {money(voidTarget.amountMinor,voidTarget.currency)}</p></div><button type="button" onClick={()=>setVoidTarget(null)} className="min-h-11 min-w-11 rounded-xl" aria-label="Kapat"><X aria-hidden="true" className="mx-auto h-5 w-5"/></button></div><textarea value={voidReason} onChange={e=>setVoidReason(e.target.value)} minLength={8} maxLength={1000} rows={4} className="mt-4 w-full rounded-xl border p-3" placeholder="İptal gerekçesi, en az 8 karakter"/><button type="button" disabled={voidReason.trim().length<8||Boolean(busy)} onClick={()=>void voidExpense()} className="mt-3 min-h-11 w-full rounded-xl bg-red-700 font-bold text-white disabled:opacity-40">Gideri iptal et</button></div></div>:null}
+ </div>;
 }
+function Money({label,value,alert=false}:{label:string;value:string;alert?:boolean}){return<div className={`rounded-2xl border bg-white p-4 dark:bg-gray-800 ${alert?'border-red-300':''}`}><div className="text-xs text-gray-500">{label}</div><div className={`mt-1 text-xl font-bold ${alert?'text-red-700':''}`}>{value}</div></div>;}
+function Info({label,value}:{label:string;value:string}){return<div className="rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-900"><div className="text-xs text-gray-500">{label}</div><strong>{value}</strong></div>;}
+function Field({label,children}:{label:string;children:React.ReactNode}){return<label className="block"><span className="mb-1 block text-sm font-semibold">{label}</span>{children}</label>;}

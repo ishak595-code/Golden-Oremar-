@@ -1,79 +1,108 @@
 import React,{useEffect,useState}from'react';
+import{BadgeCheck,ShieldAlert}from'lucide-react';
 import{getMyProducerApplicationDraft,getMyProducerDashboard,updateProducerInventory,withdrawProducerProductChange}from'./api';
+import type{AccountProducerSummary}from'./types';
 import{EmptyState,ErrorState,LoadingState,Money,Panel}from'./ui';
-import ProducerOrdersPanel from'../producer-orders/ProducerOrdersPanel';
-import ProducerTraceabilityPanel from'../producer-traceability/ProducerTraceabilityPanel';
-import ProducerFinancePanel from'../producer-finance/ProducerFinancePanel';
+import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 
-export default function SellerPanel({
- producer,onOpenApplication,onOpenProductManager
-}:{producer:any|null;onOpenApplication?:()=>void;onOpenProductManager?:()=>void}){
- const[dash,setDash]=useState<any>(null);const[draft,setDraft]=useState<any>(null);const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[subview,setSubview]=useState<'dashboard'|'orders'|'traceability'|'finance'>('dashboard');
+const MessagesPanel=React.lazy(()=>import('./MessagesPanel'));
+const ProducerOrdersPanel=React.lazy(()=>import('../producer-orders/ProducerOrdersPanel'));
+const ProducerTraceabilityPanel=React.lazy(()=>import('../producer-traceability/ProducerTraceabilityPanel'));
+const ProducerFinancePanel=React.lazy(()=>import('../producer-finance/ProducerFinancePanel'));
+const ProducerEventManager=React.lazy(()=>import('../producer-events/ProducerEventManager'));
+const ProducerProductHealthManager=React.lazy(()=>import('../producer-products/ProducerProductHealthManager'));
+
+const applicationStatus:Record<string,string>={draft:'Taslak',submitted:'İncelemede',under_review:'İncelemede',needs_information:'Ek bilgi gerekiyor',approved:'Onaylandı',rejected:'Reddedildi',withdrawn:'Geri çekildi'};
+const changeStatus:Record<string,string>={pending:'Onay bekliyor',approved:'Onaylandı',rejected:'Reddedildi',withdrawn:'Geri çekildi'};
+const producerStatusLabel:Record<AccountProducerSummary['status'],string>={pending:'Doğrulama bekliyor',active:'Aktif',suspended:'Askıya alındı',rejected:'Reddedildi',closed:'Kapalı'};
+
+export type SellerSubview='dashboard'|'orders'|'messages'|'traceability'|'finance'|'events'|'health';
+const SELLER_SUBVIEWS=new Set<SellerSubview>(['dashboard','orders','messages','traceability','finance','events','health']);
+type Props={producer:AccountProducerSummary|null;requestedSubview?:SellerSubview|'product-health'|string;onOpenApplication?:()=>void;onOpenProductManager?:()=>void;};
+
+function normalizeSellerSubview(value:unknown):SellerSubview{
+ const normalized=typeof value==='string'?value.trim():'';
+ if(normalized==='product-health')return'health';
+ return SELLER_SUBVIEWS.has(normalized as SellerSubview)?normalized as SellerSubview:'dashboard';
+}
+function count(value:unknown){return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;}
+function countLabel(value:unknown){const parsed=count(value);return parsed===null?'Doğrulanamadı':parsed.toLocaleString('tr-TR');}
+function messageOf(error:unknown,fallback:string){const message=error instanceof Error?error.message:String((error as any)?.message||'');if(message.includes('producer_portal_separate_from_admin'))return'Super Admin hesabı satıcı operasyon panelini kullanamaz. Yönetim işlemlerini Super Admin panelinden yürütün.';return message.trim()||fallback;}
+function safeId(value:unknown){return typeof value==='string'?value.trim():'';}
+function formatDate(value:unknown){if(typeof value!=='string'||Number.isNaN(Date.parse(value)))return'Belirlenmedi';return new Date(value).toLocaleDateString('tr-TR',{dateStyle:'medium'});}
+
+export default function SellerPanel({producer,requestedSubview='dashboard',onOpenApplication,onOpenProductManager}:Props){
+ const[dash,setDash]=useState<any>(null);
+ const[draft,setDraft]=useState<any>(null);
+ const[loading,setLoading]=useState(true);
+ const[error,setError]=useState('');
+ const[adminBlocked,setAdminBlocked]=useState(false);
+ const[subview,setSubview]=useState<SellerSubview>(()=>normalizeSellerSubview(requestedSubview));
+
  async function load(){
   try{
-   setLoading(true);setError('');
-   if(producer){setDash(await getMyProducerDashboard());setDraft(null);}
-   else{setDraft(await getMyProducerApplicationDraft());setDash(null);}
-  }catch(e:any){setError(e?.message||'Satıcı bilgileri yüklenemedi.');}
+   setLoading(true);setError('');setAdminBlocked(false);
+   if(producer){const next=await getMyProducerDashboard();setDash(next&&typeof next==='object'&&!Array.isArray(next)?next:null);setDraft(null);}
+   else{const next=await getMyProducerApplicationDraft();setDraft(next);setDash(null);}
+  }catch(nextError){const message=messageOf(nextError,'Satıcı bilgileri yüklenemedi.');if(message.includes('Super Admin hesabı'))setAdminBlocked(true);setError(message);}
   finally{setLoading(false);}
  }
- useEffect(()=>{setSubview('dashboard');void load();},[producer?.id]);
- if(loading&&subview==='dashboard')return<LoadingState label="Satıcı hesabı yükleniyor"/>;
- if(error&&subview==='dashboard')return<ErrorState message={error} onRetry={load}/>;
+ useEffect(()=>{void load();},[producer?.id]);
+ useEffect(()=>{setSubview(normalizeSellerSubview(requestedSubview));},[producer?.id,requestedSubview]);
 
- if(!producer){
-   return<Panel title="Satıcı Ol" description="Golden Oremar satıcı başvuruları doğrulama ve belge incelemesinden geçer.">
-    {draft?<div className="rounded-xl border p-4">
-      <div className="font-bold">Başvuru durumu: {draft.status}</div>
-      <p className="mt-2 text-sm text-gray-500">{draft.public_name||draft.brand_name||'Satıcı başvurunuz'}</p>
-      {draft.rejection_reason?<p className="mt-2 text-sm text-red-700">{draft.rejection_reason}</p>:null}
-      <button onClick={onOpenApplication} className="mt-4 min-h-11 w-full rounded-xl bg-brand-green font-bold text-white">
-        {draft.status==='draft'||draft.status==='needs_information'?'Başvuruya devam et':'Başvuruyu görüntüle'}
-      </button>
-    </div>:<EmptyState title="Henüz satıcı başvurunuz yok" body="Köy/üretim yeri, ürünler, üretim yöntemi ve gerekli belgelerle başvuru yapabilirsiniz."
-      action={<button onClick={onOpenApplication} className="min-h-11 rounded-xl bg-brand-green px-4 font-bold text-white">Satıcı başvurusunu başlat</button>}/>}
-   </Panel>;
- }
+ if(loading)return<LoadingState label={subview==='dashboard'?'Satıcı hesabı yükleniyor':'Satıcı operasyonu doğrulanıyor'}/>;
+ if(adminBlocked)return<div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100"><div className="flex items-start gap-3"><ShieldAlert aria-hidden="true" className="mt-0.5 h-6 w-6 shrink-0"/><div><h2 data-account-panel-heading tabIndex={-1} className="text-lg font-bold outline-none">Satıcı ve Super Admin panelleri ayrıdır</h2><p className="mt-2 text-sm">{error}</p><p className="mt-2 text-xs">Satıcı işlemleri üretici hesabında, platform sahibi işlemleri Super Admin panelinde yürütülür.</p></div></div></div>;
+ if(error&&!dash&&!draft)return<ErrorState message={error} onRetry={load}/>;
+ if(!producer){const status=typeof draft?.status==='string'?draft.status:'';return<Panel title="Satıcı Ol" description="Golden Oremar satıcı başvuruları üretim, köy/menşe ve belge doğrulamasından geçer.">{draft?<div className="rounded-xl border p-4"><div className="font-bold">Başvuru durumu: {applicationStatus[status]||'Doğrulanamadı'}</div>{draft?.rejection_reason?<p role="alert" className="mt-2 text-sm text-red-700">{String(draft.rejection_reason)}</p>:null}<button type="button" disabled={!onOpenApplication} onClick={onOpenApplication} className="mt-4 min-h-11 w-full rounded-xl bg-brand-green font-bold text-brand-on-green disabled:opacity-50">{status==='draft'||status==='needs_information'?'Başvuruya devam et':'Başvuruyu görüntüle'}</button></div>:<EmptyState title="Henüz satıcı başvurunuz yok" body="Gerçek üretim faaliyetiniz, köyünüz, ürün kapsamınız ve belgelerinizle başvuru yapabilirsiniz." action={<button type="button" disabled={!onOpenApplication} onClick={onOpenApplication} className="min-h-11 rounded-xl bg-brand-green px-4 font-bold text-brand-on-green disabled:opacity-50">Satıcı başvurusunu başlat</button>}/>}</Panel>;}
 
- if(subview==='orders')return<ProducerOrdersPanel onBack={()=>setSubview('dashboard')} onChanged={load}/>;
- if(subview==='traceability')return<ProducerTraceabilityPanel onBack={()=>setSubview('dashboard')} onChanged={load}/>;
- if(subview==='finance')return<ProducerFinancePanel onBack={()=>setSubview('dashboard')}/>;
+ const summary=dash?.summary&&typeof dash.summary==='object'?dash.summary:{};
+ const inventory=Array.isArray(dash?.inventory)?dash.inventory:null;
+ const changeRequests=Array.isArray(dash?.changeRequests)?dash.changeRequests:null;
+ const balances=Array.isArray(dash?.finance?.balances)?dash.finance.balances:null;
+ const profile=dash?.profile&&typeof dash.profile==='object'?dash.profile:{};
+ const dashboardStatus=typeof profile.status==='string'&&Object.prototype.hasOwnProperty.call(producerStatusLabel,profile.status)?profile.status as AccountProducerSummary['status']:'';
+ const statusMismatch=dashboardStatus!==producer.status;
+ const dashboardVerified=profile.is_verified===true;
+ const verificationMismatch=dashboardVerified!==producer.is_verified;
+ const dashboardOriginVerified=profile.origin_verified===true;
+ const originVerificationMismatch=dashboardOriginVerified!==producer.origin_verified;
+ const status=statusMismatch?producer.status:dashboardStatus;
+ const verified=dashboardVerified===true&&producer.is_verified===true&&!verificationMismatch;
+ const originVerified=dashboardOriginVerified===true&&producer.origin_verified===true&&!originVerificationMismatch;
+ const badgeActive=profile.trust_badge_active===true;
+ const badgeReason=typeof profile.trust_badge_reason==='string'?profile.trust_badge_reason:'';
+ const trustMismatch=statusMismatch||verificationMismatch||originVerificationMismatch;
+ const operational=!statusMismatch&&dashboardStatus==='active'&&dashboardVerified===true&&!verificationMismatch&&producer.status==='active'&&producer.is_verified===true;
+ const productOperational=operational&&originVerified&&badgeActive;
+ const producerId=safeId(profile.id)||safeId(producer.id);
+ const productionLocation=typeof profile.production_location==='string'?profile.production_location.trim():'';
+ const eventOperational=productOperational&&Boolean(producerId)&&Boolean(productionLocation);
 
- const summary=dash?.summary||{};
+ if(subview!=='dashboard')return<React.Suspense fallback={<LoadingState label="Satıcı operasyonu yükleniyor"/>}><SellerSubviewContent subview={subview} operational={operational} eventOperational={eventOperational} producerId={producerId} productionLocation={productionLocation} onBack={()=>setSubview('dashboard')} onChanged={load}/></React.Suspense>;
+
  return<div className="space-y-5">
-  <Panel title={dash?.profile?.display_name||'Satıcı Paneli'} description="Sipariş, ürün, stok, izlenebilirlik ve finans operasyonlarınızı yönetin.">
-   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{summary.publishedProducts||0}</div><div className="text-xs">Yayındaki ürün</div></div>
-    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{summary.reviewProducts||0}</div><div className="text-xs">İncelemede</div></div>
-    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{summary.pendingChanges||0}</div><div className="text-xs">Bekleyen değişiklik</div></div>
-    <div className="rounded-xl bg-gray-50 p-3 dark:bg-gray-800"><div className="text-xl font-bold">{summary.lowStockVariants||0}</div><div className="text-xs">Düşük stok</div></div>
-   </div>
-   <div className="mt-4 text-sm font-semibold text-brand-green">{dash?.profile?.is_verified?'Üretici doğrulandı':''}{dash?.profile?.production_location?' • '+dash.profile.production_location:''}</div>
-  </Panel>
-
-  <section aria-labelledby="seller-operations-title"><h2 id="seller-operations-title" className="mb-3 text-lg font-bold">Operasyonlar</h2><div className="grid gap-3 sm:grid-cols-2">
-   <button onClick={()=>setSubview('orders')} className="min-h-20 rounded-2xl border border-brand-green/30 bg-brand-green/5 p-4 text-left"><div className="font-bold">Siparişler</div><div className="mt-1 text-sm text-gray-500">Size ait ödenmiş kalemleri hazırlayın ve gerçek takip numarasıyla kargoya verin.</div><span className="mt-2 inline-block font-semibold text-brand-green">Sipariş operasyonunu aç</span></button>
-   <button onClick={onOpenProductManager} className="min-h-20 rounded-2xl border p-4 text-left"><div className="font-bold">Ürün Yönetimi</div><div className="mt-1 text-sm text-gray-500">Yeni ürün, varyant ve yayın değişikliklerini yönetin.</div><span className="mt-2 inline-block font-semibold text-brand-green">Ürün yönetimini aç</span></button>
-   <button onClick={()=>setSubview('traceability')} className="min-h-20 rounded-2xl border p-4 text-left"><div className="font-bold">Lot & İzlenebilirlik</div><div className="mt-1 text-sm text-gray-500">Hasat, üretim, köy, parti olayları ve yayınlanan trace kodları.</div><span className="mt-2 inline-block font-semibold text-brand-green">Lot yönetimini aç</span></button>
-   <button onClick={()=>setSubview('finance')} className="min-h-20 rounded-2xl border p-4 text-left"><div className="font-bold">Finans</div><div className="mt-1 text-sm text-gray-500">Gerçek bakiye ve payout geçmişini görüntüleyin.</div><span className="mt-2 inline-block font-semibold text-brand-green">Finans detaylarını aç</span></button>
-  </div></section>
-
-  <Panel title="Stok Yönetimi" description="Rezervasyondaki müşteri stoğu korunur; güncelleme sürüm kontrollüdür.">
-   {!dash?.inventory?.length?<EmptyState title="Stok kaydı yok" body="Ürün varyantları oluştuğunda burada görünecek."/>:<div className="space-y-3">{dash.inventory.map((i:any)=><InventoryRow key={i.variantId} item={i} onSaved={load}/>)}</div>}
-  </Panel>
-
-  <Panel title="Bekleyen Ürün Değişiklikleri">
-   {!dash?.changeRequests?.length?<EmptyState title="Bekleyen değişiklik yok" body="Yayındaki bir üründe değişiklik yaptığınızda admin onayı için burada görünür."/>:<div className="space-y-3">{dash.changeRequests.map((r:any)=><div key={r.id} className="rounded-xl border p-4"><div className="font-bold">{r.productName}</div><div className="text-sm text-gray-500">Durum: {r.status}</div>{r.reviewReason?<p className="mt-2 text-sm text-red-700">{r.reviewReason}</p>:null}{r.status==='pending'?<button onClick={async()=>{await withdrawProducerProductChange(r.id);await load();}} className="mt-3 min-h-11 rounded-lg border px-3 font-semibold">Talebi geri çek</button>:null}</div>)}</div>}
-  </Panel>
-
-  <Panel title="Lot Özeti"><div className="grid grid-cols-3 gap-2"><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{summary.draftBatches||0}</div><div className="text-xs">Taslak</div></div><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{summary.reviewBatches||0}</div><div className="text-xs">İncelemede</div></div><div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="font-bold">{summary.releasedBatches||0}</div><div className="text-xs">Yayınlandı</div></div></div></Panel>
-
-  <Panel title="Finans Özeti">{!dash?.finance?.balances?.length?<p className="text-sm text-gray-500">Henüz finans hareketi yok.</p>:<div className="space-y-2">{dash.finance.balances.map((b:any,index:number)=><div key={index} className="rounded-xl border p-3"><div className="text-sm text-gray-500">{b.currency||'TRY'}</div><div className="font-bold"><Money minor={b.availableMinor||b.availableToPayoutMinor||0} currency={b.currency||'TRY'}/></div></div>)}</div>}</Panel>
+  {error?<div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>:null}
+  {trustMismatch?<div role="alert" className="rounded-xl border border-red-300 bg-red-50 p-3 text-sm font-semibold text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100">Satıcı hesabının canlı durum kaynakları birbiriyle uyuşmuyor. Sipariş, stok, ürün ve izlenebilirlik işlemleri güvenlik nedeniyle kilitlendi. Sayfayı yenileyin; durum devam ederse yönetici incelemesi gerekir.</div>:null}
+  <section className={`rounded-2xl border p-4 ${badgeActive?'border-emerald-200 bg-emerald-50 dark:border-emerald-900/60 dark:bg-emerald-950/30':'border-amber-200 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/30'}`} aria-labelledby="seller-trust-title"><div className="flex flex-wrap items-center gap-2"><h2 id="seller-trust-title" className="font-bold">Satıcı güven durumu</h2><span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-bold">{producerStatusLabel[status as AccountProducerSummary['status']]||status}</span>{badgeActive?<span className="inline-flex items-center gap-1 rounded-full bg-sky-600 px-3 py-1 text-xs font-bold text-white shadow-sm"><BadgeCheck aria-hidden="true" className="h-4 w-4"/>Golden Oremar Doğrulanmış Üretici</span>:null}</div><div className="mt-3 grid gap-2 text-sm sm:grid-cols-3"><Trust ok={verified} label="Kimlik doğrulaması"/><Trust ok={originVerified} label="Menşe doğrulaması"/><Trust ok={badgeActive} label="Doğrulama rozeti"/></div>{badgeActive?<p className="mt-3 text-xs">Rozet yeniden inceleme tarihi: {formatDate(profile.trust_badge_review_due_at)}</p>:<p className="mt-3 text-sm">Rozet aktif değil. {badgeReason?`Son gerekçe: ${badgeReason}`:'Gerekli güven kontrolleri tamamlanmadan yeni ürün veya köy etkinliği incelemeye gönderilemez.'}</p>}</section>
+  <Panel title={profile.display_name||producer.display_name||'Satıcı Paneli'} description="Sipariş, müşteri soruları, ürün, stok, köy etkinlikleri, izlenebilirlik ve finans operasyonlarınızı yönetin."><div className="grid grid-cols-2 gap-3 sm:grid-cols-5"><Summary value={summary.publishedProducts} label="Yayında"/><Summary value={summary.reviewProducts} label="Onay bekliyor"/><Summary value={summary.rejectedProducts} label="Düzeltme gerekiyor"/><Summary value={summary.pendingChanges} label="Değişiklik onayı"/><Summary value={summary.lowStockVariants} label="Düşük stok"/></div></Panel>
+  <section><h2 className="mb-3 text-lg font-bold">Operasyonlar</h2><div className="grid gap-3 sm:grid-cols-2"><Operation title="Siparişler" body="Size ait sipariş kalemlerini hazırlayın ve kargo süreçlerini yönetin." onClick={()=>setSubview('orders')} disabled={!operational}/><Operation title="Müşteri Soruları" body="Ürün ve sipariş sorularını güvenli eklerle yanıtlayın." onClick={()=>setSubview('messages')}/><Operation title="Ürün Yönetimi" body={productOperational?'Yeni ürün ekleyin, reddedilen ürünleri düzeltip yeniden gönderin.':'Yeni ürün gönderimi için aktif hesap, menşe doğrulaması ve aktif Doğrulanmış Üretici rozeti gerekir.'} onClick={onOpenProductManager} disabled={!productOperational||!onOpenProductManager}/><Operation title="İçerik, Besin ve Alerjen" body="Ürün içindekiler, besin değerleri, alerjen, saklama ve kullanım bilgisini Super Admin incelemesine gönderin." onClick={()=>setSubview('health')} disabled={!operational}/><Operation title="Köy Etkinlikleri" body={eventOperational?'Köyünüzdeki festival, hasat günü, şenlik veya ücretli etkinliği Super Admin incelemesine gönderin.':'Etkinlik göndermek için aktif hesap, menşe doğrulaması ve aktif Doğrulanmış Üretici rozeti gerekir.'} onClick={()=>setSubview('events')} disabled={!eventOperational}/><Operation title="Lot ve İzlenebilirlik" body="Hasat, üretim, paketleme ve parti/tavsiye edilen tüketim tarihlerini yönetin." onClick={()=>setSubview('traceability')} disabled={!operational}/><Operation title="Finans" body="Doğrulanmış bakiye, çekim talepleri ve ödeme geçmişini görüntüleyin." onClick={()=>setSubview('finance')}/></div></section>
+  <Panel title="Stok Yönetimi" description="Rezervasyondaki müşteri stoğu korunur ve sürüm kontrollü güncellenir.">{!operational?<div role="status" className="text-sm text-amber-800">Stok düzenleme aktif, doğrulanmış ve birbiriyle tutarlı satıcı hesabı gerektirir.</div>:inventory===null?<p role="alert" className="text-sm text-red-700">Stok listesi doğrulanamadı.</p>:!inventory.length?<EmptyState title="Stok kaydı yok" body="Ürün varyantları oluştuğunda burada görünür."/>:<div className="space-y-3">{inventory.map((item:any,index:number)=><InventoryRow key={safeId(item?.variantId)||index} item={item} onSaved={load}/>)}</div>}</Panel>
+  <Panel title="Ürün Değişiklik Kararları">{changeRequests===null?<p role="alert" className="text-sm text-red-700">Ürün değişiklik talepleri doğrulanamadı.</p>:!changeRequests.length?<EmptyState title="Değişiklik talebi yok" body="Yayındaki üründe değişiklik gönderdiğinizde burada görünür."/>:<div className="space-y-3">{changeRequests.map((request:any,index:number)=><ChangeRow key={safeId(request?.id)||index} request={request} onChanged={load} onError={setError}/>)}</div>}</Panel>
+  <Panel title="Finans Özeti">{balances===null?<p role="alert" className="text-sm text-red-700">Finans özeti doğrulanamadı.</p>:!balances.length?<p className="text-sm text-gray-500">Henüz doğrulanmış finans bakiyesi yok.</p>:<div className="space-y-2">{balances.map((balance:any,index:number)=><div key={`${balance?.currency||'x'}-${index}`} className="rounded-xl border p-3"><div className="text-sm text-gray-500">{String(balance?.currency||'')}</div><div className="font-bold"><Money minor={Number(balance?.availableMinor??balance?.availableToPayoutMinor)} currency={String(balance?.currency||'')}/></div></div>)}</div>}</Panel>
  </div>;
 }
 
-function InventoryRow({item,onSaved}:{item:any;onSaved:()=>Promise<void>|void}){
- const[available,setAvailable]=useState(Number(item.availableQuantity||0));const[reorder,setReorder]=useState(Number(item.reorderLevel||0));const[busy,setBusy]=useState(false);const[error,setError]=useState('');
- async function save(){try{setBusy(true);setError('');await updateProducerInventory({variantId:item.variantId,availableQuantity:available,reorderLevel:reorder,expectedVersion:Number(item.version)});await onSaved();}catch(e:any){setError(e?.message||'Stok güncellenemedi.');}finally{setBusy(false);}}
- return<div className="rounded-xl border p-4"><div className="font-bold">{item.productName} — {item.variantName}</div><div className="mt-1 text-sm text-gray-500">Satılabilir: {item.sellableQuantity} • Rezerve: {item.reservedQuantity}</div>{error?<div role="alert" className="mt-2 text-sm text-red-700">{error}</div>:null}<div className="mt-3 grid grid-cols-2 gap-3"><label><span className="text-xs font-semibold">Toplam mevcut</span><input type="number" min="0" value={available} onChange={e=>setAvailable(Number(e.target.value))} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3"/></label><label><span className="text-xs font-semibold">Düşük stok eşiği</span><input type="number" min="0" value={reorder} onChange={e=>setReorder(Number(e.target.value))} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3"/></label></div><button onClick={save} disabled={busy} className="mt-3 min-h-11 w-full rounded-lg border font-bold disabled:opacity-50">{busy?'Kaydediliyor…':'Stoğu güncelle'}</button></div>;
+function SellerSubviewContent({subview,operational,eventOperational,producerId,productionLocation,onBack,onChanged}:{subview:SellerSubview;operational:boolean;eventOperational:boolean;producerId:string;productionLocation:string;onBack:()=>void;onChanged:()=>Promise<void>}){
+ if(subview==='orders')return operational?<ProducerOrdersPanel onBack={onBack} onChanged={onChanged}/>:<Blocked title="Sipariş operasyonu kullanılamıyor" onBack={onBack}/>;
+ if(subview==='messages')return<MessagesPanel scope="producer" title="Müşteri Soruları" description="Ürün ve sipariş sorularını, görsel/PDF eklerini ve müşteri yanıtlarını Golden Oremar içinde yönetin." onBack={onBack}/>;
+ if(subview==='traceability')return operational?<ProducerTraceabilityPanel onBack={onBack} onChanged={onChanged}/>:<Blocked title="Lot ve izlenebilirlik kullanılamıyor" onBack={onBack}/>;
+ if(subview==='events')return eventOperational?<ProducerEventManager producerId={producerId} productionLocation={productionLocation} onBack={onBack}/>:<Blocked title="Köy etkinliği gönderimi kullanılamıyor" onBack={onBack}/>;
+ if(subview==='health')return operational?<ProducerProductHealthManager onBack={onBack}/>:<Blocked title="Ürün içerik bilgileri kullanılamıyor" onBack={onBack}/>;
+ return<ProducerFinancePanel onBack={onBack}/>;
 }
+function Trust({ok,label}:{ok:boolean;label:string}){return<div className={`rounded-xl border p-3 ${ok?'border-green-200 bg-green-50':'border-gray-200 bg-white/60'}`}><div className="font-semibold">{label}</div><div className="mt-1 text-xs">{ok?'Aktif ve doğrulandı':'Aktif değil'}</div></div>;}
+function Summary({value,label}:{value:unknown;label:string}){return<div className="rounded-xl bg-gray-50 p-3 text-center dark:bg-gray-800"><div className="text-xl font-bold">{countLabel(value)}</div><div className="text-xs">{label}</div></div>;}
+function Operation({title,body,onClick,disabled=false}:{title:string;body:string;onClick?:()=>void;disabled?:boolean}){return<button type="button" onClick={onClick} disabled={disabled} className="min-h-24 rounded-2xl border p-4 text-left disabled:cursor-not-allowed disabled:opacity-50"><div className="font-bold">{title}</div><div className="mt-1 text-sm text-gray-500">{body}</div><span className="mt-2 inline-block font-semibold text-brand-green">{disabled?'Şu anda kullanılamıyor':'Aç'}</span></button>;}
+function Blocked({title,onBack}:{title:string;onBack:()=>void}){return<div className="rounded-2xl border border-amber-200 bg-amber-50 p-5"><h2 className="font-bold">{title}</h2><button type="button" onClick={onBack} className="mt-4 min-h-11 rounded-xl border px-4 font-semibold">Satıcı paneline dön</button></div>;}
+function ChangeRow({request,onChanged,onError}:{request:any;onChanged:()=>Promise<void>|void;onError:(message:string)=>void}){const[busy,setBusy]=useState(false);const[confirm,setConfirm]=useState(false);const dialogRef=useAccessibleDialog<HTMLDivElement>(confirm,()=>{if(!busy)setConfirm(false);});const id=safeId(request?.id);const status=typeof request?.status==='string'?request.status:'';const productName=typeof request?.productName==='string'?request.productName:'Ürün';async function withdraw(){try{setBusy(true);onError('');await withdrawProducerProductChange(id);setConfirm(false);await onChanged();}catch(error){onError(messageOf(error,'Değişiklik talebi geri çekilemedi.'));}finally{setBusy(false);}}return<div className="rounded-xl border p-4"><div className="font-bold">{productName}</div><div className="mt-1 text-sm text-gray-500">Durum: {changeStatus[status]||status}</div>{request?.reviewReason?<div className={`mt-2 rounded-lg p-2 text-sm ${status==='rejected'?'bg-red-50 text-red-800':'bg-gray-50'}`}><strong>{status==='rejected'?'Ret nedeni':'İnceleme notu'}:</strong> {String(request.reviewReason)}</div>:null}{status==='rejected'?<p className="mt-2 text-xs text-gray-500">Ürün yönetiminden düzeltip yeniden gönderebilirsiniz.</p>:null}{status==='pending'?<button type="button" disabled={busy||!id} onClick={()=>setConfirm(true)} className="mt-3 min-h-11 rounded-xl border px-3 font-semibold">Talebi geri çek</button>:null}{confirm?<div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/60 p-4"><div ref={dialogRef} role="alertdialog" aria-modal="true" tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl outline-none dark:bg-gray-900"><h3 className="text-lg font-bold">Değişiklik talebi geri çekilsin mi?</h3><p className="mt-2 text-sm">{productName} için bekleyen değişiklik talebi geri çekilecek.</p><div className="mt-5 grid grid-cols-2 gap-3"><button type="button" disabled={busy} onClick={()=>setConfirm(false)} className="min-h-11 rounded-xl border font-semibold">Vazgeç</button><button type="button" disabled={busy} onClick={()=>void withdraw()} className="min-h-11 rounded-xl bg-red-700 font-bold text-white">{busy?'Geri çekiliyor…':'Geri çek'}</button></div></div></div>:null}</div>;}
+function InventoryRow({item,onSaved}:{item:any;onSaved:()=>Promise<void>|void}){const[available,setAvailable]=useState(String(item?.availableQuantity??''));const[reorder,setReorder]=useState(String(item?.reorderLevel??''));const[busy,setBusy]=useState(false);const[error,setError]=useState('');useEffect(()=>{setAvailable(String(item?.availableQuantity??''));setReorder(String(item?.reorderLevel??''));},[item?.availableQuantity,item?.reorderLevel,item?.version]);async function save(){const availableValue=Number(available),reorderValue=Number(reorder),variantId=safeId(item?.variantId);if(!variantId||!Number.isSafeInteger(availableValue)||availableValue<0||!Number.isSafeInteger(reorderValue)||reorderValue<0){setError('Stok değerlerini kontrol edin.');return;}try{setBusy(true);setError('');await updateProducerInventory({variantId,availableQuantity:availableValue,reorderLevel:reorderValue,expectedVersion:Number(item?.version)});await onSaved();}catch(nextError){setError(messageOf(nextError,'Stok güncellenemedi.'));}finally{setBusy(false);}}return<div className="rounded-xl border p-4"><div className="font-bold">{String(item?.productName||'Ürün')} · {String(item?.variantName||'Varyant')}</div><div className="mt-3 grid gap-2 sm:grid-cols-3"><label><span className="block text-xs font-semibold">Toplam stok</span><input type="number" min="0" step="1" value={available} onChange={event=>setAvailable(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3"/></label><label><span className="block text-xs font-semibold">Düşük stok eşiği</span><input type="number" min="0" step="1" value={reorder} onChange={event=>setReorder(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border px-3"/></label><button type="button" disabled={busy} onClick={()=>void save()} className="min-h-11 self-end rounded-xl bg-brand-green font-bold text-brand-on-green">{busy?'Kaydediliyor…':'Stoku kaydet'}</button></div>{error?<p role="alert" className="mt-2 text-sm text-red-700">{error}</p>:null}</div>;}
