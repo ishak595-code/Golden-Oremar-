@@ -43,11 +43,13 @@ function normalize(value: unknown): BrandAppearance {
   if (!isRecord(value) || !isRecord(value.tokens)) throw new Error('Marka görünümü sunucudan doğrulanamadı.');
   if (!isTheme(value.defaultTheme)) throw new Error('Varsayılan marka teması doğrulanamadı.');
   if (value.colorScheme !== 'light' && value.colorScheme !== 'dark') throw new Error('Marka renk şeması doğrulanamadı.');
+  const defaultTheme: AppTheme = value.defaultTheme;
+  const colorScheme: BrandAppearance['colorScheme'] = value.colorScheme;
   const tokens = {} as BrandAppearanceTokens;
   for (const key of TOKEN_KEYS) tokens[key] = safeHex(value.tokens[key], `Marka rengi ${key}`);
   const updatedAt = value.updatedAt == null ? null : String(value.updatedAt);
   if (updatedAt && Number.isNaN(Date.parse(updatedAt))) throw new Error('Marka görünümü güncelleme tarihi doğrulanamadı.');
-  const appearance = { defaultTheme: value.defaultTheme, colorScheme: value.colorScheme, tokens, updatedAt };
+  const appearance: BrandAppearance = { defaultTheme, colorScheme, tokens, updatedAt };
   const issues = brandAppearanceContrastIssues(appearance);
   if (issues.length) throw new Error(issues[0]);
   return appearance;
