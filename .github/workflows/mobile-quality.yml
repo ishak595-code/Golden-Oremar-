@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - main
+      - agent/admin-supabase-retire-node
 
 permissions:
   contents: read

@@ -16,8 +16,21 @@ const forbiddenBasenames = new Set([
   'output.txt',
   'temp.txt',
   'grep_ana.txt',
+  'count.ts',
   'patch.js',
 ]);
+
+const retiredRelativePaths = new Set([
+  'src/context/DataContext.tsx',
+  'server/db.ts',
+]);
+
+const legacyRootFixScriptPatterns = [
+  /^(?:add|fix|update|edit|move|organize)_[^/]+\.(?:cjs|js|ts)$/i,
+  /^addHealthInfo\.cjs$/i,
+  /^implement_returns\.cjs$/i,
+  /^list_urls\.cjs$/i,
+];
 
 const legacyProductModelFiles = new Set([
   'src/admin/AdminDashboard.tsx',
@@ -69,6 +82,12 @@ function walk(directory) {
     if (forbiddenBasenames.has(entry.name)) {
       failures.push(`Retired credential/debug/runtime artifact must not exist: ${relative}`);
     }
+    if (retiredRelativePaths.has(relative)) {
+      failures.push(`Retired legacy runtime/data-context path must not return: ${relative}`);
+    }
+    if (!relative.includes('/') && legacyRootFixScriptPatterns.some(pattern => pattern.test(relative))) {
+      failures.push(`One-off root fix script must not return to repository root: ${relative}`);
+    }
 
     if (!codeExtensions.has(path.extname(entry.name))) continue;
     const content = fs.readFileSync(fullPath, 'utf8');
@@ -115,7 +134,20 @@ for (const [relative, re, message] of requiredAdminContracts) {
 }
 
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-if (pkg.dependencies?.firebase || pkg.devDependencies?.firebase) failures.push('Firebase package must not return to the dependency graph.');
+const legacyRuntimeDependencies = ['firebase', 'better-sqlite3', 'bcryptjs', 'jsonwebtoken', 'express'];
+for (const dependency of legacyRuntimeDependencies) {
+  if (pkg.dependencies?.[dependency] || pkg.devDependencies?.[dependency]) failures.push(`Retired legacy runtime dependency must not return: ${dependency}`);
+}
+const reactTypes = String(pkg.devDependencies?.['@types/react'] || '');
+const reactDomTypes = String(pkg.devDependencies?.['@types/react-dom'] || '');
+if (!/^[~^]?19\./.test(reactTypes)) failures.push('@types/react must stay on a React 19-compatible major version.');
+if (!/^[~^]?19\./.test(reactDomTypes)) failures.push('@types/react-dom must stay on a React 19-compatible major version.');
+
+const tsconfig = JSON.parse(fs.readFileSync(path.join(root, 'tsconfig.json'), 'utf8'));
+const exclusions = new Set(Array.isArray(tsconfig.exclude) ? tsconfig.exclude : []);
+for (const required of ['node_modules', 'dist', 'supabase/functions', 'migration-tools']) {
+  if (!exclusions.has(required)) failures.push(`tsconfig exclude must contain ${required}.`);
+}
 
 const envExample = fs.readFileSync(path.join(root, '.env.example'), 'utf8');
 if (/^JWT_SECRET=/m.test(envExample)) failures.push('Legacy Node JWT_SECRET must not be reintroduced into the Supabase/Capacitor runtime contract.');
@@ -127,4 +159,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Security contract audit passed. No retired credential reset path, Firebase auth bypass, hard-coded password/JWT fallback, or legacy product-admin field contract detected.');
+console.log('Security contract audit passed. Retired credential/debug/Node-Firebase paths, root fix scripts, hard-coded secrets, React type drift, tsconfig scope regressions and legacy product-admin field contracts are blocked.');
