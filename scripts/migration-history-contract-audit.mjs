@@ -22,6 +22,8 @@ else{
     '20260820205756_strengthen_golden_oremar_legal_disclosures_2026.sql',
     '20260820211030_invalidate_legal_finalization_on_identity_or_document_change.sql',
     '20260821075933_retire_legacy_producer_account_public_contracts_v1.sql',
+    '20260821083330_flatten_producer_read_contracts_and_remove_orphan_storefronts.sql',
+    '20260821083551_flatten_producer_onboarding_write_contracts.sql',
   ];
   for(const file of required){if(!files.includes(file))failures.push(`Required canonical migration is missing: ${file}`);}
   if(files.includes('20260820211030_strengthen_golden_oremar_legal_disclosures_2026.sql'))failures.push('Mis-timestamped legal disclosure migration must stay retired.');
