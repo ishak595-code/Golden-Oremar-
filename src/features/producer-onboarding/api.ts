@@ -294,7 +294,7 @@ export async function getMyProducerApplicationDraft(applicationId?: string | nul
 }
 
 export async function listOnboardingCategories(): Promise<OnboardingCategory[]> {
-  const { data, error } = await supabase.rpc('list_public_categories_v1');
+  const { data, error } = await supabase.rpc('list_public_categories_v2');
   const rows = unwrap<unknown>(data, error);
   if (!Array.isArray(rows)) throw new Error('Kategori listesi geçersiz.');
   return rows.map(item => {
