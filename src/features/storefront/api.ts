@@ -189,7 +189,7 @@ function normalizeStorefrontConfig(value: unknown): StorefrontConfig {
 
 export async function getPublicStorefrontConfig(locale = 'tr'): Promise<StorefrontConfig> {
   const requestedLocale = safeLocale(locale, 'İstenen dil');
-  const { data, error } = await supabase.rpc('get_public_storefront_config_v1', { p_locale: requestedLocale });
+  const { data, error } = await supabase.rpc('get_public_storefront_config_v2', { p_locale: requestedLocale });
   return normalizeStorefrontConfig(unwrap<unknown>(data, error));
 }
 
