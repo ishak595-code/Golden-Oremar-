@@ -3,6 +3,8 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 
 const baseUrl=(process.env.E2E_BASE_URL||'http://127.0.0.1:4173').replace(/\/+$/,'');
+const supabaseUrl=String(process.env.VITE_SUPABASE_URL||'').replace(/\/+$/,'');
+const publishableKey=String(process.env.VITE_SUPABASE_PUBLISHABLE_KEY||'');
 const runId=String(process.env.GITHUB_RUN_ID||Date.now());
 const email=`golden-oremar-e2e-${runId}@example.com`;
 const password=`GoldenOremar-${runId}!`;
@@ -15,6 +17,25 @@ const mark=(key,value=true)=>{report.checks[key]=value;};
 const save=()=>fs.writeFileSync(path.join(out,'customer-e2e-report.json'),JSON.stringify({...report,finishedAt:new Date().toISOString()},null,2));
 const shot=async(page,name)=>page.screenshot({path:path.join(out,`${name}.png`),fullPage:true});
 const visible=async(locator,timeout=12000)=>{try{await locator.waitFor({state:'visible',timeout});return true;}catch{return false;}};
+
+async function requestClosureCleanup(page){
+ if(!supabaseUrl||!publishableKey)throw new Error('E2E cleanup Supabase client configuration is missing.');
+ const session=await page.evaluate(()=>{
+  for(const key of Object.keys(localStorage)){
+   if(!key.startsWith('sb-')||!key.endsWith('-auth-token'))continue;
+   try{const value=JSON.parse(localStorage.getItem(key)||'null');if(value?.access_token)return{accessToken:String(value.access_token)};}catch{}
+  }
+  return null;
+ });
+ if(!session?.accessToken)return false;
+ const response=await fetch(`${supabaseUrl}/rest/v1/rpc/request_account_closure_v1`,{
+  method:'POST',
+  headers:{apikey:publishableKey,Authorization:`Bearer ${session.accessToken}`,'Content-Type':'application/json'},
+  body:JSON.stringify({p_reason:`Golden Oremar automated customer E2E cleanup ${runId}`}),
+ });
+ if(!response.ok)throw new Error(`E2E account closure cleanup failed with HTTP ${response.status}.`);
+ return true;
+}
 
 const browser=await chromium.launch({headless:true});
 const context=await browser.newContext({locale:'tr-TR',permissions:['clipboard-read','clipboard-write'],viewport:{width:1280,height:900}});
@@ -34,7 +55,7 @@ try{
  const accountReady=page.getByRole('button',{name:'Profilimi Düzenle'});
  const needsConfirmation=page.getByText(/E-posta doğrulaması açıksa/i);
  await Promise.race([accountReady.waitFor({state:'visible',timeout:20000}),needsConfirmation.waitFor({state:'visible',timeout:20000})]).catch(()=>{});
- if(await visible(needsConfirmation,500)){mark('registration_form',true);report.blockers.push('EMAIL_CONFIRMATION_REQUIRED');await shot(page,'01-email-confirmation-required');save();throw new Error(`EMAIL_CONFIRMATION_REQUIRED:${email}`);}
+ if(await visible(needsConfirmation,500)){mark('registration_form',true);report.blockers.push('EMAIL_CONFIRMATION_REQUIRED');await shot(page,'01-email-confirmation-required');throw new Error(`EMAIL_CONFIRMATION_REQUIRED:${email}`);}
  if(!(await visible(accountReady,3000)))throw new Error('ACCOUNT_CENTER_NOT_REACHED_AFTER_SIGNUP');
  mark('registration_and_login',true);await shot(page,'01-account-created');
 
@@ -48,6 +69,9 @@ try{
 
  await page.goto(`${baseUrl}/?tab=home`,{waitUntil:'networkidle',timeout:30000});
  await page.getByLabel('Ürün, üretici veya köy ara').waitFor({state:'visible',timeout:12000});
+ const appearance=await page.evaluate(()=>({theme:document.documentElement.getAttribute('data-theme'),background:getComputedStyle(document.documentElement).getPropertyValue('--bg-main').trim()}));
+ if(appearance.theme!=='custom'||!appearance.background)throw new Error(`MANAGED_BRAND_APPEARANCE_NOT_APPLIED:${JSON.stringify(appearance)}`);
+ mark('managed_brand_appearance_runtime',true);
  const seasonalVisible=await visible(page.getByText(/Mevsim/i).first(),3000);
  const campaignVisible=await visible(page.getByText(/Fırsat|Kampanya|Teklif/i).first(),3000);
  const newVisible=await visible(page.getByText(/Yeni/i).first(),3000);
@@ -117,12 +141,23 @@ try{
  mark('categories',true);
 
  if(report.pageErrors.length)throw new Error(`PAGE_ERRORS:${report.pageErrors.join(' | ')}`);
- save();
  console.log(`CUSTOMER_E2E_EMAIL=${email}`);
  console.log('Golden Oremar customer E2E passed with external-provider blockers reported separately.');
 } catch(error){
- report.failure=String(error?.stack||error);save();
+ report.failure=String(error?.stack||error);
  console.error(`CUSTOMER_E2E_EMAIL=${email}`);
  console.error(report.failure);
  process.exitCode=1;
-} finally { await context.close();await browser.close(); }
+} finally {
+ try{
+  const cleanupRequested=await requestClosureCleanup(page);
+  mark('e2e_account_closure_requested',cleanupRequested);
+  if(!cleanupRequested)report.blockers.push('E2E_ACCOUNT_REQUIRES_ADMIN_CLEANUP');
+ }catch(error){
+  report.cleanupError=String(error?.stack||error);
+  if(!process.exitCode)process.exitCode=1;
+ }
+ save();
+ await context.close();
+ await browser.close();
+}
