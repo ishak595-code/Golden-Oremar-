@@ -253,7 +253,7 @@ export async function adminSetPlatformUserRole(
 
   const returnedRole = role(result.role);
   const returnedRoles = roles(result.roles);
-  const expectedRoles = requestedRole === 'customer' ? ['customer'] : [requestedRole, 'customer'];
+  const expectedRoles: AdminPlatformUserRole[] = requestedRole === 'customer' ? ['customer'] : [requestedRole, 'customer'];
   if (
     returnedRole !== requestedRole ||
     returnedRoles.length !== expectedRoles.length ||
