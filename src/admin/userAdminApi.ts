@@ -34,6 +34,15 @@ export type AdminPlatformUser = {
   lastEnforcementAt: string | null;
 };
 
+export type AdminPlatformEnforcementResult = {
+  id: string;
+  action: AdminPlatformUserEnforcementAction;
+  status: AdminPlatformUserStatus;
+  producerStatus: string | null;
+  securityRuleCount: number;
+  fraudFlag: boolean;
+};
+
 export const ADMIN_PLATFORM_USER_ROLES: readonly AdminPlatformUserRole[] = [
   'customer',
   'producer',
@@ -159,6 +168,12 @@ function profileStatus(value: unknown): AdminPlatformProfileStatus {
   return text as AdminPlatformProfileStatus;
 }
 
+function enforcementAction(value: unknown): AdminPlatformUserEnforcementAction {
+  const text = requiredText(value, 'Güvenlik işlemi', 20) as AdminPlatformUserEnforcementAction;
+  if (!ENFORCEMENT_ACTIONS.has(text)) throw new Error('Güvenlik işlemi doğrulanamadı.');
+  return text;
+}
+
 function normalizeUser(value: unknown, index: number): AdminPlatformUser {
   if (!isRecord(value)) throw new Error(`${index + 1}. kullanıcı kaydı doğrulanamadı.`);
 
@@ -258,7 +273,7 @@ export async function adminEnforcePlatformUser(input: {
   blockKnownDevices?: boolean;
   fraudFlag?: boolean;
   expiresAt?: string | null;
-}) {
+}): Promise<AdminPlatformEnforcementResult> {
   const id = uuid(input.userId, 'Kullanıcı kimliği');
   if (!ENFORCEMENT_ACTIONS.has(input.action)) throw new Error('Hesap güvenlik işlemi doğrulanamadı.');
 
@@ -284,7 +299,22 @@ export async function adminEnforcePlatformUser(input: {
   if (!isRecord(result) || uuid(result.id, 'Güvenlik işlemi kullanıcı kimliği') !== id) {
     throw new Error('Hesap güvenlik işlemi yanıtı doğrulanamadı.');
   }
-  return result;
+
+  const action = enforcementAction(result.action);
+  const returnedStatus = status(result.status);
+  const expectedStatus: AdminPlatformUserStatus = input.action === 'block' ? 'blocked' : input.action === 'unblock' ? 'active' : 'deleted';
+  if (action !== input.action || returnedStatus !== expectedStatus) {
+    throw new Error('Hesap güvenlik işlemi yanıtı doğrulanamadı.');
+  }
+
+  return {
+    id,
+    action,
+    status: returnedStatus,
+    producerStatus: optionalText(result.producerStatus, 'Üretici durumu', 60),
+    securityRuleCount: integer(result.securityRuleCount, 'Aktif güvenlik kuralı sayısı', 0, 1000000),
+    fraudFlag: bool(result.fraudFlag, 'Dolandırıcılık işareti'),
+  };
 }
 
 export function userAdminErrorMessage(error: unknown, fallback = 'Kullanıcı işlemi tamamlanamadı.') {
@@ -297,7 +327,7 @@ export function userAdminErrorMessage(error: unknown, fallback = 'Kullanıcı i�
     ['cannot_change_current_user_role', 'Kendi yönetici rolünüzü bu ekrandan değiştiremezsiniz.'],
     ['cannot_enforce_current_user', 'Kendi hesabınızı bu ekrandan engelleyemez veya kapatamazsınız.'],
     ['super_admin_account_cannot_be_closed_here', 'Süper Yönetici hesabı bu güvenlik akışından kalıcı kapatılamaz.'],
-    ['cannot_demote_current_super_admin', 'Kendi süper yönetici rolünüzü düşüremezsiniz.'],
+    ['cannot_demote_current_super_admin', 'Kendi Süper Yönetici rolünüzü düşüremezsiniz.'],
     ['last_super_admin_cannot_be_demoted', 'Sistemdeki son aktif Süper Yönetici rolü kaldırılamaz.'],
     ['producer_profile_required', 'Üretici rolü için kullanıcıya bağlı aktif veya askıya alınmış gerçek bir üretici profili gerekiyor.'],
     ['user_not_found', 'Kullanıcı artık bulunamadı. Listeyi yenileyin.'],
