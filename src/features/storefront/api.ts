@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { getAccountHelpContent } from '../account/api';
 
 export type StorefrontInterface = {
   heroTitle: string;
@@ -194,6 +195,5 @@ export async function getPublicStorefrontConfig(locale = 'tr'): Promise<Storefro
 
 export async function getPublicInfoPages(locale = 'tr') {
   const requestedLocale = safeLocale(locale, 'İstenen dil');
-  const { data, error } = await supabase.rpc('get_account_help_content_v1', { p_locale: requestedLocale });
-  return unwrap<unknown>(data, error);
+  return getAccountHelpContent(requestedLocale);
 }
