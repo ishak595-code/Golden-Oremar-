@@ -4,166 +4,109 @@
   "branch": "agent/admin-supabase-retire-node",
   "pullRequest": 47,
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "latestFunctionalHead": "25957603293726db49a79cda5459a8bc94805369",
-  "stateRecordedAt": "2026-08-20T23:41:00+02:00",
-  "releaseStatus": "SOFTWARE_INTEGRITY_READY_EXTERNAL_PRODUCTION_INPUTS_AND_EXECUTED_BUILD_GATE_PENDING",
+  "latestFunctionalHead": "bd25d000826669a0dd98f4be502fdf51d0c697e0",
+  "stateRecordedDate": "2026-08-21",
+  "releaseStatus": "SOFTWARE_AND_DATABASE_HARDENED_EXTERNAL_PRODUCTION_INPUTS_PENDING_CURRENT_HEAD_CI_REQUIRED_BEFORE_MERGE",
   "applicationShell": {
-    "nativeTarget": ["android", "ios"],
+    "nativeTargets": ["android", "ios"],
     "framework": "React/Vite/Capacitor",
-    "desktopTopMenu": false,
-    "persistentBottomNavigationPhoneAndTablet": true,
-    "nativeSpeechAdapter": "src/native.ts",
-    "canonicalNavigationResolver": "src/features/navigation/appUrl.ts"
-  },
-  "canonicalRuntimePaths": {
-    "seller": "AccountCenter -> SellerPanel -> producer feature modules",
-    "admin": "App server-verified admin gate -> AdminPage -> AdminLayout/admin modules",
-    "dialog": "src/features/accessibility/useAccessibleDialog.ts",
-    "catalog": "Supabase public catalog RPCs -> src/features/catalog/api.ts -> product card/detail/storefront surfaces",
-    "productHealth": "seller moderated proposal -> Super Admin publish/reject -> published product_health content",
-    "sellerFinance": "provider marketplace settlement OR manual bank transfer, never duplicate entitlement",
-    "notifications": "action_url/metadata -> resolveAppActionTarget -> app state-machine view"
+    "canonicalBackend": "Supabase",
+    "legacyFirebaseCustomerRuntimeRetired": true,
+    "legacyNodeSqliteRuntimeRetired": true
   },
   "repositoryIntegrity": {
-    "criticalRecentMigrationsCommitted": true,
-    "historicalLegalMigrationTimestampNormalized": true,
-    "removedSupersededMigration": "20260820205756_strengthen_golden_oremar_legal_disclosures_2026.sql",
-    "canonicalLegalMigration": "20260820211030_strengthen_golden_oremar_legal_disclosures_2026.sql",
     "legacyFirebaseRuntimeReferences": 0,
     "legacySqliteRuntimeReferences": 0,
+    "legacyVendorRoleRuntimeReferences": 0,
+    "legacyVendorIdRuntimeReferences": 0,
     "legacyProducerApplicationRouteReferences": 0,
-    "knownMockRuntimeDataReferences": 0
-  },
-  "brand": {
-    "name": "Golden Oremar",
-    "supportEmail": "goldenoremar@gmail.com",
-    "supportPhone": "0537 959 48 51",
-    "registeredBusinessIdentityComplete": false,
-    "missingBeforeCommercialLaunch": [
-      "registered legal/trade identity",
-      "open commercial/service address",
-      "registered country/data-controller identity",
-      "final legal-document approval"
-    ]
+    "knownMockRuntimeDataReferences": 0,
+    "legalDisclosureMigration": "20260820205756_strengthen_golden_oremar_legal_disclosures_2026.sql",
+    "legalFinalizationInvalidationMigration": "20260820211030_invalidate_legal_finalization_on_identity_or_document_change.sql",
+    "duplicateMisTimestampedLegalMigrationRemoved": true,
+    "producerAccountRetirementMigration": "20260821075933_retire_legacy_producer_account_public_contracts_v1.sql"
   },
   "backend": {
     "provider": "Supabase",
-    "legacyFirebaseCustomerRuntimeRetired": true,
-    "legacyNodeSqliteRuntimeRetired": true,
-    "liveMigrationCount": 277,
-    "latestMigration": "20260820213352_add_runtime_integrity_to_production_readiness_v1",
+    "liveMigrationCount": 285,
+    "latestMigrationVersion": "20260821075933",
+    "latestMigrationName": "retire_legacy_producer_account_public_contracts_v1",
     "securityAdvisorLints": 0,
     "systemErrorDailyRows": 0,
     "runtimeIntegrityReady": true,
     "missingPrivateFunctionReferences": 0,
     "missingPublicFunctionReferences": 0,
-    "superAdminCompatibilityHelperRestored": true,
+    "superAdminCompatibilityHelperPresent": true,
     "superAdminAuditLedgerPresent": true,
-    "superAdminAuditLedgerDirectClientAccess": false,
     "runtimeIntegrityHelperDirectClientAccess": false,
-    "sensitivePrivateTableDirectAnonAuthenticatedGrants": 0,
-    "performanceAdvisorState": "INFO_ONLY_UNUSED_INDEXES_ON_LOW_OR_ZERO_TRAFFIC_TABLES_NOT_DROPPED_BLINDLY",
-    "currentPublicReadRpcs": {
-      "productDetail": "get_public_product_detail_v6",
-      "producerProfile": "get_public_producer_profile_v3",
-      "productSafety": "get_public_product_safety_v3"
-    },
-    "retiredPublicReadVersions": {
-      "productDetail": ["v1", "v2", "v3", "v4", "v5"],
-      "producerProfile": ["v1", "v2"],
-      "productSafety": ["v1", "v2"]
-    },
-    "edgeFunctions": {
-      "contact-submit": {"status": "ACTIVE", "version": 1, "verifyJwt": false},
-      "event-reservation": {"status": "ACTIVE", "version": 3, "verifyJwt": false},
-      "push-dispatch": {"status": "ACTIVE", "version": 3, "verifyJwt": false},
-      "payment-method-vault": {"status": "ACTIVE", "version": 2, "verifyJwt": true},
-      "payment-runtime-health": {"status": "ACTIVE", "version": 6, "verifyJwt": true},
-      "commerce-payment": {"status": "ACTIVE", "version": 1, "verifyJwt": true},
-      "checkout-payment-capabilities": {"status": "ACTIVE", "version": 1, "verifyJwt": true},
-      "iyzico-checkout-form": {"status": "ACTIVE", "version": 5, "verifyJwt": true},
-      "iyzico-checkout-callback": {"status": "ACTIVE", "version": 2, "verifyJwt": false},
-      "iyzico-payment-webhook": {"status": "ACTIVE", "version": 2, "verifyJwt": false},
-      "event-payment-state": {"status": "ACTIVE", "version": 1, "verifyJwt": true},
-      "event-refund": {"status": "ACTIVE", "version": 2, "verifyJwt": true},
-      "admin-event-refunds": {"status": "ACTIVE", "version": 1, "verifyJwt": true},
-      "transactional-email-worker": {"status": "ACTIVE", "version": 1, "verifyJwt": false},
-      "production-readiness-health": {"status": "ACTIVE", "version": 2, "verifyJwt": true, "softwareIntegritySeparatedFromExternalInputs": true},
-      "admin-order-settlement": {"status": "ACTIVE", "version": 1, "verifyJwt": true}
-    }
+    "recentEdgeRuntimeStatus": "transactional worker requests returning HTTP 200",
+    "recentAuthLogErrors": 0,
+    "recentStorageLogErrors": 0,
+    "postgresDiagnosticNote": "The only observed PostgreSQL ERROR was generated by a diagnostic dependency query applying pg_get_functiondef to an aggregate; it was not application runtime traffic."
+  },
+  "adminRoleContract": {
+    "canonicalRoles": ["customer", "producer", "support", "content_editor", "operations", "admin", "super_admin"],
+    "retiredAliases": ["user", "vendor"],
+    "listRpc": "admin_list_platform_users_v3",
+    "mutationRpc": "admin_set_platform_user_role_v2",
+    "selfRoleMutationBlocked": true,
+    "lastActiveSuperAdminProtected": true,
+    "administratorAccountChangesRequireSuperAdmin": true,
+    "producerRoleRequiresRealProducerProfile": true,
+    "roleMutationsAudited": true
+  },
+  "sellerAccountContract": {
+    "dashboardRpc": "get_my_producer_dashboard_v2",
+    "applicationDraftRpc": "get_my_producer_application_draft_v5",
+    "retiredClientDashboardV1": true,
+    "retiredClientApplicationDraftV4": true,
+    "legacyPrivateCompatibilityCoresRemainInternalOnly": true,
+    "dashboardCommerceStrictlyValidated": true,
+    "financeProducerIdentityCrossChecked": true,
+    "ciRegressionAudit": "scripts/producer-account-contract-audit.mjs"
   },
   "productionReadinessSemantics": {
-    "red": "actual software or database integrity error only",
+    "red": "actual software or database integrity failure",
     "amber": "real external production input or manual provider configuration required",
     "green": "verified ready",
     "softwareIntegrityReady": true,
-    "productionInputsReady": false,
-    "falseRedExternalInputFailuresRemoved": true
+    "externalInputsReady": false
   },
   "catalog": {
     "publishedProducts": 42,
-    "activeVariants": 42,
-    "publishedProductHealthEntries": 42,
-    "typedDynamicProductCards": 42,
-    "coldChainProducts": 13,
-    "missingRealPrimaryImages": 42,
-    "missingShippingWeights": 40,
+    "activePublishedVariants": 42,
+    "primaryImageDatabaseRows": 42,
+    "primaryImagesBackedByCatalogStorageObjects": 0,
+    "missingRealPrimaryImageStorageObjects": 42,
+    "activeVariantsMissingPackagedShippingWeight": 40,
     "catalogPublicStorageObjects": 0,
     "contentPublicStorageObjects": 0,
     "eventPublicStorageObjects": 0,
-    "missingAssetsFailClosed": true,
-    "cardIdentitySource": "single canonical catalog payload",
-    "cardIdentityFields": [
-      "verified",
-      "originVerified",
-      "storeKind",
-      "storefrontTier",
-      "badgeTone",
-      "storeBadgeLabel",
-      "followerCount",
-      "handlingProfile"
-    ],
-    "storefrontTiers": ["standard", "verified", "signature"],
-    "productHandlingTypes": [
-      "fish",
-      "red_meat",
-      "poultry",
-      "egg",
-      "animal_fat",
-      "dairy",
-      "produce",
-      "pantry",
-      "beverage",
-      "non_food"
-    ]
+    "activeVerifiedProducers": 1,
+    "iyzicoReadyProducerPaymentAccounts": 0,
+    "missingAssetsFailClosed": true
   },
-  "legalContent": {
-    "publishedTurkishDocuments": ["about", "returns", "privacy", "terms"],
-    "publishedDocumentCount": 4,
-    "returnsIncludesPerishableAndHygieneExceptions": true,
-    "defectiveWrongDamagedGoodsRightsPreserved": true,
-    "privacyNoticeDescribesCollectionPurposesRecipientsLegalBasesAndRights": true,
-    "commercialLaunchLegalIdentityGate": true,
+  "legalReadiness": {
+    "ready": false,
     "registeredLegalNameConfigured": false,
     "registeredAddressConfigured": false,
     "registeredCountryCodeConfigured": false,
     "legalDocumentsFinalized": false,
-    "finalLegalComplianceClaimed": false
+    "publishedTurkishLegalDocumentCount": 4,
+    "missing": ["registered_legal_name", "registered_address", "registered_country_code", "legal_documents_finalized"],
+    "identityOrLegalDocumentChangeInvalidatesFinalization": true
   },
-  "finance": {
+  "paymentReadiness": {
     "provider": "iyzico",
-    "iyzicoReadyProducers": 0,
+    "mode": "provider_checkout",
     "liveCardPaymentsEnabled": false,
-    "checkoutFormEnabled": false,
     "cardEnrollmentEnabled": false,
-    "providerReturnUrlConfigured": false,
-    "manualConfirmationCheckoutStillConfigured": true,
-    "sellerDisbursementChannels": ["provider_marketplace", "manual_bank_transfer"],
-    "duplicateSellerEntitlementPrevented": true,
-    "adminSettlementFunction": "admin-order-settlement",
-    "superAdminPayoutNotificationTarget": "/?tab=admin&adminView=producer-payouts",
-    "sellerPayoutNotificationTarget": "/?tab=account&view=seller%3Afinance",
-    "producerApplicationNotificationTarget": "/?tab=account&view=vendor-apply"
+    "savedPaymentMethodsSupported": false,
+    "requiresProviderConfiguration": true,
+    "paymentVerificationRequired": true,
+    "storesRawCardData": false,
+    "storesCvv": false,
+    "storesProviderSecretsClientSide": false
   },
   "auth": {
     "liveAuthUsers": 0,
@@ -171,53 +114,46 @@
     "liveRoleAssignments": 0,
     "realOwnerAccountRequiredForEndToEndAdminVerification": true
   },
-  "superAdmin": {
-    "ownerOperationalAuthority": true,
-    "fullSensitiveProducerKycAccessServerVerifiedAndLogged": true,
-    "fullSellerBankIdentityAccessWhenOperationallyRequired": true,
-    "productHealthPublishAuthority": true,
-    "orderSettlementReleaseAuthority": true,
-    "ordinaryAdminSensitiveAccessLimited": true,
-    "missingLegacyHelperBreakageFixed": true,
-    "auditWritesHaveBackingLedger": true,
-    "runtimeDependencyIntegritySelfCheck": true
+  "qualityGate": {
+    "workflow": "Mobile Quality Gate",
+    "requiredStages": [
+      "release architecture audits",
+      "native baseline and OAuth preservation",
+      "TypeScript noEmit",
+      "production Vite build",
+      "Capacitor Android/iOS sync",
+      "native sync reproducibility",
+      "Android debug compile",
+      "Android unsigned release bundle",
+      "iOS Swift package resolution",
+      "iOS simulator compile",
+      "iOS deployment target and application identifier verification"
+    ],
+    "currentHeadMustPassBeforeMerge": true,
+    "mergeAllowed": false,
+    "mergeRule": "Require the actually executing current-head Mobile Quality Gate to pass, then require explicit user authorization."
   },
   "truthfulnessInvariants": [
     "no fake users, orders, payments, balances, followers, reviews, products, health claims, certificates or compliance data",
-    "no invented price, stock, rating, currency, location, payment provider, legal identity, credentials, image or shipping weight",
-    "real follower count remains real and any separately managed launch social proof must be explicitly labeled",
-    "organik/sertifikalı claims require supporting verification",
-    "missing storage objects never become broken public image URLs",
-    "public customer data remains least-privilege while Super Admin owner visibility is server-verified and audited",
-    "newest head is never claimed CI-green unless an actual quality gate executes successfully"
+    "no invented legal identity, credentials, image assets, shipping weights, signing material or payment-provider configuration",
+    "organic or certified claims require supporting verification",
+    "database image references are not treated as real assets unless the corresponding Storage object exists",
+    "missing external production inputs remain fail-closed rather than being shown as software errors",
+    "a head is never claimed CI-green unless its own workflow actually executes successfully"
   ],
-  "releaseValidation": {
-    "lastVerifiedFunctionalHead": "9b077d399a9f1b837d86eeaf54bc1e6eb9750e41",
-    "currentCodeCheckpointHead": "25957603293726db49a79cda5459a8bc94805369",
-    "lastObservedGithubActionsRun": 32419483035,
-    "lastObservedGithubActionsConclusion": "failure_before_steps",
-    "lastObservedVerifyWebAndroidSteps": 0,
-    "lastObservedVerifyIosSteps": 0,
-    "codeFailureProvenByCi": false,
-    "currentHeadQualityGateGreen": false,
-    "runnerAllocationFailureStillPresent": true,
-    "mergeAllowed": false,
-    "mergeRule": "Require an actually executed current-head mobile quality gate to pass, then require explicit user authorization."
-  },
   "externalBlockers": [
-    "42 real primary catalog product images",
+    "42 real primary catalog image Storage objects",
     "40 real packaged shipping weights",
     "registered legal business/data-controller identity, registered country and open commercial/service address",
     "final legal-document approval after real registered identity is entered",
-    "production iyzico merchant configuration, return URL and seller submerchant onboarding",
-    "production transactional email credentials and verified sender if not configured",
+    "production iyzico merchant configuration and seller submerchant onboarding",
+    "production transactional email credentials and verified sender if readiness reports them missing",
     "production Google/Facebook OAuth configuration where enabled",
     "production FCM/APNs credentials",
     "Play Store/App Store signing and release configuration",
     "real public HTTPS share origin",
     "real content/event assets where publication requires them",
-    "real owner Auth account plus server-verified super_admin role for end-to-end admin verification",
-    "executed current-head release audit, TypeScript, production build, Capacitor sync reproducibility, Android bundle and iOS simulator compile"
+    "real owner Auth account plus server-verified super_admin role for end-to-end admin verification"
   ],
-  "nextBlock": "provide only real external production inputs and an executing build runner; do not replace them with invented values or merge PR 47 prematurely"
+  "nextBlock": "Provide only genuine external production inputs. Do not invent missing values and do not merge PR 47 until the current-head quality gate passes and explicit merge authorization is given."
 }
