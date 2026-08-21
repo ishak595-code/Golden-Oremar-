@@ -242,14 +242,15 @@ export async function getSellerProductHealthEditor(productId: string): Promise<S
   if (!record(data)) throw new Error('Ürün bilgi editörü doğrulanamadı.');
   const pending = data.pending;
   if (pending != null && !record(pending)) throw new Error('Bekleyen ürün bilgisi doğrulanamadı.');
+  const pendingRecord = pending == null ? null : pending as Record<string, unknown>;
   return {
     productId: uuid(data.productId, 'Ürün kimliği'),
     productName: text(data.productName, 'Ürün adı', 300, true),
     productStatus: text(data.productStatus, 'Ürün durumu', 40, true),
     canEdit: bool(data.canEdit, 'Düzenleme yetkisi'),
     published: published(data.published),
-    pending: pending
-      ? { requestId: uuid(pending.requestId, 'Talep kimliği'), payload: normalizePayload(pending.payload), status: 'pending', updatedAt: dateTime(pending.updatedAt, 'Talep tarihi') }
+    pending: pendingRecord
+      ? { requestId: uuid(pendingRecord.requestId, 'Talep kimliği'), payload: normalizePayload(pendingRecord.payload), status: 'pending', updatedAt: dateTime(pendingRecord.updatedAt, 'Talep tarihi') }
       : null,
   };
 }
