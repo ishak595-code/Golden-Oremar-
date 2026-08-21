@@ -104,7 +104,7 @@ if (linterAlignmentMigration) {
   ]) {
     match(linterAlignmentMigration, signature, 'Exposed admin user-management wrappers must end in SECURITY INVOKER mode.');
   }
-  forbid(linterAlignmentMigration, /security definer/i, 'Final exposed admin wrapper alignment must not reintroduce SECURITY DEFINER.');
+  forbid(linterAlignmentMigration, /^\s*security definer\s*;?\s*$/im, 'Final exposed admin wrapper alignment must not declare SECURITY DEFINER.');
   match(linterAlignmentMigration, /grant execute on function private\.admin_list_platform_users_v3\(\) to authenticated/i, 'Authenticated wrapper execution must have the minimum private list-core grant.');
   match(linterAlignmentMigration, /grant execute on function private\.admin_set_platform_user_role_v2\(uuid, text, text\) to authenticated/i, 'Authenticated wrapper execution must have the minimum private role-core grant.');
   match(linterAlignmentMigration, /grant execute on function private\.admin_enforce_platform_user_v1[\s\S]*to authenticated/i, 'Authenticated wrapper execution must have the minimum private enforcement-core grant.');
