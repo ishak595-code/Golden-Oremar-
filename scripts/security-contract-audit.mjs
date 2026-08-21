@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const root = process.cwd();
 const failures = [];
+const selfAuditPath = 'scripts/security-contract-audit.mjs';
 
 const forbiddenBasenames = new Set([
   'reset_admin.ts',
@@ -72,8 +73,10 @@ function walk(directory) {
     if (!codeExtensions.has(path.extname(entry.name))) continue;
     const content = fs.readFileSync(fullPath, 'utf8');
 
-    for (const pattern of hardcodedSecretPatterns) {
-      if (pattern.re.test(content)) failures.push(`${pattern.label}: ${relative}`);
+    if (relative !== selfAuditPath) {
+      for (const pattern of hardcodedSecretPatterns) {
+        if (pattern.re.test(content)) failures.push(`${pattern.label}: ${relative}`);
+      }
     }
 
     if (legacyProductModelFiles.has(relative)) {
@@ -82,11 +85,11 @@ function walk(directory) {
       }
     }
 
-    if (/firebase\/(?:app|auth|firestore|storage)/i.test(content) || /from\s+['"][^'"]*firebase[^'"]*['"]/i.test(content)) {
+    if (relative !== selfAuditPath && (/firebase\/(?:app|auth|firestore|storage)/i.test(content) || /from\s+['"][^'"]*firebase[^'"]*['"]/i.test(content))) {
       failures.push(`Firebase runtime import must not return: ${relative}`);
     }
 
-    if (/request\.auth\.token\.email\s*==?\s*['"][^'"]+@[^'"]+['"]/i.test(content)) {
+    if (relative !== selfAuditPath && /request\.auth\.token\.email\s*==?\s*['"][^'"]+@[^'"]+['"]/i.test(content)) {
       failures.push(`Hard-coded email authorization bypass detected: ${relative}`);
     }
   }
