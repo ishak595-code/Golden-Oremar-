@@ -13,7 +13,8 @@ assert(vault.includes('consentToSaveCard!==true')&&vault.includes('store_verifie
 assert(checkout.includes('getCheckoutPaymentCapabilities')&&checkout.includes('initializeHostedOrderPayment')&&checkout.includes('payPendingOrder'),'checkout must use runtime-ready iyzico payment orchestration');
 assert(checkout.includes("paymentStatus==='paid'")&&checkout.includes('getMyOrderPaymentState'),'checkout success must be server-authoritative');
 assert(shared.includes('verifyIyzicoCheckoutRetrieveSignature')&&webhook.includes('verifyIyzicoWebhookV3Hpp')&&webhook.includes('verifyIyzicoWebhookV3Direct'),'webhooks must use canonical iyzico verification');
-assert(webhook.includes('complete_order_payment_for_service_v2'),'provider webhook must use canonical v2 completion');
+assert(webhook.includes('complete_commerce_payment_for_service_v3'),'provider webhook must use canonical order/event commerce completion v3');
+assert(!webhook.includes("service.rpc('complete_order_payment_for_service_v2'"),'provider webhook must not bypass the unified commerce completion layer');
 assert(vault.includes('../_shared/iyzico.ts')&&webhook.includes('../_shared/iyzico.ts'),'provider crypto/client must not be duplicated');
 assert(emailQueueMigration.includes("unique(kind,aggregate_id)")&&emailQueueMigration.includes("legalInvoice',false")&&emailQueueMigration.includes('service_claim_transactional_email_jobs_v1'),'receipt emails must be idempotent, snapshot-based and explicitly non-invoice');
 assert(emailWorker.includes("Idempotency-Key")&&emailWorker.includes('RESEND_API_KEY')&&emailWorker.includes('TRANSACTIONAL_EMAIL_FROM')&&emailWorker.includes('configured:false'),'transactional email worker must fail closed until real sender configuration exists');
