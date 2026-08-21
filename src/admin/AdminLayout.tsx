@@ -68,6 +68,7 @@ const ADMIN_MENU_GROUPS: MenuGroup[] = [
   ]},
   { title: 'Sahip ve Güvenlik', items: [
     { id: 'business-compliance', label: 'İşletme ve Yasal Uyum', icon: FileText, superAdminOnly: true },
+    { id: 'release-setup', label: 'Yayın ve Entegrasyon', icon: Settings, superAdminOnly: true },
     { id: 'role-governance', label: 'Yetki ve Super Admin', icon: Crown, superAdminOnly: true },
     { id: 'account-erasure', label: 'Kapalı Hesap Yönetimi', icon: UserCog, superAdminOnly: true },
     { id: 'system-errors', label: 'Günlük Sistem Hataları', icon: Bug, superAdminOnly: true },
