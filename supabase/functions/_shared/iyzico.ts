@@ -149,6 +149,12 @@ export async function verifyIyzicoWebhookV3Hpp(data: IyzicoJson, signatureHeader
   return safeHexEqual(expected, received);
 }
 
+export async function verifyIyzicoWebhookV3(data: IyzicoJson, signatureHeader: string | null) {
+  return scalarText(data.token, 500) || scalarText(data.iyziPaymentId, 120)
+    ? verifyIyzicoWebhookV3Hpp(data, signatureHeader)
+    : verifyIyzicoWebhookV3Direct(data, signatureHeader);
+}
+
 export function iyzicoError(data: IyzicoJson, fallback = "provider_request_failed") {
   return { code: scalarText(data.errorCode, 120) || fallback, message: scalarText(data.errorMessage, 400) };
 }
