@@ -6,12 +6,14 @@ import './index.css';
 import { initNativeFeatures } from './native';
 import { initNativePushListeners } from './features/notifications/nativePush';
 import { applyThemeToDocument, resolveInitialTheme } from './features/appearance/theme';
+import { loadAndApplyBrandAppearance } from './features/appearance/brandAppearance';
 import { installGlobalErrorTelemetry, sendClientError } from './lib/errorTelemetry';
 
 const initialTheme = resolveInitialTheme();
 applyThemeToDocument(initialTheme);
 installGlobalErrorTelemetry();
 
+void loadAndApplyBrandAppearance().catch(error=>sendClientError('appearance.brand.init',error,'warning'));
 void initNativeFeatures(initialTheme).catch(error=>sendClientError('native.init',error,'warning'));
 void initNativePushListeners().catch(error=>sendClientError('native.push.init',error,'warning'));
 
