@@ -1,5 +1,6 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { withSupabase } from "@supabase/server";
+import { integrationReadiness, loadIntegrationRuntime } from "../_shared/integration_runtime.ts";
 
 type Provider = "fcm" | "apns";
 type Delivery = {
@@ -23,11 +24,6 @@ const GOOGLE_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
 const FCM_ENDPOINT = (projectId: string) => `https://fcm.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/messages:send`;
 const APNS_PRODUCTION = "https://api.push.apple.com";
 const APNS_DEVELOPMENT = "https://api.development.push.apple.com";
-
-function requiredEnv(name: string): string | null {
-  const value = Deno.env.get(name)?.trim();
-  return value ? value : null;
-}
 
 function normalizePem(value: string) {
   return value.replace(/\\n/g, "\n").trim();
@@ -70,8 +66,9 @@ function unreadCount(delivery: Delivery) {
 let cachedGoogleToken: { value: string; expiresAt: number } | null = null;
 async function getGoogleAccessToken() {
   if (cachedGoogleToken && cachedGoogleToken.expiresAt > Date.now() + 60_000) return cachedGoogleToken.value;
-  const email = requiredEnv("FCM_SERVICE_ACCOUNT_EMAIL");
-  const privateKey = requiredEnv("FCM_PRIVATE_KEY");
+  const runtime = await loadIntegrationRuntime();
+  const email = runtime.fcmServiceAccountEmail;
+  const privateKey = runtime.fcmPrivateKey;
   if (!email || !privateKey) throw new Error("fcm_credentials_missing");
   const now = Math.floor(Date.now() / 1000);
   const assertion = await signJwt("RS256", privateKey, {
@@ -85,6 +82,7 @@ async function getGoogleAccessToken() {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion }),
+    signal: AbortSignal.timeout(15000),
   });
   const json = await response.json().catch(() => ({})) as Record<string, unknown>;
   const accessToken = typeof json.access_token === "string" ? json.access_token : "";
@@ -105,7 +103,8 @@ function stringMetadata(metadata: Record<string, unknown> | null, actionUrl: str
 }
 
 async function sendFcm(delivery: Delivery): Promise<SendResult> {
-  const projectId = requiredEnv("FCM_PROJECT_ID");
+  const runtime = await loadIntegrationRuntime();
+  const projectId = runtime.fcmProjectId;
   if (!projectId) return { ok: false, error: "fcm_project_id_missing" };
   const accessToken = await getGoogleAccessToken();
   const count = unreadCount(delivery);
@@ -128,6 +127,7 @@ async function sendFcm(delivery: Delivery): Promise<SendResult> {
         },
       },
     }),
+    signal: AbortSignal.timeout(15000),
   });
   if (response.ok) return { ok: true };
   const text = await response.text();
@@ -138,9 +138,10 @@ async function sendFcm(delivery: Delivery): Promise<SendResult> {
 let cachedApnsToken: { value: string; expiresAt: number } | null = null;
 async function getApnsProviderToken() {
   if (cachedApnsToken && cachedApnsToken.expiresAt > Date.now() + 60_000) return cachedApnsToken.value;
-  const teamId = requiredEnv("APNS_TEAM_ID");
-  const keyId = requiredEnv("APNS_KEY_ID");
-  const privateKey = requiredEnv("APNS_PRIVATE_KEY");
+  const runtime = await loadIntegrationRuntime();
+  const teamId = runtime.apnsTeamId;
+  const keyId = runtime.apnsKeyId;
+  const privateKey = runtime.apnsPrivateKey;
   if (!teamId || !keyId || !privateKey) throw new Error("apns_credentials_missing");
   const now = Math.floor(Date.now() / 1000);
   const token = await signJwt("ES256", privateKey, { iss: teamId, iat: now }, { kid: keyId });
@@ -149,7 +150,8 @@ async function getApnsProviderToken() {
 }
 
 async function sendApns(delivery: Delivery): Promise<SendResult> {
-  const bundleId = requiredEnv("APNS_BUNDLE_ID") || "com.goldenoremar.app";
+  const runtime = await loadIntegrationRuntime();
+  const bundleId = runtime.apnsBundleId || "com.goldenoremar.app";
   const authToken = await getApnsProviderToken();
   const base = delivery.environment === "development" ? APNS_DEVELOPMENT : APNS_PRODUCTION;
   const count = unreadCount(delivery);
@@ -172,6 +174,7 @@ async function sendApns(delivery: Delivery): Promise<SendResult> {
       unread_count: count,
       metadata: delivery.metadata || {},
     }),
+    signal: AbortSignal.timeout(15000),
   });
   if (response.ok) return { ok: true };
   const text = await response.text();
@@ -179,10 +182,11 @@ async function sendApns(delivery: Delivery): Promise<SendResult> {
   return { ok: false, error: `apns_${response.status}:${text.slice(0, 800)}`, disableToken: disable };
 }
 
-function configuredProviders(): Provider[] {
+async function configuredProviders(): Promise<Provider[]> {
+  const readiness = integrationReadiness(await loadIntegrationRuntime());
   const providers: Provider[] = [];
-  if (requiredEnv("FCM_PROJECT_ID") && requiredEnv("FCM_SERVICE_ACCOUNT_EMAIL") && requiredEnv("FCM_PRIVATE_KEY")) providers.push("fcm");
-  if (requiredEnv("APNS_TEAM_ID") && requiredEnv("APNS_KEY_ID") && requiredEnv("APNS_PRIVATE_KEY")) providers.push("apns");
+  if (readiness.fcmConfigured) providers.push("fcm");
+  if (readiness.apnsConfigured) providers.push("apns");
   return providers;
 }
 
@@ -199,7 +203,7 @@ async function dispatchOne(delivery: Delivery): Promise<SendResult> {
 export default {
   fetch: withSupabase({ auth: "secret" }, async (req, ctx) => {
     if (req.method !== "POST") return Response.json({ ok: false, error: "method_not_allowed" }, { status: 405 });
-    const providers = configuredProviders();
+    const providers = await configuredProviders();
     if (!providers.length) {
       return Response.json({ ok: false, status: "not_configured", providers: [] }, { status: 503 });
     }
