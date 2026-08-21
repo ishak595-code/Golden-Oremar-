@@ -1,3 +1,5 @@
+import { loadIntegrationRuntime } from "./integration_runtime.ts";
+
 export type IyzicoJson = Record<string, unknown>;
 
 function nonEmpty(value: unknown, max = 500) {
@@ -26,10 +28,11 @@ function safeBaseUrl(value: string) {
   return normalized;
 }
 
-export function getIyzicoConfig() {
-  const apiKey = Deno.env.get("IYZICO_API_KEY")?.trim() || "";
-  const secretKey = Deno.env.get("IYZICO_SECRET_KEY")?.trim() || "";
-  const baseUrlRaw = Deno.env.get("IYZICO_BASE_URL")?.trim() || "";
+export async function getIyzicoConfig() {
+  const runtime = await loadIntegrationRuntime();
+  const apiKey = runtime.iyzicoApiKey.trim();
+  const secretKey = runtime.iyzicoSecretKey.trim();
+  const baseUrlRaw = runtime.iyzicoBaseUrl.trim();
   if (!apiKey || !secretKey || !baseUrlRaw) throw new Error("payment_provider_credentials_missing");
   return { apiKey, secretKey, baseUrl: safeBaseUrl(baseUrlRaw) };
 }
@@ -51,7 +54,7 @@ function safeHexEqual(left: string, right: string) {
 
 export async function iyzicoRequest(path: string, method: "POST" | "DELETE", payload: IyzicoJson, timeoutMs = 15000) {
   if (!path.startsWith("/") || path.length > 240) throw new Error("invalid_iyzico_path");
-  const { apiKey, secretKey, baseUrl } = getIyzicoConfig();
+  const { apiKey, secretKey, baseUrl } = await getIyzicoConfig();
   const requestBody = JSON.stringify(payload);
   const randomKey = `${Date.now()}${crypto.randomUUID().replaceAll("-", "")}`;
   const signature = await hmacHex(secretKey, randomKey + path + requestBody);
@@ -92,7 +95,7 @@ async function verifyResponseSignature(data: IyzicoJson, ordered: Array<{ key: s
   if (!received) return false;
   const values = ordered.map(({ key, decimal }) => signatureScalar(data[key], decimal === true));
   if (values.some((value) => !value)) return false;
-  const { secretKey } = getIyzicoConfig();
+  const { secretKey } = await getIyzicoConfig();
   const expected = await hmacHex(secretKey, values.join(":"));
   return safeHexEqual(expected, received);
 }
@@ -122,7 +125,7 @@ export async function verifyIyzicoRefundResponseSignature(data: IyzicoJson) {
 export async function verifyIyzicoWebhookV3Direct(data: IyzicoJson, signatureHeader: string | null) {
   const received = scalarText(signatureHeader, 256).toLowerCase();
   if (!received) return false;
-  const { secretKey } = getIyzicoConfig();
+  const { secretKey } = await getIyzicoConfig();
   const eventType = scalarText(data.iyziEventType, 120);
   const paymentId = scalarText(data.paymentId, 120);
   const conversationId = scalarText(data.paymentConversationId, 180);
@@ -135,7 +138,7 @@ export async function verifyIyzicoWebhookV3Direct(data: IyzicoJson, signatureHea
 export async function verifyIyzicoWebhookV3Hpp(data: IyzicoJson, signatureHeader: string | null) {
   const received = scalarText(signatureHeader, 256).toLowerCase();
   if (!received) return false;
-  const { secretKey } = getIyzicoConfig();
+  const { secretKey } = await getIyzicoConfig();
   const eventType = scalarText(data.iyziEventType, 120);
   const paymentId = scalarText(data.iyziPaymentId, 120) || scalarText(data.paymentId, 120);
   const token = scalarText(data.token, 500);
