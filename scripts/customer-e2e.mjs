@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright';
@@ -7,7 +8,7 @@ const supabaseUrl=String(process.env.VITE_SUPABASE_URL||'').replace(/\/+$/,'');
 const publishableKey=String(process.env.VITE_SUPABASE_PUBLISHABLE_KEY||'');
 const runId=String(process.env.GITHUB_RUN_ID||Date.now());
 const email=`golden-oremar-e2e-${runId}@example.com`;
-const password=`GoldenOremar-${runId}!`;
+const authSecret=`${crypto.randomBytes(24).toString('base64url')}Aa1!`;
 const productName='Avaşin Meşe Balı';
 const productSlug='avasin-mese-bali-103';
 const out=path.resolve('e2e-artifacts');
@@ -49,8 +50,8 @@ try{
  await page.locator('#auth-display-name').fill(`Golden Oremar E2E ${runId}`);
  await page.locator('#auth-phone').fill('+905379594851');
  await page.locator('#auth-email').fill(email);
- await page.locator('#auth-password').fill(password);
- await page.locator('#auth-confirm-password').fill(password);
+ await page.locator('#auth-password').fill(authSecret);
+ await page.locator('#auth-confirm-password').fill(authSecret);
  await page.getByRole('button',{name:'Hesap Oluştur'}).click();
  const accountReady=page.getByRole('button',{name:'Profilimi Düzenle'});
  const needsConfirmation=page.getByText(/E-posta doğrulaması açıksa/i);
