@@ -1,269 +1,140 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const root = process.cwd();
-const failures = [];
+const root=process.cwd();
+const failures=[];
+function requireFile(relative){const file=path.join(root,relative);if(!fs.existsSync(file)){failures.push(`Required data contract file is missing: ${relative}`);return'';}return fs.readFileSync(file,'utf8');}
+function compact(value){return value.replace(/\s+/g,'');}
+function requirePattern(content,pattern,message){if(!pattern.test(content))failures.push(message);}
+function forbid(content,pattern,message){if(pattern.test(content))failures.push(message);}
+function requireCompact(content,needle,message){if(!compact(content).includes(needle))failures.push(message);}
 
-function requireFile(relative) {
-  const file = path.join(root, relative);
-  if (!fs.existsSync(file)) {
-    failures.push(`Required admin contract file is missing: ${relative}`);
-    return '';
-  }
-  return fs.readFileSync(file, 'utf8');
+if(fs.existsSync(path.join(root,'backend')))failures.push('Retired backend/ migration mirror must not return; Supabase migrations belong under supabase/migrations/.');
+
+for(const relative of[
+ 'supabase/migrations/20260816062936_add_my_product_batch_editor_v1.sql',
+ 'supabase/migrations/20260816120247_add_atomic_customer_return_evidence_v3.sql',
+ 'supabase/migrations/20260816120431_complete_return_options_and_admin_evidence_detail.sql',
+ 'supabase/migrations/20260816123842_add_public_producer_product_inventory_truth.sql',
+ 'supabase/migrations/20260816125511_add_secure_producer_order_fulfillment_v1.sql',
+ 'supabase/migrations/20260816185944_fix_public_storefront_brand_name_v1.sql',
+ 'supabase/migrations/20260819055042_fix_admin_inventory_variant_filter.sql',
+ 'supabase/migrations/20260819055617_extend_admin_producer_application_location_snapshot.sql',
+])requireFile(relative);
+
+const accountApi=requireFile('src/features/account/api.ts');
+if(accountApi){
+ requirePattern(accountApi,/customer['"],\s*['"]producer['"],\s*['"]support['"],\s*['"]content_editor['"],\s*['"]operations['"],\s*['"]admin['"],\s*['"]super_admin/,'Customer account role contract must preserve the full live role lifecycle.');
+ forbid(accountApi,/ACCOUNT_ROLES[^\n]*(?:['"]user['"]|['"]vendor['"])/,'Customer account API must not reintroduce retired user/vendor role aliases.');
+ for(const[needle,message]of[
+  ['returnnormalizeAccountOverview(unwrap<unknown>(data,error))','Account overview must pass through the canonical strict normalizer.'],
+  ['returnnormalizeProfileUpdate(unwrap<unknown>(data,error),expected)','Profile mutations must verify the server result.'],
+  ['constnormalized=normalizeAddressInput(address)','Address mutations must validate request data.'],
+  ['constresult=normalizeAddress(unwrap<unknown>(data,error),0)','Address mutations must validate the returned canonical address.'],
+  ['returnnormalizeOrdersPage(unwrap<unknown>(data,error))','Customer order list must remain strictly normalized.'],
+  ['returnnormalizeOrderDetail(unwrap<unknown>(data,error))','Customer order detail must remain strictly normalized.'],
+  ['returnnormalizeGiftOrders(unwrap<unknown>(data,error))','Gift orders must remain strictly normalized.'],
+  ['returnnormalizePaymentActivity(unwrap<unknown>(data,error))','Payment activity must remain strictly normalized.'],
+  ['returnnormalizeNotifications(unwrap<unknown>(data,error))','Notification list must remain strictly normalized.'],
+  ['returnnormalizeClosureRequest(unwrap<unknown>(data,error))','Account closure requests must validate the server result.'],
+  ['returnnormalizeClosureCancel(unwrap<unknown>(data,error))','Account closure cancellation must validate the server result.'],
+  ['returnnormalizeNewsletterSummary(unwrap<unknown>(data,error))','Newsletter status must use the canonical strict normalizer.'],
+  ['returnnormalizePushRegistration(unwrap<unknown>(data,error),input)','Native push registration must verify the server result.'],
+  ['returnnormalizeHelpContent(unwrap<unknown>(data,error))','Account help content must use the strict published-content normalizer.'],
+ ])requireCompact(accountApi,needle,message);
+ requirePattern(accountApi,/lineTotalMinor!==unitPriceMinor\*quantity-itemDiscount\+itemTax/,'Order item totals must remain arithmetically verified.');
+ for(const marker of['ORDER_ITEM_FULFILLMENT_STATUSES','SHIPMENT_STATUSES','RETURN_STATUSES','REFUND_STATUSES'])if(!accountApi.includes(marker))failures.push(`Account API lifecycle marker missing: ${marker}`);
+ requirePattern(accountApi,/bounced['"],\s*['"]complained/,'Newsletter contract must preserve bounced and complained lifecycle states.');
+ forbid(accountApi,/getAccountHelpContent[^\n]*unwrap<any>/,'Account help content must not return raw any payloads.');
 }
 
-function forbid(content, pattern, message) {
-  if (pattern.test(content)) failures.push(message);
+const accountCenter=requireFile('src/features/account/AccountCenter.tsx');
+if(accountCenter){forbid(accountCenter,/function normalizeOverview\(/,'AccountCenter must not create a second account overview normalizer.');forbid(accountCenter,/['"]vendor['"]/,'AccountCenter must not reintroduce retired vendor role aliases.');requireCompact(accountCenter,'constnext=awaitgetAccountOverview();setOverview(next)','AccountCenter must consume the canonical account API result directly.');requireCompact(accountCenter,'constroles=overview.roles','AccountCenter authorization UI must use the validated server role set directly.');}
+
+const notificationUi=requireFile('src/features/account/NotificationsPanel.tsx');
+if(notificationUi){forbid(notificationUi,/Başlıksız bildirim|Bildirim içeriği doğrulanamadı|fallback:\$\{/,'Notification UI must not invent notification content or identities.');requirePattern(notificationUi,/AccountNotification,NotificationsPage/,'Notification UI must consume strict notification types.');requireCompact(notificationUi,'constreadAt=awaitmarkNotificationRead(item.id)','Notification UI must use the server-returned read timestamp.');}
+
+const paymentUi=requireFile('src/features/account/PaymentsPanel.tsx');
+if(paymentUi){forbid(paymentUi,/fallback:\$\{|processedAt|Sipariş numarası doğrulanamadı|Tutar doğrulanamadı/,'Payment history must not invent or re-normalize strict data.');requirePattern(paymentUi,/PaymentActivityItem,PaymentActivityPage/,'Payment history UI must consume strict payment types.');requireCompact(paymentUi,'useState<PaymentActivityPage|null>','Payment history state must keep the strict page type.');requireCompact(paymentUi,'newMap<string,PaymentActivityItem>()','Payment pagination must deduplicate by validated ids.');requireCompact(paymentUi,'key={p.id}','Payment rows must use validated ids.');}
+
+const orderUi=requireFile('src/features/account/OrdersPanel.tsx');
+if(orderUi){forbid(orderUi,/fallback:\$\{|Sipariş numarası doğrulanamadı|Ürün bilgisi doğrulanamadı|['"]Standart['"]/,'Order UI must not invent identities or server data.');requireCompact(orderUi,'typeOrdersPageData=Awaited<ReturnType<typelistOrders>>','Order UI must derive its page type from the canonical API.');requireCompact(orderUi,'typeOrderDetailData=Awaited<ReturnType<typeofgetOrderDetail>>','Order detail UI must derive its type from the canonical API.');requirePattern(orderUi,/unpaid:['"]Ödenmedi['"]/,'Order UI must preserve the live payment lifecycle.');requireCompact(orderUi,'key={o.id}','Order rows must use validated order ids.');}
+
+const favoritesUi=requireFile('src/features/account/FavoritesPanel.tsx');
+const favoritesApi=requireFile('src/features/account/favoriteProductsApi.ts');
+if(favoritesUi&&favoritesApi){
+ forbid(favoritesUi,/useState<any\[\]>|Fiyat doğrulanamadı|favorite-\$\{/,'Favorites UI must not rebuild strict product truth with any or synthetic identities.');
+ requirePattern(favoritesUi,/FavoriteProductItem/,'Favorites UI must consume the dedicated strict FavoriteProductItem contract.');
+ requireCompact(favoritesUi,'useState<FavoriteProductItem[]|null>','Favorites state must keep the dedicated strict type.');
+ requireCompact(favoritesUi,'key={item.productId}','Favorite cards must use the validated product id directly.');
+ requireCompact(favoritesUi,'awaitremoveFavoriteProduct(item.slug)','Favorites UI must use the canonical mutation API.');
+ requirePattern(favoritesApi,/function normalize\([^)]*\):FavoriteProductItem/,'Favorite API must strictly normalize each product.');
+ requireCompact(favoritesApi,'returndata.map(normalize)','Favorite list must pass every row through the strict normalizer.');
+ requireCompact(favoritesApi,"typeofdata.isFavorite!=='boolean'||data.isFavorite!==false",'Favorite removal must reject any server result that is not explicitly unfavorited.');
 }
 
-function requirePattern(content, pattern, message) {
-  if (!pattern.test(content)) failures.push(message);
+const followedUi=requireFile('src/features/account/FollowedProducersPanel.tsx');
+const followedApi=requireFile('src/features/account/followedProducersApi.ts');
+if(followedUi&&followedApi){
+ forbid(followedUi,/useState<any\[\]>|Puan bilgisi doğrulanamadı|producer['"]\}-\$\{index/,'Followed producer UI must not invent identities or rating data.');
+ requirePattern(followedUi,/FollowedProducerStoreItem/,'Followed producer UI must consume the dedicated strict store contract.');
+ requireCompact(followedUi,'useState<FollowedProducerStoreItem[]|null>','Followed producer state must keep the dedicated strict type.');
+ requireCompact(followedUi,'key={p.id}','Followed producer cards must use the validated producer id.');
+ requireCompact(followedUi,'awaitunfollowProducerStore(producer.id)','Followed producer UI must use the canonical mutation API.');
+ requirePattern(followedApi,/function normalize\([^)]*\):FollowedProducerStoreItem/,'Followed producer API must strictly normalize every store.');
+ requireCompact(followedApi,'returndata.map(normalize)','Followed producer list must pass every row through the strict normalizer.');
+ requireCompact(followedApi,"uuid(data.producerId,'Üreticikimliği')!==id||data.following!==false",'Unfollow must verify producer identity and an explicit false following result.');
 }
 
-if (fs.existsSync(path.join(root, 'backend'))) {
-  failures.push('Retired backend/ migration mirror must not return; Supabase migrations belong under supabase/migrations/.');
-}
+const giftUi=requireFile('src/features/account/GiftsPanel.tsx');
+if(giftUi){forbid(giftUi,/useState<any\[\]>|fallback:\$\{|Alıcı bilgisi doğrulanamadı|Sipariş numarası doğrulanamadı|['"]Standart['"]/,'Gift UI must not invent gift data.');requireCompact(giftUi,'useState<GiftOrder[]|null>','Gift UI must consume the strict GiftOrder contract.');requireCompact(giftUi,'key={g.orderId}','Gift cards must use the validated order id.');}
 
-const consolidatedMigrationFiles = [
-  'supabase/migrations/20260816062936_add_my_product_batch_editor_v1.sql',
-  'supabase/migrations/20260816120247_add_atomic_customer_return_evidence_v3.sql',
-  'supabase/migrations/20260816120431_complete_return_options_and_admin_evidence_detail.sql',
-  'supabase/migrations/20260816123842_add_public_producer_product_inventory_truth.sql',
-  'supabase/migrations/20260816125511_add_secure_producer_order_fulfillment_v1.sql',
-  'supabase/migrations/20260816185944_fix_public_storefront_brand_name_v1.sql',
-];
-for (const relative of consolidatedMigrationFiles) requireFile(relative);
+const settingsUi=requireFile('src/features/account/SettingsPanel.tsx');
+if(settingsUi){forbid(settingsUi,/function normalizeNewsletter\(/,'Settings UI must not create a second newsletter normalizer.');forbid(settingsUi,/under_review|approved|scheduled/,'Account closure UI must not invent lifecycle states.');requirePattern(settingsUi,/requested['"],\s*['"]processing['"],\s*['"]ready_for_auth_deletion/,'Settings must preserve the live account-closure lifecycle.');if(!settingsUi.includes('bounced')||!settingsUi.includes('complained'))failures.push('Settings must expose bounced and complained newsletter states.');}
 
-const accountApi = requireFile('src/features/account/api.ts');
-if (accountApi) {
-  requirePattern(accountApi, /customer['"],\s*['"]producer['"],\s*['"]support['"],\s*['"]content_editor['"],\s*['"]operations['"],\s*['"]admin['"],\s*['"]super_admin/, 'Customer account role contract must preserve the full live role lifecycle.');
-  forbid(accountApi, /ACCOUNT_ROLES[^\n]*(?:['"]user['"]|['"]vendor['"])/, 'Customer account API must not reintroduce retired user/vendor role aliases.');
-  requirePattern(accountApi, /return normalizeAccountOverview\(unwrap<unknown>\(data,error\)\)/, 'Account overview must pass through the canonical strict normalizer.');
-  requirePattern(accountApi, /return normalizeProfileUpdate\(unwrap<unknown>\(data,error\),expected\)/, 'Profile mutations must verify the server result against the requested change.');
-  requirePattern(accountApi, /const normalized=normalizeAddressInput\(address\)/, 'Address mutations must validate request data at the account API boundary.');
-  requirePattern(accountApi, /const result=normalizeAddress\(unwrap<unknown>\(data,error\),0\)/, 'Address mutations must validate the returned canonical address record.');
-  requirePattern(accountApi, /return normalizeOrdersPage\(unwrap<unknown>\(data,error\)\)/, 'Customer order list must remain strictly normalized.');
-  requirePattern(accountApi, /return normalizeOrderDetail\(unwrap<unknown>\(data,error\)\)/, 'Customer order detail must remain strictly normalized.');
-  requirePattern(accountApi, /return normalizeFavorites\(unwrap<unknown>\(data,error\)\)/, 'Favorites must remain strictly normalized.');
-  requirePattern(accountApi, /return normalizeFollowedProducers\(unwrap<unknown>\(data,error\)\)/, 'Followed producers must remain strictly normalized.');
-  requirePattern(accountApi, /return normalizeGiftOrders\(unwrap<unknown>\(data,error\)\)/, 'Gift orders must remain strictly normalized.');
-  requirePattern(accountApi, /lineTotalMinor!==unitPriceMinor\*quantity-itemDiscount\+itemTax/, 'Order item totals must remain arithmetically verified at the account API boundary.');
-  requirePattern(accountApi, /ORDER_ITEM_FULFILLMENT_STATUSES/, 'Order item fulfillment statuses must remain bound to the live database lifecycle.');
-  requirePattern(accountApi, /SHIPMENT_STATUSES/, 'Shipment statuses must remain bound to the live database lifecycle.');
-  requirePattern(accountApi, /RETURN_STATUSES/, 'Return statuses must remain bound to the live database lifecycle.');
-  requirePattern(accountApi, /REFUND_STATUSES/, 'Refund statuses must remain bound to the live database lifecycle.');
-  requirePattern(accountApi, /return normalizePaymentActivity\(unwrap<unknown>\(data,error\)\)/, 'Customer payment activity must remain strictly normalized.');
-  requirePattern(accountApi, /return normalizeNotifications\(unwrap<unknown>\(data,error\)\)/, 'Customer notification list must remain strictly normalized.');
-  requirePattern(accountApi, /return dateTime\(unwrap<unknown>\(data,error\),['"]Bildirim okunma tarihi['"]\)/, 'Notification read mutation must keep the server timestamp authoritative.');
-  requirePattern(accountApi, /return normalizeClosureRequest\(unwrap<unknown>\(data,error\)\)/, 'Account closure requests must validate the server lifecycle result.');
-  requirePattern(accountApi, /return normalizeClosureCancel\(unwrap<unknown>\(data,error\)\)/, 'Account closure cancellation must validate the server result.');
-  requirePattern(accountApi, /return normalizeNewsletterSummary\(unwrap<unknown>\(data,error\)\)/, 'Newsletter status must use the canonical strict normalizer.');
-  requirePattern(accountApi, /bounced['"],\s*['"]complained/, 'Newsletter contract must preserve bounced and complained lifecycle states.');
-  requirePattern(accountApi, /return normalizePushRegistration\(unwrap<unknown>\(data,error\),input\)/, 'Native push registration must verify the exact server result.');
-  requirePattern(accountApi, /return normalizeHelpContent\(unwrap<unknown>\(data,error\)\)/, 'Account help content must use the strict published-content normalizer.');
-  forbid(accountApi, /getAccountHelpContent[^\n]*unwrap<any>/, 'Account help content must not return raw any payloads.');
-  forbid(accountApi, /getMyNewsletterStatus[^\n]*unwrap<any>|registerNativePushToken[^\n]*unwrap<any>/, 'Newsletter and native push account APIs must not return raw any payloads.');
-}
+const profileUi=requireFile('src/features/account/ProfilePanel.tsx');
+if(profileUi){requirePattern(profileUi,/phoneDigits\.length < 10 \|\| phoneDigits\.length > 15/,'Profile phone validation must match the live backend constraint.');forbid(profileUi,/5-20 rakam|5 ile 20 rakam/,'Profile UI must not reintroduce the retired phone rule.');requireCompact(profileUi,'setLocale(p.locale)','Profile locale must come from the validated profile.');}
 
-const accountCenter = requireFile('src/features/account/AccountCenter.tsx');
-if (accountCenter) {
-  forbid(accountCenter, /function normalizeOverview\(/, 'AccountCenter must not create a second account overview normalizer.');
-  forbid(accountCenter, /const accountRoles=new Set\(\[['"]user['"],['"]vendor['"]/, 'AccountCenter must not filter live roles through retired user/vendor aliases.');
-  requirePattern(accountCenter, /const next=await getAccountOverview\(\);setOverview\(next\)/, 'AccountCenter must consume the canonical account API result directly.');
-  requirePattern(accountCenter, /const roles=overview\.roles/, 'AccountCenter authorization UI must use the validated server role set directly.');
-}
+const addressUi=requireFile('src/features/account/AddressesPanel.tsx');
+if(addressUi){forbid(addressUi,/Alıcı doğrulanamadı|Ülke doğrulanamadı|address-\$\{index\}/,'Address UI must not invent server data or synthetic identities.');requirePattern(addressUi,/phoneDigits\.length < 10 \|\| phoneDigits\.length > 15/,'Address phone validation must match the live backend constraint.');requirePattern(addressUi,/line\.length < 10 \|\| line\.length > 1000/,'Address line validation must match the live backend constraint.');requirePattern(addressUi,/postal\.length > 20/,'Address postal-code validation must match the live backend limit.');requireCompact(addressUi,'key={a.id}','Saved address rows must use validated ids.');}
 
-const notificationUi = requireFile('src/features/account/NotificationsPanel.tsx');
-if (notificationUi) {
-  forbid(notificationUi, /Başlıksız bildirim|Bildirim içeriği doğrulanamadı/, 'Notification UI must not invent missing title or message content.');
-  forbid(notificationUi, /fallback:\$\{/, 'Notification UI keys must not fall back to synthetic record identities.');
-  requirePattern(notificationUi, /AccountNotification,NotificationsPage/, 'Notification UI must consume strict account notification types.');
-  requirePattern(notificationUi, /const readAt=await markNotificationRead\(item\.id\)/, 'Notification UI must use the server-returned read timestamp.');
-}
+const supportUi=requireFile('src/features/account/SupportPanel.tsx');
+if(supportUi){forbid(supportUi,/function publishedItem\(|useState<any>/,'Support UI must not create a second raw help-content normalizer.');requirePattern(supportUi,/AccountHelpContent/,'Support UI must consume strict AccountHelpContent.');requireCompact(supportUi,'setData(awaitgetAccountHelpContent(locale))','Support UI must consume canonical published help content directly.');requirePattern(supportUi,/Geçici veya uydurma hukuki metin gösterilmiyor/,'Support UI must remain fail-closed when legal copy is unavailable.');}
 
-const paymentUi = requireFile('src/features/account/PaymentsPanel.tsx');
-if (paymentUi) {
-  forbid(paymentUi, /fallback:\$\{/, 'Payment history keys must not fall back to synthetic record identities.');
-  forbid(paymentUi, /processedAt/, 'Payment history must not read fields outside the strict payment activity contract.');
-  forbid(paymentUi, /Sipariş numarası doğrulanamadı|Tutar doğrulanamadı/, 'Payment history must not invent fallback content after strict API normalization.');
-  requirePattern(paymentUi, /PaymentActivityItem,PaymentActivityPage/, 'Payment history UI must consume strict payment activity types.');
-  requirePattern(paymentUi, /useState<PaymentActivityPage\|null>/, 'Payment history state must keep the strict page type.');
-  requirePattern(paymentUi, /new Map<string,PaymentActivityItem>\(\)/, 'Payment history pagination must deduplicate by validated payment ids.');
-  requirePattern(paymentUi, /key=\{p\.id\}/, 'Payment history rows must use the validated payment id directly.');
-  requirePattern(paymentUi, /<Money minor=\{p\.amountMinor\} currency=\{p\.currency\}\/>/, 'Payment history money display must use validated server amount and currency directly.');
-}
+const nativePush=requireFile('src/features/notifications/nativePush.ts');
+if(nativePush){forbid(nativePush,/String\(registered\?\.id\s*\|\|\s*['"]['"]\)/,'Native push adapter must not re-normalize a strict registration id.');requirePattern(nativePush,/const deviceId = registered\.id;/,'Native push adapter must consume the validated registration id directly.');}
 
-const orderUi = requireFile('src/features/account/OrdersPanel.tsx');
-if (orderUi) {
-  forbid(orderUi, /fallback:\$\{|Sipariş numarası doğrulanamadı|Ürün bilgisi doğrulanamadı|['"]Standart['"]/, 'Order UI must not invent identities, order numbers, product names, or variant names after strict API normalization.');
-  requirePattern(orderUi, /type OrdersPageData=Awaited<ReturnType<typeof listOrders>>/, 'Order UI must derive its page type from the canonical account API.');
-  requirePattern(orderUi, /type OrderDetailData=Awaited<ReturnType<typeof getOrderDetail>>/, 'Order detail UI must derive its type from the canonical account API.');
-  requirePattern(orderUi, /unpaid:['"]Ödenmedi['"]/, 'Order UI must use the live order payment status lifecycle rather than payment-record statuses.');
-  requirePattern(orderUi, /key=\{o\.id\}/, 'Order rows must use validated order ids directly.');
-  requirePattern(orderUi, /<Money minor=\{o\.totalMinor\} currency=\{o\.currency\}\/>/, 'Order list money display must use validated amount and currency directly.');
-  requirePattern(orderUi, /new Map<string,OrdersPageData\['items'\]\[number\]>\(\)/, 'Order pagination must deduplicate by validated order ids.');
-}
+const categoryApi=requireFile('src/admin/categoryAdminApi.ts');
+if(categoryApi){forbid(categoryApi,/İsimsiz kategori|Array\.isArray\(rows\)\s*\?\s*rows\s*:\s*\[\]/,'Category API must fail closed instead of inventing or hiding malformed data.');requirePattern(categoryApi,/rows\.map\(normalizeCategory\)/,'Category list must use the strict normalizer.');requirePattern(categoryApi,/result\s*!==\s*true/,'Category archive result must be explicitly verified.');}
 
-const favoritesUi = requireFile('src/features/account/FavoritesPanel.tsx');
-if (favoritesUi) {
-  forbid(favoritesUi, /useState<any\[\]>|Fiyat doğrulanamadı|displayName\s*=.*\|\|\s*['"]Ürün['"]|favorite-\$\{/, 'Favorites UI must not rebuild strict product truth with any or synthetic fallback data.');
-  requirePattern(favoritesUi, /useState<FavoriteItem\[\] \| null>/, 'Favorites UI must consume the strict FavoriteItem contract.');
-  requirePattern(favoritesUi, /key=\{i\.productId\}/, 'Favorite cards must use the validated product id directly.');
-  requirePattern(favoritesUi, /if \(result\.isFavorite\) throw new Error/, 'Favorite removal must verify the server mutation result.');
-}
+const eventApi=requireFile('src/admin/eventAdminApi.ts');
+if(eventApi){forbid(eventApi,/İsimsiz etkinlik|['"]Misafir['"]/,'Event API must not invent event or guest names.');forbid(eventApi,/reservation_code[^\n]*(?:\|\||\?)[^\n]*\.id/,'Reservation code must not fall back to a record id.');requirePattern(eventApi,/events:\s*raw\.events\.map\(normalizeEvent\)/,'Event list must use the strict event normalizer.');requirePattern(eventApi,/reservations:\s*raw\.reservations\.map\(normalizeReservation\)/,'Event reservations must use the strict normalizer.');}
 
-const followedUi = requireFile('src/features/account/FollowedProducersPanel.tsx');
-if (followedUi) {
-  forbid(followedUi, /useState<any\[\]>|Puan bilgisi doğrulanamadı|\|\|['"]Üretici['"]|producer['"]\}-\$\{index/, 'Followed producer UI must not invent identities, names, or rating fallback data.');
-  requirePattern(followedUi, /useState<FollowedProducerItem\[\]\|null>/, 'Followed producer UI must consume the strict FollowedProducerItem contract.');
-  requirePattern(followedUi, /key=\{p\.id\}/, 'Followed producer cards must use the validated producer id directly.');
-  requirePattern(followedUi, /if\(result\.following\)throw new Error/, 'Unfollow must verify the server mutation result.');
-}
+const returnApi=requireFile('src/admin/returnAdminApi.ts');
+if(returnApi){forbid(returnApi,/['"]Müşteri['"]|['"]Ürün['"]|\|\|\s*['"]TRY['"]/,'Return API must not invent customer, product, or currency data.');requirePattern(returnApi,/currencyCode\(value\.currency\)/,'Return currency must remain validated.');requirePattern(returnApi,/parsed\.protocol\s*!==\s*['"]https:['"]/,'Return evidence preview URLs must remain HTTPS-only.');}
 
-const giftUi = requireFile('src/features/account/GiftsPanel.tsx');
-if (giftUi) {
-  forbid(giftUi, /useState<any\[\]>|fallback:\$\{|Alıcı bilgisi doğrulanamadı|Sipariş numarası doğrulanamadı|['"]Standart['"]/, 'Gift UI must not invent gift identity, recipient, order, or variant data.');
-  requirePattern(giftUi, /useState<GiftOrder\[\]\|null>/, 'Gift UI must consume the strict GiftOrder contract.');
-  requirePattern(giftUi, /key=\{g\.orderId\}/, 'Gift cards must use the validated order id directly.');
-  requirePattern(giftUi, /<Money minor=\{g\.totalMinor\} currency=\{g\.currency\}\/>/, 'Gift money display must use validated server amount and currency directly.');
-}
+const inventoryApi=requireFile('src/admin/inventoryAdminApi.ts');
+if(inventoryApi){forbid(inventoryApi,/Standart|İsimsiz ürün|Bilinmeyen üretici|\|\|\s*['"]TRY['"]/,'Inventory API must not invent variant, product, producer, or currency data.');requirePattern(inventoryApi,/pending['"],\s*['"]active['"],\s*['"]suspended['"],\s*['"]rejected['"],\s*['"]closed/,'Inventory producer status contract must preserve the full lifecycle.');requirePattern(inventoryApi,/sellable\s*!==\s*expectedSellable/,'Inventory summary must retain sellable-stock arithmetic validation.');requirePattern(inventoryApi,/rows\.map\(normalizeRow\)/,'Inventory list must use the strict normalizer.');}
 
-const settingsUi = requireFile('src/features/account/SettingsPanel.tsx');
-if (settingsUi) {
-  forbid(settingsUi, /function normalizeNewsletter\(/, 'Settings UI must not create a second newsletter data normalizer.');
-  forbid(settingsUi, /under_review|approved|scheduled/, 'Account closure UI must not reintroduce statuses that do not exist in the live closure lifecycle.');
-  requirePattern(settingsUi, /requested['"],\s*['"]processing['"],\s*['"]ready_for_auth_deletion/, 'Settings must preserve the live active account-closure lifecycle.');
-  requirePattern(settingsUi, /bounced/, 'Settings must expose bounced newsletter status truthfully.');
-  requirePattern(settingsUi, /complained/, 'Settings must expose complained newsletter status truthfully.');
-  requirePattern(settingsUi, /setNewsletter\(await getMyNewsletterStatus\(\)\)/, 'Settings must consume the canonical strict newsletter status directly.');
-  requirePattern(settingsUi, /setPrefs\(await getNotificationPreferences\(\)\)/, 'Settings must consume strict notification preferences directly.');
-}
+const producerApi=requireFile('src/admin/producerAdminApi.ts');
+if(producerApi){forbid(producerApi,/İsimsiz mağaza/,'Producer API must not invent store names.');forbid(producerApi,/row\.status\s*===\s*['"]suspended['"]\s*\?\s*['"]suspended['"]\s*:\s*['"]active['"]/,'Producer API must not collapse lifecycle states.');requirePattern(producerApi,/pending['"],\s*['"]active['"],\s*['"]suspended['"],\s*['"]rejected['"],\s*['"]closed/,'Producer status contract must preserve the full lifecycle.');requirePattern(producerApi,/producerStatus\(value\.status\)/,'Producer rows must validate server status.');}
 
-const profileUi = requireFile('src/features/account/ProfilePanel.tsx');
-if (profileUi) {
-  requirePattern(profileUi, /phoneDigits\.length < 10 \|\| phoneDigits\.length > 15/, 'Profile phone validation must match the live 10-15 digit backend constraint.');
-  forbid(profileUi, /5-20 rakam|5 ile 20 rakam/, 'Profile UI must not reintroduce the retired 5-20 digit phone rule.');
-  requirePattern(profileUi, /setLocale\(p\.locale\)/, 'Profile locale must come from the validated account profile without silent locale fallback.');
-}
+const producerApplicationApi=requireFile('src/admin/producerApplicationAdminApi.ts');
+if(producerApplicationApi){const c=compact(producerApplicationApi);forbid(producerApplicationApi,/İsimsiz mağaza|verification_status[^\n]*\|\|\s*['"]pending['"]/,'Producer application API must not invent a store name or document status.');requirePattern(producerApplicationApi,/expired['"]?\]/,'Producer document contract must preserve expired state.');requirePattern(producerApplicationApi,/production_village_is_custom/,'Producer application contract must preserve structured village provenance.');if(!c.includes('normalizesensitive(unwrap<unknown>(data,error),id)'))failures.push('Sensitive producer KYC responses must remain strictly normalized.');requirePattern(producerApplicationApi,/result\s*!==\s*true/,'Producer document review result must remain explicitly verified.');}
 
-const addressUi = requireFile('src/features/account/AddressesPanel.tsx');
-if (addressUi) {
-  forbid(addressUi, /Alıcı doğrulanamadı|Ülke doğrulanamadı|address-\$\{index\}|label:\s*String\([^\n]*\)\s*\|\|\s*['"]Teslimat['"]/, 'Address UI must not invent server data, synthetic identities, or labels.');
-  requirePattern(addressUi, /phoneDigits\.length < 10 \|\| phoneDigits\.length > 15/, 'Address phone validation must match the live 10-15 digit backend constraint.');
-  requirePattern(addressUi, /line\.length < 10 \|\| line\.length > 1000/, 'Address line validation must match the live 10-1000 character backend constraint.');
-  requirePattern(addressUi, /postal\.length > 20/, 'Address postal-code validation must match the live 20-character backend limit.');
-  requirePattern(addressUi, /key=\{a\.id\}/, 'Saved address rows must use validated server ids directly.');
-}
+const producerDocumentApi=requireFile('src/admin/producerDocumentApi.ts');
+if(producerDocumentApi){requirePattern(producerDocumentApi,/parsed\.protocol\s*!==\s*['"]https:['"]/,'Producer document preview URLs must remain HTTPS-only.');requirePattern(producerDocumentApi,/producer-documents/,'Producer document preview must stay on the private bucket.');}
 
-const supportUi = requireFile('src/features/account/SupportPanel.tsx');
-if (supportUi) {
-  forbid(supportUi, /function publishedItem\(|useState<any>/, 'Support UI must not create a second raw help-content normalizer.');
-  requirePattern(supportUi, /AccountHelpContent/, 'Support UI must consume the strict AccountHelpContent contract.');
-  requirePattern(supportUi, /setDocs\(await getAccountHelpContent\(locale\)\)/, 'Support UI must consume canonical published help content directly.');
-  requirePattern(supportUi, /Geçici veya uydurma hukuki metin gösterilmiyor/, 'Support UI must keep the fail-closed no-invented-legal-copy state.');
-}
+const producerUi=requireFile('src/admin/AdminVendors.tsx');
+if(producerUi){for(const value of['pending','rejected','closed'])requirePattern(producerUi,new RegExp(`option value=["']${value}["']`),`Producer status filter must expose ${value} records.`);requirePattern(producerUi,/selected\.status\s*===\s*['"]suspended['"]\s*\?/,'Only suspended producers may receive the direct reactivate action.');}
 
-const nativePush = requireFile('src/features/notifications/nativePush.ts');
-if (nativePush) {
-  forbid(nativePush, /String\(registered\?\.id\s*\|\|\s*['"]['"]\)/, 'Native push adapter must not re-normalize a strict registration id.');
-  requirePattern(nativePush, /const deviceId = registered\.id;/, 'Native push adapter must consume the validated registration id directly.');
-}
+const applicationUi=requireFile('src/admin/AdminVendorApplications.tsx');
+if(applicationUi){requirePattern(applicationUi,/expired:\s*['"]Süresi doldu['"]/,'Expired producer documents must be labeled as expired.');requirePattern(applicationUi,/production_village_is_custom/,'Producer application UI must expose village-name provenance.');requirePattern(applicationUi,/Köy kayıt biçimi/,'Producer application UI must make village provenance visible to reviewers.');requirePattern(applicationUi,/option value="draft"/,'Producer application filters must include drafts.');}
 
-const categoryApi = requireFile('src/admin/categoryAdminApi.ts');
-if (categoryApi) {
-  forbid(categoryApi, /İsimsiz kategori/, 'Category admin API must not invent missing category names.');
-  forbid(categoryApi, /Array\.isArray\(rows\)\s*\?\s*rows\s*:\s*\[\]/, 'Category admin API must not hide malformed list payloads as an empty list.');
-  requirePattern(categoryApi, /rows\.map\(normalizeCategory\)/, 'Category admin list must pass every row through the strict normalizer.');
-  requirePattern(categoryApi, /result\s*!==\s*true/, 'Category archive result must remain explicitly verified.');
-}
+const inventoryMigration=requireFile('supabase/migrations/20260819055042_fix_admin_inventory_variant_filter.sql');
+if(inventoryMigration){forbid(inventoryMigration,/variant\.deleted_at/,'Inventory RPC migration must not reference nonexistent product_variants.deleted_at.');requirePattern(inventoryMigration,/from public\.product_variants variant/,'Inventory RPC migration must read canonical product_variants.');}
+const applicationLocationMigration=requireFile('supabase/migrations/20260819055617_extend_admin_producer_application_location_snapshot.sql');
+if(applicationLocationMigration){for(const marker of['production_country_code','production_province','production_district','production_village'])if(!applicationLocationMigration.includes(marker))failures.push(`Producer application admin snapshot missing ${marker}.`);}
 
-const eventApi = requireFile('src/admin/eventAdminApi.ts');
-if (eventApi) {
-  forbid(eventApi, /İsimsiz etkinlik|['"]Misafir['"]/, 'Event admin API must not invent event or guest names.');
-  forbid(eventApi, /reservation_code[^\n]*(?:\|\||\?)[^\n]*\.id/, 'Event reservation code must not fall back to a record id.');
-  requirePattern(eventApi, /events:\s*raw\.events\.map\(normalizeEvent\)/, 'Event list must use the strict event normalizer.');
-  requirePattern(eventApi, /reservations:\s*raw\.reservations\.map\(normalizeReservation\)/, 'Event reservations must use the strict reservation normalizer.');
-  requirePattern(eventApi, /result\s*!==\s*true/, 'Event archive and reservation cancellation results must remain explicitly verified.');
-}
-
-const returnApi = requireFile('src/admin/returnAdminApi.ts');
-if (returnApi) {
-  forbid(returnApi, /['"]Müşteri['"]|['"]Ürün['"]/, 'Return admin API must not invent customer or product names.');
-  forbid(returnApi, /\|\|\s*['"]TRY['"]/, 'Return admin API must not invent TRY when currency is missing.');
-  requirePattern(returnApi, /currencyCode\(value\.currency\)/, 'Return list currency must remain validated at the API boundary.');
-  requirePattern(returnApi, /return normalizeDetail\(unwrap<unknown>\(data, error\)\)/, 'Return detail must remain strictly normalized.');
-  requirePattern(returnApi, /normalizeMutationResult\(unwrap<unknown>\(data, error\), input\.status\)/, 'Return mutation responses must remain bound to the requested status.');
-  requirePattern(returnApi, /parsed\.protocol\s*!==\s*['"]https:['"]/, 'Return evidence preview URLs must remain HTTPS-only.');
-}
-
-const inventoryApi = requireFile('src/admin/inventoryAdminApi.ts');
-if (inventoryApi) {
-  forbid(inventoryApi, /Standart|İsimsiz ürün|Bilinmeyen üretici/, 'Inventory admin API must not invent variant, product, or producer names.');
-  forbid(inventoryApi, /\|\|\s*['"]TRY['"]/, 'Inventory admin API must not invent TRY when currency is missing.');
-  requirePattern(inventoryApi, /pending['"],\s*['"]active['"],\s*['"]suspended['"],\s*['"]rejected['"],\s*['"]closed/, 'Inventory producer status contract must include the full live lifecycle.');
-  requirePattern(inventoryApi, /sellable\s*!==\s*expectedSellable/, 'Inventory summary must retain sellable-stock arithmetic validation.');
-  requirePattern(inventoryApi, /rows\.map\(normalizeRow\)/, 'Inventory list must pass every row through the strict normalizer.');
-}
-
-const producerApi = requireFile('src/admin/producerAdminApi.ts');
-if (producerApi) {
-  forbid(producerApi, /İsimsiz mağaza/, 'Producer admin API must not invent missing store names.');
-  forbid(producerApi, /row\.status\s*===\s*['"]suspended['"]\s*\?\s*['"]suspended['"]\s*:\s*['"]active['"]/, 'Producer admin API must not collapse lifecycle statuses into active.');
-  requirePattern(producerApi, /pending['"],\s*['"]active['"],\s*['"]suspended['"],\s*['"]rejected['"],\s*['"]closed/, 'Producer admin status contract must include the full live lifecycle.');
-  requirePattern(producerApi, /producerStatus\(value\.status\)/, 'Producer rows must validate the server status instead of defaulting it.');
-  requirePattern(producerApi, /commissionBasisPoints[^\n]*!==\s*basisPoints|integer\(result\.commissionBasisPoints/, 'Producer commission mutation must verify the returned basis points.');
-}
-
-const producerApplicationApi = requireFile('src/admin/producerApplicationAdminApi.ts');
-if (producerApplicationApi) {
-  forbid(producerApplicationApi, /İsimsiz mağaza/, 'Producer application API must not invent a store name.');
-  forbid(producerApplicationApi, /verification_status[^\n]*\|\|\s*['"]pending['"]/, 'Producer documents must not default missing verification status to pending.');
-  requirePattern(producerApplicationApi, /expired['"]?\]/, 'Producer document contract must preserve expired verification state.');
-  requirePattern(producerApplicationApi, /production_village_is_custom/, 'Producer application contract must preserve structured village provenance.');
-  requirePattern(producerApplicationApi, /normalizeSensitive\(unwrap<unknown>\(data, error\), id\)/, 'Sensitive producer KYC responses must remain strictly normalized.');
-  requirePattern(producerApplicationApi, /result\s*!==\s*true/, 'Producer document review result must remain explicitly verified.');
-}
-
-const producerDocumentApi = requireFile('src/admin/producerDocumentApi.ts');
-if (producerDocumentApi) {
-  requirePattern(producerDocumentApi, /parsed\.protocol\s*!==\s*['"]https:['"]/, 'Producer document preview URLs must remain HTTPS-only.');
-  requirePattern(producerDocumentApi, /producer-documents/, 'Producer document preview must stay on the private producer-documents bucket.');
-}
-
-const producerUi = requireFile('src/admin/AdminVendors.tsx');
-if (producerUi) {
-  requirePattern(producerUi, /option value="pending"/, 'Producer status filter must expose pending records truthfully.');
-  requirePattern(producerUi, /option value="rejected"/, 'Producer status filter must expose rejected records truthfully.');
-  requirePattern(producerUi, /option value="closed"/, 'Producer status filter must expose closed records truthfully.');
-  requirePattern(producerUi, /selected\.status\s*===\s*['"]suspended['"]\s*\?/, 'Only suspended producers may receive the direct reactivate action.');
-}
-
-const applicationUi = requireFile('src/admin/AdminVendorApplications.tsx');
-if (applicationUi) {
-  requirePattern(applicationUi, /expired:\s*['"]Süresi doldu['"]/, 'Expired producer documents must be labeled as expired, not pending.');
-  requirePattern(applicationUi, /production_village_is_custom/, 'Producer application UI must expose whether the village name was entered manually.');
-  requirePattern(applicationUi, /option value="draft"/, 'Producer application filters must include draft applications.');
-}
-
-const inventoryMigration = requireFile('supabase/migrations/20260819055042_fix_admin_inventory_variant_filter.sql');
-if (inventoryMigration) {
-  forbid(inventoryMigration, /variant\.deleted_at/, 'Inventory RPC migration must not reference the nonexistent product_variants.deleted_at column.');
-  requirePattern(inventoryMigration, /from public\.product_variants variant/, 'Inventory RPC migration must read the canonical product_variants table.');
-}
-
-const applicationLocationMigration = requireFile('supabase/migrations/20260819055617_extend_admin_producer_application_location_snapshot.sql');
-if (applicationLocationMigration) {
-  requirePattern(applicationLocationMigration, /production_country_code/, 'Producer application admin snapshot must include country code.');
-  requirePattern(applicationLocationMigration, /production_province/, 'Producer application admin snapshot must include province.');
-  requirePattern(applicationLocationMigration, /production_district/, 'Producer application admin snapshot must include district.');
-  requirePattern(applicationLocationMigration, /production_village/, 'Producer application admin snapshot must include village.');
-}
-
-if (failures.length) {
-  console.error('Golden Oremar admin data contract audit failed:');
-  for (const failure of failures) console.error(`- ${failure}`);
-  process.exit(1);
-}
-
-console.log('Golden Oremar data contract audit passed: canonical customer account, profile, address, support, notification, payment, order, favorite, followed-producer, gift, newsletter, closure, native-push, migration, category, event, return, inventory, producer, producer-application and private document contracts remain fail-closed.');
+if(failures.length){console.error('Golden Oremar admin data contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
+console.log('Golden Oremar data contract audit passed: customer account, support, notification, payment, order, dedicated favorite/followed-store, gift, newsletter, closure, native-push, category, event, return, inventory, producer, KYC, village provenance and private-document contracts remain strict and fail-closed.');
