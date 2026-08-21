@@ -46,7 +46,7 @@ page.on('pageerror',error=>report.pageErrors.push(String(error?.stack||error).sl
 
 try{
  await page.goto(`${baseUrl}/?tab=account`,{waitUntil:'networkidle',timeout:45000});
- await page.getByRole('button',{name:'Hesap Aç'}).click();
+ await page.getByRole('tab',{name:'Hesap Aç'}).click();
  await page.locator('#auth-display-name').fill(`Golden Oremar E2E ${runId}`);
  await page.locator('#auth-phone').fill('+905379594851');
  await page.locator('#auth-email').fill(email);
