@@ -9,6 +9,8 @@ import {
   type PlatformNotificationType,
 } from './notificationAdminApi';
 
+function userLabel(user:AdminPlatformUser){return user.displayName||user.email||user.id;}
+
 export function AdminNotifications() {
   const [users, setUsers] = useState<AdminPlatformUser[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -78,7 +80,7 @@ export function AdminNotifications() {
     const q = userSearch.trim().toLocaleLowerCase('tr-TR');
     const active = users.filter(user => user.status === 'active');
     const matches = q
-      ? active.filter(user => `${user.name} ${user.email} ${user.role}`.toLocaleLowerCase('tr-TR').includes(q))
+      ? active.filter(user => `${userLabel(user)} ${user.email||''} ${user.primaryRole} ${user.roles.join(' ')}`.toLocaleLowerCase('tr-TR').includes(q))
       : active;
     const limited = matches.slice(0, 100);
     const selected = active.find(user => user.id === form.userId);
@@ -150,7 +152,7 @@ export function AdminNotifications() {
 
           {form.scope === 'specific' && <div className="mt-4 space-y-3">
             <label className="relative block"><span className="sr-only">Kullanıcı ara</span><Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" aria-hidden="true" /><input type="search" maxLength={160} value={userSearch} onChange={event => setUserSearch(event.target.value)} placeholder="İsim veya e-posta ara..." className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
-            <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Kullanıcı</span><select required aria-describedby={audienceError ? 'notification-audience-error' : undefined} value={form.userId} onChange={event => setForm(current => ({ ...current, userId: event.target.value }))} className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="">Kullanıcı seçin</option>{filteredUsers.map(user => <option key={user.id} value={user.id}>{user.name} - {user.email}</option>)}</select></label>
+            <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Kullanıcı</span><select required aria-describedby={audienceError ? 'notification-audience-error' : undefined} value={form.userId} onChange={event => setForm(current => ({ ...current, userId: event.target.value }))} className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="">Kullanıcı seçin</option>{filteredUsers.map(user => <option key={user.id} value={user.id}>{userLabel(user)} - {user.email||user.primaryRole}</option>)}</select></label>
           </div>}
         </section>
 
