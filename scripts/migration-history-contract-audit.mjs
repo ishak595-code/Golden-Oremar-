@@ -32,6 +32,7 @@ else{
     '20260821094518_seed_multilingual_legal_document_drafts_v1.sql',
     '20260821094807_add_super_admin_release_setup_management_v1.sql',
     '20260821095157_preserve_payment_config_when_release_return_url_is_empty_v1.sql',
+    '20260821095744_align_legal_copy_with_provisional_registered_identity_v1.sql',
   ];
   for(const file of required){if(!files.includes(file))failures.push(`Required canonical migration is missing: ${file}`);}
   if(files.includes('20260820211030_strengthen_golden_oremar_legal_disclosures_2026.sql'))failures.push('Mis-timestamped legal disclosure migration must stay retired.');
