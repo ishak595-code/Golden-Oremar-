@@ -1,89 +1,74 @@
 {
-  "generatedAt": "2026-08-19T01:35:00+02:00",
-  "packageMode": "single-cumulative",
-  "productFormFactor": "android-ios-application",
+  "generatedAt": "2026-08-21T16:59:00+02:00",
+  "canonicalBranch": "main",
+  "codeMergeHead": "1ea0d37c24b4b62bed88c3cf9d92ab92de2dbdab",
+  "verifiedPreMergeHead": "a7fd0b04fceb94fa79b668cd7b743547a0caf65a",
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "latestFunctionalHead": "983d6c1350e4e46259c68cf948edb7956ebb519e",
-  "liveMigrationCount": 151,
-  "latestMigration": "20260818232517_verify_producer_product_gallery_assets",
-  "migrationReconciliation": "PASS_LIVE_CURRENT_HARDENING_MIGRATIONS_RECORDED_IN_FEATURE_BRANCH",
+  "liveMigrationCount": 312,
+  "latestMigration": "20260821142610_isolate_anonymous_rpc_privileges_in_api_internal_v2",
   "securityAdvisorLints": 0,
-  "edgeFunctions": {
-    "contact-submit": { "status": "ACTIVE", "version": 1 },
-    "event-reservation": { "status": "ACTIVE", "version": 2 },
-    "push-dispatch": { "status": "ACTIVE", "version": 3 },
-    "payment-method-vault": { "status": "ACTIVE", "version": 1, "verifyJwt": true, "repositorySourcePresent": true }
+  "runtimeIntegrity": {
+    "ready": true,
+    "missingPrivateReferenceCount": 0,
+    "missingPublicReferenceCount": 0,
+    "systemErrorDailyRows": 0
   },
-  "validation": {
-    "latestHeadCi": "NOT_EXECUTED_GITHUB_ACTIONS_RUNNER_ALLOCATION_BILLING_OR_SPENDING_LIMIT_BLOCKER",
-    "lastRecordedBlockedWorkflowRunId": 32029478472,
-    "supabaseSecurityAdvisor": "PASS_ZERO_LINTS_AFTER_MIGRATION_151",
-    "checkoutEntrypoints": {
-      "create_customer_order": "NO_AUTHENTICATED_NO_ANON_EXECUTE",
-      "create_customer_order_v2": "NO_AUTHENTICATED_NO_ANON_EXECUTE",
-      "create_customer_order_v3": "NO_AUTHENTICATED_NO_ANON_EXECUTE",
-      "create_customer_order_v4": "NO_AUTHENTICATED_NO_ANON_EXECUTE",
-      "create_customer_order_v5": "AUTHENTICATED_EXECUTE_ONLY_ANON_DISABLED"
-    },
-    "catalogPublicStorage": "PASS_FAIL_CLOSED_OBJECT_COUNT_OBSERVED_0",
-    "contentPublicStorage": "PASS_FAIL_CLOSED_OBJECT_COUNT_OBSERVED_0",
-    "adminProductApprovalRealAssetGate": "IMPLEMENTED_LIVE",
-    "producerCatalogStoragePolicies": "IMPLEMENTED_VERIFIED_ACTIVE_OWN_PRODUCTS_PREFIX_UNUSED_DELETE_NO_OVERWRITE",
-    "producerGalleryRealObjectFilter": "IMPLEMENTED_LIVE",
-    "producerProductClientBoundary": "IMPLEMENTED_PENDING_CURRENT_HEAD_CI_RECHECK",
-    "storefrontConfigStrictBoundary": "IMPLEMENTED_PENDING_CURRENT_HEAD_CI_RECHECK",
-    "eventPersonalReservationSafeRpc": "IMPLEMENTED_PENDING_CURRENT_HEAD_CI_RECHECK",
-    "savedPaymentMethodCheckoutBinding": "IMPLEMENTED_LIVE_V5",
-    "paymentMethodVault": "ACTIVE_VERIFY_JWT_TRUE_PROVIDER_CONFIGURATION_REQUIRED",
-    "giftPresentationPersistence": "IMPLEMENTED_LIVE",
-    "managementGiftMaskedPaymentSnapshot": "IMPLEMENTED_LIVE",
-    "accountThemeSoundPersistence": "IMPLEMENTED_LIVE",
-    "themeRuntimeSynchronization": "IMPLEMENTED_PENDING_CURRENT_HEAD_CI_RECHECK",
-    "androidReleaseBundleBaseline": "PASS_PREVIOUS_BASELINE_NOT_CURRENT_HEAD",
-    "iosSimulatorCompileBaseline": "PASS_PREVIOUS_BASELINE_NOT_CURRENT_HEAD"
+  "qualityGate": {
+    "workflow": "Mobile Quality Gate",
+    "runId": 32492296043,
+    "runNumber": 1086,
+    "conclusion": "success",
+    "customerE2E": "success",
+    "webAndroid": "success",
+    "ios": "success",
+    "checks": [
+      "release architecture audit",
+      "security and public RPC boundary audits",
+      "real customer Chromium journey",
+      "TypeScript check",
+      "production web build",
+      "Capacitor Android/iOS sync",
+      "native sync reproducibility",
+      "Android debug APK compile",
+      "Android unsigned release AAB compile",
+      "iOS simulator compile",
+      "deployment target and com.goldenoremar.app verification"
+    ]
   },
-  "truthfulnessChecks": {
-    "desktopTopNavigationRemoved": true,
-    "hamburgerMenuRemoved": true,
-    "repositorySearchPreserved": true,
-    "bottomNavigationPersistentPhoneTablet": true,
-    "notificationBadgeServerAuthoritative": true,
-    "cartBadgeUsesTotalQuantity": true,
-    "missingMoneyDoesNotBecomeZero": true,
-    "missingCurrencyDoesNotBecomeTry": true,
-    "invalidTrackedStockLocksPurchase": true,
-    "missingStorageObjectDoesNotBecomeBrokenPublicImage": true,
-    "databaseImagePathAloneDoesNotCountAsAsset": true,
-    "paymentProviderNotInvented": true,
-    "providerCardSecretsNotExposed": true,
-    "businessSupportIdentityNotInvented": true,
-    "finalLegalCopyNotInvented": true,
-    "shippingWeightsNotInvented": true,
-    "newestHeadNotClaimedCiGreen": true
+  "artifacts": {
+    "webDist": {"artifactId": 9450253753, "sha256": "0a3718995ba66f0055ece2eba4051a7df0b28d6eef82ca6d358708d393f69c1b"},
+    "customerE2EEvidence": {"artifactId": 9450275607, "sha256": "2ec5eca2287a71b661bedae3f2bdb9d45d990181957717640ea1ac46013986f0"},
+    "androidDebugApk": {"artifactId": 9450335218, "sha256": "137f1326d7c4f953c0f5aa400dbb1a6168c350268b0a00be770dc653a00cb615"},
+    "androidUnsignedReleaseAab": {"artifactId": 9450389470, "sha256": "e85595e764c2b6244e721bc4574cbf1e4faefef96e5786bdc738c1f9c436064f"}
   },
   "liveDataAudit": {
-    "publishedActiveProductsObserved": 42,
-    "categoriesObserved": 9,
-    "catalogPublicObjectCountObserved": 0,
-    "contentPublicObjectCountObserved": 0,
-    "activeVariantsMissingShippingWeightForPerishableProducts": 14,
-    "note": "Missing real images and shipping weights are exposed as production blockers and are not fabricated."
+    "publishedProducts": 42,
+    "activePublishedVariants": 42,
+    "primaryImageRows": 42,
+    "catalogPublicStorageObjects": 0,
+    "estimatedShippingWeights": 42,
+    "verifiedShippingWeights": 0,
+    "legalReadiness": "ready",
+    "publishedLegalDocuments": 4,
+    "publicOrigin": "https://goldenoremar.com",
+    "productionEnabled": true,
+    "iyzicoEnvironment": "sandbox",
+    "liveAuthUsersAfterE2ECleanup": 0
   },
-  "externalBlockers": {
-    "githubActions": "Runner allocation remains blocked by the GitHub account billing, minute or spending-limit condition. No new Actions run is being triggered while this remains unresolved.",
-    "catalogAssets": "catalog-public currently contains zero real objects; existing database image paths are therefore hidden by fail-closed RPCs until real assets are uploaded.",
-    "contentAssets": "content-public currently contains zero real objects; content and event image paths are hidden until real assets are uploaded.",
-    "liveSalesIdentity": "Legal business and support identity are not configured.",
-    "finalLegalCopy": "Final applicable legal terms must be supplied before live sales.",
-    "paymentProvider": "Production merchant/provider credentials remain external; card enrollment cannot be represented as production-ready until configured.",
-    "nativePushProviders": "Production FCM/APNs provider credentials remain external.",
-    "oauthProviders": "Production Google and Facebook provider configuration remains external.",
-    "mobileSigning": "Play Store and App Store signing/release configuration remains external.",
-    "publicWebOrigin": "A real public HTTPS share origin remains external.",
-    "shippingWeights": "Fourteen active perishable variants still require real shipping weights."
+  "providerReadiness": {
+    "iyzico": "external_credentials_required",
+    "resend": "external_credentials_required",
+    "fcm": "external_credentials_required",
+    "apns": "external_credentials_required",
+    "liveCardPayments": false
   },
-  "historicalReportPreservation": {
-    "gitHistoryPreservesPriorVersions": true,
-    "previousTestReportBlob": "6d1b24a1b84e684b958948f9d4cef269c1269b49"
+  "repositoryHygiene": {
+    "resetAdminPresentOnMain": false,
+    "credentialDebugScriptsPresentOnMain": false,
+    "firestoreRulesPresentOnMain": false,
+    "legacyNodeServerPresentOnMain": false,
+    "legacyFirebaseRuntimeSearchResults": 0,
+    "legacySqliteRuntimeSearchResults": 0,
+    "temporaryRootArtifactsSearchResults": 0
   }
 }
