@@ -38,7 +38,7 @@ if(appShell){const c=compact(appShell);
  if(!/useUnreadNotificationCount/.test(appShell)||!/badge=\{unreadCount\}/.test(appShell))failures.push('Header notification badge must remain bound to the live unread notification count.');
  if(!/cartItemCount/.test(appShell)||!/badge=\{cartItemCount\}/.test(appShell))failures.push('Cart badges must remain bound to the live total cart item count.');
  forbidPattern(appShell,/<BottomNavButton\s+icon=\{User\}[^>]*badge=/,'Account bottom navigation must not duplicate the notification unread count.');
- const voiceControl=/triggerVoiceSearch/.test(appShell)&&(/aria-label="Sesli arama"/.test(appShell)||/aria-label=\{searchQuery\?['"]Aramayı temizle['"]:['"]Sesli arama['"]\}/.test(c));
+ const voiceControl=/triggerVoiceSearch/.test(appShell)&&c.includes("onClick={searchQuery?()=>setSearchQuery(''):triggerVoiceSearch}")&&c.includes("aria-label={searchQuery?'Aramayıtemizle':'Sesliarama'}")&&/<Mic\s+aria-hidden="true"/.test(appShell);
  if(!voiceControl)failures.push('Voice-search control is missing from the application header.');
  forbidPattern(appShell,/LegacyAdminEntry/,'App must load the canonical AdminPage directly, not the retired legacy wrapper.');
  requirePattern(appShell,/import\(['"]\.\/pages\/AdminPage['"]\)\.then\(module=>\(\{default:module\.AdminPage\}\)\)/,'App canonical admin lazy import is missing.');
