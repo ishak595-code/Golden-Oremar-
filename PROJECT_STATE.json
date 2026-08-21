@@ -1,119 +1,71 @@
 {
   "packageMode": "single-cumulative",
   "productFormFactor": "android-ios-application",
-  "branch": "agent/admin-supabase-retire-node",
-  "pullRequest": 47,
+  "canonicalBranch": "main",
+  "mergedPullRequests": [47, 48],
   "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "latestFunctionalHead": "44ffae3da615a055c12f14fb62516fbdbcea0be1",
+  "latestCodeMergeHead": "1ea0d37c24b4b62bed88c3cf9d92ab92de2dbdab",
+  "lastVerifiedPreMergeHead": "a7fd0b04fceb94fa79b668cd7b743547a0caf65a",
   "stateRecordedDate": "2026-08-21",
-  "releaseStatus": "SOFTWARE_AND_DATABASE_QUALITY_GATE_GREEN_EXTERNAL_PRODUCTION_INPUTS_AND_PHYSICAL_WEIGHT_VERIFICATION_PENDING",
+  "releaseStatus": "SOFTWARE_DATABASE_AND_CUSTOMER_E2E_GREEN_EXTERNAL_PROVIDER_ASSETS_SIGNING_AND_PHYSICAL_VERIFICATION_PENDING",
   "applicationShell": {
-    "nativeTargets": ["android", "ios"],
     "framework": "React/Vite/Capacitor",
+    "nativeTargets": ["android", "ios"],
     "canonicalBackend": "Supabase",
     "legacyFirebaseCustomerRuntimeRetired": true,
     "legacyNodeSqliteRuntimeRetired": true
   },
   "repositoryIntegrity": {
+    "canonicalBranchIsMain": true,
+    "legacyCredentialDebugFilesPresentOnMain": false,
     "legacyFirebaseRuntimeReferences": 0,
     "legacySqliteRuntimeReferences": 0,
-    "legacyVendorRoleRuntimeReferences": 0,
-    "legacyVendorIdRuntimeReferences": 0,
-    "legacyProducerApplicationRouteReferences": 0,
-    "knownMockRuntimeDataReferences": 0,
-    "clientAccessibleDuplicateVersionedPublicRpcFamilies": 0,
-    "canonicalPublicRpcRuntimeAudit": "scripts/public-rpc-contract-audit.mjs",
-    "canonicalPublicRpcVersionsEnforced": true,
-    "legalDisclosureMigration": "20260820205756_strengthen_golden_oremar_legal_disclosures_2026.sql",
-    "legalFinalizationInvalidationMigration": "20260820211030_invalidate_legal_finalization_on_identity_or_document_change.sql",
-    "producerAccountRetirementMigration": "20260821075933_retire_legacy_producer_account_public_contracts_v1.sql",
-    "producerReadFlatteningMigration": "20260821083330_flatten_producer_read_contracts_and_remove_orphan_storefronts.sql",
-    "producerWriteFlatteningMigration": "20260821083551_flatten_producer_onboarding_write_contracts.sql",
-    "producerEntrypointSecurityMigrations": [
-      "20260821084346_seal_canonical_producer_entrypoints_v1.sql",
-      "20260821084442_restore_linter_safe_producer_wrappers_v1.sql"
-    ],
-    "publicRpcCanonicalizationMigration": "20260821085226_canonicalize_public_rpc_versions_and_retire_duplicate_aliases.sql",
-    "shippingWeightProvenanceMigration": "20260821091027_seed_estimated_packaged_shipping_weights_and_track_provenance_v2.sql"
+    "legacyNodeJwtRuntimePresent": false,
+    "legacyDataContextPresent": false,
+    "securityContractAudit": "scripts/security-contract-audit.mjs",
+    "publicRpcSecurityBoundaryAudit": "scripts/public-rpc-security-boundary-audit.mjs",
+    "reactTypesMajor": 19,
+    "typescriptExcludedRuntimeTrees": ["node_modules", "dist", "migration-tools", "supabase/functions", "android", "ios"]
   },
   "backend": {
     "provider": "Supabase",
-    "liveMigrationCount": 291,
-    "latestMigrationVersion": "20260821091027",
-    "latestMigrationName": "seed_estimated_packaged_shipping_weights_and_track_provenance_v2",
+    "liveMigrationCount": 312,
+    "latestMigrationVersion": "20260821142610",
+    "latestMigrationName": "isolate_anonymous_rpc_privileges_in_api_internal_v2",
     "securityAdvisorLints": 0,
     "systemErrorDailyRows": 0,
     "runtimeIntegrityReady": true,
     "missingPrivateFunctionReferences": 0,
     "missingPublicFunctionReferences": 0,
-    "superAdminCompatibilityHelperPresent": true,
-    "superAdminAuditLedgerPresent": true,
-    "runtimeIntegrityHelperDirectClientAccess": false,
-    "performanceAdvisorState": "INFO_ONLY_UNUSED_INDEXES",
-    "unusedIndexesBlindlyDropped": false
-  },
-  "adminRoleContract": {
-    "canonicalRoles": ["customer", "producer", "support", "content_editor", "operations", "admin", "super_admin"],
-    "retiredAliases": ["user", "vendor"],
-    "listRpc": "admin_list_platform_users_v3",
-    "mutationRpc": "admin_set_platform_user_role_v2",
-    "selfRoleMutationBlocked": true,
-    "lastActiveSuperAdminProtected": true,
-    "administratorAccountChangesRequireSuperAdmin": true,
-    "producerRoleRequiresRealProducerProfile": true,
-    "roleMutationsAudited": true
-  },
-  "sellerAccountContract": {
-    "dashboardRpc": "get_my_producer_dashboard_v2",
-    "applicationDraftRpc": "get_my_producer_application_draft_v5",
-    "applicationSaveRpc": "save_producer_application_draft_v5",
-    "applicationSubmitRpc": "submit_producer_application_v4",
-    "legacyReadCompatibilityCoresPhysicallyRemoved": true,
-    "legacyWriteCompatibilityCoresPhysicallyRemoved": true,
-    "orphanProducerRowsPhysicallyRemoved": 43,
-    "publicWrappersSecurityMode": "SECURITY_INVOKER",
-    "privateCanonicalCoresSecurityMode": "SECURITY_DEFINER_AUTHENTICATED_ONLY",
-    "dashboardCommerceStrictlyValidated": true,
-    "financeProducerIdentityCrossChecked": true,
-    "ciRegressionAudit": "scripts/producer-account-contract-audit.mjs"
-  },
-  "productionReadinessSemantics": {
-    "red": "actual software or database integrity failure",
-    "amber": "real external production input, estimated operational data awaiting verification, or manual provider configuration required",
-    "green": "verified ready",
-    "softwareIntegrityReady": true,
-    "externalInputsReady": false
+    "publicRpcBoundaryHardened": true
   },
   "catalog": {
-    "producerRows": 1,
-    "activeVerifiedProducers": 1,
-    "officialStoreName": "Golden Oremar",
     "publishedProducts": 42,
     "activePublishedVariants": 42,
     "primaryImageDatabaseRows": 42,
-    "primaryImagesBackedByCatalogStorageObjects": 0,
+    "catalogPublicStorageObjects": 0,
     "missingRealPrimaryImageStorageObjects": 42,
-    "activeVariantsMissingPackagedShippingWeight": 0,
     "estimatedPackagedShippingWeights": 42,
     "verifiedPackagedShippingWeights": 0,
     "shippingWeightProvenanceTracked": true,
-    "shippingWeightOperationalCoverageReady": true,
-    "shippingWeightPhysicalVerificationReady": false,
-    "catalogPublicStorageObjects": 0,
-    "contentPublicStorageObjects": 0,
-    "eventPublicStorageObjects": 0,
-    "iyzicoReadyProducerPaymentAccounts": 0,
     "missingAssetsFailClosed": true
   },
   "legalReadiness": {
-    "ready": false,
-    "registeredLegalNameConfigured": false,
-    "registeredAddressConfigured": false,
-    "registeredCountryCodeConfigured": false,
-    "legalDocumentsFinalized": false,
-    "publishedTurkishLegalDocumentCount": 4,
-    "missing": ["registered_legal_name", "registered_address", "registered_country_code", "legal_documents_finalized"],
-    "identityOrLegalDocumentChangeInvalidatesFinalization": true
+    "ready": true,
+    "registeredLegalName": "Golden Oremar",
+    "registeredCountryCode": "TR",
+    "identityVerificationStatus": "verified",
+    "legalDocumentsFinalized": true,
+    "publishedLegalDocumentCount": 4,
+    "missing": []
+  },
+  "releaseConfiguration": {
+    "publicOrigin": "https://goldenoremar.com",
+    "primaryOriginCount": 1,
+    "productionEnabled": true,
+    "iyzicoEnvironment": "sandbox",
+    "transactionalEmailFrom": "siparis@goldenoremar.com",
+    "managedFromSuperAdmin": true
   },
   "paymentReadiness": {
     "provider": "iyzico",
@@ -122,62 +74,72 @@
     "cardEnrollmentEnabled": false,
     "savedPaymentMethodsSupported": false,
     "requiresProviderConfiguration": true,
-    "paymentVerificationRequired": true,
     "storesRawCardData": false,
     "storesCvv": false,
     "storesProviderSecretsClientSide": false
   },
+  "providerSecretStatus": {
+    "iyzicoApiKeyConfigured": false,
+    "iyzicoSecretKeyConfigured": false,
+    "resendApiKeyConfigured": false,
+    "fcmServiceAccountEmailConfigured": false,
+    "fcmPrivateKeyConfigured": false,
+    "apnsTeamIdConfigured": false,
+    "apnsKeyIdConfigured": false,
+    "apnsPrivateKeyConfigured": false
+  },
   "auth": {
     "liveAuthUsers": 0,
     "liveProfiles": 0,
-    "liveRoleAssignments": 0,
-    "realOwnerAccountRequiredForEndToEndAdminVerification": true
+    "e2eUsesDisposableCustomerAccount": true,
+    "e2eCleanupEnabled": true
   },
   "qualityGate": {
     "workflow": "Mobile Quality Gate",
-    "lastPassedFunctionalHead": "44ffae3da615a055c12f14fb62516fbdbcea0be1",
-    "lastPassedRunId": 32467667062,
-    "lastPassedRunNumber": 1000,
-    "lastPassedJobs": ["verify-web-android", "verify-ios"],
-    "requiredStages": [
-      "release architecture audits including canonical public RPC audit",
-      "native baseline and OAuth preservation",
+    "lastPassedRunId": 32492296043,
+    "lastPassedRunNumber": 1086,
+    "verifiedHead": "a7fd0b04fceb94fa79b668cd7b743547a0caf65a",
+    "jobs": {
+      "customer-e2e": "success",
+      "verify-web-android": "success",
+      "verify-ios": "success"
+    },
+    "passedStages": [
+      "release architecture and security audits",
+      "real customer Chromium E2E journey",
       "TypeScript noEmit",
       "production Vite build",
+      "deployable web artifact",
       "Capacitor Android/iOS sync",
       "native sync reproducibility",
-      "Android debug compile",
-      "Android unsigned release bundle",
+      "Android debug APK",
+      "Android unsigned release AAB",
       "iOS Swift package resolution",
       "iOS simulator compile",
       "iOS deployment target and application identifier verification"
     ],
-    "currentHeadMustPassBeforeMerge": true,
-    "mergeAllowed": false,
-    "mergeRule": "Require the actually executing current-head Mobile Quality Gate to pass, then require explicit user authorization."
+    "mergedToMain": true,
+    "mainMergeHead": "1ea0d37c24b4b62bed88c3cf9d92ab92de2dbdab"
   },
-  "truthfulnessInvariants": [
-    "no fake users, orders, payments, balances, followers, reviews, products, health claims, certificates or compliance data",
-    "no invented legal identity, credentials, image assets, signing material or payment-provider configuration",
-    "estimated shipping weights are explicitly marked estimated and are never represented as measured or supplier verified",
-    "organic or certified claims require supporting verification",
-    "database image references are not treated as real assets unless the corresponding Storage object exists",
-    "missing external production inputs remain fail-closed rather than being shown as software errors",
-    "a head is never claimed CI-green unless its own workflow actually executes successfully"
-  ],
+  "artifacts": {
+    "webDist": {"id": 9450253753, "digest": "sha256:0a3718995ba66f0055ece2eba4051a7df0b28d6eef82ca6d358708d393f69c1b"},
+    "customerE2E": {"id": 9450275607, "digest": "sha256:2ec5eca2287a71b661bedae3f2bdb9d45d990181957717640ea1ac46013986f0"},
+    "androidDebugApk": {"id": 9450335218, "digest": "sha256:137f1326d7c4f953c0f5aa400dbb1a6168c350268b0a00be770dc653a00cb615"},
+    "androidUnsignedReleaseAab": {"id": 9450389470, "digest": "sha256:e85595e764c2b6244e721bc4574cbf1e4faefef96e5786bdc738c1f9c436064f"}
+  },
   "externalBlockers": [
     "42 real primary catalog image Storage objects",
-    "physical or supplier verification of packaged shipping weights for 42 variants; current operational values are explicitly estimated and editable",
-    "registered legal business/data-controller identity, registered country and open commercial/service address",
-    "final legal-document approval after real registered identity is entered",
-    "production iyzico merchant configuration and seller submerchant onboarding",
-    "production transactional email credentials and verified sender if readiness reports them missing",
-    "production Google/Facebook OAuth configuration where enabled",
+    "physical or supplier verification of 42 estimated packaged shipping weights",
+    "production iyzico merchant credentials and seller submerchant onboarding",
+    "production Resend API credential and verified sender delivery configuration",
     "production FCM/APNs credentials",
-    "Play Store/App Store signing and release configuration",
-    "real public HTTPS share origin",
-    "real content/event assets where publication requires them",
-    "real owner Auth account plus server-verified super_admin role for end-to-end admin verification"
+    "Play Store and App Store production signing credentials"
   ],
-  "nextBlock": "Only genuine external production inputs and physical measurements remain. Do not invent them and do not merge PR 47 until the state-only current head also passes the quality gate and explicit merge authorization is given."
+  "truthfulnessInvariants": [
+    "do not reintroduce retired Firebase, Node/SQLite or credential-reset runtime paths",
+    "do not represent database image references as real assets without Storage objects",
+    "do not represent estimated shipping weights as measured or supplier verified",
+    "do not mark payment or push providers ready until real provider credentials are configured",
+    "main is the canonical branch; stale feature branches are not source-of-truth"
+  ]
 }
