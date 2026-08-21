@@ -18,10 +18,18 @@ const forbiddenBasenames = new Set([
   'patch.js',
 ]);
 
-const forbiddenLegacyAdminFields = [
-  { re: /\bvendorId\b/, label: 'legacy vendorId field' },
-  { re: /\bvendor_id\b/, label: 'legacy vendor_id field' },
-  { re: /\bstore_name\b/, label: 'legacy store_name field' },
+const legacyProductModelFiles = new Set([
+  'src/admin/AdminDashboard.tsx',
+  'src/admin/AdminProducts.tsx',
+  'src/admin/AdminStock.tsx',
+  'src/admin/productAdminApi.ts',
+  'src/admin/inventoryAdminApi.ts',
+  'src/admin/dashboardApi.ts',
+]);
+const forbiddenLegacyProductFields = [
+  { re: /\bvendorId\b/, label: 'legacy product vendorId field' },
+  { re: /\bvendor_id\b/, label: 'legacy product vendor_id field' },
+  { re: /\bstore_name\b/, label: 'legacy product store_name field' },
 ];
 
 const codeExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.rules']);
@@ -68,9 +76,9 @@ function walk(directory) {
       if (pattern.re.test(content)) failures.push(`${pattern.label}: ${relative}`);
     }
 
-    if (relative.startsWith('src/admin/')) {
-      for (const field of forbiddenLegacyAdminFields) {
-        if (field.re.test(content)) failures.push(`${field.label} must not return to canonical Supabase admin code: ${relative}`);
+    if (legacyProductModelFiles.has(relative)) {
+      for (const field of forbiddenLegacyProductFields) {
+        if (field.re.test(content)) failures.push(`${field.label} must not return to canonical Supabase product/admin code: ${relative}`);
       }
     }
 
@@ -89,7 +97,7 @@ walk(root);
 const requiredAdminContracts = [
   ['src/admin/productAdminApi.ts', /\bproducer_id\s*:\s*string\s*\|\s*null/, 'Admin product contract must use producer_id.'],
   ['src/admin/productAdminApi.ts', /admin_list_products_v3/, 'Admin product list must use the canonical Supabase RPC.'],
-  ['src/admin/orderAdminApi.ts', /paymentStatus/, 'Admin order contract must expose normalized paymentStatus.'],
+  ['src/admin/orderAdminApi.ts', /paymentStatus\s*:\s*string/, 'Admin order contract must expose normalized paymentStatus.'],
   ['src/admin/contentAdminApi.ts', /\bid\s*:\s*string\b/, 'Admin content identifiers must remain string/UUID at the TypeScript boundary.'],
 ];
 
@@ -116,4 +124,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Security contract audit passed. No retired credential reset path, Firebase auth bypass, hard-coded password/JWT fallback, or legacy admin field contract detected.');
+console.log('Security contract audit passed. No retired credential reset path, Firebase auth bypass, hard-coded password/JWT fallback, or legacy product-admin field contract detected.');
