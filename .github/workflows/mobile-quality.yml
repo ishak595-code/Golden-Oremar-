@@ -14,9 +14,72 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  customer-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
+      VITE_PUBLIC_APP_ORIGIN: http://127.0.0.1:4173
+      E2E_BASE_URL: http://127.0.0.1:4173
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install locked application dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install pinned Chromium E2E runtime
+        run: |
+          npm install --no-save --package-lock=false playwright@1.62.1
+          npx playwright install --with-deps chromium
+
+      - name: Build browser application against canonical Supabase
+        run: npm run build
+
+      - name: Start production preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run preview -- --host 127.0.0.1 --port 4173 >/tmp/golden-oremar-preview.log 2>&1 &
+          echo $! >/tmp/golden-oremar-preview.pid
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/golden-oremar-preview.log
+          exit 1
+
+      - name: Run real customer Chromium journey
+        run: node scripts/customer-e2e.mjs
+
+      - name: Hard-delete disposable E2E user when service role is configured
+        if: always()
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/cleanup-e2e-user.mjs
+
+      - name: Upload customer E2E evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-oremar-customer-e2e-${{ github.sha }}
+          path: e2e-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+
   verify-web-android:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
+    env:
+      VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
     steps:
       - uses: actions/checkout@v7
 
@@ -91,6 +154,14 @@ jobs:
       - name: Production web build
         run: npm run build
 
+      - name: Upload deployable web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-oremar-web-dist-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Synchronize Android and iOS native projects
         run: npx cap sync android && npx cap sync ios
 
@@ -109,13 +180,32 @@ jobs:
         working-directory: android
         run: chmod +x gradlew && ./gradlew :app:assembleDebug --no-daemon
 
+      - name: Upload installable Android debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-oremar-android-debug-apk-${{ github.sha }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Compile Android release bundle without signing
         working-directory: android
         run: ./gradlew :app:bundleRelease --no-daemon
 
+      - name: Upload unsigned Android release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-oremar-android-unsigned-release-aab-${{ github.sha }}
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 14
+
   verify-ios:
     runs-on: macos-26
     timeout-minutes: 35
+    env:
+      VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
     steps:
       - uses: actions/checkout@v7
 
