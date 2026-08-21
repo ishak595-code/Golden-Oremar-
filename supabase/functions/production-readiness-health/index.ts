@@ -1,12 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "@supabase/supabase-js";
+import { integrationReadiness, loadIntegrationRuntime } from "../_shared/integration_runtime.ts";
 
 type R=Record<string,unknown>;
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
 function json(status:number,body:R){return new Response(JSON.stringify(body),{status,headers:{...cors,"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store"}});}
 function rec(value:unknown):value is R{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
 function env(name:string){return Deno.env.get(name)?.trim()||'';}
-function allEnv(...names:string[]){return names.every(name=>Boolean(env(name)));}
 function bool(value:unknown,label:string){if(typeof value!=='boolean')throw new Error(`${label}_invalid`);return value;}
 function int(value:unknown,label:string){if(typeof value!=='number'||!Number.isSafeInteger(value)||value<0)throw new Error(`${label}_invalid`);return value;}
 Deno.serve(async(req:Request)=>{
@@ -22,12 +22,12 @@ Deno.serve(async(req:Request)=>{
   if(error)throw error;
   if(!rec(data)||data.ok!==true||!rec(data.integrity)||!rec(data.businessIdentity)||!rec(data.assets)||!rec(data.legalContent)||!rec(data.shipping)||!rec(data.producerPayments)||!rec(data.paymentControl))throw new Error('production_readiness_snapshot_invalid');
 
-  const iyzicoBase=env('IYZICO_BASE_URL');
-  const iyzicoConfigured=allEnv('IYZICO_API_KEY','IYZICO_SECRET_KEY','IYZICO_BASE_URL')&&(iyzicoBase==='https://api.iyzipay.com'||iyzicoBase==='https://sandbox-api.iyzipay.com');
-  const emailFrom=env('TRANSACTIONAL_EMAIL_FROM');
-  const transactionalEmailConfigured=Boolean(env('RESEND_API_KEY'))&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailFrom);
-  const fcmConfigured=allEnv('FCM_PROJECT_ID','FCM_SERVICE_ACCOUNT_EMAIL','FCM_PRIVATE_KEY');
-  const apnsConfigured=allEnv('APNS_TEAM_ID','APNS_KEY_ID','APNS_PRIVATE_KEY','APNS_BUNDLE_ID');
+  const runtimeConfig=await loadIntegrationRuntime();
+  const runtimeStatus=integrationReadiness(runtimeConfig);
+  const iyzicoConfigured=runtimeStatus.iyzicoConfigured;
+  const transactionalEmailConfigured=runtimeStatus.transactionalEmailConfigured;
+  const fcmConfigured=runtimeStatus.fcmConfigured;
+  const apnsConfigured=runtimeStatus.apnsConfigured;
 
   const softwareIntegrityReady=bool(data.integrity.ready,'integrity_ready');
   const businessReady=bool(data.businessIdentity.ready,'business_ready');
