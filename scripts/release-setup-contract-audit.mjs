@@ -43,7 +43,7 @@ if(business){
   requirePattern(business,/Vergi \/ kimlik numarası/,'Business compliance must expose tax/identity number management.');
   requirePattern(business,/MERSİS numarası/,'Business compliance must expose MERSIS management.');
   requirePattern(business,/Ticaret sicil numarası/,'Business compliance must expose trade-registry management.');
-  requirePattern(business,/Yasal belgeler gerçek işletme kimliğiyle son olarak onaylandı/,'Business verification confirmation control is missing.');
+  requirePattern(business,/Gerçek tescil kimliği girildi ve yasal belgeler son kez onaylandı/,'Business verification confirmation control is missing.');
 }
 
 if(failures.length){console.error('Golden Oremar release setup contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
