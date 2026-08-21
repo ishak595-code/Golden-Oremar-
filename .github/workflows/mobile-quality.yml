@@ -5,6 +5,7 @@ on:
   pull_request:
     branches:
       - main
+      - agent/admin-supabase-retire-node
 
 permissions:
   contents: read
@@ -57,6 +58,8 @@ jobs:
           exit 1
 
       - name: Run real customer Chromium journey
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/customer-e2e.mjs
 
       - name: Hard-delete disposable E2E user when service role is configured
