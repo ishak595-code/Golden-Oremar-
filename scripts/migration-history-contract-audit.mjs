@@ -36,6 +36,8 @@ else{
     '20260821095933_bind_existing_golden_oremar_brand_assets_v1.sql',
     '20260821103949_add_private_prelaunch_company_and_release_configuration_v1.sql',
     '20260821104342_retire_legacy_release_setup_v1_entrypoints.sql',
+    '20260821105641_add_super_admin_vault_integration_secret_management_v1.sql',
+    '20260821105918_simplify_vault_runtime_and_expose_iyzico_environment_v1.sql',
   ];
   for(const file of required){if(!files.includes(file))failures.push(`Required canonical migration is missing: ${file}`);}
   if(files.includes('20260820211030_strengthen_golden_oremar_legal_disclosures_2026.sql'))failures.push('Mis-timestamped legal disclosure migration must stay retired.');
