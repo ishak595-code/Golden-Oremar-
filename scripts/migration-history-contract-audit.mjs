@@ -24,6 +24,10 @@ else{
     '20260821075933_retire_legacy_producer_account_public_contracts_v1.sql',
     '20260821083330_flatten_producer_read_contracts_and_remove_orphan_storefronts.sql',
     '20260821083551_flatten_producer_onboarding_write_contracts.sql',
+    '20260821084346_seal_canonical_producer_entrypoints_v1.sql',
+    '20260821084442_restore_linter_safe_producer_wrappers_v1.sql',
+    '20260821085226_canonicalize_public_rpc_versions_and_retire_duplicate_aliases.sql',
+    '20260821091027_seed_estimated_packaged_shipping_weights_and_track_provenance_v2.sql',
   ];
   for(const file of required){if(!files.includes(file))failures.push(`Required canonical migration is missing: ${file}`);}
   if(files.includes('20260820211030_strengthen_golden_oremar_legal_disclosures_2026.sql'))failures.push('Mis-timestamped legal disclosure migration must stay retired.');
