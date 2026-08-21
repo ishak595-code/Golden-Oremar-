@@ -47,7 +47,7 @@ export function AdminOrders({ setActiveTab }: { setActiveTab?: (tab: string) => 
   const [note, setNote] = useState('');
   const [settlementConfirm, setSettlementConfirm] = useState(false);
   const detailRef = useAccessibleDialog<HTMLDivElement>(Boolean(selected), () => { if (!busyId && !transition && !settlementConfirm) setSelected(null); });
-  const transitionRef = useAccessibleDialog<HTMLDivElement>(Boolean(transition && selected), () => { if (!busyId) setTransition(null); });
+  const transitionRef = useAccessibleDialog<HTMLFormElement>(Boolean(transition && selected), () => { if (!busyId) setTransition(null); });
   const settlementRef = useAccessibleDialog<HTMLDivElement>(Boolean(settlementConfirm && selected), () => { if (!busyId) setSettlementConfirm(false); });
 
   function show(message: string) { setToast(message); window.setTimeout(() => setToast(''), 3500); }
