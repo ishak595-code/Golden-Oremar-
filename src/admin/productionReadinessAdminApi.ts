@@ -4,14 +4,10 @@ export type ProductionReadiness={
  generatedAt:string;softwareIntegrityReady:boolean;productionInputsReady:boolean;automatedReady:boolean;
  database:{
   integrity:{superAdminHelperPresent:boolean;adminAuditLedgerPresent:boolean;readinessWrapperPresent:boolean;missingPrivateReferenceCount:number;missingPublicReferenceCount:number;ready:boolean};
-  businessIdentity:{
-   legalNameConfigured:boolean;supportEmailConfigured:boolean;supportPhoneConfigured:boolean;
-   registeredLegalNameConfigured:boolean;registeredAddressConfigured:boolean;registeredCountryCodeConfigured:boolean;
-   legalDocumentsFinalized:boolean;missing:string[];ready:boolean;
-  };
+  businessIdentity:{legalNameConfigured:boolean;supportEmailConfigured:boolean;supportPhoneConfigured:boolean;registeredLegalNameConfigured:boolean;registeredAddressConfigured:boolean;registeredCountryCodeConfigured:boolean;legalDocumentsFinalized:boolean;missing:string[];ready:boolean};
   assets:{catalogObjectCount:number;contentObjectCount:number;eventObjectCount:number;publishedProductCount:number;publishedProductsWithRealPrimaryImage:number;publishedProductsMissingRealPrimaryImage:number;catalogReady:boolean};
   legalContent:{requiredSlugs:string[];publishedSlugs:string[];missingSlugs:string[];ready:boolean};
-  shipping:{activePublishedVariantCount:number;missingWeightVariantCount:number;ready:boolean};
+  shipping:{activePublishedVariantCount:number;missingWeightVariantCount:number;estimatedWeightVariantCount:number;verifiedWeightVariantCount:number;ready:boolean;verifiedReady:boolean};
   producerPayments:{activeVerifiedProducerCount:number;readyProducerPaymentAccountCount:number;missingProducerPaymentAccountCount:number;ready:boolean};
   paymentControl:{provider:'iyzico';checkoutFormEnabled:boolean;savedCardPaymentsEnabled:boolean;cardEnrollmentEnabled:boolean;atLeastOneCheckoutFlowEnabled:boolean};
  };
@@ -30,6 +26,8 @@ export async function getProductionReadiness():Promise<ProductionReadiness>{
  if(!rec(data)||data.ok!==true||!rec(data.database)||!rec(data.runtime)||!rec(data.database.integrity)||!rec(data.database.businessIdentity)||!rec(data.database.assets)||!rec(data.database.legalContent)||!rec(data.database.shipping)||!rec(data.database.producerPayments)||!rec(data.database.paymentControl))throw new Error('Üretim hazırlığı yanıtı doğrulanamadı.');
  const integrity=data.database.integrity,business=data.database.businessIdentity,assets=data.database.assets,legal=data.database.legalContent,shipping=data.database.shipping,producers=data.database.producerPayments,payment=data.database.paymentControl,runtime=data.runtime;
  if(payment.provider!=='iyzico')throw new Error('Üretim ödeme sağlayıcısı sözleşmeye uymuyor.');
+ const activeVariants=integer(shipping.activePublishedVariantCount,'Aktif varyant sayısı'),missingWeights=integer(shipping.missingWeightVariantCount,'Eksik ağırlık sayısı'),estimatedWeights=integer(shipping.estimatedWeightVariantCount,'Tahmini ağırlık sayısı'),verifiedWeights=integer(shipping.verifiedWeightVariantCount,'Doğrulanmış ağırlık sayısı');
+ if(missingWeights+estimatedWeights+verifiedWeights!==activeVariants)throw new Error('Kargo ağırlık toplamları aktif varyant sayısıyla eşleşmiyor.');
  return{
   generatedAt:iso(data.generatedAt,'Hazırlık zamanı'),softwareIntegrityReady:bool(data.softwareIntegrityReady,'Yazılım bütünlüğü'),productionInputsReady:bool(data.productionInputsReady,'Üretim girdileri'),automatedReady:bool(data.automatedReady,'Otomatik hazırlık'),
   database:{
@@ -37,7 +35,7 @@ export async function getProductionReadiness():Promise<ProductionReadiness>{
    businessIdentity:{legalNameConfigured:bool(business.legalNameConfigured,'Marka yasal adı'),supportEmailConfigured:bool(business.supportEmailConfigured,'Destek e-postası'),supportPhoneConfigured:bool(business.supportPhoneConfigured,'Destek telefonu'),registeredLegalNameConfigured:bool(business.registeredLegalNameConfigured,'Kayıtlı ticari unvan'),registeredAddressConfigured:bool(business.registeredAddressConfigured,'Kayıtlı ticari adres'),registeredCountryCodeConfigured:bool(business.registeredCountryCodeConfigured,'Kayıtlı ülke kodu'),legalDocumentsFinalized:bool(business.legalDocumentsFinalized,'Yasal belge finalizasyonu'),missing:strings(business.missing,'Eksik işletme kimliği alanı'),ready:bool(business.ready,'İşletme kimliği')},
    assets:{catalogObjectCount:integer(assets.catalogObjectCount,'Katalog obje sayısı'),contentObjectCount:integer(assets.contentObjectCount,'İçerik obje sayısı'),eventObjectCount:integer(assets.eventObjectCount,'Etkinlik obje sayısı'),publishedProductCount:integer(assets.publishedProductCount,'Yayındaki ürün sayısı'),publishedProductsWithRealPrimaryImage:integer(assets.publishedProductsWithRealPrimaryImage,'Görselli ürün sayısı'),publishedProductsMissingRealPrimaryImage:integer(assets.publishedProductsMissingRealPrimaryImage,'Eksik ürün görseli sayısı'),catalogReady:bool(assets.catalogReady,'Katalog görselleri')},
    legalContent:{requiredSlugs:strings(legal.requiredSlugs,'Zorunlu yasal belge'),publishedSlugs:strings(legal.publishedSlugs,'Yayınlanmış yasal belge'),missingSlugs:strings(legal.missingSlugs,'Eksik yasal belge'),ready:bool(legal.ready,'Yasal içerikler')},
-   shipping:{activePublishedVariantCount:integer(shipping.activePublishedVariantCount,'Aktif varyant sayısı'),missingWeightVariantCount:integer(shipping.missingWeightVariantCount,'Eksik ağırlık sayısı'),ready:bool(shipping.ready,'Kargo ağırlıkları')},
+   shipping:{activePublishedVariantCount:activeVariants,missingWeightVariantCount:missingWeights,estimatedWeightVariantCount:estimatedWeights,verifiedWeightVariantCount:verifiedWeights,ready:bool(shipping.ready,'Kargo ağırlıkları'),verifiedReady:bool(shipping.verifiedReady,'Kargo ağırlığı fiziksel doğrulaması')},
    producerPayments:{activeVerifiedProducerCount:integer(producers.activeVerifiedProducerCount,'Doğrulanmış üretici sayısı'),readyProducerPaymentAccountCount:integer(producers.readyProducerPaymentAccountCount,'Hazır üretici ödeme hesabı'),missingProducerPaymentAccountCount:integer(producers.missingProducerPaymentAccountCount,'Eksik üretici ödeme hesabı'),ready:bool(producers.ready,'Üretici ödeme hesapları')},
    paymentControl:{provider:'iyzico',checkoutFormEnabled:bool(payment.checkoutFormEnabled,'Tek seferlik ödeme ayarı'),savedCardPaymentsEnabled:bool(payment.savedCardPaymentsEnabled,'Kayıtlı kart ayarı'),cardEnrollmentEnabled:bool(payment.cardEnrollmentEnabled,'Kart kaydetme ayarı'),atLeastOneCheckoutFlowEnabled:bool(payment.atLeastOneCheckoutFlowEnabled,'Checkout akışı')}
   },
