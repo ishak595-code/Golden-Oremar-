@@ -85,7 +85,7 @@ async function verifyPublicSections(page){
  mark('health_and_recipes',true);await shot(page,'07-health-recipes');
 
  await page.goto(`${baseUrl}/?tab=events`,{waitUntil:'networkidle',timeout:30000});
- await page.getByRole('heading',{name:'Etkinlikler'}).waitFor({state:'visible',timeout:12000});
+ await page.getByRole('heading',{name:'Etkinlikler',exact:true}).waitFor({state:'visible',timeout:12000});
  mark('events',true);await shot(page,'08-events');
 
  await page.goto(`${baseUrl}/?tab=categories`,{waitUntil:'networkidle',timeout:30000});
