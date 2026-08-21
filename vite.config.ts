@@ -36,13 +36,15 @@ export default defineConfig(() => ({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Keep the service worker out of the Vite development runtime so HMR and
+      // accessibility/debug sessions cannot be served stale cached application code.
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
       workbox: {
         // Back-office modules are lazy and excluded from customer precache. They are
         // fetched only after an authorized admin or producer opens the management UI.
-        globIgnores: ['**/LegacyAdminEntry-*.js', '**/Admin*.js'],
+        globIgnores: ['**/Admin*.js'],
       },
       manifest: {
         id: '/',
