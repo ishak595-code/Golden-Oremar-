@@ -115,7 +115,7 @@ export async function listPublicContent(type: ContentType, locale = 'tr', limit 
 
 export async function getPublicContentEntry(reference: string, locale = 'tr') {
   const requestedLocale = normalizeLocale(locale);
-  const { data, error } = await supabase.rpc('get_public_content_entry_v2', {
+  const { data, error } = await supabase.rpc('get_public_content_entry_v3', {
     p_reference: requireReference(reference),
     p_locale: requestedLocale,
   });
