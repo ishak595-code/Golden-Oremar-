@@ -114,7 +114,7 @@ export async function initNativePushListeners() {
     const handles = await Promise.all([
       PushNotifications.addListener('registration', token => { void handleRegistration(token); }),
       PushNotifications.addListener('registrationError', event => {
-        settleRegistration(new Error(String(event?.error || 'Cihaz push kaydı başarısız oldu.'));
+        settleRegistration(new Error(String(event?.error || 'Cihaz push kaydı başarısız oldu.')));
       }),
       PushNotifications.addListener('pushNotificationReceived', () => {
         emitReceipt();
