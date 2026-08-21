@@ -35,6 +35,7 @@ const canonicalMigration = read('supabase/migrations/20260821070927_canonicalize
 const retirementMigration = read('supabase/migrations/20260821071233_retire_legacy_admin_user_role_entrypoints_v4.sql');
 const authorityMigration = read('supabase/migrations/20260821071307_harden_admin_role_assignment_authority_v5.sql');
 const enforcementMigration = read('supabase/migrations/20260821071515_harden_admin_enforcement_wrapper_v2.sql');
+const linterAlignmentMigration = read('supabase/migrations/20260821071908_align_admin_user_wrappers_with_supabase_linter_v6.sql');
 
 if (api) {
   match(
@@ -81,8 +82,6 @@ if (retirementMigration) {
   ]) {
     if (!retirementMigration.includes(marker)) failures.push(`Retired admin role entrypoint is not removed: ${marker}`);
   }
-  match(retirementMigration, /security definer/i, 'Canonical public admin role wrappers must execute through a controlled SECURITY DEFINER boundary.');
-  match(retirementMigration, /revoke all on function private\.admin_list_platform_users_v3\(\)/i, 'Direct private admin user-list execution must stay revoked.');
 }
 
 if (authorityMigration) {
@@ -93,10 +92,29 @@ if (authorityMigration) {
 }
 
 if (enforcementMigration) {
-  match(enforcementMigration, /create or replace function public\.admin_enforce_platform_user_v1/i, 'Hardened account enforcement public wrapper is missing.');
-  match(enforcementMigration, /security definer/i, 'Account enforcement wrapper must use the controlled SECURITY DEFINER boundary.');
-  match(enforcementMigration, /revoke all on function private\.admin_enforce_platform_user_v1/i, 'Direct private account enforcement execution must remain revoked.');
-  match(enforcementMigration, /grant execute on function public\.admin_enforce_platform_user_v1[\s\S]*to authenticated/i, 'Only authenticated clients should receive the public enforcement entrypoint.');
+  match(enforcementMigration, /create or replace function public\.admin_enforce_platform_user_v1/i, 'Account enforcement public wrapper migration is missing.');
+  match(enforcementMigration, /grant execute on function public\.admin_enforce_platform_user_v1[\s\S]*to authenticated/i, 'Authenticated users must receive only the public enforcement entrypoint.');
+}
+
+if (linterAlignmentMigration) {
+  for (const signature of [
+    /create or replace function public\.admin_list_platform_users_v3\(\)[\s\S]*security invoker/i,
+    /create or replace function public\.admin_set_platform_user_role_v2[\s\S]*security invoker/i,
+    /create or replace function public\.admin_enforce_platform_user_v1[\s\S]*security invoker/i,
+  ]) {
+    match(linterAlignmentMigration, signature, 'Exposed admin user-management wrappers must end in SECURITY INVOKER mode.');
+  }
+  forbid(linterAlignmentMigration, /security definer/i, 'Final exposed admin wrapper alignment must not reintroduce SECURITY DEFINER.');
+  match(linterAlignmentMigration, /grant execute on function private\.admin_list_platform_users_v3\(\) to authenticated/i, 'Authenticated wrapper execution must have the minimum private list-core grant.');
+  match(linterAlignmentMigration, /grant execute on function private\.admin_set_platform_user_role_v2\(uuid, text, text\) to authenticated/i, 'Authenticated wrapper execution must have the minimum private role-core grant.');
+  match(linterAlignmentMigration, /grant execute on function private\.admin_enforce_platform_user_v1[\s\S]*to authenticated/i, 'Authenticated wrapper execution must have the minimum private enforcement-core grant.');
+  for (const publicSignature of [
+    /revoke all on function public\.admin_list_platform_users_v3\(\) from public, anon, authenticated, service_role/i,
+    /revoke all on function public\.admin_set_platform_user_role_v2\(uuid, text, text\) from public, anon, authenticated, service_role/i,
+    /revoke all on function public\.admin_enforce_platform_user_v1[\s\S]*from public, anon, authenticated, service_role/i,
+  ]) {
+    match(linterAlignmentMigration, publicSignature, 'Public admin user-management privileges must be reset before the authenticated-only grant.');
+  }
 }
 
 if (failures.length) {
@@ -105,4 +123,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Golden Oremar admin user-role contract audit passed: canonical roles, protected administrator authority, retired aliases, strict mutation verification and private RPC boundaries are intact.');
+console.log('Golden Oremar admin user-role contract audit passed: canonical roles, protected administrator authority, retired aliases, strict mutation verification and Supabase-linter-safe RPC boundaries are intact.');
