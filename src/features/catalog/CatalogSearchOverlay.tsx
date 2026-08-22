@@ -10,8 +10,10 @@ type Props = {
   onProducer: (id: string, slug: string, label: string) => void;
   onCategory: (slug: string, label: string) => void;
   onAllResults: (query: string) => void;
+  onRequestClose?: () => void;
 };
 
+const SEARCH_INPUT_SELECTOR = 'input[aria-label="Ürün, üretici veya köy ara"]';
 const iconFor = (kind: CatalogSuggestion['kind']) =>
   kind === 'product' ? Package : kind === 'producer' ? Store : Grid2X2;
 
@@ -23,11 +25,27 @@ export default function CatalogSearchOverlay({
   onProducer,
   onCategory,
   onAllResults,
+  onRequestClose,
 }: Props) {
   const [items, setItems] = useState<CatalogSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const requestId = useRef(0);
+
+  useEffect(() => {
+    const input = document.querySelector<HTMLInputElement>(SEARCH_INPUT_SELECTOR);
+    if (!input) return;
+    input.setAttribute('aria-controls', 'catalog-search-suggestions');
+    input.setAttribute('aria-expanded', String(open));
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !open) return;
+      event.preventDefault();
+      onRequestClose?.();
+      input.blur();
+    };
+    input.addEventListener('keydown', handleKeyDown);
+    return () => input.removeEventListener('keydown', handleKeyDown);
+  }, [open, onRequestClose]);
 
   useEffect(() => {
     if (!open) {
@@ -66,6 +84,11 @@ export default function CatalogSearchOverlay({
 
   if (!open) return null;
 
+  function requestClose() {
+    onRequestClose?.();
+    document.querySelector<HTMLInputElement>(SEARCH_INPUT_SELECTOR)?.blur();
+  }
+
   function choose(item: CatalogSuggestion) {
     if (item.kind === 'product') {
       onQueryChange(item.label);
@@ -77,18 +100,24 @@ export default function CatalogSearchOverlay({
       onProducer(item.id, item.value, item.label);
       return;
     }
-    // Category selection uses the exact server slug rather than combining it
-    // with the localized display label as a second free-text filter.
     onQueryChange('');
     onCategory(item.value, '');
   }
 
   return (
     <div
+      id="catalog-search-suggestions"
+      data-catalog-search-overlay="true"
       className="absolute left-4 right-4 top-full z-[100] mx-auto mt-2 max-h-[70vh] max-w-7xl overflow-y-auto rounded-2xl border border-brand-gold/20 bg-white shadow-2xl dark:bg-gray-900"
       role="region"
       aria-label="Arama önerileri"
       aria-busy={loading}
+      onKeyDown={event => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          requestClose();
+        }
+      }}
     >
       {!query.trim() ? (
         <div className="p-5 text-sm text-gray-600 dark:text-gray-300">

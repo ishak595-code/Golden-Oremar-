@@ -14,7 +14,11 @@ const EXPECTED_REPOSITORY_ID = "1335636205";
 const EXPECTED_OWNER_ID = "233486723";
 const EXPECTED_WORKFLOW = "Mobile Quality Gate";
 const EXPECTED_WORKFLOW_PATH = `${EXPECTED_REPOSITORY}/.github/workflows/mobile-quality.yml@`;
-const ALLOWED_EVENTS = new Set(["pull_request", "workflow_dispatch"]);
+const TRUSTED_BRANCH_REFS = new Set([
+  "refs/heads/main",
+  "refs/heads/integration/full-consolidation-2026-08",
+]);
+const PULL_REQUEST_REF_RE = /^refs\/pull\/\d{1,12}\/merge$/;
 const RUN_ID_RE = /^\d{1,24}$/;
 const PASSWORD_RE = /^[^\u0000-\u001F\u007F]{12,72}$/;
 const PHONE_RE = /^\+[1-9][0-9]{9,14}$/;
@@ -28,6 +32,7 @@ type GithubClaims = {
   workflow_ref?: string;
   job_workflow_ref?: string;
   event_name?: string;
+  ref?: string;
   run_id?: string;
   runner_environment?: string;
 };
@@ -78,6 +83,20 @@ function cleanPhone(value: unknown) {
   return phone;
 }
 
+function verifyEventAndRef(payload: GithubClaims) {
+  const eventName = String(payload.event_name || "");
+  const ref = String(payload.ref || "");
+  if (eventName === "pull_request") {
+    if (!PULL_REQUEST_REF_RE.test(ref)) throw new Error("github_ref_not_allowed");
+    return;
+  }
+  if (eventName === "push" || eventName === "workflow_dispatch") {
+    if (!TRUSTED_BRANCH_REFS.has(ref)) throw new Error("github_ref_not_allowed");
+    return;
+  }
+  throw new Error("github_event_not_allowed");
+}
+
 async function verifyGithubOidc(req: Request, runId: string) {
   const token = bearerToken(req);
   if (!token) throw new Error("github_oidc_token_required");
@@ -93,7 +112,7 @@ async function verifyGithubOidc(req: Request, runId: string) {
   if (String(payload.repository_owner_id || "") !== EXPECTED_OWNER_ID) throw new Error("github_owner_not_allowed");
   if (String(payload.workflow || "") !== EXPECTED_WORKFLOW) throw new Error("github_workflow_not_allowed");
   if (!workflowRef.includes(EXPECTED_WORKFLOW_PATH)) throw new Error("github_workflow_ref_not_allowed");
-  if (!ALLOWED_EVENTS.has(String(payload.event_name || ""))) throw new Error("github_event_not_allowed");
+  verifyEventAndRef(payload);
   if (String(payload.run_id || "") !== runId) throw new Error("github_run_id_mismatch");
   if (String(payload.runner_environment || "") !== "github-hosted") throw new Error("github_runner_not_allowed");
 }
