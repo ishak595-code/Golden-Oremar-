@@ -41,6 +41,11 @@ if(control){
  requirePattern(control,/EXPECTED_OWNER_ID\s*=\s*"233486723"/,'CI control must pin the immutable repository owner id.');
  requirePattern(control,/EXPECTED_AUDIENCE\s*=\s*"golden-oremar-ci-e2e"/,'CI control must pin the dedicated OIDC audience.');
  requirePattern(control,/jwtVerify<.*>\(token, GITHUB_JWKS/,'CI control must cryptographically verify GitHub OIDC tokens.');
+ requirePattern(control,/TRUSTED_BRANCH_REFS\s*=\s*new Set\(\[[\s\S]*"refs\/heads\/main"[\s\S]*"refs\/heads\/integration\/full-consolidation-2026-08"[\s\S]*\]\)/,'Push/workflow-dispatch E2E must be restricted to main and the consolidation branch.');
+ requirePattern(control,/PULL_REQUEST_REF_RE\s*=\s*\/\^refs\\\/pull\\\/\\d\{1,12\}\\\/merge\$\//,'Pull-request E2E must require a canonical refs/pull/<id>/merge ref.');
+ requirePattern(control,/eventName === "pull_request"[\s\S]*PULL_REQUEST_REF_RE\.test\(ref\)/,'Pull-request OIDC events must validate their ref.');
+ requirePattern(control,/eventName === "push" \|\| eventName === "workflow_dispatch"[\s\S]*TRUSTED_BRANCH_REFS\.has\(ref\)/,'Push and workflow-dispatch OIDC events must fail closed outside trusted branch refs.');
+ requirePattern(control,/verifyEventAndRef\(payload\)/,'CI control must validate GitHub event and ref after cryptographic claim checks.');
  requirePattern(control,/type Action = "provision" \| "confirm" \| "delete"/,'CI control must expose the provision and cleanup actions required by the authenticated E2E model.');
  requirePattern(control,/action === "provision"/,'CI control must implement protected disposable-user provisioning.');
  requirePattern(control,/admin\.auth\.admin\.createUser/,'CI control must create the disposable Auth user server-side.');
@@ -54,4 +59,4 @@ if(controlConfig){
 }
 
 if(failures.length){console.error('Golden Oremar authenticated E2E contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar authenticated E2E contract audit passed: the real registration UI contract is exercised, GitHub OIDC provisions a confirmed disposable account, login runs through the real UI, cleanup is mandatory, and service-role credentials never enter Actions.');
+console.log('Golden Oremar authenticated E2E contract audit passed: the real registration UI is exercised, GitHub OIDC is cryptographically pinned to the repository/workflow/run/hosted runner and trusted event refs, disposable accounts are provisioned server-side, login runs through the real UI, cleanup is mandatory, and service-role credentials never enter Actions.');
