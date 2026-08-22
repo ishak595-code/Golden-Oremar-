@@ -32,10 +32,10 @@ export default function HomeSection({searchQuery,setSearchQuery,onProductClick,o
  const[sort,setSort]=useState<SortOption>('featured');
  const[filtersOpen,setFiltersOpen]=useState(false);
  const interfaceContent=staticContent?.interface??null;
- const heroTitle=safeText(interfaceContent?.heroTitle,300)||'Doğallığın seçkin hali.';
- const heroSubtitle=safeText(interfaceContent?.heroSubtitle,600)||'Kaynağı ve üreticisi belli, özenle seçilmiş ürünleri keşfedin.';
- const heroButtonText=safeText(interfaceContent?.heroButtonText,120)||'Ürünleri keşfet';
- const categoriesTitle=safeText(interfaceContent?.categoriesTitle,200)||'Kategoriler';
+ const heroTitle=interfaceContent?safeText(interfaceContent.heroTitle,300):'';
+ const heroSubtitle=interfaceContent?safeText(interfaceContent.heroSubtitle,600):'';
+ const heroButtonText=interfaceContent?safeText(interfaceContent.heroButtonText,120):'';
+ const categoriesTitle=interfaceContent?safeText(interfaceContent.categoriesTitle,200):'Kategoriler';
  const loading=storefrontLoading||catalogLoading||filtersLoading;
  const hasLoadError=Boolean(storefrontError||catalogError||filtersError);
  const salesPaused=salesReadiness?.status==='blocked_pending_business_identity';
@@ -88,7 +88,7 @@ export default function HomeSection({searchQuery,setSearchQuery,onProductClick,o
    {hasLoadError?<CustomerNotice>Mağaza içeriğinin bir bölümü şu anda yenilenemiyor. Biraz sonra tekrar deneyebilirsiniz.</CustomerNotice>:null}
    {salesPaused&&salesReadiness?<CustomerNotice>{safeText(salesReadiness.message,500)}</CustomerNotice>:null}
 
-   {!searchQuery?<div className="mb-5 px-1"><div className="flex items-start justify-between gap-4"><div className="min-w-0 max-w-3xl"><div className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-brand-gold"><Leaf aria-hidden="true" className="h-3.5 w-3.5"/>Golden Oremar</div><h1 id="home-title" className="mt-1 text-2xl font-black leading-tight text-brand-green dark:text-brand-gold sm:text-3xl">{heroTitle}</h1><p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-5 text-brand-muted">{heroSubtitle}</p></div><button type="button" onClick={()=>document.getElementById('products')?.scrollIntoView({behavior:prefersReducedMotion()?'auto':'smooth'})} className="hidden min-h-11 shrink-0 items-center rounded-full border border-brand-border bg-brand-card px-4 text-sm font-bold text-brand-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold sm:inline-flex">{heroButtonText}<ChevronRight aria-hidden="true" className="ml-1 h-4 w-4"/></button></div></div>:<h1 id="home-title" className="sr-only">Golden Oremar ürünleri</h1>}
+   {!searchQuery&&interfaceContent?<div className="mb-5 px-1"><div className="flex items-start justify-between gap-4"><div className="min-w-0 max-w-3xl"><div className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-brand-gold"><Leaf aria-hidden="true" className="h-3.5 w-3.5"/>Golden Oremar</div><h1 id="home-title" className="mt-1 text-2xl font-black leading-tight text-brand-green dark:text-brand-gold sm:text-3xl">{heroTitle}</h1><p className="mt-2 line-clamp-2 max-w-2xl text-sm leading-5 text-brand-muted">{heroSubtitle}</p></div><button type="button" onClick={()=>document.getElementById('products')?.scrollIntoView({behavior:prefersReducedMotion()?'auto':'smooth'})} className="hidden min-h-11 shrink-0 items-center rounded-full border border-brand-border bg-brand-card px-4 text-sm font-bold text-brand-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold sm:inline-flex">{heroButtonText}<ChevronRight aria-hidden="true" className="ml-1 h-4 w-4"/></button></div></div>:<h1 id="home-title" className="sr-only">Golden Oremar ürünleri</h1>}
 
    {renderEvents('after_hero')}
 
