@@ -51,7 +51,7 @@ expect(home.includes('heroCategories.map(config=>liveById.get(config.targetCateg
 expect(home.includes('homeSections.filter(section=>section.active)'),'Super Admin showcase ordering must remain authoritative on Home.');
 expect(home.includes('filteredProducts.length} ürün listeleniyor'),'Home must expose the live filtered product count.');
 expect(home.includes('<CatalogProductCard compact key={product.id}'),'Primary Home collections must use compact list cards rather than screen-dominating cards.');
-expect(home.indexOf('home-categories-title')<home.indexOf('showCampaignHero'),'Category discovery must be rendered before the optional campaign hero.');
+expect(home.indexOf('aria-labelledby="home-categories-title"')<home.indexOf('go-premium-intro--campaign'),'Category discovery must be rendered before the optional campaign hero.');
 expect(home.includes("const offerProducts=sectionProducts('offers')")&&home.includes('offerProducts.length>0'),'Campaign hero must be gated by real live offer products.');
 expect(home.includes("eventSpotlight?.enabled")&&home.includes('eventSpotlight.placement===placement'),'Event spotlight must stay dynamic and placement-managed.');
 
