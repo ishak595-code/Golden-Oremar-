@@ -4,6 +4,7 @@ import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary';
 import './index.css';
 import './features/customer-experience/customerShellPolish.css';
+import './features/customer-experience/videoReferencePremium.css';
 import { initNativeFeatures } from './native';
 import { initNativePushListeners } from './features/notifications/nativePush';
 import { applyThemeToDocument, resolveInitialTheme } from './features/appearance/theme';
@@ -12,6 +13,7 @@ import { installCustomerShellRouteState } from './features/navigation/customerSh
 import { installGlobalErrorTelemetry, sendClientError } from './lib/errorTelemetry';
 import StoreComplianceControls from './features/store/StoreComplianceControls';
 import NativeAppUpdateBanner from './features/app-update/NativeAppUpdateBanner';
+import ProductRecommendationsRail from './features/catalog/ProductRecommendationsRail';
 
 const initialTheme = resolveInitialTheme();
 applyThemeToDocument(initialTheme);
@@ -27,6 +29,7 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <NativeAppUpdateBanner />
       <App />
+      <ProductRecommendationsRail />
       <StoreComplianceControls />
     </ErrorBoundary>
   </StrictMode>,
