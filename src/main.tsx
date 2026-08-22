@@ -13,10 +13,12 @@ import { applyThemeToDocument, resolveInitialTheme } from './features/appearance
 import { loadAndApplyBrandAppearance } from './features/appearance/brandAppearance';
 import { installCustomerShellRouteState } from './features/navigation/customerShellRouteState';
 import { installGlobalErrorTelemetry, sendClientError } from './lib/errorTelemetry';
+import {installBackendPerformanceHints} from './lib/performanceHints';
 import StoreComplianceControls from './features/store/StoreComplianceControls';
 import NativeAppUpdateBanner from './features/app-update/NativeAppUpdateBanner';
 import ProductRecommendationsRail from './features/catalog/ProductRecommendationsRail';
 
+installBackendPerformanceHints();
 const initialTheme = resolveInitialTheme();
 applyThemeToDocument(initialTheme);
 installCustomerShellRouteState();
