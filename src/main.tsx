@@ -5,6 +5,7 @@ import ErrorBoundary from './ErrorBoundary';
 import './index.css';
 import './features/customer-experience/customerShellPolish.css';
 import './features/customer-experience/videoReferencePremium.css';
+import './features/customer-experience/productDetailCommerceDock.css';
 import { initNativeFeatures } from './native';
 import { initNativePushListeners } from './features/notifications/nativePush';
 import { applyThemeToDocument, resolveInitialTheme } from './features/appearance/theme';
