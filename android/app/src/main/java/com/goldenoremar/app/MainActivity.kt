@@ -15,11 +15,167 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
+import com.google.android.play.core.appupdate.AppUpdateInfo
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.InstallState
+import com.google.android.play.core.install.InstallStateUpdatedListener
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.InstallStatus
+import com.google.android.play.core.install.model.UpdateAvailability
 
 class MainActivity : BridgeActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         registerPlugin(NativeSpeechPlugin::class.java)
+        registerPlugin(NativeAppUpdatePlugin::class.java)
         super.onCreate(savedInstanceState)
+    }
+}
+
+@CapacitorPlugin(name = "NativeAppUpdate")
+class NativeAppUpdatePlugin : Plugin() {
+    private var updateManager: AppUpdateManager? = null
+    private var installStateListener: InstallStateUpdatedListener? = null
+
+    override fun load() {
+        super.load()
+        val manager = AppUpdateManagerFactory.create(context)
+        updateManager = manager
+        val listener = InstallStateUpdatedListener { state ->
+            notifyListeners("state", installStatePayload(state), true)
+        }
+        installStateListener = listener
+        manager.registerListener(listener)
+    }
+
+    @PluginMethod
+    fun check(call: PluginCall) {
+        val manager = updateManager ?: AppUpdateManagerFactory.create(context).also { updateManager = it }
+        manager.appUpdateInfo
+            .addOnSuccessListener { info -> call.resolve(updateInfoPayload(info)) }
+            .addOnFailureListener { error ->
+                val result = emptyUpdateState()
+                result.put("reason", error.javaClass.simpleName.ifBlank { "play_update_unavailable" })
+                call.resolve(result)
+            }
+    }
+
+    @PluginMethod
+    fun start(call: PluginCall) {
+        val manager = updateManager ?: AppUpdateManagerFactory.create(context).also { updateManager = it }
+        val requestedMode = call.getString("mode")?.trim()?.lowercase().orEmpty()
+        val requestedType = if (requestedMode == "immediate") AppUpdateType.IMMEDIATE else AppUpdateType.FLEXIBLE
+
+        manager.appUpdateInfo
+            .addOnSuccessListener { info ->
+                val availability = info.updateAvailability()
+                if (availability != UpdateAvailability.UPDATE_AVAILABLE && availability != UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS) {
+                    call.reject("Google Play üzerinde yeni bir sürüm bulunamadı.", "update_not_available")
+                    return@addOnSuccessListener
+                }
+
+                val resolvedType = when {
+                    info.isUpdateTypeAllowed(requestedType) -> requestedType
+                    requestedType != AppUpdateType.FLEXIBLE && info.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE) -> AppUpdateType.FLEXIBLE
+                    requestedType != AppUpdateType.IMMEDIATE && info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE) -> AppUpdateType.IMMEDIATE
+                    else -> null
+                }
+                if (resolvedType == null) {
+                    call.reject("Bu güncelleme şu anda cihazda başlatılamıyor.", "update_type_not_allowed")
+                    return@addOnSuccessListener
+                }
+
+                try {
+                    val started = manager.startUpdateFlowForResult(
+                        info,
+                        activity,
+                        AppUpdateOptions.newBuilder(resolvedType).build(),
+                        UPDATE_REQUEST_CODE,
+                    )
+                    val result = JSObject()
+                    result.put("started", started)
+                    result.put("mode", if (resolvedType == AppUpdateType.IMMEDIATE) "immediate" else "flexible")
+                    call.resolve(result)
+                } catch (error: Exception) {
+                    call.reject("Güncelleme ekranı başlatılamadı.", "update_start_failed", error)
+                }
+            }
+            .addOnFailureListener { error ->
+                call.reject("Google Play güncelleme bilgisine ulaşılamadı.", "play_update_unavailable", error)
+            }
+    }
+
+    @PluginMethod
+    fun complete(call: PluginCall) {
+        val manager = updateManager ?: AppUpdateManagerFactory.create(context).also { updateManager = it }
+        manager.completeUpdate()
+            .addOnSuccessListener { call.resolve() }
+            .addOnFailureListener { error ->
+                call.reject("İndirilen güncelleme kurulamadı.", "update_complete_failed", error)
+            }
+    }
+
+    override fun handleOnDestroy() {
+        installStateListener?.let { listener -> updateManager?.unregisterListener(listener) }
+        installStateListener = null
+        updateManager = null
+        super.handleOnDestroy()
+    }
+
+    private fun updateInfoPayload(info: AppUpdateInfo): JSObject {
+        val status = info.installStatus()
+        val result = JSObject()
+        result.put("supported", true)
+        result.put("available", info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE)
+        result.put("flexibleAllowed", info.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE))
+        result.put("immediateAllowed", info.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE))
+        result.put("availableVersionCode", info.availableVersionCode())
+        result.put("installStatus", installStatusLabel(status))
+        result.put("downloaded", status == InstallStatus.DOWNLOADED)
+        result.put("downloading", status == InstallStatus.DOWNLOADING)
+        result.put("inProgress", info.updateAvailability() == UpdateAvailability.DEVELOPER_TRIGGERED_UPDATE_IN_PROGRESS)
+        result.put("priority", info.updatePriority())
+        info.clientVersionStalenessDays()?.let { result.put("stalenessDays", it) }
+        return result
+    }
+
+    private fun installStatePayload(state: InstallState): JSObject {
+        val result = JSObject()
+        val status = state.installStatus()
+        result.put("installStatus", installStatusLabel(status))
+        result.put("downloaded", status == InstallStatus.DOWNLOADED)
+        result.put("downloading", status == InstallStatus.DOWNLOADING)
+        result.put("bytesDownloaded", state.bytesDownloaded())
+        result.put("totalBytes", state.totalBytesToDownload())
+        return result
+    }
+
+    private fun emptyUpdateState(): JSObject {
+        val result = JSObject()
+        result.put("supported", false)
+        result.put("available", false)
+        result.put("flexibleAllowed", false)
+        result.put("immediateAllowed", false)
+        result.put("downloaded", false)
+        result.put("downloading", false)
+        result.put("inProgress", false)
+        return result
+    }
+
+    private fun installStatusLabel(status: Int): String = when (status) {
+        InstallStatus.PENDING -> "pending"
+        InstallStatus.DOWNLOADING -> "downloading"
+        InstallStatus.DOWNLOADED -> "downloaded"
+        InstallStatus.INSTALLING -> "installing"
+        InstallStatus.INSTALLED -> "installed"
+        InstallStatus.FAILED -> "failed"
+        InstallStatus.CANCELED -> "canceled"
+        else -> "unknown"
+    }
+
+    companion object {
+        private const val UPDATE_REQUEST_CODE = 7814
     }
 }
 
