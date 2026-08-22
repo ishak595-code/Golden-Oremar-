@@ -21,8 +21,15 @@ if(workflow){
 }
 if(journey){
  requirePattern(journey,/AUTHENTICATED_E2E_REQUIRES_GITHUB_OIDC/,'Customer E2E must fail closed when GitHub OIDC is unavailable.');
- requirePattern(journey,/getByRole\('button',\{name:'Hesap Oluştur',exact:true\}\)\.click\(\)/,'Customer E2E must submit the real registration form.');
- requirePattern(journey,/ciControl\('confirm'\)/,'Customer E2E must be able to confirm a disposable account through the protected CI control plane.');
+ requirePattern(journey,/inspectRegistrationUi\(page\)/,'Customer E2E must exercise the real registration UI contract before provisioning.');
+ requirePattern(journey,/locator\('#auth-display-name'\)\.fill\(displayName\)/,'Customer E2E must fill the real registration display-name field.');
+ requirePattern(journey,/locator\('#auth-phone'\)\.fill\(phone\)/,'Customer E2E must fill the real registration phone field.');
+ requirePattern(journey,/locator\('#auth-email'\)\.fill\(email\)/,'Customer E2E must fill the real registration email field.');
+ requirePattern(journey,/locator\('#auth-password'\)\.fill\(authSecret\)/,'Customer E2E must fill the real registration password field.');
+ requirePattern(journey,/getByRole\('button',\{name:'Hesap Oluştur',exact:true\}\)\.waitFor/,'Customer E2E must verify the real registration submit control is available.');
+ requirePattern(journey,/ciControl\('provision',\{password:authSecret,displayName,phone\}\)/,'Customer E2E must provision a disposable confirmed account through the protected OIDC control plane.');
+ requirePattern(journey,/provisioned\.provisioned!==true\|\|provisioned\.emailConfirmed!==true/,'Customer E2E must fail if OIDC provisioning does not return a confirmed disposable account.');
+ requirePattern(journey,/getByRole\('button',\{name:'Giriş Yap',exact:true\}\)\.click\(\)/,'Customer E2E must authenticate through the real login UI.');
  requirePattern(journey,/ciControl\('delete'\)/,'Customer E2E must hard-delete its disposable Auth user.');
  requirePattern(journey,/profile_update_roundtrip/,'Customer E2E must verify profile persistence.');
  requirePattern(journey,/favorite_roundtrip/,'Customer E2E must verify favorite persistence.');
@@ -34,6 +41,10 @@ if(control){
  requirePattern(control,/EXPECTED_OWNER_ID\s*=\s*"233486723"/,'CI control must pin the immutable repository owner id.');
  requirePattern(control,/EXPECTED_AUDIENCE\s*=\s*"golden-oremar-ci-e2e"/,'CI control must pin the dedicated OIDC audience.');
  requirePattern(control,/jwtVerify<.*>\(token, GITHUB_JWKS/,'CI control must cryptographically verify GitHub OIDC tokens.');
+ requirePattern(control,/type Action = "provision" \| "confirm" \| "delete"/,'CI control must expose the provision and cleanup actions required by the authenticated E2E model.');
+ requirePattern(control,/action === "provision"/,'CI control must implement protected disposable-user provisioning.');
+ requirePattern(control,/admin\.auth\.admin\.createUser/,'CI control must create the disposable Auth user server-side.');
+ requirePattern(control,/email_confirm:\s*true/,'CI control must provision the disposable E2E user as email-confirmed.');
  requirePattern(control,/SUPABASE_SERVICE_ROLE_KEY/,'CI control must keep Auth admin operations server-side.');
  requirePattern(control,/emailForRun\(runId\)/,'CI control must derive the disposable account email from the verified run id.');
  requirePattern(control,/action === "delete"/,'CI control must support idempotent hard cleanup.');
@@ -43,4 +54,4 @@ if(controlConfig){
 }
 
 if(failures.length){console.error('Golden Oremar authenticated E2E contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar authenticated E2E contract audit passed: real signup/login is mandatory, GitHub OIDC gates server-side confirmation/cleanup, and service-role credentials never enter Actions.');
+console.log('Golden Oremar authenticated E2E contract audit passed: the real registration UI contract is exercised, GitHub OIDC provisions a confirmed disposable account, login runs through the real UI, cleanup is mandatory, and service-role credentials never enter Actions.');
