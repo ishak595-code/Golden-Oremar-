@@ -44,6 +44,7 @@ const required=[
   ['product-safety-live-rpc','get_public_product_safety_v3'],
   ['search-accessibility-overlay','catalog-search-suggestions'],
   ['search-accessibility-expanded','aria-expanded'],
+  ['native-app-update-banner','Yeni sürüm var'],
 ];
 const missing=required.filter(([,marker])=>!bundle.includes(marker));
 if(missing.length){
@@ -52,4 +53,4 @@ if(missing.length){
   process.exit(1);
 }
 
-console.log(`Native feature runtime check passed for ${platform}: premium theme/sound, FAQ, product safety and search accessibility are present in the synced native shell assets (${textFiles.length} text assets checked).`);
+console.log(`Native feature runtime check passed for ${platform}: premium theme/sound, FAQ, product safety, search accessibility and app-update customer UX are present in the synced native shell assets (${textFiles.length} text assets checked).`);
