@@ -51,7 +51,6 @@ export default function HomeSection({searchQuery,setSearchQuery,onProductClick,o
    return Number(b.is_featured)-Number(a.is_featured);
   });
  },[products,searchQuery,activeCategory,activeOrigin,sort]);
- const managedSections=homeSections.filter(section=>section.active);
 
  function sectionProducts(id:string){const source=id==='featured'?products.filter(product=>product.is_featured||product.homeSection==='featured'):id==='pre_order'?products.filter(product=>product.preOrder):products.filter(product=>product.homeSection===id);return Array.from(new Map(source.map(product=>[product.id,product])).values()).slice(0,12);}
  function isFavorite(product:LegacyHomeProduct){return favorites.includes(String(product.legacyId||product.id));}
@@ -75,7 +74,7 @@ export default function HomeSection({searchQuery,setSearchQuery,onProductClick,o
    {renderEvents('after_categories')}
   </section>
 
-  {!searchQuery&&!activeCategory?<section className="mx-auto max-w-7xl space-y-8 px-4 sm:px-6">{managedSections.map(section=>{const items=sectionProducts(section.id);if(!items.length)return null;return<section key={section.id} className="go-premium-section" aria-labelledby={`home-section-${section.id}`}><div className="mb-3 flex items-end justify-between gap-3"><div><div className="go-premium-section__eyebrow">Golden Oremar koleksiyonu</div><h2 id={`home-section-${section.id}`} className="mt-1 text-2xl font-black text-brand-text">{section.title}</h2></div><Sparkles aria-hidden="true" className="mb-1 h-5 w-5 shrink-0 text-brand-gold"/></div><div className="go-premium-product-rail hide-scrollbar flex snap-x">{items.map(product=><CatalogProductCard key={product.id} product={product} onClick={()=>onProductClick(product)} onAddToCart={onAddToCart} onToggleFavorite={()=>onToggleFavorite(product)} isFavorite={isFavorite(product)} onShare={()=>onShare(product)} onGift={()=>onGift(product)}/>)}</div></section>;})}</section>:null}
+  {!searchQuery&&!activeCategory?<section className="mx-auto max-w-7xl space-y-8 px-4 sm:px-6">{homeSections.filter(section=>section.active).map(section=>{const items=sectionProducts(section.id);if(!items.length)return null;return<section key={section.id} className="go-premium-section" aria-labelledby={`home-section-${section.id}`}><div className="mb-3 flex items-end justify-between gap-3"><div><div className="go-premium-section__eyebrow">Golden Oremar koleksiyonu</div><h2 id={`home-section-${section.id}`} className="mt-1 text-2xl font-black text-brand-text">{section.title}</h2></div><Sparkles aria-hidden="true" className="mb-1 h-5 w-5 shrink-0 text-brand-gold"/></div><div className="go-premium-product-rail hide-scrollbar flex snap-x">{items.map(product=><CatalogProductCard key={product.id} product={product} onClick={()=>onProductClick(product)} onAddToCart={onAddToCart} onToggleFavorite={()=>onToggleFavorite(product)} isFavorite={isFavorite(product)} onShare={()=>onShare(product)} onGift={()=>onGift(product)}/>)}</div></section>;})}</section>:null}
 
   <div className="mx-auto mt-7 max-w-7xl px-4 sm:px-6">{renderEvents('before_products')}</div>
 
