@@ -17,6 +17,7 @@ const EXPECTED_WORKFLOW_PATH = `${EXPECTED_REPOSITORY}/.github/workflows/mobile-
 const TRUSTED_BRANCH_REFS = new Set([
   "refs/heads/main",
   "refs/heads/integration/full-consolidation-2026-08",
+  "refs/heads/release/store-readiness-2026-08",
 ]);
 const PULL_REQUEST_REF_RE = /^refs\/pull\/\d{1,12}\/merge$/;
 const RUN_ID_RE = /^\d{1,24}$/;

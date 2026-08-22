@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - integration/full-consolidation-2026-08
+      - release/store-readiness-2026-08
   pull_request:
     branches:
       - main
@@ -31,23 +32,18 @@ jobs:
       E2E_CI_CONTROL_URL: https://rmfcziawxjgcnxexbrvw.supabase.co/functions/v1/ci-e2e-user
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
-
       - name: Install locked application dependencies
         run: npm ci --no-audit --no-fund
-
       - name: Install pinned Chromium E2E runtime
         run: |
           npm install --no-save --package-lock=false playwright@1.62.1
           npx playwright install --with-deps chromium
-
       - name: Build browser application against canonical Supabase
         run: npm run build
-
       - name: Start production preview
         shell: bash
         run: |
@@ -56,13 +52,14 @@ jobs:
           echo $! >/tmp/golden-oremar-preview.pid
           for attempt in $(seq 1 30); do
             if curl --fail --silent --show-error http://127.0.0.1:4173/ >/dev/null; then
+              curl --fail --silent --show-error http://127.0.0.1:4173/gizlilik-politikasi/ >/dev/null
+              curl --fail --silent --show-error http://127.0.0.1:4173/kullanim-sartlari/ >/dev/null
               exit 0
             fi
             sleep 1
           done
           cat /tmp/golden-oremar-preview.log
           exit 1
-
       - name: Request short-lived GitHub OIDC token for E2E control
         shell: bash
         run: |
@@ -75,10 +72,8 @@ jobs:
           token="$(node -e "const value=JSON.parse(process.argv[1]).value||'';if(!value)process.exit(2);process.stdout.write(value)" "$response")"
           echo "::add-mask::$token"
           echo "E2E_CI_OIDC_TOKEN=$token" >> "$GITHUB_ENV"
-
       - name: Run mandatory authenticated customer Chromium journey
         run: node scripts/customer-e2e.mjs
-
       - name: Upload customer E2E evidence
         if: always()
         uses: actions/upload-artifact@v7
@@ -90,23 +85,20 @@ jobs:
 
   verify-web-android:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
     env:
       VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
-
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
-
       - name: Install Android 17 API 37.0 with pinned official Android CLI
         shell: bash
         run: |
@@ -132,16 +124,12 @@ jobs:
             --canary
           test -f "${ANDROID_HOME}/platforms/android-37.0/android.jar"
           test -x "${ANDROID_HOME}/build-tools/37.0.0/aapt2"
-
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
-
       - name: Audit production dependency vulnerabilities
         run: npm audit --omit=dev --audit-level=high
-
       - name: Release architecture audit
         run: npm run audit:release
-
       - name: Validate current native baseline and preserved OAuth
         shell: bash
         run: |
@@ -167,10 +155,7 @@ jobs:
           if (pkg.devDependencies?.['@capacitor/cli'] !== '8.5.0') throw new Error('@capacitor/cli must be 8.5.0');
           NODE
           grep -q "com.android.tools.build:gradle:9.3.0" android/build.gradle
-          if grep -q 'kotlin-gradle-plugin' android/build.gradle; then
-            echo 'Legacy Kotlin Gradle plugin must not be configured with AGP 9 built-in Kotlin.' >&2
-            exit 1
-          fi
+          if grep -q 'kotlin-gradle-plugin' android/build.gradle; then exit 1; fi
           grep -q 'gradle-9.5.0-all.zip' android/gradle/wrapper/gradle-wrapper.properties
           grep -q 'minSdkVersion = 24' android/variables.gradle
           grep -q 'compileSdkVersion = 37' android/variables.gradle
@@ -180,10 +165,7 @@ jobs:
           grep -q 'JavaVersion.VERSION_21' android/app/build.gradle
           grep -q 'androidResources' android/app/build.gradle
           grep -q 'proguard-android-optimize.txt' android/app/build.gradle
-          if grep -q "apply plugin: 'kotlin-android'" android/app/build.gradle || grep -q 'kotlinOptions' android/app/build.gradle || grep -q 'aaptOptions' android/app/build.gradle; then
-            echo 'Legacy AGP/Kotlin/resource DSL must not return.' >&2
-            exit 1
-          fi
+          if grep -q "apply plugin: 'kotlin-android'" android/app/build.gradle || grep -q 'kotlinOptions' android/app/build.gradle || grep -q 'aaptOptions' android/app/build.gradle; then exit 1; fi
           grep -q 'density' android/app/src/main/AndroidManifest.xml
           grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;' ios/App/App.xcodeproj/project.pbxproj
           grep -q 'SceneDelegate.swift in Sources' ios/App/App.xcodeproj/project.pbxproj
@@ -195,17 +177,11 @@ jobs:
           grep -q "from '@capacitor/browser'" src/features/auth/api.ts
           grep -q 'signInWithOAuth' src/features/auth/api.ts
           grep -q 'skipBrowserRedirect: native' src/features/auth/api.ts
-          if git grep -nE "firebase/(app|auth|firestore|storage)|from ['\"][^'\"]*firebase['\"]" -- 'src/**'; then
-            echo 'Firebase runtime source residue found.' >&2
-            exit 1
-          fi
-
+          if git grep -nE "firebase/(app|auth|firestore|storage)|from ['\"][^'\"]*firebase['\"]" -- 'src/**'; then exit 1; fi
       - name: TypeScript check
         run: npx tsc --noEmit
-
       - name: Production web build
         run: npm run build
-
       - name: Upload deployable web build
         uses: actions/upload-artifact@v7
         with:
@@ -213,10 +189,8 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 14
-
       - name: Synchronize Android and iOS native projects
         run: npx cap sync android && npx cap sync ios
-
       - name: Ensure native sync is reproducible
         shell: bash
         run: |
@@ -227,18 +201,14 @@ jobs:
             git diff
             exit 1
           fi
-
       - name: Verify consolidated features in Android native shell assets
         run: node scripts/native-feature-runtime-check.mjs android
-
       - name: Verify Gradle 9.5 wrapper
         working-directory: android
         run: chmod +x gradlew && ./gradlew --version | grep -q 'Gradle 9.5'
-
       - name: Compile Android debug app
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon
-
       - name: Upload installable Android debug APK
         uses: actions/upload-artifact@v7
         with:
@@ -246,36 +216,92 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
-
-      - name: Compile Android release bundle without signing
+      - name: Prepare Android release signing material
+        shell: bash
+        env:
+          REAL_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          REAL_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          REAL_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          REAL_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          present=0
+          for value in "$REAL_KEYSTORE_BASE64" "$REAL_KEYSTORE_PASSWORD" "$REAL_KEY_ALIAS" "$REAL_KEY_PASSWORD"; do
+            if [[ -n "$value" ]]; then present=$((present+1)); fi
+          done
+          if [[ "$present" -ne 0 && "$present" -ne 4 ]]; then
+            echo 'Android upload-key secrets are partially configured. Configure all four together.' >&2
+            exit 1
+          fi
+          keystore="${RUNNER_TEMP}/golden-oremar-upload.jks"
+          if [[ "$present" -eq 4 ]]; then
+            echo 'Using repository-protected Android upload key.'
+            printf '%s' "$REAL_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+            store_password="$REAL_KEYSTORE_PASSWORD"
+            key_alias="$REAL_KEY_ALIAS"
+            key_password="$REAL_KEY_PASSWORD"
+            signing_source='github-secrets'
+          else
+            echo 'Real upload-key secrets are not configured; creating an ephemeral CI-only signing key.'
+            store_password="ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-only"
+            key_alias='golden-oremar-ci-validation'
+            key_password="$store_password"
+            keytool -genkeypair -noprompt -v \
+              -keystore "$keystore" \
+              -storepass "$store_password" \
+              -keypass "$key_password" \
+              -alias "$key_alias" \
+              -dname 'CN=Golden Oremar CI Validation,O=Golden Oremar,C=TR' \
+              -keyalg RSA -keysize 2048 -validity 2
+            signing_source='ephemeral-ci'
+          fi
+          test -s "$keystore"
+          echo "::add-mask::$store_password"
+          echo "::add-mask::$key_password"
+          echo "ANDROID_KEYSTORE_FILE=$keystore" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$store_password" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$key_alias" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$key_password" >> "$GITHUB_ENV"
+          echo "ANDROID_SIGNING_SOURCE=$signing_source" >> "$GITHUB_ENV"
+      - name: Compile signed Android release bundle
         working-directory: android
         run: ./gradlew :app:bundleRelease --no-daemon
-
-      - name: Upload unsigned Android release AAB
+      - name: Verify Android AAB signature and source
+        shell: bash
+        run: |
+          set -euo pipefail
+          aab='android/app/build/outputs/bundle/release/app-release.aab'
+          test -s "$aab"
+          jarsigner -verify -verbose -certs "$aab" >/tmp/aab-signature.txt
+          grep -q 'jar verified' /tmp/aab-signature.txt
+          printf '%s\n' "$ANDROID_SIGNING_SOURCE" > android/app/build/outputs/bundle/release/signing-source.txt
+          if [[ "$ANDROID_SIGNING_SOURCE" == 'ephemeral-ci' ]]; then
+            echo 'WARNING: This AAB proves signing works but MUST NOT be uploaded to Play Console.'
+          fi
+      - name: Upload signed Android release AAB
         uses: actions/upload-artifact@v7
         with:
-          name: golden-oremar-android-unsigned-release-aab-${{ github.sha }}
-          path: android/app/build/outputs/bundle/release/app-release.aab
+          name: golden-oremar-android-signed-release-aab-${{ github.sha }}
+          path: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/bundle/release/signing-source.txt
           if-no-files-found: error
           retention-days: 14
 
   verify-ios:
     runs-on: macos-26
-    timeout-minutes: 35
+    timeout-minutes: 45
     env:
       VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
-
       - name: Select Xcode 26.6
         run: sudo xcode-select -s /Applications/Xcode_26.6.app
-
       - name: Verify stable Apple toolchain and iOS SDK family
         shell: bash
         run: |
@@ -285,16 +311,12 @@ jobs:
           IOS_SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
           echo "iPhoneOS SDK ${IOS_SDK_VERSION}"
           [[ "${IOS_SDK_VERSION}" == 26.* ]]
-
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
-
       - name: Release architecture audit
         run: npm run audit:release
-
       - name: Build and synchronize iOS
         run: npm run build && npx cap sync ios
-
       - name: Ensure iOS sync is reproducible
         shell: bash
         run: |
@@ -305,13 +327,10 @@ jobs:
             git diff
             exit 1
           fi
-
       - name: Verify consolidated features in iOS native shell assets
         run: node scripts/native-feature-runtime-check.mjs ios
-
       - name: Resolve Swift packages
         run: xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj -scheme App
-
       - name: Compile iOS simulator app
         run: >-
           xcodebuild
@@ -322,13 +341,45 @@ jobs:
           -destination 'generic/platform=iOS Simulator'
           CODE_SIGNING_ALLOWED=NO
           build
-
-      - name: Verify iOS deployment target and app identifier
+      - name: Compile unsigned iOS Release archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="${RUNNER_TEMP}/GoldenOremar.xcarchive"
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            -archivePath "$archive" \
+            archive
+          test -f "$archive/Info.plist"
+          test -d "$archive/Products/Applications/App.app"
+          echo "$archive" > "$RUNNER_TEMP/ios-archive-path.txt"
+      - name: Upload unsigned iOS Release archive evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-oremar-ios-unsigned-release-archive-${{ github.sha }}
+          path: ${{ runner.temp }}/GoldenOremar.xcarchive
+          if-no-files-found: error
+          retention-days: 14
+      - name: Verify iOS deployment target, identifier and ATT posture
         shell: bash
         run: |
           set -euo pipefail
           grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;' ios/App/App.xcodeproj/project.pbxproj
           grep -q 'PRODUCT_BUNDLE_IDENTIFIER = com.goldenoremar.app;' ios/App/App.xcodeproj/project.pbxproj
+          if grep -q 'NSUserTrackingUsageDescription' ios/App/App/Info.plist; then
+            echo 'ATT purpose string exists but current app does not use cross-app tracking. Review before submission.' >&2
+            exit 1
+          fi
+          if git grep -nE 'AppTrackingTransparency|ASIdentifierManager|AdSupport' -- 'src/**' 'ios/**' 'package.json'; then
+            echo 'Tracking/advertising framework detected; App Privacy and ATT decision must be revisited.' >&2
+            exit 1
+          fi
 
   publish-mobile-statuses:
     if: ${{ always() }}
@@ -361,4 +412,4 @@ jobs:
           }
           publish 'consolidation/customer-e2e' "${CUSTOMER_RESULT}" 'Authenticated Chromium'
           publish 'consolidation/android' "${ANDROID_RESULT}" 'Web and Android native'
-          publish 'consolidation/ios' "${IOS_RESULT}" 'iOS simulator native'
+          publish 'consolidation/ios' "${IOS_RESULT}" 'iOS simulator and Release archive'

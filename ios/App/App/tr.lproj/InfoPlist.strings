@@ -1,0 +1,3 @@
+"CFBundleDisplayName" = "Golden Oremar";
+"NSMicrophoneUsageDescription" = "Golden Oremar, sesli ürün araması yapabilmeniz için mikrofon erişimini kullanır.";
+"NSSpeechRecognitionUsageDescription" = "Golden Oremar, söylediğiniz ürün veya arama ifadesini metne dönüştürmek için konuşma tanıma özelliğini kullanır.";

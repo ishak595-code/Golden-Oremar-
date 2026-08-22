@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/gizlilik-politikasi", "destination": "/gizlilik-politikasi/index.html" },
+    { "source": "/kullanim-sartlari", "destination": "/kullanim-sartlari/index.html" }
+  ]
+}
