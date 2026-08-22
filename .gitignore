@@ -6,3 +6,12 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Release signing material must never be committed.
+*.jks
+*.keystore
+*.p12
+*.cer
+*.mobileprovision
+android/key.properties
+android/signing.properties
