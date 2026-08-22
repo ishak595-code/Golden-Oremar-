@@ -4,6 +4,23 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 
 export type NativeTheme = 'light' | 'dark';
+export type NativeAppUpdateMode = 'flexible' | 'immediate';
+export type NativeAppUpdateState = {
+  supported: boolean;
+  available: boolean;
+  flexibleAllowed: boolean;
+  immediateAllowed: boolean;
+  availableVersionCode?: number;
+  installStatus?: string;
+  downloaded: boolean;
+  downloading: boolean;
+  inProgress: boolean;
+  bytesDownloaded?: number;
+  totalBytes?: number;
+  priority?: number;
+  stalenessDays?: number;
+  reason?: string;
+};
 
 type NativeSpeechResponse = { text?: string; matches?: string[] };
 type NativeSpeechBridge = {
@@ -11,8 +28,15 @@ type NativeSpeechBridge = {
   start(options?: { language?: string }): Promise<NativeSpeechResponse>;
   stop(): Promise<void>;
 };
+type NativeAppUpdateBridge = {
+  check(): Promise<NativeAppUpdateState>;
+  start(options?: { mode?: NativeAppUpdateMode }): Promise<{ started: boolean; mode: NativeAppUpdateMode }>;
+  complete(): Promise<void>;
+  addListener(eventName: 'state', listener: (state: Partial<NativeAppUpdateState>) => void): Promise<{ remove: () => Promise<void> }>;
+};
 
 const NativeSpeech = registerPlugin<NativeSpeechBridge>('NativeSpeech');
+const NativeAppUpdate = registerPlugin<NativeAppUpdateBridge>('NativeAppUpdate');
 let keyboardSignalsReady = false;
 let nativeSpeechAdapterReady = false;
 
@@ -121,6 +145,35 @@ async function initNativeKeyboardSignals() {
     }),
   ]);
 }
+
+function unsupportedUpdateState(reason = 'platform_not_supported'): NativeAppUpdateState {
+  return { supported: false, available: false, flexibleAllowed: false, immediateAllowed: false, downloaded: false, downloading: false, inProgress: false, reason };
+}
+
+export const checkForNativeAppUpdate = async (): Promise<NativeAppUpdateState> => {
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') return unsupportedUpdateState();
+  try {
+    return await NativeAppUpdate.check();
+  } catch (error) {
+    const reason = error && typeof error === 'object' ? String((error as any).code || (error as any).message || 'play_update_unavailable') : 'play_update_unavailable';
+    return unsupportedUpdateState(reason);
+  }
+};
+
+export const startNativeAppUpdate = async (mode: NativeAppUpdateMode = 'flexible') => {
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') throw new Error('Android uygulama güncellemesi bu platformda kullanılamıyor.');
+  return NativeAppUpdate.start({ mode });
+};
+
+export const completeNativeAppUpdate = async () => {
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') return;
+  await NativeAppUpdate.complete();
+};
+
+export const subscribeNativeAppUpdateState = async (listener: (state: Partial<NativeAppUpdateState>) => void) => {
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== 'android') return { remove: async () => undefined };
+  return NativeAppUpdate.addListener('state', listener);
+};
 
 export const syncNativeAppearance = async (theme?: string) => {
   if (!Capacitor.isNativePlatform()) return;

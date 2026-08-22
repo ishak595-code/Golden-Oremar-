@@ -1,4 +1,5 @@
 const PATCH_FLAG='__goldenOremarCustomerRoutePatched__';
+const ROUTE_EVENT='golden-oremar:route-change';
 
 function currentTab(){
   try{return new URL(window.location.href).searchParams.get('tab')||'home';}
@@ -6,7 +7,9 @@ function currentTab(){
 }
 
 function syncRouteState(){
-  document.documentElement.dataset.appTab=currentTab();
+  const tab=currentTab();
+  document.documentElement.dataset.appTab=tab;
+  window.dispatchEvent(new CustomEvent(ROUTE_EVENT,{detail:{tab}}));
 }
 
 export function installCustomerShellRouteState(){
