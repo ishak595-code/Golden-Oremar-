@@ -15,6 +15,7 @@ const displayName=`Golden Oremar E2E ${runId}`;
 const phone='+905379594851';
 const productName='Avaşin Meşe Balı';
 const productSlug='avasin-mese-bali-103';
+const homeSearchLabel='Ürün, üretici veya köy ara';
 const out=path.resolve('e2e-artifacts');
 fs.mkdirSync(out,{recursive:true});
 const report={runId,email,baseUrl,productName,startedAt:new Date().toISOString(),mode:oidcToken?'authenticated-oidc-provisioned':'public-only-explicit',checks:{},blockers:[],consoleErrors:[],pageErrors:[]};
@@ -36,24 +37,47 @@ async function ciControl(action,payload={}){
  return body;
 }
 
-async function openPublicProductFromHome(page){
+async function assertGlobalHomeHeaderHidden(page,checkName){
+ const search=page.getByRole('searchbox',{name:homeSearchLabel});
+ if(await visible(search,1000))throw new Error(`GLOBAL_HOME_HEADER_VISIBLE_OUTSIDE_HOME:${checkName}`);
+ mark(checkName,true);
+}
+
+async function openHomeShell(page){
  await page.goto(`${baseUrl}/?tab=home`,{waitUntil:'networkidle',timeout:30000});
- await page.getByLabel('Ürün, üretici veya köy ara').waitFor({state:'visible',timeout:12000});
+ let search=page.getByRole('searchbox',{name:homeSearchLabel});
+ if(!(await visible(search,4000))){
+  const homeButton=page.getByRole('button',{name:'Ana Sayfa',exact:true});
+  if(await visible(homeButton,3000)){
+   await homeButton.click();
+   await page.waitForURL(url=>new URL(url).searchParams.get('tab')==='home',{timeout:10000}).catch(()=>{});
+  }
+  search=page.getByRole('searchbox',{name:homeSearchLabel});
+ }
+ await search.waitFor({state:'visible',timeout:12000});
+ const activeTab=await page.evaluate(()=>new URL(window.location.href).searchParams.get('tab')||'home');
+ if(activeTab!=='home')throw new Error(`HOME_SHELL_ROUTE_MISMATCH:${activeTab}`);
+ mark('home_shell_navigation',true);
+ return search;
+}
+
+async function openPublicProductFromHome(page){
+ const search=await openHomeShell(page);
  const appearance=await page.evaluate(()=>({theme:document.documentElement.getAttribute('data-theme'),background:getComputedStyle(document.documentElement).getPropertyValue('--bg-main').trim()}));
  if(appearance.theme!=='custom'||!appearance.background)throw new Error(`MANAGED_BRAND_APPEARANCE_NOT_APPLIED:${JSON.stringify(appearance)}`);
  mark('managed_brand_appearance_runtime',true);
- const seasonalVisible=await visible(page.getByText(/Mevsim/i).first(),3000);
- const campaignVisible=await visible(page.getByText(/Fırsat|Kampanya|Teklif/i).first(),3000);
- const newVisible=await visible(page.getByText(/Yeni/i).first(),3000);
- mark('home_dynamic_sections',seasonalVisible||campaignVisible||newVisible);
- const search=page.getByLabel('Ürün, üretici veya köy ara');
+ const managedSectionVisible=await visible(page.getByText('Golden Oremar seçkisi',{exact:true}).first(),3000);
+ const seasonalVisible=await visible(page.getByText(/Mevsim/i).first(),1500);
+ const campaignVisible=await visible(page.getByText(/Fırsat|Kampanya|Teklif/i).first(),1500);
+ const newVisible=await visible(page.getByText(/Yeni/i).first(),1500);
+ mark('home_dynamic_sections',managedSectionVisible||seasonalVisible||campaignVisible||newVisible);
  await search.fill(productName);await search.press('Enter');
  await page.getByText(productName,{exact:true}).first().waitFor({state:'visible',timeout:15000});
  mark('catalog_search',true);await shot(page,'03-search');
  await page.getByText(productName,{exact:true}).first().click();
  await page.getByRole('heading',{name:productName,exact:true}).waitFor({state:'visible',timeout:15000});
  mark('product_detail',true);
- if(await visible(page.getByText('Görsel henüz eklenmedi'),1000))report.blockers.push('REAL_PRODUCT_IMAGE_STORAGE_OBJECT_MISSING');
+ if(await visible(page.getByText('Ürün görseli yakında',{exact:true}),1000))report.blockers.push('REAL_PRODUCT_IMAGE_STORAGE_OBJECT_MISSING');
 }
 
 async function verifyPublicSections(page){
@@ -72,6 +96,7 @@ async function verifyPublicSections(page){
 
 async function inspectRegistrationUi(page){
  await page.goto(`${baseUrl}/?tab=account`,{waitUntil:'networkidle',timeout:45000});
+ await assertGlobalHomeHeaderHidden(page,'account_global_header_hidden');
  const registerTab=page.getByRole('tab',{name:'Hesap Aç'});
  await registerTab.waitFor({state:'visible',timeout:12000});
  await registerTab.click();
@@ -113,8 +138,8 @@ try{
  if(!oidcToken){
   report.blockers.push('AUTHENTICATED_E2E_EXPLICITLY_DISABLED');
   await openPublicProductFromHome(page);
-  await page.getByRole('button',{name:`${productName} ürününü paylaş`}).click();
-  await page.getByText(/Ürün bağlantısı panoya kopyalandı|Ürün paylaşımı tamamlandı/).waitFor({state:'visible',timeout:10000});
+  await page.getByRole('button',{name:'Ürünü paylaş',exact:true}).click();
+  await page.getByText(/Ürün bağlantısı kopyalandı|Paylaşım menüsü açıldı|Ürün bağlantısı panoya kopyalandı|Ürün paylaşımı tamamlandı/).waitFor({state:'visible',timeout:10000});
   mark('public_product_share',true);
   await verifyPublicSections(page);
   if(report.pageErrors.length)throw new Error(`PAGE_ERRORS:${report.pageErrors.join(' | ')}`);
@@ -132,23 +157,24 @@ try{
 
   await openPublicProductFromHome(page);
   await page.getByRole('button',{name:'Favorilere ekle'}).click();
-  await page.getByText('Ürün favorilerinize eklendi.').waitFor({state:'visible',timeout:10000});
+  await page.getByText(/Favorilerinize eklendi\.|Ürün favorilerinize eklendi\./).waitFor({state:'visible',timeout:10000});
   mark('favorite_add',true);
-  await page.getByRole('button',{name:`${productName} ürününü paylaş`}).click();
-  await page.getByText(/Ürün bağlantısı panoya kopyalandı|Ürün paylaşımı tamamlandı/).waitFor({state:'visible',timeout:10000});
+  await page.getByRole('button',{name:'Ürünü paylaş',exact:true}).click();
+  await page.getByText(/Ürün bağlantısı kopyalandı|Paylaşım menüsü açıldı|Ürün bağlantısı panoya kopyalandı|Ürün paylaşımı tamamlandı/).waitFor({state:'visible',timeout:10000});
   mark('share',true);
   await page.getByRole('button',{name:/Sepete Ekle|Ön Siparişe Ekle/}).click();
-  await page.getByText(/ürün sepetinize eklendi/).waitFor({state:'visible',timeout:10000});
+  await page.getByText(/adet ürün sepetinize eklendi/).waitFor({state:'visible',timeout:10000});
   mark('cart_add',true);await shot(page,'04-product-actions');
 
   await page.goto(`${baseUrl}/?tab=account&view=favorites`,{waitUntil:'networkidle',timeout:30000});
+  await assertGlobalHomeHeaderHidden(page,'favorites_global_header_hidden');
   await page.getByRole('heading',{name:'Favorilerim'}).waitFor({state:'visible',timeout:12000});
   await page.getByText(productName,{exact:true}).first().waitFor({state:'visible',timeout:12000});
   mark('favorite_roundtrip',true);
 
   await page.goto(`${baseUrl}/?tab=product-detail&product=${productSlug}`,{waitUntil:'networkidle',timeout:30000});
   await page.getByRole('heading',{name:productName,exact:true}).waitFor({state:'visible',timeout:12000});
-  await page.getByRole('button',{name:'Hediye et'}).click();
+  await page.getByRole('button',{name:/Hediye olarak gönder|Hediye et/}).click();
   await page.getByRole('heading',{name:'Bir üründen fazlasını gönderin'}).waitFor({state:'visible',timeout:12000});
   mark('gift_flow_opens',true);await shot(page,'05-gift');
   await page.getByRole('button',{name:'Hediye ekranını kapat'}).click();
@@ -157,6 +183,7 @@ try{
   if(!(await visible(buyNow,3000)))throw new Error('BUY_NOW_ACTION_MISSING');
   await buyNow.click();
   await page.getByRole('heading',{name:'Sepetim'}).waitFor({state:'visible',timeout:15000});
+  await assertGlobalHomeHeaderHidden(page,'cart_global_header_hidden');
   mark('buy_now_to_cart',true);
   await page.getByText(productName,{exact:true}).first().waitFor({state:'visible',timeout:10000});
   mark('cart_roundtrip',true);
@@ -169,6 +196,7 @@ try{
   await shot(page,'06-cart-checkout');
 
   await page.goto(`${baseUrl}/?tab=account&view=orders`,{waitUntil:'networkidle',timeout:30000});
+  await assertGlobalHomeHeaderHidden(page,'orders_global_header_hidden');
   await page.getByRole('heading',{name:'Siparişlerim'}).waitFor({state:'visible',timeout:12000});
   mark('orders_panel',true);
   await verifyPublicSections(page);
