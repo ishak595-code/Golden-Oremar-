@@ -288,7 +288,7 @@ function AppContent(){
  }
 
  return<div className="min-h-screen bg-brand-main pb-28 font-sans text-brand-text">
-  <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/95 shadow-sm backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/95" style={{paddingTop:'env(safe-area-inset-top, 0px)'}}>
+  {currentTab==='home'?<header className="sticky top-0 z-40 border-b border-gray-100 bg-white/95 shadow-sm backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/95" style={{paddingTop:'env(safe-area-inset-top, 0px)'}}>
    {!isOnline?<div role="status" aria-live="polite" className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-center text-sm font-semibold text-amber-950 dark:border-amber-800 dark:bg-amber-950/70 dark:text-amber-100">Çevrimdışısınız. Canlı işlemler bağlantı geri gelene kadar tamamlanamaz.</div>:null}
    <div className="mx-auto max-w-7xl px-4 sm:px-6">
     <div className="flex min-h-16 items-center gap-3 md:min-h-20">
@@ -298,7 +298,7 @@ function AppContent(){
     </div>
     <CatalogSearchOverlay query={searchQuery} open={isSearchFocused} onQueryChange={setSearchQuery} onProduct={slug=>{setIsSearchFocused(false);openProduct(slug);}} onProducer={(_id,slug)=>{setIsSearchFocused(false);openProducer(slug);}} onCategory={(slug,label)=>{setIsSearchFocused(false);openSearch(label,slug,null);}} onAllResults={value=>openSearch(value)}/>
    </div>
-  </header>
+  </header>:null}
 
   <main><React.Suspense fallback={<RouteLoading/>}>{renderContent()}</React.Suspense></main>
 
