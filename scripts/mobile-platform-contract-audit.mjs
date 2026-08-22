@@ -12,6 +12,7 @@ const androidBuild = read('android/app/build.gradle');
 const gradleWrapper = read('android/gradle/wrapper/gradle-wrapper.properties');
 const iosProject = read('ios/App/App.xcodeproj/project.pbxproj');
 const workflow = read('.github/workflows/mobile-quality.yml');
+const nativeFeatureCheck = read('scripts/native-feature-runtime-check.mjs');
 
 const capacitorStable = '8.5.0';
 expect(pkg.dependencies?.['@capacitor/android'] === capacitorStable, `@capacitor/android must remain on stable ${capacitorStable}.`);
@@ -53,5 +54,10 @@ expectPattern(workflow, /com\.android\.tools\.build:gradle:9\.3\.0/, 'CI must gu
 expectPattern(workflow, /gradle-9\.5\.0-all\.zip/, 'CI must guard Gradle 9.5.0.');
 expectPattern(workflow, /IPHONEOS_DEPLOYMENT_TARGET = 15\.0;/, 'CI must guard iOS 15 deployment target.');
 expectPattern(workflow, /Request short-lived GitHub OIDC token for E2E control/, 'Native quality gate must preserve authenticated OIDC customer E2E.');
+expectPattern(workflow, /node scripts\/native-feature-runtime-check\.mjs android/, 'Android CI must verify consolidated features inside synced native assets.');
+expectPattern(workflow, /node scripts\/native-feature-runtime-check\.mjs ios/, 'iOS CI must verify consolidated features inside synced native assets.');
+for (const marker of ['Yakut Prestige','golden-oremar:notification-sound:v1','list_public_faq_v1','get_public_product_safety_v3','catalog-search-suggestions','aria-expanded']) {
+  expect(nativeFeatureCheck.includes(marker), `Native feature runtime check is missing marker: ${marker}`);
+}
 
-console.log('Mobile platform contract OK: Android API 24-37.0 with AGP 9.3/Gradle 9.5, Capacitor 8.5.0, iOS 15+ with Xcode 26.6, authenticated OIDC E2E preserved.');
+console.log('Mobile platform contract OK: Android API 24-37.0 with AGP 9.3/Gradle 9.5, Capacitor 8.5.0, iOS 15+ with Xcode 26.6, authenticated OIDC E2E and native feature asset verification preserved.');
