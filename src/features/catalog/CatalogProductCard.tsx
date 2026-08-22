@@ -4,7 +4,6 @@ import{optionalProductHandlingProfile,productHandlingLabel}from'./productHandlin
 
 type Props={product:any;onClick:()=>void;onAddToCart:(product:any,quantity:number)=>Promise<void>|void;onToggleFavorite?:(product:any)=>Promise<void>|void;isFavorite?:boolean;onShare?:(product:any)=>Promise<void>|void;onGift?:(product:any)=>Promise<void>|void;onLike?:(product:any)=>Promise<void>|void;isLiked?:boolean;compact?:boolean;};
 type Action='cart'|'favorite'|'gift'|null;
-
 function safeText(value:unknown,max=300){return typeof value==='string'?value.trim().slice(0,max):'';}
 function safePrice(value:unknown){return typeof value==='number'&&Number.isFinite(value)&&value>=0?value:null;}
 function safeInteger(value:unknown){return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;}
@@ -16,76 +15,36 @@ function money(value:number,currency:string){try{return new Intl.NumberFormat('t
 function messageOf(error:unknown,fallback:string){return error instanceof Error&&error.message.trim()?error.message:fallback;}
 
 export default function CatalogProductCard({product,onClick,onAddToCart,onToggleFavorite,isFavorite=false,onGift,compact=false}:Props){
- const[action,setAction]=useState<Action>(null);
- const[feedback,setFeedback]=useState('');
- const productName=safeText(product?.name,300)||'Ürün';
- const price=safePrice(product?.price),originalPrice=safePrice(product?.originalPrice),currency=safeCurrency(product?.currency);
- const tracked=product?.stockMode==='tracked'||product?.stockMode==='seasonal';
- const stock=safeInteger(product?.stock),soldOut=tracked&&stock!==null&&stock<=0;
- const variantReady=Boolean(safeReference(product?.variantId));
- const purchaseReady=price!==null&&currency!==null&&variantReady&&!soldOut&&(!tracked||stock!==null);
- const preorder=product?.preOrder===true||product?.stockMode==='preorder';
- const seasonal=product?.stockMode==='seasonal';
- const rating=safeRating(product?.rating),reviewCount=safeInteger(product?.reviewCount);
- const producerName=safeText(product?.producerName,240);
- const origin=safeText(product?.origin,240);
- const unit=safeText(product?.unit,120);
- const handling=safeHandling(product?.handlingProfile);
- const handlingLabel=productHandlingLabel(handling);
- const coldChain=handling?.requiresColdChain===true;
- const producerStoreKind=product?.producerStoreKind==='official'?'official':'independent';
- const producerBadgeTone=product?.producerBadgeTone==='ruby'||product?.producerBadgeTone==='blue'?product.producerBadgeTone:producerStoreKind==='official'?'ruby':'blue';
- const producerVerified=product?.producerVerified===true;
- const busy=action!==null;
-
+ const[action,setAction]=useState<Action>(null),[feedback,setFeedback]=useState('');
+ const productName=safeText(product?.name,300)||'Ürün',price=safePrice(product?.price),originalPrice=safePrice(product?.originalPrice),currency=safeCurrency(product?.currency);
+ const tracked=product?.stockMode==='tracked'||product?.stockMode==='seasonal',stock=safeInteger(product?.stock),soldOut=tracked&&stock!==null&&stock<=0,variantReady=Boolean(safeReference(product?.variantId));
+ const purchaseReady=price!==null&&currency!==null&&variantReady&&!soldOut&&(!tracked||stock!==null),preorder=product?.preOrder===true||product?.stockMode==='preorder',seasonal=product?.stockMode==='seasonal';
+ const rating=safeRating(product?.rating),reviewCount=safeInteger(product?.reviewCount),producerName=safeText(product?.producerName,240),origin=safeText(product?.origin,240),unit=safeText(product?.unit,120);
+ const handling=safeHandling(product?.handlingProfile),handlingLabel=productHandlingLabel(handling),coldChain=handling?.requiresColdChain===true;
+ const producerStoreKind=product?.producerStoreKind==='official'?'official':'independent',producerBadgeTone=product?.producerBadgeTone==='ruby'||product?.producerBadgeTone==='blue'?product.producerBadgeTone:producerStoreKind==='official'?'ruby':'blue',producerVerified=product?.producerVerified===true,busy=action!==null;
  async function run(kind:Exclude<Action,null>,fn:()=>Promise<void>|void){if(busy)return;try{setAction(kind);setFeedback('');await fn();}catch(error){setFeedback(messageOf(error,'İşlem şu anda tamamlanamadı.'));}finally{setAction(null);}}
- const cartLabel=preorder?'Hemen Ön Sipariş Ver':'Sepete Ekle';
- const unavailableLabel=soldOut?'Stokta Yok':'Şu anda satışta değil';
+ const cartLabel=preorder?'Hemen Ön Sipariş Ver':'Sepete Ekle',unavailableLabel=soldOut?'Stokta Yok':'Şu anda satışta değil';
+ const statusBadges=<>{product?.is_featured===true?<span className="go-product-card__badge go-product-card__badge--featured">Seçkin</span>:null}{seasonal?<span className="go-product-card__badge go-product-card__badge--seasonal">Mevsimlik</span>:null}{preorder?<span className="go-product-card__badge go-product-card__badge--preorder">Ön Sipariş</span>:null}{coldChain?<span className="go-product-card__badge go-product-card__badge--cold"><Snowflake aria-hidden="true" className="h-3 w-3"/>Soğuk</span>:null}</>;
 
  if(compact)return<article className="go-product-card go-product-card--compact">
   <div className="go-product-card__media">
    <button type="button" onClick={onClick} aria-label={`${productName} detayını aç`} className="block h-full min-h-[9.5rem] w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold">{product?.image?<img src={product.image} alt={`${productName} ürün görseli`} loading="lazy" decoding="async"/>:<div className="grid h-full min-h-[9.5rem] place-items-center px-2 text-center text-xs text-brand-muted">Ürün görseli yakında</div>}</button>
-   {onToggleFavorite?<button type="button" disabled={busy} onClick={event=>{event.stopPropagation();void run('favorite',()=>onToggleFavorite(product));}} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} aria-pressed={isFavorite} className="go-product-card__favorite absolute left-2 top-2"><Heart aria-hidden="true" className={`h-4.5 w-4.5 ${isFavorite?'fill-red-500 text-red-500':'text-brand-text'}`}/></button>:null}
+   {onToggleFavorite?<button type="button" disabled={busy} onClick={event=>{event.stopPropagation();void run('favorite',()=>onToggleFavorite(product));}} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} aria-pressed={isFavorite} className="go-product-card__favorite absolute left-2 top-2 z-10"><Heart aria-hidden="true" className={`h-4.5 w-4.5 ${isFavorite?'fill-red-500 text-red-500':'text-brand-text'}`}/></button>:null}
+   <div className="go-product-card__compact-badges absolute bottom-2 left-2 right-2 z-10 flex flex-wrap gap-1">{statusBadges}</div>
   </div>
   <div className="flex min-w-0 flex-col p-3">
-   <div className="truncate text-[10px] font-black uppercase tracking-[.12em] text-brand-gold">{safeText(product?.category,160)||'Golden Oremar'}</div>
+   <div className="flex items-center justify-between gap-2"><div className="truncate text-[10px] font-black uppercase tracking-[.12em] text-brand-gold">{safeText(product?.category,160)||'Golden Oremar'}</div>{producerVerified?<span className={`inline-flex shrink-0 items-center gap-1 text-[9px] font-black ${producerBadgeTone==='ruby'?'text-rose-700 dark:text-rose-300':'text-blue-700 dark:text-blue-300'}`}><CheckCircle2 aria-hidden="true" className="h-3 w-3"/>{producerStoreKind==='official'?'Oremar':'Onaylı'}</span>:null}</div>
    <button type="button" onClick={onClick} className="mt-1 min-h-10 text-left focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><h3 className="line-clamp-2 text-base font-black leading-snug text-brand-text">{productName}</h3></button>
    {reviewCount!==null&&reviewCount>0?<div className="mt-1 flex items-center gap-1 text-xs text-brand-muted"><Star aria-hidden="true" className="h-3.5 w-3.5 fill-brand-gold text-brand-gold"/><strong className="text-brand-text">{rating!==null?rating.toFixed(1):'—'}</strong><span>({reviewCount})</span></div>:null}
    {producerName?<div className="mt-1 truncate text-xs font-semibold text-brand-muted">{producerName}{origin?` • ${origin}`:''}</div>:null}
-   <div className="mt-auto flex items-end justify-between gap-2 pt-2"><div className="min-w-0">{price!==null&&currency?<div className="go-product-card__price truncate text-lg font-black">{money(price,currency)}</div>:<div className="text-xs font-bold text-brand-muted">Fiyat yakında</div>}{unit?<div className="truncate text-[11px] text-brand-muted">{unit}</div>:null}</div><button type="button" disabled={busy||!purchaseReady} onClick={()=>void run('cart',()=>onAddToCart(product,1))} aria-label={`${productName} ${cartLabel.toLocaleLowerCase('tr-TR')}`} className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full bg-brand-gold text-brand-on-gold disabled:opacity-45"><ShoppingCart aria-hidden="true" className="h-4.5 w-4.5"/></button></div>
+   {handlingLabel&&!coldChain?<div className="mt-0.5 truncate text-[11px] text-brand-muted">{handlingLabel}</div>:null}
+   <div className="mt-auto flex items-end justify-between gap-2 pt-2"><div className="min-w-0">{price!==null&&currency?<><div className="go-product-card__price truncate text-lg font-black">{money(price,currency)}</div>{originalPrice!==null&&originalPrice>price?<div className="truncate text-[10px] text-brand-muted line-through">{money(originalPrice,currency)}</div>:null}</>:<div className="text-xs font-bold text-brand-muted">Fiyat yakında</div>}{unit?<div className="truncate text-[11px] text-brand-muted">{unit}</div>:null}{tracked&&stock!==null&&!soldOut?<div className="truncate text-[10px] font-bold text-brand-muted">{stock<=5?`${stock} adet kaldı`:'Stokta'}</div>:null}</div><button type="button" disabled={busy||!purchaseReady} onClick={()=>void run('cart',()=>onAddToCart(product,1))} aria-label={`${productName} ${cartLabel.toLocaleLowerCase('tr-TR')}`} className="grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full bg-brand-gold text-brand-on-gold disabled:opacity-45"><ShoppingCart aria-hidden="true" className="h-4.5 w-4.5"/></button></div>
+   {feedback?<div role="status" className="mt-1 text-[11px] font-semibold text-brand-muted">{feedback}</div>:null}
   </div>
  </article>;
 
  return<article className="go-product-card">
-  <div className="go-product-card__media">
-   <button type="button" onClick={onClick} aria-label={`${productName} detayını aç`} className="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold">{product?.image?<img src={product.image} alt={`${productName} ürün görseli`} loading="lazy" decoding="async"/>:<div className="grid h-full place-items-center px-4 text-center text-sm text-brand-muted">Ürün görseli yakında</div>}</button>
-   {onToggleFavorite?<button type="button" disabled={busy} onClick={event=>{event.stopPropagation();void run('favorite',()=>onToggleFavorite(product));}} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} aria-pressed={isFavorite} className="go-product-card__favorite absolute left-3 top-3 z-10"><Heart aria-hidden="true" className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-brand-text'}`}/></button>:null}
-   <div className="absolute right-3 top-3 z-10 flex max-w-[72%] flex-col items-end gap-1.5">
-    {product?.is_featured===true?<span className="go-product-card__badge go-product-card__badge--featured bg-brand-green text-brand-on-green">Seçkin Ürün</span>:null}
-    {seasonal?<span className="go-product-card__badge go-product-card__badge--seasonal">Mevsimlik Üretim</span>:null}
-    {preorder?<span className="go-product-card__badge go-product-card__badge--preorder">Ön Sipariş</span>:null}
-    {coldChain?<span className="go-product-card__badge go-product-card__badge--cold"><Snowflake aria-hidden="true" className="h-3 w-3"/>Soğuk Zincir</span>:null}
-   </div>
-  </div>
-
-  <div className="flex flex-1 flex-col p-4">
-   <div className="flex items-center justify-between gap-2"><div className="min-w-0 truncate text-[10px] font-black uppercase tracking-[.14em] text-brand-gold">{safeText(product?.category,160)||'Golden Oremar'}</div>{producerVerified?<span className={`inline-flex shrink-0 items-center gap-1 text-[10px] font-black ${producerBadgeTone==='ruby'?'text-rose-700 dark:text-rose-300':'text-blue-700 dark:text-blue-300'}`}><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5"/>{producerStoreKind==='official'?'Golden Oremar':'Doğrulanmış'}</span>:null}</div>
-   <button type="button" onClick={onClick} className="mt-1 min-h-11 text-left focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><h3 className="line-clamp-2 text-xl font-black leading-tight text-brand-text">{productName}</h3></button>
-
-   {reviewCount!==null&&reviewCount>0?<div className="mt-1.5 flex items-center gap-1.5 text-sm"><Star aria-hidden="true" className="h-4 w-4 fill-brand-gold text-brand-gold"/><strong>{rating!==null?rating.toFixed(1):'—'}</strong><span className="text-brand-muted">{reviewCount} değerlendirme</span></div>:null}
-   {producerName?<div className="mt-2 truncate text-sm font-semibold text-brand-muted">{producerName}</div>:null}
-   {origin?<div className="mt-0.5 truncate text-xs text-brand-muted">{origin}</div>:null}
-   {handlingLabel?<div className="mt-2 line-clamp-1 text-xs font-semibold text-brand-muted">{handlingLabel}</div>:null}
-
-   <div className="mt-4 flex items-end justify-between gap-3 border-t border-brand-border pt-3">
-    <div className="min-w-0">{price!==null&&currency?<><div className="go-product-card__price truncate text-2xl font-black">{money(price,currency)}</div>{originalPrice!==null&&originalPrice>price?<div className="mt-0.5 text-xs text-brand-muted">Önce {money(originalPrice,currency)}</div>:null}</>:<div className="text-sm font-bold text-brand-muted">Fiyat yakında</div>}{unit?<div className="mt-0.5 truncate text-xs text-brand-muted">{unit}</div>:null}</div>
-    {tracked&&stock!==null&&!soldOut?<div className="shrink-0 text-right text-xs font-bold text-brand-muted">{stock<=5?`${stock} adet kaldı`:'Stokta'}</div>:null}
-   </div>
-
-   <div className="mt-auto pt-4">
-    <div className={`grid gap-2 ${onGift?'grid-cols-[1fr_auto]':'grid-cols-1'}`}><button type="button" disabled={busy||!purchaseReady} onClick={()=>void run('cart',()=>onAddToCart(product,1))} className="go-product-card__cart text-brand-on-gold"><ShoppingCart aria-hidden="true" className="h-4.5 w-4.5"/>{action==='cart'?'Ekleniyor…':purchaseReady?cartLabel:unavailableLabel}</button>{onGift?<button type="button" disabled={busy||!purchaseReady} onClick={()=>void run('gift',()=>onGift(product))} aria-label={`${productName} ürününü hediye et`} className="go-product-card__gift disabled:opacity-45"><Gift aria-hidden="true" className="h-5 w-5 text-brand-gold"/></button>:null}</div>
-    {feedback?<div role="status" aria-live="polite" className="mt-2 text-xs font-semibold text-brand-muted">{feedback}</div>:null}
-   </div>
-  </div>
+  <div className="go-product-card__media"><button type="button" onClick={onClick} aria-label={`${productName} detayını aç`} className="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold">{product?.image?<img src={product.image} alt={`${productName} ürün görseli`} loading="lazy" decoding="async"/>:<div className="grid h-full place-items-center px-4 text-center text-sm text-brand-muted">Ürün görseli yakında</div>}</button>{onToggleFavorite?<button type="button" disabled={busy} onClick={event=>{event.stopPropagation();void run('favorite',()=>onToggleFavorite(product));}} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} aria-pressed={isFavorite} className="go-product-card__favorite absolute left-3 top-3 z-10"><Heart aria-hidden="true" className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-brand-text'}`}/></button>:null}<div className="absolute right-3 top-3 z-10 flex max-w-[72%] flex-col items-end gap-1.5">{statusBadges}</div></div>
+  <div className="flex flex-1 flex-col p-4"><div className="flex items-center justify-between gap-2"><div className="min-w-0 truncate text-[10px] font-black uppercase tracking-[.14em] text-brand-gold">{safeText(product?.category,160)||'Golden Oremar'}</div>{producerVerified?<span className={`inline-flex shrink-0 items-center gap-1 text-[10px] font-black ${producerBadgeTone==='ruby'?'text-rose-700 dark:text-rose-300':'text-blue-700 dark:text-blue-300'}`}><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5"/>{producerStoreKind==='official'?'Golden Oremar':'Doğrulanmış'}</span>:null}</div><button type="button" onClick={onClick} className="mt-1 min-h-11 text-left focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><h3 className="line-clamp-2 text-xl font-black leading-tight text-brand-text">{productName}</h3></button>{reviewCount!==null&&reviewCount>0?<div className="mt-1.5 flex items-center gap-1.5 text-sm"><Star aria-hidden="true" className="h-4 w-4 fill-brand-gold text-brand-gold"/><strong>{rating!==null?rating.toFixed(1):'—'}</strong><span className="text-brand-muted">{reviewCount} değerlendirme</span></div>:null}{producerName?<div className="mt-2 truncate text-sm font-semibold text-brand-muted">{producerName}</div>:null}{origin?<div className="mt-0.5 truncate text-xs text-brand-muted">{origin}</div>:null}{handlingLabel?<div className="mt-2 line-clamp-1 text-xs font-semibold text-brand-muted">{handlingLabel}</div>:null}<div className="mt-4 flex items-end justify-between gap-3 border-t border-brand-border pt-3"><div className="min-w-0">{price!==null&&currency?<><div className="go-product-card__price truncate text-2xl font-black">{money(price,currency)}</div>{originalPrice!==null&&originalPrice>price?<div className="mt-0.5 text-xs text-brand-muted">Önce {money(originalPrice,currency)}</div>:null}</>:<div className="text-sm font-bold text-brand-muted">Fiyat yakında</div>}{unit?<div className="mt-0.5 truncate text-xs text-brand-muted">{unit}</div>:null}</div>{tracked&&stock!==null&&!soldOut?<div className="shrink-0 text-right text-xs font-bold text-brand-muted">{stock<=5?`${stock} adet kaldı`:'Stokta'}</div>:null}</div><div className="mt-auto pt-4"><div className={`grid gap-2 ${onGift?'grid-cols-[1fr_auto]':'grid-cols-1'}`}><button type="button" disabled={busy||!purchaseReady} onClick={()=>void run('cart',()=>onAddToCart(product,1))} className="go-product-card__cart text-brand-on-gold"><ShoppingCart aria-hidden="true" className="h-4.5 w-4.5"/>{action==='cart'?'Ekleniyor…':purchaseReady?cartLabel:unavailableLabel}</button>{onGift?<button type="button" disabled={busy||!purchaseReady} onClick={()=>void run('gift',()=>onGift(product))} aria-label={`${productName} ürününü hediye et`} className="go-product-card__gift disabled:opacity-45"><Gift aria-hidden="true" className="h-5 w-5 text-brand-gold"/></button>:null}</div>{feedback?<div role="status" aria-live="polite" className="mt-2 text-xs font-semibold text-brand-muted">{feedback}</div>:null}</div></div>
  </article>;
 }
