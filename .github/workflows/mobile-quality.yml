@@ -98,7 +98,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Install Android 17 SDK with current official Android CLI
+      - name: Install Android 17 API 37.0 with current official Android CLI
         shell: bash
         run: |
           set -euo pipefail
@@ -116,13 +116,13 @@ jobs:
           ANDROID_CLI="${TOOLS_DIR}/cmdline-tools/bin/android"
           test -x "${ANDROID_CLI}"
           "${ANDROID_CLI}" --version
-          "${ANDROID_CLI}" --sdk="${ANDROID_HOME}" sdk list 'platforms/android-37' --all --beta
+          "${ANDROID_CLI}" --sdk="${ANDROID_HOME}" sdk list 'platforms/android-37.0' --all --canary
           "${ANDROID_CLI}" --sdk="${ANDROID_HOME}" sdk install \
             platform-tools \
-            platforms/android-37 \
+            platforms/android-37.0 \
             build-tools/37.0.0 \
-            --beta
-          test -f "${ANDROID_HOME}/platforms/android-37/android.jar"
+            --canary
+          test -f "${ANDROID_HOME}/platforms/android-37.0/android.jar"
           test -x "${ANDROID_HOME}/build-tools/37.0.0/aapt2"
 
       - name: Install locked dependencies
@@ -163,11 +163,14 @@ jobs:
           grep -q 'gradle-9.5.0-all.zip' android/gradle/wrapper/gradle-wrapper.properties
           grep -q 'minSdkVersion = 24' android/variables.gradle
           grep -q 'compileSdkVersion = 37' android/variables.gradle
+          grep -q 'compileSdkMinorVersion = 0' android/variables.gradle
           grep -q 'targetSdkVersion = 37' android/variables.gradle
+          grep -q 'minorApiLevel = rootProject.ext.compileSdkMinorVersion' android/app/build.gradle
           grep -q 'JavaVersion.VERSION_21' android/app/build.gradle
+          grep -q 'androidResources' android/app/build.gradle
           grep -q 'proguard-android-optimize.txt' android/app/build.gradle
-          if grep -q "apply plugin: 'kotlin-android'" android/app/build.gradle || grep -q 'kotlinOptions' android/app/build.gradle; then
-            echo 'Legacy kotlin-android configuration must not return.' >&2
+          if grep -q "apply plugin: 'kotlin-android'" android/app/build.gradle || grep -q 'kotlinOptions' android/app/build.gradle || grep -q 'aaptOptions' android/app/build.gradle; then
+            echo 'Legacy AGP/Kotlin/resource DSL must not return.' >&2
             exit 1
           fi
           grep -q 'density' android/app/src/main/AndroidManifest.xml
