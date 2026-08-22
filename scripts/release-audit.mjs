@@ -48,22 +48,22 @@ if(appShell){const c=compact(appShell);
 const homeStorefront=requireFile('src/features/home/HomeSection.tsx');
 if(homeStorefront){
  const forbiddenHomeFallbacks=[
-  [/interfaceContent\.heroTitle\s*\|\|/,'Home hero title must not silently fall back to hard-coded copy.'],
-  [/interfaceContent\.heroSubtitle\s*\|\|/,'Home hero subtitle must not silently fall back to hard-coded copy.'],
-  [/interfaceContent\.heroButtonText\s*\|\|/,'Home hero CTA must not silently fall back to hard-coded copy.'],
+  [/interfaceContent\??\.heroTitle[^\n]*\|\|/,'Home title must not silently fall back to hard-coded business copy.'],
+  [/interfaceContent\??\.heroSubtitle[^\n]*\|\|/,'Home subtitle must not silently fall back to hard-coded business copy.'],
+  [/interfaceContent\??\.heroButtonText[^\n]*\|\|/,'Home CTA must not silently fall back to hard-coded business copy.'],
   [/producerName\s*\|\|\s*product\.origin\s*\|\|\s*['"]Golden Oremar['"]/,'Missing producer context must not be replaced with the Golden Oremar brand.'],
   [/products\.find\(isSellable\)/,'A non-featured product must not be silently promoted into the featured slot.'],
   [/Doğrulanmış katalog seçkisi/,'Home spotlight must not make an unscoped verification claim.'],
   [/spotlightProduct/,'The retired duplicate standalone featured-product block must not return.'],
  ];
  for(const[re,label]of forbiddenHomeFallbacks)forbidPattern(homeStorefront,re,label);
- requirePattern(homeStorefront,/loading:\s*storefrontLoading/,'Home storefront must expose server storefront loading separately from catalog loading.');
- requirePattern(homeStorefront,/salesReadiness\.message/,'Sales-readiness notice must use the validated server message.');
- requirePattern(homeStorefront,/Doğrulanmış ürün görseli henüz yayınlanmadı\./,'Home hero must distinguish missing verified assets from an active loading state.');
- requirePattern(homeStorefront,/interfaceContent\.categoriesTitle/,'Validated storefront collection heading must drive the home collection area.');
- requirePattern(homeStorefront,/heroCategories\.map\(config=>/,'Managed collection cards must drive the public home collection order.');
- requirePattern(homeStorefront,/homeSections\.filter\(section=>section\.active\)\.map/,'Managed active product sections must drive the public home section order.');
+ requirePattern(homeStorefront,/loading:\s*storefrontLoading/,'Home storefront must expose managed storefront loading separately from catalog loading.');
+ requirePattern(homeStorefront,/salesReadiness\.message/,'Sales-readiness notice must use the validated storefront message.');
+ requirePattern(homeStorefront,/interfaceContent\.categoriesTitle/,'Validated storefront category heading must drive the home category area.');
+ requirePattern(homeStorefront,/heroCategories\.map\(config=>/,'Managed category targets must drive public home category order.');
+ requirePattern(homeStorefront,/homeSections\.filter\(section=>section\.active\)\.map/,'Managed active product sections must drive public home section order.');
  requirePattern(homeStorefront,/eventSpotlight\.placement===placement/,'Managed event spotlight placement must drive the public home position.');
+ forbidPattern(homeStorefront,/HeroMetric|producerCount|originCount/,'Metric-heavy product/producer/origin hero blocks must not return to the customer home.');
 }
 
 const storefrontApi=requireFile('src/features/storefront/api.ts');
@@ -75,11 +75,13 @@ if(storefrontApi){
 
 const productCard=requireFile('src/features/catalog/CatalogProductCard.tsx');
 if(productCard){const c=compact(productCard);
- requirePattern(c,/useEffect\(\(\)=>\{setQuantity\(current=>Math\.min\(Math\.max\(1,current\),maxQuantity\)\);\},\[maxQuantity\]\)/,'Canonical product card must clamp selected quantity when live stock decreases.');
  if(!/text-brand-on-green/.test(productCard)||!/text-brand-on-gold/.test(productCard))failures.push('Canonical product card must use semantic accent foreground tokens.');
- requirePattern(c,/disabled=\{cardBusy\|\|!purchaseReady\}/,'Gift and purchase actions must remain bound to full purchase readiness.');
- if(!/actionFeedback/.test(productCard)||!/runAction/.test(productCard))failures.push('Canonical product card secondary async actions must expose caught failures instead of unhandled promises.');
- requirePattern(productCard,/Doğrulanmış görsel henüz yayınlanmadı/,'Canonical product card must state missing verified imagery truthfully.');
+ requirePattern(c,/onAddToCart\(product,1\)/,'Compact product cards must retain one-tap single-item add-to-cart behavior.');
+ const purchaseGuards=(c.match(/disabled=\{busy\|\|!purchaseReady\}/g)||[]).length;
+ if(purchaseGuards<2)failures.push('Gift and purchase actions must remain bound to full purchase readiness.');
+ if(!/feedback/.test(productCard)||!/asyncfunctionrun\(/.test(c))failures.push('Canonical product card secondary async actions must expose caught failures instead of unhandled promises.');
+ requirePattern(productCard,/Ürün görseli yakında/,'Canonical product card must state missing imagery truthfully in customer language.');
+ forbidPattern(productCard,/setQuantity|Miktarı artır|Miktarı azalt/,'Compact product cards must not restore the inline quantity stepper.');
  forbidPattern(productCard,/line-through/,'Canonical product card must not reintroduce struck-through discount framing.');
 }
 
@@ -173,4 +175,4 @@ const indexHtml=requireFile('index.html');
 if(indexHtml){requirePattern(indexHtml,/<html lang="tr">/,'Document language must remain Turkish.');requirePattern(indexHtml,/name="viewport"[^>]*viewport-fit=cover/,'Safe-area viewport-fit=cover metadata is required.');requirePattern(indexHtml,/name="description"/,'Production meta description is required.');if(!/property="og:title"/.test(indexHtml)||!/name="twitter:title"/.test(indexHtml))failures.push('Public share metadata is incomplete.');}
 
 if(failures.length){console.error('Golden Oremar release audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar release audit passed: canonical Supabase runtime, Android/iOS app-shell, native speech, seller lifecycle gates, fail-closed admin data, accounting currency truth, theme contrast, retired-runtime and native release metadata contracts are intact.');
+console.log('Golden Oremar release audit passed: canonical Supabase runtime, compact customer storefront, Android/iOS app shell, native speech, seller lifecycle gates, fail-closed admin data, accounting currency truth, theme contrast, retired-runtime and native release metadata contracts are intact.');
