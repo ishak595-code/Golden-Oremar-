@@ -10,6 +10,7 @@ function read(relative){
 }
 function expect(condition,message){if(!condition)failures.push(message);}
 
+const app=read('src/App.tsx');
 const main=read('src/main.tsx');
 const routeState=read('src/features/navigation/customerShellRouteState.ts');
 const shellCss=read('src/features/customer-experience/customerShellPolish.css');
@@ -22,20 +23,25 @@ expect(main.includes("installCustomerShellRouteState();"),'Customer shell route-
 expect(main.includes("customerShellPolish.css"),'Customer shell polish stylesheet must be loaded.');
 expect(routeState.includes('dataset.appTab=currentTab()'),'Route-state tracker must expose the active tab to the document.');
 expect(routeState.includes("patch('pushState')")&&routeState.includes("patch('replaceState')"),'Route-state tracker must react to in-app history navigation.');
-expect(shellCss.includes(':root:not([data-app-tab="home"]) #root > .min-h-screen > header'),'Global storefront header must be hidden outside Home.');
+expect(app.includes("{currentTab==='home'?<header"),'Global storefront header must be rendered only on Home in the React shell.');
+expect(shellCss.includes(':root:not([data-app-tab="home"]) #root > .min-h-screen > header'),'CSS must retain defense-in-depth hiding for the global storefront header outside Home.');
 expect(shellCss.includes('.customer-disclosure'),'Collapsed customer information styling must exist.');
 
 for(const forbidden of ['HeroMetric','producerCount','originCount','label="Seçilmiş ürün"','label="Doğrulanmış üretici"','label="Üretim yöresi"']){
   expect(!home.includes(forbidden),`Home must not restore the metric-heavy hero marker: ${forbidden}`);
 }
 expect(home.includes('hide-scrollbar flex snap-x'),'Home should preserve compact horizontal discovery rows.');
+expect(home.includes('<CatalogProductCard compact'),'Home catalog must use compact mobile product rows instead of oversized cards.');
 expect(home.includes('useLiveHomeCatalog'),'Home must remain driven by the live catalog hook.');
 expect(home.includes('usePublicStorefrontConfig'),'Home must remain driven by managed storefront content.');
+expect(home.includes('heroCategories.map(config=>liveById.get(config.targetCategory))'),'Super Admin category ordering must remain authoritative on Home.');
+expect(home.includes('homeSections.filter(section=>section.active)'),'Super Admin showcase ordering must remain authoritative on Home.');
 
 expect(!card.includes('description?<p'),'Product cards must not reveal long descriptions by default.');
 expect(!card.includes('quantity,setQuantity'),'Product cards must not restore the large inline quantity stepper.');
 expect(card.includes("onAddToCart(product,1)"),'Compact product cards must use one-tap single-item add-to-cart.');
 expect(card.includes('safeHandling'),'Product-card handling metadata must remain fail-safe.');
+expect(card.includes('compact=false')&&card.includes('if(compact)return<article'),'Catalog cards must retain a dedicated compact mobile layout.');
 
 for(const marker of ['aria-label="Geri"','Favorilere ekle','Ürünü paylaş','customer-disclosure','Ürün Hikâyesi','Gıda Güvenliği & Kullanım','Müşteri Yorumları']){
   expect(detail.includes(marker),`Product detail is missing customer navigation/disclosure marker: ${marker}`);
@@ -54,4 +60,4 @@ if(failures.length){
   for(const failure of failures)console.error(`- ${failure}`);
   process.exit(1);
 }
-console.log('Golden Oremar customer UI contract audit passed: Home-only global header, compact storefront rows, simplified product cards, local product-detail navigation, collapsed long-form product information, and collapsed theme/sound preferences are locked in.');
+console.log('Golden Oremar customer UI contract audit passed: Home-only global header, compact dynamic storefront rows, simplified product cards, local product-detail navigation, collapsed long-form product information, and collapsed theme/sound preferences are locked in.');
