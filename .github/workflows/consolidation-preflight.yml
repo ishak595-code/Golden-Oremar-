@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - integration/full-consolidation-2026-08
+      - release/store-readiness-2026-08
   workflow_dispatch:
 
 permissions:
