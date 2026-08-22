@@ -98,6 +98,15 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Install Android 17 SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          test -x "${SDKMANAGER}"
+          yes | "${SDKMANAGER}" --licenses >/dev/null || true
+          "${SDKMANAGER}" "platforms;android-37" "build-tools;37.0.0"
+
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
@@ -132,8 +141,8 @@ jobs:
           grep -q "kotlin-gradle-plugin:2.2.20" android/build.gradle
           grep -q 'gradle-8.14.3-all.zip' android/gradle/wrapper/gradle-wrapper.properties
           grep -q 'minSdkVersion = 24' android/variables.gradle
-          grep -q 'compileSdkVersion = 36' android/variables.gradle
-          grep -q 'targetSdkVersion = 36' android/variables.gradle
+          grep -q 'compileSdkVersion = 37' android/variables.gradle
+          grep -q 'targetSdkVersion = 37' android/variables.gradle
           grep -q 'JavaVersion.VERSION_21' android/app/build.gradle
           grep -q "jvmTarget = '21'" android/app/build.gradle
           grep -q 'kotlin-stdlib:2.2.20' android/app/build.gradle
