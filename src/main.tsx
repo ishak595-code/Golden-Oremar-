@@ -5,6 +5,7 @@ import ErrorBoundary from './ErrorBoundary';
 import './index.css';
 import './features/customer-experience/customerShellPolish.css';
 import './features/customer-experience/videoReferencePremium.css';
+import './features/customer-experience/marketplaceDensity.css';
 import './features/customer-experience/productDetailCommerceDock.css';
 import './features/customer-experience/premiumCompatibility.css';
 import { initNativeFeatures } from './native';
