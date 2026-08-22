@@ -30,98 +30,101 @@
   --color-brand-border: var(--border-main);
 }
 
+/* Official fallback palette. The custom theme is replaced at runtime by the
+   validated Super Admin brand appearance, but the first native frame already
+   uses the same prestige language instead of flashing a generic white/green UI. */
 :root {
   color-scheme: light;
-  --bg-main: #F4F7F5;
-  --bg-card: #FFFFFF;
-  --text-main: #14261C;
-  --text-muted: #4B6156;
-  --text-muted-darker: #35483F;
-  --border-main: #D5DDD8;
-  --border-light: #E5EBE7;
-  --brand-gold: #8A6810;
-  --brand-green: #145A32;
-  --brand-earth: #7A431F;
+  --bg-main: #F5F2E8;
+  --bg-card: #FFFDF8;
+  --text-main: #18251F;
+  --text-muted: #58665F;
+  --text-muted-darker: #3F5148;
+  --border-main: #DCD5C4;
+  --border-light: #ECE6D9;
+  --brand-gold: #806216;
+  --brand-green: #0E4A31;
+  --brand-earth: #6A3F2B;
   --text-on-gold: #FFFFFF;
   --text-on-green: #FFFFFF;
 }
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg-main: #F7F8F6;
+  --bg-main: #FAF9F5;
   --bg-card: #FFFFFF;
-  --text-main: #14261C;
-  --text-muted: #52675C;
-  --text-muted-darker: #35483F;
-  --border-main: #D7E0DA;
-  --border-light: #E8EDE9;
-  --brand-gold: #8A6810;
-  --brand-green: #145A32;
-  --brand-earth: #7A431F;
+  --text-main: #18251F;
+  --text-muted: #596760;
+  --text-muted-darker: #3F5148;
+  --border-main: #DEDAD0;
+  --border-light: #EEEAE1;
+  --brand-gold: #806216;
+  --brand-green: #0E4A31;
+  --brand-earth: #6A3F2B;
   --text-on-gold: #FFFFFF;
   --text-on-green: #FFFFFF;
 }
 
 :root[data-theme="emerald"] {
   color-scheme: light;
-  --bg-main: #F1F6F2;
-  --bg-card: #FCFFFD;
-  --text-main: #10372A;
-  --text-muted: #46685A;
-  --text-muted-darker: #2B5141;
-  --border-main: #C8DDD2;
-  --border-light: #E1ECE6;
-  --brand-gold: #8A6614;
-  --brand-green: #087A55;
-  --brand-earth: #765033;
+  --bg-main: #EFF4EF;
+  --bg-card: #FAFCF9;
+  --text-main: #0F2F23;
+  --text-muted: #456158;
+  --text-muted-darker: #2F4A3E;
+  --border-main: #C7D9CF;
+  --border-light: #DFEAE4;
+  --brand-gold: #7B5C14;
+  --brand-green: #0B6B49;
+  --brand-earth: #6C4933;
   --text-on-gold: #FFFFFF;
   --text-on-green: #FFFFFF;
 }
 
 :root[data-theme="ruby"] {
   color-scheme: light;
-  --bg-main: #FBF6F7;
-  --bg-card: #FFFDFD;
-  --text-main: #3B1722;
-  --text-muted: #75515C;
-  --text-muted-darker: #5D3442;
-  --border-main: #E7D3D9;
-  --border-light: #F2E4E8;
-  --brand-gold: #8A641F;
-  --brand-green: #8F1D3B;
-  --brand-earth: #7B3B37;
+  --bg-main: #F8F2F3;
+  --bg-card: #FFFBFC;
+  --text-main: #381721;
+  --text-muted: #71525B;
+  --text-muted-darker: #563B43;
+  --border-main: #E2CDD3;
+  --border-light: #F0E1E5;
+  --brand-gold: #7C5A1A;
+  --brand-green: #821C38;
+  --brand-earth: #6D3936;
   --text-on-gold: #FFFFFF;
   --text-on-green: #FFFFFF;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg-main: #060F0C;
-  --bg-card: #0A1C16;
-  --text-main: #F4F7F5;
-  --text-muted: #A1B8AD;
-  --text-muted-darker: #7E948A;
-  --border-main: #153A2A;
-  --border-light: #204E38;
-  --brand-gold: #EDC967;
-  --brand-green: #27AE60;
-  --brand-earth: #C36A31;
-  --text-on-gold: #10251B;
-  --text-on-green: #06100C;
+  --bg-main: #07100D;
+  --bg-card: #0B1B15;
+  --text-main: #F4F3EE;
+  --text-muted: #AAB9B1;
+  --text-muted-darker: #83958C;
+  --border-main: #1E3A2F;
+  --border-light: #294A3B;
+  --brand-gold: #D9B85C;
+  --brand-green: #1F9D63;
+  --brand-earth: #B7663A;
+  --text-on-gold: #182015;
+  --text-on-green: #05120D;
 }
 
 :root[data-theme="champagne"] {
   color-scheme: light;
-  --bg-main: #FBF6E9;
-  --bg-card: #FFFDF5;
-  --text-main: #332A18;
-  --text-muted: #6E6248;
-  --text-muted-darker: #51462F;
-  --border-main: #E5D8B8;
-  --border-light: #F0E7D1;
-  --brand-gold: #85600F;
-  --brand-green: #705C27;
-  --brand-earth: #805338;
+  --bg-main: #F6F0E2;
+  --bg-card: #FFF9EC;
+  --text-main: #342A18;
+  --text-muted: #6A5D45;
+  --text-muted-darker: #4E432D;
+  --border-main: #DED0AD;
+  --border-light: #EEE4CB;
+  --brand-gold: #7B5A10;
+  --brand-green: #5F5428;
+  --brand-earth: #744933;
   --text-on-gold: #FFFFFF;
   --text-on-green: #FFFFFF;
 }
