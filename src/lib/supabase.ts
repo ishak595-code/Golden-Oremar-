@@ -1,13 +1,19 @@
 import { Capacitor } from '@capacitor/core';
 import { createClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Supabase project URL and publishable keys are public client configuration, not secrets.
+// Environment variables remain authoritative for CI/native/store builds. The canonical
+// public fallback keeps browser deployments (for example Vercel previews) from failing
+// before React can mount if a hosting environment is missing its Vite variables.
+const CANONICAL_SUPABASE_URL = 'https://rmfcziawxjgcnxexbrvw.supabase.co';
+const CANONICAL_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg';
+const url = String(import.meta.env.VITE_SUPABASE_URL || CANONICAL_SUPABASE_URL).trim();
+const publishableKey = String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || CANONICAL_SUPABASE_PUBLISHABLE_KEY).trim();
 const DEVICE_STORAGE_KEY = 'golden_oremar_device_id_v1';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-if (!url || !publishableKey) {
-  throw new Error('Missing Supabase client environment variables.');
+if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) || !publishableKey.startsWith('sb_publishable_')) {
+  throw new Error('Invalid Supabase public client configuration.');
 }
 
 function createDeviceId() {
