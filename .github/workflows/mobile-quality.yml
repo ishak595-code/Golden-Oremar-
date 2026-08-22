@@ -98,7 +98,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Install Android 17 SDK with current Google command-line tools
+      - name: Install Android 17 SDK with current official Android CLI
         shell: bash
         run: |
           set -euo pipefail
@@ -113,14 +113,15 @@ jobs:
           rm -rf "${TOOLS_DIR}"
           mkdir -p "${TOOLS_DIR}"
           unzip -q "${TOOLS_ZIP}" -d "${TOOLS_DIR}"
-          SDKMANAGER="${TOOLS_DIR}/cmdline-tools/bin/sdkmanager"
-          test -x "${SDKMANAGER}"
-          "${SDKMANAGER}" --version
-          yes | "${SDKMANAGER}" --sdk_root="${ANDROID_HOME}" --licenses >/dev/null || true
-          "${SDKMANAGER}" --sdk_root="${ANDROID_HOME}" \
-            "platform-tools" \
-            "platforms;android-37" \
-            "build-tools;37.0.0"
+          ANDROID_CLI="${TOOLS_DIR}/cmdline-tools/bin/android"
+          test -x "${ANDROID_CLI}"
+          "${ANDROID_CLI}" --version
+          "${ANDROID_CLI}" --sdk="${ANDROID_HOME}" sdk list 'platforms/android-37' --all --beta
+          "${ANDROID_CLI}" --sdk="${ANDROID_HOME}" sdk install \
+            platform-tools \
+            platforms/android-37 \
+            build-tools/37.0.0 \
+            --beta
           test -f "${ANDROID_HOME}/platforms/android-37/android.jar"
           test -x "${ANDROID_HOME}/build-tools/37.0.0/aapt2"
 
