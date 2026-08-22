@@ -16,9 +16,10 @@ const EXPECTED_WORKFLOW = "Mobile Quality Gate";
 const EXPECTED_WORKFLOW_PATH = `${EXPECTED_REPOSITORY}/.github/workflows/mobile-quality.yml@`;
 const ALLOWED_EVENTS = new Set(["pull_request", "workflow_dispatch"]);
 const RUN_ID_RE = /^\d{1,24}$/;
+const PASSWORD_RE = /^[^\u0000-\u001F\u007F]{12,72}$/;
+const PHONE_RE = /^\+[1-9][0-9]{9,14}$/;
 
-type Action = "confirm" | "delete";
-
+type Action = "provision" | "confirm" | "delete";
 type GithubClaims = {
   repository?: string;
   repository_id?: string;
@@ -29,6 +30,13 @@ type GithubClaims = {
   event_name?: string;
   run_id?: string;
   runner_environment?: string;
+};
+type Body = {
+  action?: unknown;
+  runId?: unknown;
+  password?: unknown;
+  displayName?: unknown;
+  phone?: unknown;
 };
 
 function json(body: unknown, status = 200) {
@@ -52,6 +60,24 @@ function emailForRun(runId: string) {
   return `goldenoremar+ci-e2e-${runId}@gmail.com`;
 }
 
+function cleanDisplayName(value: unknown) {
+  const normalized = String(value || "").trim().replace(/\s+/g, " ");
+  if (normalized.length < 2 || normalized.length > 120 || /[\u0000-\u001F\u007F]/.test(normalized)) throw new Error("invalid_display_name");
+  return normalized;
+}
+
+function cleanPassword(value: unknown) {
+  const password = typeof value === "string" ? value : "";
+  if (!PASSWORD_RE.test(password)) throw new Error("invalid_password");
+  return password;
+}
+
+function cleanPhone(value: unknown) {
+  const phone = String(value || "").trim();
+  if (!PHONE_RE.test(phone)) throw new Error("invalid_phone");
+  return phone;
+}
+
 async function verifyGithubOidc(req: Request, runId: string) {
   const token = bearerToken(req);
   if (!token) throw new Error("github_oidc_token_required");
@@ -70,7 +96,6 @@ async function verifyGithubOidc(req: Request, runId: string) {
   if (!ALLOWED_EVENTS.has(String(payload.event_name || ""))) throw new Error("github_event_not_allowed");
   if (String(payload.run_id || "") !== runId) throw new Error("github_run_id_mismatch");
   if (String(payload.runner_environment || "") !== "github-hosted") throw new Error("github_runner_not_allowed");
-  return payload;
 }
 
 async function findUserByEmail(supabaseUrl: string, serviceRole: string, email: string) {
@@ -79,11 +104,7 @@ async function findUserByEmail(supabaseUrl: string, serviceRole: string, email: 
   endpoint.searchParams.set("page", "1");
   endpoint.searchParams.set("per_page", "50");
   const response = await fetch(endpoint, {
-    headers: {
-      apikey: serviceRole,
-      Authorization: `Bearer ${serviceRole}`,
-      Accept: "application/json",
-    },
+    headers: { apikey: serviceRole, Authorization: `Bearer ${serviceRole}`, Accept: "application/json" },
   });
   if (!response.ok) throw new Error(`auth_admin_lookup_failed_${response.status}`);
   const body = await response.json().catch(() => ({}));
@@ -94,42 +115,64 @@ async function findUserByEmail(supabaseUrl: string, serviceRole: string, email: 
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
   try {
-    const body = await req.json().catch(() => null) as { action?: unknown; runId?: unknown } | null;
+    const body = await req.json().catch(() => null) as Body | null;
     const action = String(body?.action || "") as Action;
     const runId = String(body?.runId || "").trim();
-    if (action !== "confirm" && action !== "delete") return json({ ok: false, error: "invalid_action" }, 400);
+    if (!(["provision", "confirm", "delete"] as string[]).includes(action)) return json({ ok: false, error: "invalid_action" }, 400);
     if (!RUN_ID_RE.test(runId)) return json({ ok: false, error: "invalid_run_id" }, 400);
     await verifyGithubOidc(req, runId);
 
     const supabaseUrl = String(Deno.env.get("SUPABASE_URL") || "").trim();
     const serviceRole = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
     if (!supabaseUrl || !serviceRole) throw new Error("supabase_admin_runtime_missing");
+    const admin = createClient(supabaseUrl, serviceRole, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
     const email = emailForRun(runId);
-    const user = await findUserByEmail(supabaseUrl, serviceRole, email);
+    const existing = await findUserByEmail(supabaseUrl, serviceRole, email);
 
     if (action === "delete") {
-      if (!user?.id) return json({ ok: true, deleted: false, alreadyAbsent: true });
-      const admin = createClient(supabaseUrl, serviceRole, {
-        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-      });
-      const { error } = await admin.auth.admin.deleteUser(String(user.id), false);
+      if (!existing?.id) return json({ ok: true, deleted: false, alreadyAbsent: true });
+      const { error } = await admin.auth.admin.deleteUser(String(existing.id), false);
       if (error) throw error;
       return json({ ok: true, deleted: true });
     }
 
-    if (!user?.id) return json({ ok: false, error: "e2e_user_not_found" }, 404);
-    const admin = createClient(supabaseUrl, serviceRole, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    });
-    if (!user.email_confirmed_at) {
-      const { error } = await admin.auth.admin.updateUserById(String(user.id), { email_confirm: true });
+    if (action === "provision") {
+      const password = cleanPassword(body?.password);
+      const displayName = cleanDisplayName(body?.displayName);
+      const phone = cleanPhone(body?.phone);
+      if (existing?.id) {
+        const { error } = await admin.auth.admin.deleteUser(String(existing.id), false);
+        if (error) throw error;
+      }
+      const { data, error } = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          display_name: displayName,
+          phone,
+          locale: "tr",
+          e2e_run_id: runId,
+          source: "github-actions-e2e",
+        },
+      });
+      if (error) throw error;
+      if (!data.user?.id) throw new Error("e2e_user_provision_failed");
+      return json({ ok: true, provisioned: true, emailConfirmed: Boolean(data.user.email_confirmed_at) });
+    }
+
+    if (!existing?.id) return json({ ok: false, error: "e2e_user_not_found" }, 404);
+    if (!existing.email_confirmed_at) {
+      const { error } = await admin.auth.admin.updateUserById(String(existing.id), { email_confirm: true });
       if (error) throw error;
     }
     return json({ ok: true, confirmed: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unexpected_error";
     console.error("ci-e2e-user", message);
-    const status = message.startsWith("github_") ? 403 : 500;
+    const status = message.startsWith("github_") ? 403 : message.startsWith("invalid_") ? 400 : 500;
     return json({ ok: false, error: message }, status);
   }
 });
