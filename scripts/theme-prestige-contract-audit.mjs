@@ -34,6 +34,8 @@ for(const marker of['Golden Oremar Marka Teması','Zümrüt Oremar','Yakut Prest
 expect(brand.includes("get_public_brand_appearance_v1"),'Official custom appearance must remain database-driven.');
 expect(brand.includes("super_admin_update_brand_appearance_v1"),'Super Admin must retain live brand appearance management.');
 expect(compactBrand.includes('contrastRatio(tokens.text,tokens.background)<4.5'),'Dynamic brand text contrast must fail closed below WCAG AA.');
+expect(compactBrand.includes('contrastRatio(tokens.muted,tokens.background)<4.5'),'Dynamic muted text contrast must fail closed below WCAG AA.');
+expect(compactBrand.includes('contrastRatio(tokens.text,tokens.card)<4.5'),'Dynamic card text contrast must fail closed below WCAG AA.');
 expect(compactBrand.includes('contrastRatio(tokens.onGreen,tokens.brandGreen)<4.5'),'Dynamic green action contrast must fail closed below WCAG AA.');
 expect(compactBrand.includes('contrastRatio(tokens.onGold,tokens.brandGold)<4.5'),'Dynamic gold action contrast must fail closed below WCAG AA.');
 
@@ -44,4 +46,4 @@ expect(!/fetch\(|localStorage|sessionStorage/.test(perf),'Performance hints must
 expect(main.indexOf('installBackendPerformanceHints();')>=0&&main.indexOf('installBackendPerformanceHints();')<main.indexOf('loadAndApplyBrandAppearance()'),'Backend warmup must be installed before live customer data initialization.');
 
 if(failures.length){console.error('Golden Oremar prestige theme contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar prestige theme contract audit passed: all six palettes meet WCAG AA for primary/muted/action contrast, the official theme remains Super Admin dynamic, and HTTPS Supabase connection warmup does not cache business data.');
+console.log('Golden Oremar prestige theme contract audit passed: all six palettes and dynamic Super Admin colors meet WCAG AA for primary, muted, card and action contrast; HTTPS Supabase connection warmup does not cache business data.');
