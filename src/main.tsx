@@ -11,6 +11,7 @@ import { loadAndApplyBrandAppearance } from './features/appearance/brandAppearan
 import { installCustomerShellRouteState } from './features/navigation/customerShellRouteState';
 import { installGlobalErrorTelemetry, sendClientError } from './lib/errorTelemetry';
 import StoreComplianceControls from './features/store/StoreComplianceControls';
+import NativeAppUpdateBanner from './features/app-update/NativeAppUpdateBanner';
 
 const initialTheme = resolveInitialTheme();
 applyThemeToDocument(initialTheme);
@@ -24,6 +25,7 @@ void initNativePushListeners().catch(error=>sendClientError('native.push.init',e
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
+      <NativeAppUpdateBanner />
       <App />
       <StoreComplianceControls />
     </ErrorBoundary>
