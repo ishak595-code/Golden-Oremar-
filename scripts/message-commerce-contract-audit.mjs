@@ -45,7 +45,7 @@ if(seller){
 
 const product=read('src/features/catalog/ProductDetailScreen.tsx');
 if(product){
- requirePattern(product,/>Soru sor<\/button>/,'Product detail must expose the canonical Soru sor entry point.');
+ requirePattern(product,/>(?:Üreticiye )?[Ss]oru sor<\/button>/,'Product detail must expose the canonical customer-facing Soru sor entry point.');
  requirePattern(product,/ProducerQuestionComposer/,'Product detail questions must use the shared question composer.');
 }
 
