@@ -8,6 +8,7 @@ import { initNativePushListeners } from './features/notifications/nativePush';
 import { applyThemeToDocument, resolveInitialTheme } from './features/appearance/theme';
 import { loadAndApplyBrandAppearance } from './features/appearance/brandAppearance';
 import { installGlobalErrorTelemetry, sendClientError } from './lib/errorTelemetry';
+import StoreComplianceControls from './features/store/StoreComplianceControls';
 
 const initialTheme = resolveInitialTheme();
 applyThemeToDocument(initialTheme);
@@ -21,6 +22,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <App />
+      <StoreComplianceControls />
     </ErrorBoundary>
   </StrictMode>,
 );
