@@ -31,6 +31,9 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
  const origin=safeText(product?.origin,240);
  const handling=safeHandling(product?.handlingProfile);
  const handlingLabel=productHandlingLabel(handling);
+ const producerStoreKind=product?.producerStoreKind==='official'?'official':'independent';
+ const producerBadgeTone=product?.producerBadgeTone==='ruby'||product?.producerBadgeTone==='blue'?product.producerBadgeTone:producerStoreKind==='official'?'ruby':'blue';
+ const producerVerified=product?.producerVerified===true;
  const busy=action!==null;
 
  async function run(kind:Exclude<Action,null>,fn:()=>Promise<void>|void){
@@ -54,7 +57,8 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
    <button type="button" onClick={onClick} aria-label={`${productName} detayını aç`} className="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold">
     {product?.image?<img src={product.image} alt={`${productName} ürün görseli`} loading="lazy" decoding="async" className="h-full w-full object-cover"/>:<div className="grid h-full place-items-center px-4 text-center text-sm text-brand-muted">Ürün görseli yakında</div>}
    </button>
-   <div className="absolute left-3 top-3 flex max-w-[70%] flex-wrap gap-2">
+   <div className="absolute left-3 top-3 flex max-w-[72%] flex-wrap gap-2">
+    {producerVerified?<span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-black text-white ${producerBadgeTone==='ruby'?'bg-rose-700':'bg-blue-700'}`}><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5"/>{producerStoreKind==='official'?'Golden Oremar':'Doğrulanmış üretici'}</span>:null}
     {product?.is_featured===true?<span className="rounded-full bg-brand-gold px-3 py-1 text-xs font-black text-brand-on-gold">Seçkin Ürün</span>:null}
     {preorder?<span className="rounded-full bg-brand-green px-3 py-1 text-xs font-black text-brand-on-green">Ön Sipariş</span>:null}
     {handling?.requiresColdChain?<span className="rounded-full bg-sky-700 px-3 py-1 text-xs font-black text-white">Soğuk Zincir</span>:null}
@@ -68,7 +72,7 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
   <div className="flex flex-1 flex-col p-4">
    <div className="text-[11px] font-black uppercase tracking-[0.14em] text-brand-gold">{safeText(product?.category,160)||'Golden Oremar'}</div>
    <button type="button" onClick={onClick} className="mt-1 min-h-11 text-left focus-visible:rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><h3 className="line-clamp-2 text-lg font-black leading-tight text-brand-text">{productName}</h3></button>
-   {producerName?<div className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-brand-muted"><span className="line-clamp-1">{producerName}</span>{product?.producerVerified===true?<CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-green"/>:null}</div>:null}
+   {producerName?<div className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-brand-muted"><span className="line-clamp-1">{producerName}</span>{producerVerified?<CheckCircle2 aria-hidden="true" className={`h-4 w-4 shrink-0 ${producerBadgeTone==='ruby'?'text-rose-700':'text-blue-700'}`}/>:null}</div>:null}
    {origin?<div className="mt-1 line-clamp-1 text-xs text-brand-muted">{origin}</div>:null}
    {handlingLabel?<div className="mt-2 text-xs font-semibold text-brand-muted">{handlingLabel}</div>:null}
 
