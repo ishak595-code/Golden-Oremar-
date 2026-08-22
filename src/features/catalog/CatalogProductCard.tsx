@@ -1,5 +1,5 @@
 import React,{useState}from'react';
-import{Calendar,CheckCircle2,Gift,Heart,Share2,ShoppingCart,Star,ThumbsUp}from'lucide-react';
+import{CheckCircle2,Gift,Heart,Share2,ShoppingCart,Star,ThumbsUp}from'lucide-react';
 import{buildProductUrl,shareOrCopy}from'../navigation/appUrl';
 import{optionalProductHandlingProfile,productHandlingLabel}from'./productHandlingApi';
 
@@ -12,6 +12,7 @@ function safeInteger(value:unknown){return typeof value==='number'&&Number.isSaf
 function safeRating(value:unknown){return typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=5?value:null;}
 function safeCurrency(value:unknown){const currency=safeText(value,3).toUpperCase();return/^[A-Z]{3}$/.test(currency)?currency:null;}
 function safeReference(value:unknown){const ref=safeText(value,220);return ref||null;}
+function safeHandling(value:unknown){try{return optionalProductHandlingProfile(value);}catch{return null;}}
 function money(value:number,currency:string){try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency}).format(value);}catch{return`${value.toLocaleString('tr-TR')} ${currency}`;}}
 function messageOf(error:unknown,fallback:string){return error instanceof Error&&error.message.trim()?error.message:fallback;}
 
@@ -28,7 +29,7 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
  const rating=safeRating(product?.rating),reviewCount=safeInteger(product?.reviewCount);
  const producerName=safeText(product?.producerName,240);
  const origin=safeText(product?.origin,240);
- const handling=optionalProductHandlingProfile(product?.handlingProfile);
+ const handling=safeHandling(product?.handlingProfile);
  const handlingLabel=productHandlingLabel(handling);
  const busy=action!==null;
 
