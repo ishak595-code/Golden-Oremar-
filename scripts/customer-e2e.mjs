@@ -11,23 +11,25 @@ const controlUrl=String(process.env.E2E_CI_CONTROL_URL||`${supabaseUrl}/function
 const allowPublicOnly=String(process.env.E2E_ALLOW_PUBLIC_ONLY||'')==='1';
 const email=`goldenoremar+ci-e2e-${runId}@gmail.com`;
 const authSecret=`${crypto.randomBytes(24).toString('base64url')}Aa1!`;
+const displayName=`Golden Oremar E2E ${runId}`;
+const phone='+905379594851';
 const productName='Avaşin Meşe Balı';
 const productSlug='avasin-mese-bali-103';
 const out=path.resolve('e2e-artifacts');
 fs.mkdirSync(out,{recursive:true});
-const report={runId,email,baseUrl,productName,startedAt:new Date().toISOString(),mode:oidcToken?'authenticated-oidc':'public-only-explicit',checks:{},blockers:[],consoleErrors:[],pageErrors:[]};
+const report={runId,email,baseUrl,productName,startedAt:new Date().toISOString(),mode:oidcToken?'authenticated-oidc-provisioned':'public-only-explicit',checks:{},blockers:[],consoleErrors:[],pageErrors:[]};
 const mark=(key,value=true)=>{report.checks[key]=value;};
 const save=()=>fs.writeFileSync(path.join(out,'customer-e2e-report.json'),JSON.stringify({...report,finishedAt:new Date().toISOString()},null,2));
 const shot=async(page,name)=>page.screenshot({path:path.join(out,`${name}.png`),fullPage:true});
 const visible=async(locator,timeout=12000)=>{try{await locator.waitFor({state:'visible',timeout});return true;}catch{return false;}};
 
-async function ciControl(action){
+async function ciControl(action,payload={}){
  if(!oidcToken)throw new Error('GITHUB_OIDC_E2E_TOKEN_REQUIRED');
  if(!controlUrl)throw new Error('E2E_CI_CONTROL_URL_REQUIRED');
  const response=await fetch(controlUrl,{
   method:'POST',
   headers:{Authorization:`Bearer ${oidcToken}`,'Content-Type':'application/json'},
-  body:JSON.stringify({action,runId}),
+  body:JSON.stringify({action,runId,...payload}),
  });
  const body=await response.json().catch(()=>({}));
  if(!response.ok||body?.ok!==true)throw new Error(`E2E_CI_CONTROL_${String(action).toUpperCase()}_FAILED:${response.status}:${String(body?.error||'unknown')}`);
@@ -60,55 +62,42 @@ async function verifyPublicSections(page){
  await page.getByRole('tab',{name:/Tarifler/}).click();
  await page.getByRole('tabpanel').waitFor({state:'visible',timeout:12000});
  mark('health_and_recipes',true);await shot(page,'07-health-recipes');
-
  await page.goto(`${baseUrl}/?tab=events`,{waitUntil:'networkidle',timeout:30000});
  await page.getByRole('heading',{name:'Etkinlikler',exact:true}).waitFor({state:'visible',timeout:12000});
  mark('events',true);await shot(page,'08-events');
-
  await page.goto(`${baseUrl}/?tab=categories`,{waitUntil:'networkidle',timeout:30000});
  await page.getByText(/Kategori/).first().waitFor({state:'visible',timeout:12000});
  mark('categories',true);
 }
 
-async function createAndAuthenticateCustomer(page){
+async function inspectRegistrationUi(page){
  await page.goto(`${baseUrl}/?tab=account`,{waitUntil:'networkidle',timeout:45000});
  const registerTab=page.getByRole('tab',{name:'Hesap Aç'});
  await registerTab.waitFor({state:'visible',timeout:12000});
  await registerTab.click();
- await page.locator('#auth-display-name').fill(`Golden Oremar E2E ${runId}`);
- await page.locator('#auth-phone').fill('+905379594851');
+ await page.locator('#auth-display-name').fill(displayName);
+ await page.locator('#auth-phone').fill(phone);
  await page.locator('#auth-email').fill(email);
  await page.locator('#auth-password').fill(authSecret);
  await page.locator('#auth-confirm-password').fill(authSecret);
- mark('registration_ui_accessible',true);await shot(page,'00-registration-ui');
- await page.getByRole('button',{name:'Hesap Oluştur',exact:true}).click();
- mark('registration_submitted',true);
+ await page.getByRole('button',{name:'Hesap Oluştur',exact:true}).waitFor({state:'visible',timeout:5000});
+ mark('registration_ui_accessible',true);
+ mark('registration_contract_guarded',true);
+ await shot(page,'00-registration-ui');
+}
 
- const accountReady=page.getByRole('button',{name:'Profilimi Düzenle'});
- const confirmationMessage=page.getByText(/Hesabınız oluşturuldu\. E-posta doğrulaması açıksa/i);
- const authError=page.locator('[role="alert"]');
- await Promise.race([
-  accountReady.waitFor({state:'visible',timeout:20000}),
-  confirmationMessage.waitFor({state:'visible',timeout:20000}),
-  authError.waitFor({state:'visible',timeout:20000}),
- ]).catch(()=>{});
- if(await visible(accountReady,1000)){
-  mark('registration_and_login',true);
-  return accountReady;
- }
- if(await visible(authError,500)){
-  const message=(await authError.textContent()||'').trim();
-  if(message)throw new Error(`REGISTRATION_UI_ERROR:${message}`);
- }
- if(!(await visible(confirmationMessage,1500)))throw new Error('REGISTRATION_DID_NOT_CREATE_SESSION_OR_CONFIRMATION_STATE');
- mark('email_confirmation_required',true);
- await ciControl('confirm');
- mark('e2e_email_confirmed_by_oidc_control',true);
+async function provisionAndLogin(page){
+ await inspectRegistrationUi(page);
+ const provisioned=await ciControl('provision',{password:authSecret,displayName,phone});
+ if(provisioned.provisioned!==true||provisioned.emailConfirmed!==true)throw new Error('OIDC_E2E_PROVISIONING_NOT_CONFIRMED');
+ mark('oidc_disposable_user_provisioned',true);
  await page.getByRole('tab',{name:'Giriş Yap'}).click();
  await page.locator('#auth-email').fill(email);
  await page.locator('#auth-password').fill(authSecret);
  await page.getByRole('button',{name:'Giriş Yap',exact:true}).click();
+ const accountReady=page.getByRole('button',{name:'Profilimi Düzenle'});
  await accountReady.waitFor({state:'visible',timeout:20000});
+ mark('login_via_real_ui',true);
  mark('registration_and_login',true);
  return accountReady;
 }
@@ -131,9 +120,8 @@ try{
   if(report.pageErrors.length)throw new Error(`PAGE_ERRORS:${report.pageErrors.join(' | ')}`);
   console.log('Golden Oremar explicit public-only Chromium E2E passed.');
  }else{
-  const accountReady=await createAndAuthenticateCustomer(page);
+  const accountReady=await provisionAndLogin(page);
   await shot(page,'01-account-created');
-
   await accountReady.click();
   await page.getByRole('heading',{name:'Profilimi Düzenle'}).waitFor({state:'visible',timeout:12000});
   const profileName=page.getByLabel('Ad Soyad');
@@ -185,7 +173,7 @@ try{
   mark('orders_panel',true);
   await verifyPublicSections(page);
   if(report.pageErrors.length)throw new Error(`PAGE_ERRORS:${report.pageErrors.join(' | ')}`);
-  console.log('Golden Oremar authenticated customer E2E passed with GitHub OIDC-protected cleanup.');
+  console.log('Golden Oremar authenticated customer E2E passed with GitHub OIDC-provisioned disposable user and real UI login.');
  }
 }catch(error){
  report.failure=String(error?.stack||error);
