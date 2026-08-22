@@ -21,7 +21,7 @@ const preferences=read('src/features/account/PremiumPreferencesPanel.tsx');
 
 expect(main.includes("installCustomerShellRouteState();"),'Customer shell route-state tracker must be installed before render.');
 expect(main.includes("customerShellPolish.css"),'Customer shell polish stylesheet must be loaded.');
-expect(routeState.includes('dataset.appTab=currentTab()'),'Route-state tracker must expose the active tab to the document.');
+expect(routeState.includes('const tab=currentTab();')&&routeState.includes('dataset.appTab=tab'),'Route-state tracker must expose the active tab to the document.');
 expect(routeState.includes("patch('pushState')")&&routeState.includes("patch('replaceState')"),'Route-state tracker must react to in-app history navigation.');
 expect(app.includes("{currentTab==='home'?<header"),'Global storefront header must be rendered only on Home in the React shell.');
 expect(shellCss.includes(':root:not([data-app-tab="home"]) #root > .min-h-screen > header'),'CSS must retain defense-in-depth hiding for the global storefront header outside Home.');
