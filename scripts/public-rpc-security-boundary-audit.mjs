@@ -4,6 +4,7 @@ import path from 'node:path';
 const root=process.cwd();
 const v1Path=path.join(root,'supabase','migrations','20260821141917_harden_public_rpc_security_invoker_boundary_v1.sql');
 const v2Path=path.join(root,'supabase','migrations','20260821142610_isolate_anonymous_rpc_privileges_in_api_internal_v2.sql');
+const accountOverviewFixPath=path.join(root,'supabase','migrations','20260822085741_restore_authenticated_account_overview_core_execute_v1.sql');
 const failures=[];
 const publicFunctions=[
   'cancel_stock_alert_by_token_v1','catalog_search_suggestions_v1','check_product_export_eligibility_v1','confirm_newsletter_v1',
@@ -36,5 +37,11 @@ else {
   ];
   for(const [needle,message] of requirements){if(!sql.includes(needle))failures.push(message);}
 }
+if(!fs.existsSync(accountOverviewFixPath)) failures.push('Authenticated account overview privilege repair migration is missing.');
+else {
+  const sql=fs.readFileSync(accountOverviewFixPath,'utf8').toLowerCase().replace(/\s+/g,' ');
+  if(!sql.includes('revoke all on function private.get_my_account_overview_v1() from public, anon')) failures.push('Account overview private core must remain denied to PUBLIC and anon.');
+  if(!sql.includes('grant execute on function private.get_my_account_overview_v1() to authenticated')) failures.push('SECURITY INVOKER account overview wrapper requires authenticated execute on its private SECURITY DEFINER core.');
+}
 if(failures.length){console.error('Public RPC security boundary audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Public RPC security boundary audit passed: public wrappers are invoker-only, anonymous private-schema access is blocked, and privileged public-safe cores are isolated in api_internal.');
+console.log('Public RPC security boundary audit passed: public wrappers are invoker-only, anonymous private-schema access is blocked, privileged public-safe cores are isolated in api_internal, and authenticated account overview retains the minimum private-core execute grant required by its invoker wrapper.');
