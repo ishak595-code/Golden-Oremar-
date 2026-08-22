@@ -1,0 +1,47 @@
+import { readFileSync } from 'node:fs';
+
+const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+const fail = (message) => {
+  throw new Error(`[mobile-platform-contract] ${message}`);
+};
+const expect = (condition, message) => {
+  if (!condition) fail(message);
+};
+const expectPattern = (text, pattern, message) => {
+  expect(pattern.test(text), message);
+};
+
+const pkg = JSON.parse(read('package.json'));
+const androidVariables = read('android/variables.gradle');
+const androidBuild = read('android/app/build.gradle');
+const iosProject = read('ios/App/App.xcodeproj/project.pbxproj');
+const workflow = read('.github/workflows/mobile-quality.yml');
+
+// Production policy for August 2026:
+// - Build/target the latest stable Android generation (Android 16 / API 36).
+// - Build iOS with the latest stable Xcode 26 line while retaining iOS 15+ compatibility.
+// - Keep beta Android/iOS releases out of the production toolchain until stable.
+const capacitorStable = '8.5.0';
+expect(pkg.dependencies?.['@capacitor/android'] === capacitorStable, `@capacitor/android must remain on stable ${capacitorStable}.`);
+expect(pkg.dependencies?.['@capacitor/core'] === capacitorStable, `@capacitor/core must remain on stable ${capacitorStable}.`);
+expect(pkg.dependencies?.['@capacitor/ios'] === capacitorStable, `@capacitor/ios must remain on stable ${capacitorStable}.`);
+expect(pkg.devDependencies?.['@capacitor/cli'] === capacitorStable, `@capacitor/cli must remain on stable ${capacitorStable}.`);
+
+expectPattern(androidVariables, /minSdkVersion\s*=\s*24\b/, 'Android minimum support must remain API 24 or newer unless intentionally migrated.');
+expectPattern(androidVariables, /compileSdkVersion\s*=\s*36\b/, 'Android must compile against API 36.');
+expectPattern(androidVariables, /targetSdkVersion\s*=\s*36\b/, 'Android must target API 36.');
+expectPattern(androidBuild, /JavaVersion\.VERSION_21/, 'Android must compile with Java 21.');
+expectPattern(androidBuild, /jvmTarget\s*=\s*['"]21['"]/, 'Android Kotlin JVM target must be 21.');
+
+const deploymentTargets = [...iosProject.matchAll(/IPHONEOS_DEPLOYMENT_TARGET\s*=\s*([0-9.]+);/g)].map((match) => match[1]);
+expect(deploymentTargets.length >= 2, 'iOS Debug and Release deployment targets must both be declared.');
+expect(deploymentTargets.every((target) => target === '15.0'), `iOS minimum support must remain 15.0 across configurations; found ${deploymentTargets.join(', ')}.`);
+expectPattern(iosProject, /PRODUCT_BUNDLE_IDENTIFIER\s*=\s*com\.goldenoremar\.app;/, 'Canonical iOS bundle identifier is missing.');
+
+expectPattern(workflow, /sudo xcode-select -s \/Applications\/Xcode_26\.6\.app/, 'CI must use stable Xcode 26.6.');
+expectPattern(workflow, /grep -q 'compileSdkVersion = 36' android\/variables\.gradle/, 'CI must guard Android compileSdk 36.');
+expectPattern(workflow, /grep -q 'targetSdkVersion = 36' android\/variables\.gradle/, 'CI must guard Android targetSdk 36.');
+expectPattern(workflow, /grep -q 'minSdkVersion = 24' android\/variables\.gradle/, 'CI must guard the supported Android compatibility floor.');
+expectPattern(workflow, /grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 15\.0;' ios\/App\/App\.xcodeproj\/project\.pbxproj/, 'CI must guard the iOS 15 compatibility floor.');
+
+console.log('Mobile platform contract OK: Android API 24-36, stable Capacitor 8.5.0, iOS 15+ built with Xcode 26.6.');
