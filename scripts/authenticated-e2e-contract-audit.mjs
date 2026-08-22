@@ -41,7 +41,7 @@ if(control){
  requirePattern(control,/EXPECTED_OWNER_ID\s*=\s*"233486723"/,'CI control must pin the immutable repository owner id.');
  requirePattern(control,/EXPECTED_AUDIENCE\s*=\s*"golden-oremar-ci-e2e"/,'CI control must pin the dedicated OIDC audience.');
  requirePattern(control,/jwtVerify<.*>\(token, GITHUB_JWKS/,'CI control must cryptographically verify GitHub OIDC tokens.');
- requirePattern(control,/TRUSTED_BRANCH_REFS\s*=\s*new Set\(\[[\s\S]*"refs\/heads\/main"[\s\S]*"refs\/heads\/integration\/full-consolidation-2026-08"[\s\S]*\]\)/,'Push/workflow-dispatch E2E must be restricted to main and the consolidation branch.');
+ requirePattern(control,/TRUSTED_BRANCH_REFS\s*=\s*new Set\(\[[\s\S]*"refs\/heads\/main"[\s\S]*"refs\/heads\/integration\/full-consolidation-2026-08"[\s\S]*"refs\/heads\/release\/store-readiness-2026-08"[\s\S]*\]\)/,'Push/workflow-dispatch E2E must be restricted to the explicitly trusted main, consolidation and store-readiness branches.');
  requirePattern(control,/PULL_REQUEST_REF_RE\s*=\s*\/\^refs\\\/pull\\\/\\d\{1,12\}\\\/merge\$\//,'Pull-request E2E must require a canonical refs/pull/<id>/merge ref.');
  requirePattern(control,/eventName === "pull_request"[\s\S]*PULL_REQUEST_REF_RE\.test\(ref\)/,'Pull-request OIDC events must validate their ref.');
  requirePattern(control,/eventName === "push" \|\| eventName === "workflow_dispatch"[\s\S]*TRUSTED_BRANCH_REFS\.has\(ref\)/,'Push and workflow-dispatch OIDC events must fail closed outside trusted branch refs.');
