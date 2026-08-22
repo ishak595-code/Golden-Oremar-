@@ -137,15 +137,21 @@ jobs:
           if (pkg.dependencies?.firebase) throw new Error('Firebase must not return to the runtime dependency graph.');
           if (pkg.devDependencies?.['@capacitor/cli'] !== '8.5.0') throw new Error('@capacitor/cli must be 8.5.0');
           NODE
-          grep -q "com.android.tools.build:gradle:8.13.0" android/build.gradle
-          grep -q "kotlin-gradle-plugin:2.2.20" android/build.gradle
-          grep -q 'gradle-8.14.3-all.zip' android/gradle/wrapper/gradle-wrapper.properties
+          grep -q "com.android.tools.build:gradle:9.3.0" android/build.gradle
+          if grep -q 'kotlin-gradle-plugin' android/build.gradle; then
+            echo 'Legacy Kotlin Gradle plugin must not be configured with AGP 9 built-in Kotlin.' >&2
+            exit 1
+          fi
+          grep -q 'gradle-9.5.0-all.zip' android/gradle/wrapper/gradle-wrapper.properties
           grep -q 'minSdkVersion = 24' android/variables.gradle
           grep -q 'compileSdkVersion = 37' android/variables.gradle
           grep -q 'targetSdkVersion = 37' android/variables.gradle
           grep -q 'JavaVersion.VERSION_21' android/app/build.gradle
-          grep -q "jvmTarget = '21'" android/app/build.gradle
-          grep -q 'kotlin-stdlib:2.2.20' android/app/build.gradle
+          grep -q 'proguard-android-optimize.txt' android/app/build.gradle
+          if grep -q "apply plugin: 'kotlin-android'" android/app/build.gradle || grep -q 'kotlinOptions' android/app/build.gradle; then
+            echo 'Legacy kotlin-android configuration must not return.' >&2
+            exit 1
+          fi
           grep -q 'density' android/app/src/main/AndroidManifest.xml
           grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;' ios/App/App.xcodeproj/project.pbxproj
           grep -q 'SceneDelegate.swift in Sources' ios/App/App.xcodeproj/project.pbxproj
@@ -190,9 +196,13 @@ jobs:
             exit 1
           fi
 
+      - name: Verify Gradle 9.5 wrapper
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew --version | grep -q 'Gradle 9.5'
+
       - name: Compile Android debug app
         working-directory: android
-        run: chmod +x gradlew && ./gradlew :app:assembleDebug --no-daemon
+        run: ./gradlew :app:assembleDebug --no-daemon
 
       - name: Upload installable Android debug APK
         uses: actions/upload-artifact@v4
