@@ -1,0 +1,16 @@
+/* iOS 15 / older WebView fallback for modern color-mix based presentation.
+   The feature layout and data contracts remain identical; only surface colors fall back. */
+@supports not (color: color-mix(in srgb, black, white)) {
+  .go-premium-home::before { background: transparent; }
+  .go-premium-intro { background: var(--bg-card); }
+  .go-premium-category-card__fallback { background: var(--bg-card); }
+  .go-product-card__media,
+  .go-product-recommendations__item img { background: var(--bg-card); }
+  .go-product-card__favorite,
+  .go-product-card__gift { background: var(--bg-card); }
+  .go-product-card__cart { background: var(--brand-gold); }
+  .go-filter-panel { background: var(--bg-card); }
+  :root[data-app-tab="home"] header input[aria-label="Ürün, üretici veya köy ara"] { background: var(--bg-card) !important; }
+  nav[aria-label="Ana gezinme"] { background: var(--bg-card) !important; }
+  :root[data-app-tab="product-detail"] main article section:nth-of-type(2) > .mt-4.grid.gap-2.sm\:grid-cols-2 { background: var(--bg-card); }
+}
