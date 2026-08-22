@@ -49,7 +49,7 @@ function bearerToken(req: Request) {
 }
 
 function emailForRun(runId: string) {
-  return `golden-oremar-e2e-${runId}@e2e.goldenoremar.com`;
+  return `goldenoremar+ci-e2e-${runId}@gmail.com`;
 }
 
 async function verifyGithubOidc(req: Request, runId: string) {
