@@ -1,0 +1,342 @@
+/* Golden Oremar premium mobile storefront language derived from the approved customer video reference.
+   This file is deliberately presentation-only: pricing, stock, producer identity and availability stay live-data driven. */
+
+:root {
+  --go-radius-xl: 1.35rem;
+  --go-radius-2xl: 1.75rem;
+  --go-shadow-soft: 0 16px 40px rgb(10 35 24 / 0.08);
+  --go-shadow-float: 0 20px 54px rgb(6 25 17 / 0.16);
+}
+
+.go-premium-home {
+  position: relative;
+  isolation: isolate;
+}
+
+.go-premium-home::before {
+  content: "";
+  position: absolute;
+  inset: -1rem 0 auto;
+  height: 24rem;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18% 8%, color-mix(in srgb, var(--brand-gold) 13%, transparent), transparent 42%),
+    radial-gradient(circle at 88% 14%, color-mix(in srgb, var(--brand-green) 14%, transparent), transparent 45%);
+}
+
+.go-premium-intro {
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--border-main) 82%, var(--brand-gold));
+  border-radius: var(--go-radius-2xl);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--bg-card) 94%, var(--brand-green) 6%), var(--bg-card));
+  box-shadow: var(--go-shadow-soft);
+}
+
+.go-premium-intro__eyebrow,
+.go-premium-section__eyebrow {
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  font-size: .68rem;
+  line-height: 1rem;
+  font-weight: 900;
+  color: var(--brand-gold);
+}
+
+.go-premium-category-card {
+  position: relative;
+  width: 9.25rem;
+  min-height: 8rem;
+  flex: 0 0 auto;
+  overflow: hidden;
+  scroll-snap-align: start;
+  border: 1px solid var(--border-main);
+  border-radius: 1.35rem;
+  background: var(--bg-card);
+  box-shadow: 0 8px 24px rgb(12 33 24 / .06);
+  text-align: left;
+}
+
+.go-premium-category-card[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--brand-gold) 76%, var(--border-main));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand-gold) 18%, transparent), var(--go-shadow-soft);
+}
+
+.go-premium-category-card__image {
+  height: 4.7rem;
+  width: 100%;
+  object-fit: cover;
+  background: color-mix(in srgb, var(--bg-card) 80%, var(--brand-green) 20%);
+}
+
+.go-premium-category-card__fallback {
+  display: grid;
+  height: 4.7rem;
+  place-items: center;
+  background:
+    radial-gradient(circle at 70% 20%, color-mix(in srgb, var(--brand-gold) 17%, transparent), transparent 45%),
+    color-mix(in srgb, var(--bg-card) 88%, var(--brand-green) 12%);
+  color: var(--brand-green);
+}
+
+.go-premium-section {
+  scroll-margin-top: 6rem;
+}
+
+.go-premium-product-rail {
+  display: flex;
+  gap: .85rem;
+  overflow-x: auto;
+  padding: .1rem .05rem .75rem;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-inline: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.go-premium-product-rail > * {
+  width: min(20.5rem, 86vw);
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+}
+
+.go-product-card {
+  position: relative;
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border-main);
+  border-radius: var(--go-radius-xl);
+  background: var(--bg-card);
+  box-shadow: 0 8px 28px rgb(11 34 24 / .07);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+@media (hover:hover) {
+  .go-product-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--border-main) 58%, var(--brand-gold));
+    box-shadow: var(--go-shadow-soft);
+  }
+}
+
+.go-product-card__media {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1 / .92;
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--brand-green) 12%);
+}
+
+.go-product-card__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .35s ease;
+}
+
+@media (hover:hover) {
+  .go-product-card:hover .go-product-card__media img { transform: scale(1.025); }
+}
+
+.go-product-card__badge {
+  display: inline-flex;
+  min-height: 1.65rem;
+  align-items: center;
+  gap: .25rem;
+  border-radius: 999px;
+  padding: .27rem .55rem;
+  font-size: .62rem;
+  line-height: 1rem;
+  font-weight: 900;
+  letter-spacing: .02em;
+  color: #fff;
+  box-shadow: 0 3px 10px rgb(0 0 0 / .14);
+}
+
+.go-product-card__badge--featured { background: #07875d; }
+.go-product-card__badge--seasonal { background: #a33a2b; }
+.go-product-card__badge--preorder { background: #966c09; }
+.go-product-card__badge--cold { background: #176c87; }
+.go-product-card__badge--verified { background: #6d1b3a; }
+.go-product-card__badge--verified-blue { background: #155e9b; }
+
+.go-product-card__favorite,
+.go-product-card__gift {
+  display: grid;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--border-main) 85%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-card) 93%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.go-product-card__price {
+  font-variant-numeric: tabular-nums;
+  color: var(--brand-gold);
+}
+
+.go-product-card__cart {
+  display: inline-flex;
+  min-height: 2.9rem;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  border-radius: .85rem;
+  padding-inline: .9rem;
+  font-weight: 900;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand-gold) 88%, #fff 12%), var(--brand-gold));
+  color: var(--text-on-gold);
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--brand-gold) 20%, transparent);
+}
+
+.go-product-card__cart:disabled {
+  box-shadow: none;
+  opacity: .46;
+}
+
+.go-product-card--compact {
+  display: grid;
+  grid-template-columns: 7.4rem minmax(0, 1fr);
+  min-height: 9.5rem;
+}
+
+.go-product-card--compact .go-product-card__media {
+  height: 100%;
+  aspect-ratio: auto;
+}
+
+.go-filter-panel {
+  border: 1px solid var(--border-main);
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--bg-card) 96%, var(--brand-green) 4%);
+  box-shadow: 0 8px 24px rgb(9 31 21 / .05);
+}
+
+/* Home header remains compact. The microphone only appears once the search control is active,
+   or a typed query needs its clear action. */
+:root[data-app-tab="home"] header input[aria-label="Ürün, üretici veya köy ara"] ~ button[aria-label="Sesli arama"] {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-50%) scale(.88);
+  transition: opacity .16s ease, transform .16s ease;
+}
+
+:root[data-app-tab="home"] header .relative:focus-within input[aria-label="Ürün, üretici veya köy ara"] ~ button[aria-label="Sesli arama"] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(-50%) scale(1);
+}
+
+:root[data-app-tab="home"] header input[aria-label="Ürün, üretici veya köy ara"] {
+  border-radius: 999px !important;
+  border-color: color-mix(in srgb, var(--border-main) 86%, transparent) !important;
+  background: color-mix(in srgb, var(--bg-card) 88%, var(--brand-green) 12%) !important;
+}
+
+/* Product detail: local app bar, large visual, compact commerce controls and calm disclosures. */
+:root[data-app-tab="product-detail"] #root > .min-h-screen > main > article {
+  max-width: 72rem;
+}
+
+:root[data-app-tab="product-detail"] #root > .min-h-screen > main > article > .sticky {
+  border-radius: 0 0 1.15rem 1.15rem;
+  box-shadow: 0 9px 24px rgb(8 29 20 / .08);
+}
+
+:root[data-app-tab="product-detail"] .customer-disclosure {
+  border-radius: 1rem;
+  box-shadow: 0 5px 18px rgb(8 29 20 / .035);
+}
+
+:root[data-app-tab="product-detail"] .customer-disclosure > summary {
+  min-height: 3.65rem;
+  font-family: var(--font-serif);
+  font-size: .98rem;
+}
+
+:root[data-app-tab="product-detail"] .customer-disclosure[open] {
+  border-color: color-mix(in srgb, var(--border-main) 60%, var(--brand-gold));
+}
+
+/* Recommendations are rendered after the product detail app shell and stay horizontally browsable. */
+.go-product-recommendations {
+  margin: -4rem auto 8.5rem;
+  max-width: 72rem;
+  padding: 0 1rem;
+}
+
+.go-product-recommendations__rail {
+  display: flex;
+  gap: .8rem;
+  overflow-x: auto;
+  padding: .1rem 0 .75rem;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.go-product-recommendations__item {
+  width: min(16.5rem, 74vw);
+  flex: 0 0 auto;
+  overflow: hidden;
+  scroll-snap-align: start;
+  border: 1px solid var(--border-main);
+  border-radius: 1.2rem;
+  background: var(--bg-card);
+  box-shadow: 0 7px 22px rgb(8 29 20 / .06);
+}
+
+.go-product-recommendations__item img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: color-mix(in srgb, var(--bg-card) 85%, var(--brand-green) 15%);
+}
+
+/* Account and category pages keep their own app bars and gain the denser premium rhythm shown in the reference. */
+:root[data-app-tab="account"] main section[aria-labelledby="account-title"],
+:root[data-app-tab="categories"] main {
+  max-width: 72rem;
+  margin-inline: auto;
+}
+
+:root[data-app-tab="account"] #account-title {
+  font-family: var(--font-serif);
+  letter-spacing: -.02em;
+}
+
+nav[aria-label="Ana gezinme"] {
+  border-color: color-mix(in srgb, var(--border-main) 75%, transparent) !important;
+  background: color-mix(in srgb, var(--bg-card) 91%, transparent) !important;
+  box-shadow: var(--go-shadow-float) !important;
+}
+
+nav[aria-label="Ana gezinme"] button[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: .2rem;
+  left: 50%;
+  width: 1.5rem;
+  height: .18rem;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: var(--brand-gold);
+}
+
+@media (max-width: 640px) {
+  .go-premium-intro { border-radius: 1.45rem; }
+  .go-premium-product-rail > * { width: min(19rem, 84vw); }
+  .go-product-card__media { aspect-ratio: 1 / .96; }
+  .go-product-recommendations { margin-top: -3.25rem; padding-inline: .8rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .go-product-card,
+  .go-product-card__media img,
+  :root[data-app-tab="home"] header input[aria-label="Ürün, üretici veya köy ara"] ~ button[aria-label="Sesli arama"] {
+    transition: none !important;
+  }
+}
