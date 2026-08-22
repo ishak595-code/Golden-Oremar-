@@ -1,0 +1,3 @@
+"CFBundleDisplayName" = "Golden Oremar";
+"NSMicrophoneUsageDescription" = "Golden Oremar uses microphone access so you can search for products by voice.";
+"NSSpeechRecognitionUsageDescription" = "Golden Oremar uses speech recognition to convert the product name or search phrase you say into text.";
