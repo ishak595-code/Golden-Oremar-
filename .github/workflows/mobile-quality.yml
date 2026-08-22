@@ -228,6 +228,9 @@ jobs:
             exit 1
           fi
 
+      - name: Verify consolidated features in Android native shell assets
+        run: node scripts/native-feature-runtime-check.mjs android
+
       - name: Verify Gradle 9.5 wrapper
         working-directory: android
         run: chmod +x gradlew && ./gradlew --version | grep -q 'Gradle 9.5'
@@ -302,6 +305,9 @@ jobs:
             git diff
             exit 1
           fi
+
+      - name: Verify consolidated features in iOS native shell assets
+        run: node scripts/native-feature-runtime-check.mjs ios
 
       - name: Resolve Swift packages
         run: xcodebuild -resolvePackageDependencies -project ios/App/App.xcodeproj -scheme App
