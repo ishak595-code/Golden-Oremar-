@@ -1,5 +1,17 @@
 apply plugin: 'com.android.application'
 
+def releaseSigningValues = [
+    storeFilePath: System.getenv('ANDROID_KEYSTORE_FILE'),
+    storePasswordValue: System.getenv('ANDROID_KEYSTORE_PASSWORD'),
+    keyAliasValue: System.getenv('ANDROID_KEY_ALIAS'),
+    keyPasswordValue: System.getenv('ANDROID_KEY_PASSWORD')
+]
+def releaseSigningPresent = releaseSigningValues.values().count { it != null && !it.trim().isEmpty() }
+def releaseSigningReady = releaseSigningPresent == releaseSigningValues.size()
+if (releaseSigningPresent > 0 && !releaseSigningReady) {
+    throw new GradleException('Android release signing is partially configured. Provide ANDROID_KEYSTORE_FILE, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS and ANDROID_KEY_PASSWORD together.')
+}
+
 android {
     namespace = "com.goldenoremar.app"
     compileSdk {
@@ -15,6 +27,18 @@ android {
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+    signingConfigs {
+        if (releaseSigningReady) {
+            release {
+                storeFile file(releaseSigningValues.storeFilePath)
+                storePassword releaseSigningValues.storePasswordValue
+                keyAlias releaseSigningValues.keyAliasValue
+                keyPassword releaseSigningValues.keyPasswordValue
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
     androidResources {
         ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
     }
@@ -24,6 +48,9 @@ android {
     }
     buildTypes {
         release {
+            if (releaseSigningReady) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
