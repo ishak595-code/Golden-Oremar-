@@ -24,7 +24,7 @@ function safeRating(value:unknown){return typeof value==='number'&&Number.isFini
 function prefersReducedMotion(){return typeof window!=='undefined'&&window.matchMedia?.('(prefers-reduced-motion: reduce)').matches===true;}
 
 export default function HomeSection({searchQuery,setSearchQuery,onProductClick,onAddToCart,onToggleFavorite,favorites,onShare,onGift}:Props){
- const{staticContent,homeSections,eventSpotlight,salesReadiness,loading:storefrontLoading,error:storefrontError}=usePublicStorefrontConfig('tr');
+ const{staticContent,heroCategories,homeSections,eventSpotlight,salesReadiness,loading:storefrontLoading,error:storefrontError}=usePublicStorefrontConfig('tr');
  const{products,categories,loading:catalogLoading,error:catalogError}=useLiveHomeCatalog();
  const{categories:filterCategories,origins,loading:filtersLoading,error:filtersError}=useCatalogFilterOptions();
  const[activeCategory,setActiveCategory]=useState<string|null>(null);
@@ -36,7 +36,13 @@ export default function HomeSection({searchQuery,setSearchQuery,onProductClick,o
  const hasLoadError=Boolean(storefrontError||catalogError||filtersError);
  const salesPaused=salesReadiness?.status==='blocked_pending_business_identity';
 
- const quickCategories=useMemo(()=>categories.filter(category=>category.productCount>0).slice(0,10),[categories]);
+ const quickCategories=useMemo(()=>{
+  const liveById=new Map(categories.filter(category=>category.productCount>0).map(category=>[category.id,category]));
+  const managed=heroCategories.map(config=>liveById.get(config.targetCategory)).filter((category):category is NonNullable<typeof category>=>Boolean(category));
+  const managedIds=new Set(managed.map(category=>category.id));
+  const fallback=categories.filter(category=>category.productCount>0&&!managedIds.has(category.id));
+  return[...managed,...fallback].slice(0,10);
+ },[categories,heroCategories]);
  const filteredProducts=useMemo(()=>{
   const query=searchQuery.trim().toLocaleLowerCase('tr-TR');
   return[...products].filter(product=>{
