@@ -61,7 +61,7 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
    <button type="button" onClick={onClick} aria-label={`${productName} detayını aç`} className="block h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold">{product?.image?<img src={product.image} alt={`${productName} ürün görseli`} loading="lazy" decoding="async"/>:<div className="grid h-full place-items-center px-4 text-center text-sm text-brand-muted">Ürün görseli yakında</div>}</button>
    {onToggleFavorite?<button type="button" disabled={busy} onClick={event=>{event.stopPropagation();void run('favorite',()=>onToggleFavorite(product));}} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} aria-pressed={isFavorite} className="go-product-card__favorite absolute left-3 top-3 z-10"><Heart aria-hidden="true" className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-brand-text'}`}/></button>:null}
    <div className="absolute right-3 top-3 z-10 flex max-w-[72%] flex-col items-end gap-1.5">
-    {product?.is_featured===true?<span className="go-product-card__badge go-product-card__badge--featured">Seçkin Ürün</span>:null}
+    {product?.is_featured===true?<span className="go-product-card__badge go-product-card__badge--featured bg-brand-green text-brand-on-green">Seçkin Ürün</span>:null}
     {seasonal?<span className="go-product-card__badge go-product-card__badge--seasonal">Mevsimlik Üretim</span>:null}
     {preorder?<span className="go-product-card__badge go-product-card__badge--preorder">Ön Sipariş</span>:null}
     {coldChain?<span className="go-product-card__badge go-product-card__badge--cold"><Snowflake aria-hidden="true" className="h-3 w-3"/>Soğuk Zincir</span>:null}
@@ -83,7 +83,7 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
    </div>
 
    <div className="mt-auto pt-4">
-    <div className={`grid gap-2 ${onGift?'grid-cols-[1fr_auto]':'grid-cols-1'}`}><button type="button" disabled={busy||!purchaseReady} onClick={()=>void run('cart',()=>onAddToCart(product,1))} className="go-product-card__cart"><ShoppingCart aria-hidden="true" className="h-4.5 w-4.5"/>{action==='cart'?'Ekleniyor…':purchaseReady?cartLabel:unavailableLabel}</button>{onGift?<button type="button" disabled={busy||!purchaseReady} onClick={()=>void run('gift',()=>onGift(product))} aria-label={`${productName} ürününü hediye et`} className="go-product-card__gift disabled:opacity-45"><Gift aria-hidden="true" className="h-5 w-5 text-brand-gold"/></button>:null}</div>
+    <div className={`grid gap-2 ${onGift?'grid-cols-[1fr_auto]':'grid-cols-1'}`}><button type="button" disabled={busy||!purchaseReady} onClick={()=>void run('cart',()=>onAddToCart(product,1))} className="go-product-card__cart text-brand-on-gold"><ShoppingCart aria-hidden="true" className="h-4.5 w-4.5"/>{action==='cart'?'Ekleniyor…':purchaseReady?cartLabel:unavailableLabel}</button>{onGift?<button type="button" disabled={busy||!purchaseReady} onClick={()=>void run('gift',()=>onGift(product))} aria-label={`${productName} ürününü hediye et`} className="go-product-card__gift disabled:opacity-45"><Gift aria-hidden="true" className="h-5 w-5 text-brand-gold"/></button>:null}</div>
     {feedback?<div role="status" aria-live="polite" className="mt-2 text-xs font-semibold text-brand-muted">{feedback}</div>:null}
    </div>
   </div>
