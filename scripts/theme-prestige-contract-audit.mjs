@@ -9,6 +9,7 @@ const theme=read('src/features/appearance/theme.ts');
 const brand=read('src/features/appearance/brandAppearance.ts');
 const perf=read('src/lib/performanceHints.ts');
 const main=read('src/main.tsx');
+const compactBrand=brand.replace(/\s+/g,'');
 
 function rgb(hex){const value=hex.replace('#','');return[0,2,4].map(i=>parseInt(value.slice(i,i+2),16)/255);}
 function luminance(hex){return rgb(hex).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((sum,v,index)=>sum+v*[.2126,.7152,.0722][index],0);}
@@ -32,9 +33,9 @@ for(const name of['custom','light','emerald','ruby','dark','champagne']){
 for(const marker of['Golden Oremar Marka Teması','Zümrüt Oremar','Yakut Prestige','Obsidyen Gece','İnci Beyazı','Şampanya Altın'])expect(theme.includes(marker),`Theme picker is missing prestige option: ${marker}`);
 expect(brand.includes("get_public_brand_appearance_v1"),'Official custom appearance must remain database-driven.');
 expect(brand.includes("super_admin_update_brand_appearance_v1"),'Super Admin must retain live brand appearance management.');
-expect(brand.includes('contrastRatio(tokens.text,tokens.background)<4.5'),'Dynamic brand text contrast must fail closed below WCAG AA.');
-expect(brand.includes('contrastRatio(tokens.onGreen,tokens.brandGreen)<4.5'),'Dynamic green action contrast must fail closed below WCAG AA.');
-expect(brand.includes('contrastRatio(tokens.onGold,tokens.brandGold)<4.5'),'Dynamic gold action contrast must fail closed below WCAG AA.');
+expect(compactBrand.includes('contrastRatio(tokens.text,tokens.background)<4.5'),'Dynamic brand text contrast must fail closed below WCAG AA.');
+expect(compactBrand.includes('contrastRatio(tokens.onGreen,tokens.brandGreen)<4.5'),'Dynamic green action contrast must fail closed below WCAG AA.');
+expect(compactBrand.includes('contrastRatio(tokens.onGold,tokens.brandGold)<4.5'),'Dynamic gold action contrast must fail closed below WCAG AA.');
 
 expect(perf.includes('VITE_SUPABASE_URL'),'Backend performance hint must derive from the configured Supabase origin.');
 expect(perf.includes("'preconnect'")&&perf.includes("'dns-prefetch'"),'Cold start must retain DNS and TLS connection warmup hints.');
