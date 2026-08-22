@@ -1,0 +1,135 @@
+import "@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "@supabase/supabase-js";
+import { createRemoteJWKSet, jwtVerify } from "jose";
+
+const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
+const GITHUB_JWKS = createRemoteJWKSet(new URL(`${GITHUB_ISSUER}/.well-known/jwks`), {
+  timeoutDuration: 5000,
+  cooldownDuration: 30_000,
+  cacheMaxAge: 10 * 60_000,
+});
+const EXPECTED_AUDIENCE = "golden-oremar-ci-e2e";
+const EXPECTED_REPOSITORY = "ishak595-code/Golden-Oremar-";
+const EXPECTED_REPOSITORY_ID = "1335636205";
+const EXPECTED_OWNER_ID = "233486723";
+const EXPECTED_WORKFLOW = "Mobile Quality Gate";
+const EXPECTED_WORKFLOW_PATH = `${EXPECTED_REPOSITORY}/.github/workflows/mobile-quality.yml@`;
+const ALLOWED_EVENTS = new Set(["pull_request", "workflow_dispatch"]);
+const RUN_ID_RE = /^\d{1,24}$/;
+
+type Action = "confirm" | "delete";
+
+type GithubClaims = {
+  repository?: string;
+  repository_id?: string;
+  repository_owner_id?: string;
+  workflow?: string;
+  workflow_ref?: string;
+  job_workflow_ref?: string;
+  event_name?: string;
+  run_id?: string;
+  runner_environment?: string;
+};
+
+function json(body: unknown, status = 200) {
+  return Response.json(body, {
+    status,
+    headers: {
+      "Cache-Control": "no-store",
+      "Content-Type": "application/json; charset=utf-8",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+}
+
+function bearerToken(req: Request) {
+  const value = String(req.headers.get("authorization") || "").trim();
+  if (!value.toLowerCase().startsWith("bearer ")) return "";
+  return value.slice(7).trim();
+}
+
+function emailForRun(runId: string) {
+  return `golden-oremar-e2e-${runId}@e2e.goldenoremar.com`;
+}
+
+async function verifyGithubOidc(req: Request, runId: string) {
+  const token = bearerToken(req);
+  if (!token) throw new Error("github_oidc_token_required");
+  const { payload } = await jwtVerify<GithubClaims>(token, GITHUB_JWKS, {
+    issuer: GITHUB_ISSUER,
+    audience: EXPECTED_AUDIENCE,
+    algorithms: ["RS256"],
+    clockTolerance: 5,
+  });
+  const workflowRef = String(payload.workflow_ref || payload.job_workflow_ref || "");
+  if (String(payload.repository || "") !== EXPECTED_REPOSITORY) throw new Error("github_repository_not_allowed");
+  if (String(payload.repository_id || "") !== EXPECTED_REPOSITORY_ID) throw new Error("github_repository_id_not_allowed");
+  if (String(payload.repository_owner_id || "") !== EXPECTED_OWNER_ID) throw new Error("github_owner_not_allowed");
+  if (String(payload.workflow || "") !== EXPECTED_WORKFLOW) throw new Error("github_workflow_not_allowed");
+  if (!workflowRef.includes(EXPECTED_WORKFLOW_PATH)) throw new Error("github_workflow_ref_not_allowed");
+  if (!ALLOWED_EVENTS.has(String(payload.event_name || ""))) throw new Error("github_event_not_allowed");
+  if (String(payload.run_id || "") !== runId) throw new Error("github_run_id_mismatch");
+  if (String(payload.runner_environment || "") !== "github-hosted") throw new Error("github_runner_not_allowed");
+  return payload;
+}
+
+async function findUserByEmail(supabaseUrl: string, serviceRole: string, email: string) {
+  const endpoint = new URL(`${supabaseUrl.replace(/\/+$/, "")}/auth/v1/admin/users`);
+  endpoint.searchParams.set("filter", email);
+  endpoint.searchParams.set("page", "1");
+  endpoint.searchParams.set("per_page", "50");
+  const response = await fetch(endpoint, {
+    headers: {
+      apikey: serviceRole,
+      Authorization: `Bearer ${serviceRole}`,
+      Accept: "application/json",
+    },
+  });
+  if (!response.ok) throw new Error(`auth_admin_lookup_failed_${response.status}`);
+  const body = await response.json().catch(() => ({}));
+  const users = Array.isArray(body?.users) ? body.users : Array.isArray(body) ? body : [];
+  return users.find((user: any) => String(user?.email || "").toLowerCase() === email.toLowerCase()) || null;
+}
+
+Deno.serve(async (req) => {
+  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
+  try {
+    const body = await req.json().catch(() => null) as { action?: unknown; runId?: unknown } | null;
+    const action = String(body?.action || "") as Action;
+    const runId = String(body?.runId || "").trim();
+    if (action !== "confirm" && action !== "delete") return json({ ok: false, error: "invalid_action" }, 400);
+    if (!RUN_ID_RE.test(runId)) return json({ ok: false, error: "invalid_run_id" }, 400);
+    await verifyGithubOidc(req, runId);
+
+    const supabaseUrl = String(Deno.env.get("SUPABASE_URL") || "").trim();
+    const serviceRole = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+    if (!supabaseUrl || !serviceRole) throw new Error("supabase_admin_runtime_missing");
+    const email = emailForRun(runId);
+    const user = await findUserByEmail(supabaseUrl, serviceRole, email);
+
+    if (action === "delete") {
+      if (!user?.id) return json({ ok: true, deleted: false, alreadyAbsent: true });
+      const admin = createClient(supabaseUrl, serviceRole, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      });
+      const { error } = await admin.auth.admin.deleteUser(String(user.id), false);
+      if (error) throw error;
+      return json({ ok: true, deleted: true });
+    }
+
+    if (!user?.id) return json({ ok: false, error: "e2e_user_not_found" }, 404);
+    const admin = createClient(supabaseUrl, serviceRole, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+    if (!user.email_confirmed_at) {
+      const { error } = await admin.auth.admin.updateUserById(String(user.id), { email_confirm: true });
+      if (error) throw error;
+    }
+    return json({ ok: true, confirmed: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "unexpected_error";
+    console.error("ci-e2e-user", message);
+    const status = message.startsWith("github_") ? 403 : 500;
+    return json({ ok: false, error: message }, status);
+  }
+});
