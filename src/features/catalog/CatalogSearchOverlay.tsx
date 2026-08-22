@@ -10,6 +10,7 @@ type Props = {
   onProducer: (id: string, slug: string, label: string) => void;
   onCategory: (slug: string, label: string) => void;
   onAllResults: (query: string) => void;
+  onRequestClose: () => void;
 };
 
 const iconFor = (kind: CatalogSuggestion['kind']) =>
@@ -23,6 +24,7 @@ export default function CatalogSearchOverlay({
   onProducer,
   onCategory,
   onAllResults,
+  onRequestClose,
 }: Props) {
   const [items, setItems] = useState<CatalogSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,18 +79,24 @@ export default function CatalogSearchOverlay({
       onProducer(item.id, item.value, item.label);
       return;
     }
-    // Category selection uses the exact server slug rather than combining it
-    // with the localized display label as a second free-text filter.
     onQueryChange('');
     onCategory(item.value, '');
   }
 
   return (
     <div
+      id="catalog-search-suggestions"
+      data-catalog-search-overlay="true"
       className="absolute left-4 right-4 top-full z-[100] mx-auto mt-2 max-h-[70vh] max-w-7xl overflow-y-auto rounded-2xl border border-brand-gold/20 bg-white shadow-2xl dark:bg-gray-900"
       role="region"
       aria-label="Arama önerileri"
       aria-busy={loading}
+      onKeyDown={event => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          onRequestClose();
+        }
+      }}
     >
       {!query.trim() ? (
         <div className="p-5 text-sm text-gray-600 dark:text-gray-300">
