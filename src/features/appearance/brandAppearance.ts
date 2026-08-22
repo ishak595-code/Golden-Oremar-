@@ -78,6 +78,8 @@ export function brandAppearanceContrastIssues(appearance: Pick<BrandAppearance,'
   const { tokens } = appearance;
   const issues: string[] = [];
   if (contrastRatio(tokens.text,tokens.background) < 4.5) issues.push('Ana metin ile arka plan kontrastı en az 4.5:1 olmalıdır.');
+  if (contrastRatio(tokens.muted,tokens.background) < 4.5) issues.push('İkincil metin ile arka plan kontrastı en az 4.5:1 olmalıdır.');
+  if (contrastRatio(tokens.text,tokens.card) < 4.5) issues.push('Kart metni ile kart yüzeyi kontrastı en az 4.5:1 olmalıdır.');
   if (contrastRatio(tokens.onGreen,tokens.brandGreen) < 4.5) issues.push('Yeşil buton metni kontrastı en az 4.5:1 olmalıdır.');
   if (contrastRatio(tokens.onGold,tokens.brandGold) < 4.5) issues.push('Altın buton metni kontrastı en az 4.5:1 olmalıdır.');
   return issues;
