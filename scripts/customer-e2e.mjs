@@ -9,7 +9,7 @@ const runId=String(process.env.GITHUB_RUN_ID||Date.now());
 const oidcToken=String(process.env.E2E_CI_OIDC_TOKEN||'').trim();
 const controlUrl=String(process.env.E2E_CI_CONTROL_URL||`${supabaseUrl}/functions/v1/ci-e2e-user`).trim();
 const allowPublicOnly=String(process.env.E2E_ALLOW_PUBLIC_ONLY||'')==='1';
-const email=`golden-oremar-e2e-${runId}@e2e.goldenoremar.com`;
+const email=`goldenoremar+ci-e2e-${runId}@gmail.com`;
 const authSecret=`${crypto.randomBytes(24).toString('base64url')}Aa1!`;
 const productName='Avaşin Meşe Balı';
 const productSlug='avasin-mese-bali-103';
@@ -86,13 +86,19 @@ async function createAndAuthenticateCustomer(page){
 
  const accountReady=page.getByRole('button',{name:'Profilimi Düzenle'});
  const confirmationMessage=page.getByText(/Hesabınız oluşturuldu\. E-posta doğrulaması açıksa/i);
+ const authError=page.locator('[role="alert"]');
  await Promise.race([
   accountReady.waitFor({state:'visible',timeout:20000}),
   confirmationMessage.waitFor({state:'visible',timeout:20000}),
+  authError.waitFor({state:'visible',timeout:20000}),
  ]).catch(()=>{});
  if(await visible(accountReady,1000)){
   mark('registration_and_login',true);
   return accountReady;
+ }
+ if(await visible(authError,500)){
+  const message=(await authError.textContent()||'').trim();
+  if(message)throw new Error(`REGISTRATION_UI_ERROR:${message}`);
  }
  if(!(await visible(confirmationMessage,1500)))throw new Error('REGISTRATION_DID_NOT_CREATE_SESSION_OR_CONFIRMATION_STATE');
  mark('email_confirmation_required',true);
