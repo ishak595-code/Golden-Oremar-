@@ -222,6 +222,16 @@ jobs:
       - name: Select Xcode 26.6
         run: sudo xcode-select -s /Applications/Xcode_26.6.app
 
+      - name: Verify stable Apple toolchain and iOS SDK family
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          test "$(xcodebuild -version | sed -n '1s/^Xcode //p')" = "26.6"
+          IOS_SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "iPhoneOS SDK ${IOS_SDK_VERSION}"
+          [[ "${IOS_SDK_VERSION}" == 26.* ]]
+
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
