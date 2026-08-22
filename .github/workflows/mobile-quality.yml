@@ -2,10 +2,12 @@ name: Mobile Quality Gate
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
-      - agent/admin-supabase-retire-node
 
 permissions:
   contents: read
@@ -79,7 +81,7 @@ jobs:
 
   verify-web-android:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     env:
       VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
@@ -95,6 +97,33 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+
+      - name: Install Android 17 API 37.0 with current official Android CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOLS_VERSION="15859902"
+          TOOLS_SHA256="4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
+          TOOLS_ZIP="${RUNNER_TEMP}/commandlinetools-linux-${TOOLS_VERSION}_latest.zip"
+          TOOLS_DIR="${RUNNER_TEMP}/android-command-line-tools"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://dl.google.com/android/repository/commandlinetools-linux-${TOOLS_VERSION}_latest.zip" \
+            --output "${TOOLS_ZIP}"
+          echo "${TOOLS_SHA256}  ${TOOLS_ZIP}" | sha256sum --check --strict
+          rm -rf "${TOOLS_DIR}"
+          mkdir -p "${TOOLS_DIR}"
+          unzip -q "${TOOLS_ZIP}" -d "${TOOLS_DIR}"
+          ANDROID_CLI="${TOOLS_DIR}/cmdline-tools/bin/android"
+          test -x "${ANDROID_CLI}"
+          "${ANDROID_CLI}" --version
+          "${ANDROID_CLI}" --sdk="${ANDROID_HOME}" sdk list 'platforms/android-37.0' --all --canary
+          "${ANDROID_CLI}" --sdk="${ANDROID_HOME}" sdk install \
+            platform-tools \
+            platforms/android-37.0 \
+            build-tools/37.0.0 \
+            --canary
+          test -f "${ANDROID_HOME}/platforms/android-37.0/android.jar"
+          test -x "${ANDROID_HOME}/build-tools/37.0.0/aapt2"
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
@@ -126,15 +155,24 @@ jobs:
           if (pkg.dependencies?.firebase) throw new Error('Firebase must not return to the runtime dependency graph.');
           if (pkg.devDependencies?.['@capacitor/cli'] !== '8.5.0') throw new Error('@capacitor/cli must be 8.5.0');
           NODE
-          grep -q "com.android.tools.build:gradle:8.13.0" android/build.gradle
-          grep -q "kotlin-gradle-plugin:2.2.20" android/build.gradle
-          grep -q 'gradle-8.14.3-all.zip' android/gradle/wrapper/gradle-wrapper.properties
+          grep -q "com.android.tools.build:gradle:9.3.0" android/build.gradle
+          if grep -q 'kotlin-gradle-plugin' android/build.gradle; then
+            echo 'Legacy Kotlin Gradle plugin must not be configured with AGP 9 built-in Kotlin.' >&2
+            exit 1
+          fi
+          grep -q 'gradle-9.5.0-all.zip' android/gradle/wrapper/gradle-wrapper.properties
           grep -q 'minSdkVersion = 24' android/variables.gradle
-          grep -q 'compileSdkVersion = 36' android/variables.gradle
-          grep -q 'targetSdkVersion = 36' android/variables.gradle
+          grep -q 'compileSdkVersion = 37' android/variables.gradle
+          grep -q 'compileSdkMinorVersion = 0' android/variables.gradle
+          grep -q 'targetSdkVersion = 37' android/variables.gradle
+          grep -q 'minorApiLevel = rootProject.ext.compileSdkMinorVersion' android/app/build.gradle
           grep -q 'JavaVersion.VERSION_21' android/app/build.gradle
-          grep -q "jvmTarget = '21'" android/app/build.gradle
-          grep -q 'kotlin-stdlib:2.2.20' android/app/build.gradle
+          grep -q 'androidResources' android/app/build.gradle
+          grep -q 'proguard-android-optimize.txt' android/app/build.gradle
+          if grep -q "apply plugin: 'kotlin-android'" android/app/build.gradle || grep -q 'kotlinOptions' android/app/build.gradle || grep -q 'aaptOptions' android/app/build.gradle; then
+            echo 'Legacy AGP/Kotlin/resource DSL must not return.' >&2
+            exit 1
+          fi
           grep -q 'density' android/app/src/main/AndroidManifest.xml
           grep -q 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;' ios/App/App.xcodeproj/project.pbxproj
           grep -q 'SceneDelegate.swift in Sources' ios/App/App.xcodeproj/project.pbxproj
@@ -179,9 +217,13 @@ jobs:
             exit 1
           fi
 
+      - name: Verify Gradle 9.5 wrapper
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew --version | grep -q 'Gradle 9.5'
+
       - name: Compile Android debug app
         working-directory: android
-        run: chmod +x gradlew && ./gradlew :app:assembleDebug --no-daemon
+        run: ./gradlew :app:assembleDebug --no-daemon
 
       - name: Upload installable Android debug APK
         uses: actions/upload-artifact@v4
@@ -219,6 +261,16 @@ jobs:
 
       - name: Select Xcode 26.6
         run: sudo xcode-select -s /Applications/Xcode_26.6.app
+
+      - name: Verify stable Apple toolchain and iOS SDK family
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          test "$(xcodebuild -version | sed -n '1s/^Xcode //p')" = "26.6"
+          IOS_SDK_VERSION="$(xcrun --sdk iphoneos --show-sdk-version)"
+          echo "iPhoneOS SDK ${IOS_SDK_VERSION}"
+          [[ "${IOS_SDK_VERSION}" == 26.* ]]
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
