@@ -1,0 +1,55 @@
+/* The global search/notification/cart bar belongs only to the storefront home. */
+:root:not([data-app-tab="home"]) #root > .min-h-screen > header {
+  display: none !important;
+}
+
+/* Non-home screens own the page title/actions and still need the native top inset. */
+:root:not([data-app-tab="home"]) #root > .min-h-screen > main {
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+}
+
+/* Keep customer content clear of the floating bottom tab bar. */
+#root > .min-h-screen > main {
+  min-height: calc(100dvh - 5rem);
+}
+
+/* Compact disclosure styling shared by product detail and preference screens. */
+.customer-disclosure {
+  overflow: hidden;
+  border: 1px solid var(--border-main);
+  border-radius: 1rem;
+  background: var(--bg-card);
+}
+
+.customer-disclosure > summary {
+  display: flex;
+  min-height: 3.5rem;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.customer-disclosure > summary::-webkit-details-marker { display: none; }
+.customer-disclosure > summary::after {
+  content: "+";
+  flex: 0 0 auto;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--brand-gold);
+}
+.customer-disclosure[open] > summary::after { content: "−"; }
+.customer-disclosure > .customer-disclosure-body {
+  border-top: 1px solid var(--border-light);
+  padding: 1rem;
+}
+
+@media (max-width: 420px) {
+  :root:not([data-app-tab="home"]) #root > .min-h-screen > main {
+    padding-top: max(0.25rem, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
+  }
+}
