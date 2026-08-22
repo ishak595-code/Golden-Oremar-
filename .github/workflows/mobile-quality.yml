@@ -81,7 +81,7 @@ jobs:
 
   verify-web-android:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     env:
       VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
@@ -98,14 +98,31 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Install Android 17 SDK
+      - name: Install Android 17 SDK with current Google command-line tools
         shell: bash
         run: |
           set -euo pipefail
-          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          TOOLS_VERSION="15859902"
+          TOOLS_SHA256="4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
+          TOOLS_ZIP="${RUNNER_TEMP}/commandlinetools-linux-${TOOLS_VERSION}_latest.zip"
+          TOOLS_DIR="${RUNNER_TEMP}/android-command-line-tools"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://dl.google.com/android/repository/commandlinetools-linux-${TOOLS_VERSION}_latest.zip" \
+            --output "${TOOLS_ZIP}"
+          echo "${TOOLS_SHA256}  ${TOOLS_ZIP}" | sha256sum --check --strict
+          rm -rf "${TOOLS_DIR}"
+          mkdir -p "${TOOLS_DIR}"
+          unzip -q "${TOOLS_ZIP}" -d "${TOOLS_DIR}"
+          SDKMANAGER="${TOOLS_DIR}/cmdline-tools/bin/sdkmanager"
           test -x "${SDKMANAGER}"
-          yes | "${SDKMANAGER}" --licenses >/dev/null || true
-          "${SDKMANAGER}" "platforms;android-37" "build-tools;37.0.0"
+          "${SDKMANAGER}" --version
+          yes | "${SDKMANAGER}" --sdk_root="${ANDROID_HOME}" --licenses >/dev/null || true
+          "${SDKMANAGER}" --sdk_root="${ANDROID_HOME}" \
+            "platform-tools" \
+            "platforms;android-37" \
+            "build-tools;37.0.0"
+          test -f "${ANDROID_HOME}/platforms/android-37/android.jar"
+          test -x "${ANDROID_HOME}/build-tools/37.0.0/aapt2"
 
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
