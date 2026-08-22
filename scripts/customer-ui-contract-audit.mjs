@@ -11,6 +11,8 @@ const main=read('src/main.tsx');
 const routeState=read('src/features/navigation/customerShellRouteState.ts');
 const shellCss=read('src/features/customer-experience/customerShellPolish.css');
 const premiumCss=read('src/features/customer-experience/videoReferencePremium.css');
+const dockCss=read('src/features/customer-experience/productDetailCommerceDock.css');
+const compatibilityCss=read('src/features/customer-experience/premiumCompatibility.css');
 const home=read('src/features/home/HomeSection.tsx');
 const card=read('src/features/catalog/CatalogProductCard.tsx');
 const detail=read('src/features/catalog/ProductDetailScreen.tsx');
@@ -20,6 +22,8 @@ const preferences=read('src/features/account/PremiumPreferencesPanel.tsx');
 expect(main.includes("installCustomerShellRouteState();"),'Customer shell route-state tracker must be installed before render.');
 expect(main.includes("customerShellPolish.css"),'Customer shell polish stylesheet must be loaded.');
 expect(main.includes("videoReferencePremium.css"),'Video-reference premium customer stylesheet must be loaded.');
+expect(main.includes("productDetailCommerceDock.css"),'Product-detail purchase dock stylesheet must be loaded.');
+expect(main.includes("premiumCompatibility.css"),'Premium iOS/WebView compatibility fallback must be loaded.');
 expect(main.includes('<ProductRecommendationsRail />'),'Live product recommendations must be mounted after the app shell.');
 expect(routeState.includes('const tab=currentTab();')&&routeState.includes('dataset.appTab=tab'),'Route-state tracker must expose the active tab to the document.');
 expect(routeState.includes("patch('pushState')")&&routeState.includes("patch('replaceState')"),'Route-state tracker must react to in-app history navigation.');
@@ -28,6 +32,9 @@ expect(shellCss.includes(':root:not([data-app-tab="home"]) #root > .min-h-screen
 expect(shellCss.includes('.customer-disclosure'),'Collapsed customer information styling must exist.');
 expect(premiumCss.includes('input[aria-label="Ürün, üretici veya köy ara"] ~ button[aria-label="Sesli arama"]'),'Voice search must stay compact until the search control is active.');
 expect(premiumCss.includes('.go-product-card__media')&&premiumCss.includes('.go-premium-category-card'),'Premium card and managed category visual contracts must exist.');
+expect(dockCss.includes(':root[data-app-tab="product-detail"] nav[aria-label="Ana gezinme"]'),'Product detail must replace the global bottom tab bar.');
+expect(dockCss.includes('position: fixed')&&dockCss.includes('safe-area-inset-bottom'),'Product detail purchase actions must remain fixed and native safe-area aware.');
+expect(compatibilityCss.includes('@supports not (color: color-mix'),'Premium surfaces must retain an older WebView/iOS 15 fallback.');
 
 for(const forbidden of ['HeroMetric','producerCount','originCount','label="Seçilmiş ürün"','label="Doğrulanmış üretici"','label="Üretim yöresi"'])expect(!home.includes(forbidden),`Home must not restore the metric-heavy hero marker: ${forbidden}`);
 expect(home.includes('data-video-reference-home="true"'),'Home must retain the approved video-reference storefront marker.');
@@ -63,4 +70,4 @@ expect(preferences.includes('Tema')&&preferences.includes('Bildirim sesleri'),'C
 for(const forbidden of ['sunucuya kaydedilemedi','Sunucuya kaydedilemedi','Supabase','veritabanı'])expect(!preferences.includes(forbidden),`Customer preference copy must not expose backend terminology: ${forbidden}`);
 
 if(failures.length){console.error('Golden Oremar customer UI contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar customer UI contract audit passed: Home-only global header, compact-on-focus voice search, managed visual category rails, premium live product cards, truthful cold-chain/preorder states, local product-detail navigation, live recommendations, collapsed long-form product information and collapsed theme/sound preferences are locked in.');
+console.log('Golden Oremar customer UI contract audit passed: Home-only global header, compact-on-focus voice search, managed visual category rails, premium live product cards, truthful cold-chain/preorder states, local product-detail navigation, native-safe purchase dock, live recommendations, iOS 15 fallbacks, collapsed long-form product information and collapsed theme/sound preferences are locked in.');
