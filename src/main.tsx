@@ -14,6 +14,7 @@ import './features/customer-experience/homeMerchandisingUpgrade.css';
 import './features/customer-experience/homeOneRowPremium.css';
 import './features/customer-experience/storefrontNarrativePremium.css';
 import './features/customer-experience/productDiscoveryPremium.css';
+import './features/customer-experience/productDetailConnectionsPremium.css';
 import { initNativeFeatures } from './native';
 import { initNativePushListeners } from './features/notifications/nativePush';
 import { applyThemeToDocument, resolveInitialTheme } from './features/appearance/theme';
@@ -23,6 +24,7 @@ import { installGlobalErrorTelemetry, sendClientError } from './lib/errorTelemet
 import {installBackendPerformanceHints} from './lib/performanceHints';
 import StoreComplianceControls from './features/store/StoreComplianceControls';
 import NativeAppUpdateBanner from './features/app-update/NativeAppUpdateBanner';
+import ProductDetailConnections from './features/catalog/ProductDetailConnections';
 import ProductRecommendationsRail from './features/catalog/ProductRecommendationsRail';
 
 installBackendPerformanceHints();
@@ -40,6 +42,7 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <NativeAppUpdateBanner />
       <App />
+      <ProductDetailConnections />
       <ProductRecommendationsRail />
       <StoreComplianceControls />
     </ErrorBoundary>
