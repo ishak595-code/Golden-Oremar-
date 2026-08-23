@@ -1,5 +1,6 @@
-/* Final visual contract taken from the approved 2026-08-23 screen recording.
-   This layer is presentation-only. Product, stock, price, category and merchandising data stay live. */
+/* Final home contract from the approved recording and the user's explicit mobile rule:
+   categories stay horizontally discoverable, while every home product is one compact link row.
+   Product commerce/detail controls live on the product detail screen, not on Home. */
 
 :root[data-app-tab="home"] header button[aria-label^="Bildirimler"] {
   display: grid !important;
@@ -9,17 +10,11 @@
   background: #10281f !important;
   color: #d8e3dd !important;
 }
-
 :root[data-app-tab="home"] header button[aria-label^="Sepetim"] {
   min-width: 3.05rem !important;
   min-height: 3.05rem !important;
 }
-
-:root[data-app-tab="home"] header > div > div {
-  min-height: 4.55rem !important;
-  gap: .45rem !important;
-}
-
+:root[data-app-tab="home"] header > div > div { min-height: 4.55rem !important; gap: .45rem !important; }
 :root[data-app-tab="home"] header input[aria-label="Ürün, üretici veya köy ara"] {
   height: 2.85rem !important;
   padding-left: 2.75rem !important;
@@ -27,7 +22,7 @@
   font-size: .86rem !important;
 }
 
-.go-reference-category-section { margin-top: .2rem; margin-bottom: 2.1rem; }
+.go-reference-category-section { margin-top: .2rem; margin-bottom: 2rem; }
 .go-reference-category-rail { gap: .85rem; padding-bottom: .75rem; }
 .go-reference-category-card {
   width: min(24rem,72vw);
@@ -43,102 +38,131 @@
 .go-reference-category-card__description { margin-top: .55rem; max-width: 96%; font-size: .78rem; line-height: 1.5; -webkit-line-clamp: 2; }
 
 .go-reference-product-section { scroll-margin-top: 5.25rem; }
-.go-reference-section-heading { gap: .5rem; margin-bottom: .8rem; }
+.go-reference-section-heading { gap: .5rem; margin-bottom: .65rem; }
 .go-reference-section-heading__icon { width: 1.7rem; height: 1.7rem; }
 .go-reference-section-heading__icon svg { width: 1.35rem; height: 1.35rem; }
 .go-reference-section-heading h2 { font-size: clamp(1.35rem,5vw,2rem); font-weight: 500; }
-.go-reference-section-copy { margin: -.25rem 0 .85rem; color: var(--go-home-muted); font-size: .78rem; line-height: 1.5; }
+.go-reference-section-copy { margin: -.2rem 0 .7rem; color: var(--go-home-muted); font-size: .78rem; line-height: 1.5; }
 
-.go-reference-product-rail {
-  display: flex;
-  gap: .75rem;
-  overflow-x: auto;
-  padding: .05rem .05rem .85rem;
-  scroll-snap-type: x mandatory;
-  overscroll-behavior-inline: contain;
-  -webkit-overflow-scrolling: touch;
+.go-reference-product-list {
+  overflow: hidden;
+  border: 1px solid #1f3b30;
+  border-radius: 1.15rem;
+  background: #081a13;
+  box-shadow: 0 12px 30px rgb(0 0 0 / .18);
 }
-.go-reference-product-rail > .go-product-card--home-rail {
-  width: min(22.5rem,78vw);
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-}
-
-.go-product-card--home-rail {
-  border-radius: 1.15rem !important;
-  background: #081a13 !important;
-  box-shadow: 0 12px 30px rgb(0 0 0 / .24) !important;
-}
-.go-product-card--home-rail .go-product-card__media {
-  aspect-ratio: 1 / 1.08 !important;
-  background: #0c241a !important;
-}
-.go-product-card--home-rail .go-product-card__media img { object-fit: cover; }
-.go-product-card--home-rail .go-product-card__home-body { padding: .78rem .85rem .9rem; }
-.go-product-card--home-rail .go-product-card__badge {
-  min-height: 1.45rem !important;
-  padding: .18rem .48rem !important;
-  border-radius: .48rem !important;
-  font-size: .55rem !important;
-  line-height: .85rem !important;
-  letter-spacing: .02em !important;
-}
-.go-product-card--home-rail .go-product-card__favorite,
-.go-product-card--home-rail .go-product-card__gift { min-width: 2.35rem; min-height: 2.35rem; }
-.go-product-card--home-rail .go-product-card__cart { min-height: 2.4rem; border-radius: .65rem; font-size: .76rem; }
-
-.go-reference-campaign { margin-top: 1.4rem; }
-.go-reference-campaign__surface { padding: 1.15rem 1.2rem; border-radius: 1.1rem; }
-.go-reference-campaign__title { font-size: 1.28rem; }
-.go-reference-campaign__subtitle { font-size: .78rem; }
-
-.go-reference-discover { display: flex; justify-content: center; }
-.go-reference-discover__button {
-  display: inline-flex;
-  min-height: 2.8rem;
+.go-reference-product-row {
+  display: grid;
+  grid-template-columns: 4.15rem minmax(0,1fr) auto;
+  width: 100%;
+  min-height: 5.6rem;
   align-items: center;
-  justify-content: center;
-  gap: .55rem;
-  border-radius: 999px;
-  background: #1fa965;
-  padding: 0 1.35rem;
-  color: #f6fff9;
-  font-size: .82rem;
-  font-weight: 900;
-  box-shadow: 0 9px 22px rgb(31 169 101 / .18);
+  gap: .8rem;
+  padding: .7rem .85rem;
+  border: 0;
+  border-bottom: 1px solid #173128;
+  background: transparent;
+  color: var(--go-home-text);
+  text-align: left;
+  transition: background-color .15s ease, transform .15s ease;
 }
-.go-reference-showcase__head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .8rem; }
-.go-reference-showcase__head h2 { font-family: var(--font-serif); color: var(--go-home-gold); font-size: 1.25rem; font-weight: 500; }
-.go-reference-sort { display: inline-flex; min-height: 2.4rem; align-items: center; gap: .35rem; border: 1px solid var(--go-home-border); border-radius: .65rem; background: #0a1b14; padding: 0 .55rem; color: var(--go-home-muted); }
-.go-reference-sort svg { width: .85rem; height: .85rem; }
-.go-reference-sort select { max-width: 8rem; background: transparent; color: var(--go-home-text); font-size: .7rem; outline: none; }
+.go-reference-product-row:last-child { border-bottom: 0; }
+.go-reference-product-row:active { background: #0d241b; transform: scale(.995); }
+@media (hover:hover) { .go-reference-product-row:hover { background: #0c2119; } }
+.go-reference-product-row__media {
+  display: grid;
+  width: 4.15rem;
+  height: 4.15rem;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid #27443a;
+  border-radius: .9rem;
+  background: #10271e;
+}
+.go-reference-product-row__media img { width:100%; height:100%; object-fit:cover; }
+.go-reference-product-row__placeholder { display:grid; width:100%; height:100%; place-items:center; color:var(--go-home-gold); }
+.go-reference-product-row__placeholder svg { width:1.35rem; height:1.35rem; }
+.go-reference-product-row__body { min-width:0; display:flex; flex-direction:column; gap:.18rem; }
+.go-reference-product-row__category {
+  overflow:hidden;
+  color:var(--go-home-gold);
+  font-size:.6rem;
+  font-weight:900;
+  letter-spacing:.1em;
+  text-overflow:ellipsis;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.go-reference-product-row__name {
+  display:-webkit-box;
+  overflow:hidden;
+  font-family:var(--font-serif);
+  color:var(--go-home-text);
+  font-size:1rem;
+  font-weight:750;
+  line-height:1.22;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+}
+.go-reference-product-row__meta {
+  overflow:hidden;
+  color:var(--go-home-muted);
+  font-size:.68rem;
+  line-height:1.25;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.go-reference-product-row__end { display:flex; min-width:4.4rem; align-items:center; justify-content:flex-end; gap:.25rem; color:#8ea198; }
+.go-reference-product-row__end svg { width:1rem; height:1rem; flex:0 0 auto; }
+.go-reference-product-row__price { color:var(--go-home-gold); font-size:.78rem; font-weight:900; white-space:nowrap; }
+.go-reference-empty { padding:1rem; border:1px solid #1f3b30; border-radius:1rem; background:#081a13; color:var(--go-home-muted); text-align:center; font-size:.82rem; }
+
+.go-reference-campaign { margin-top: 1.25rem; }
+.go-reference-campaign__surface { padding: 1.05rem 1.15rem; border-radius: 1.05rem; }
+.go-reference-campaign__title { font-size: 1.22rem; }
+.go-reference-campaign__subtitle { font-size: .76rem; }
+.go-reference-discover { display:flex; justify-content:center; }
+.go-reference-discover__button {
+  display:inline-flex;
+  min-height:2.8rem;
+  align-items:center;
+  justify-content:center;
+  gap:.55rem;
+  border-radius:999px;
+  background:#1fa965;
+  padding:0 1.35rem;
+  color:#f6fff9;
+  font-size:.82rem;
+  font-weight:900;
+  box-shadow:0 9px 22px rgb(31 169 101 / .18);
+}
 
 :root[data-app-tab="home"] nav[aria-label="Ana gezinme"] {
-  height: 4.45rem !important;
-  left: calc(.7rem + var(--safe-area-inset-left, env(safe-area-inset-left, 0px))) !important;
-  right: calc(.7rem + var(--safe-area-inset-right, env(safe-area-inset-right, 0px))) !important;
-  border-radius: 1.35rem !important;
-  background: rgb(17 36 29 / .97) !important;
+  height:4.45rem !important;
+  left:calc(.7rem + var(--safe-area-inset-left, env(safe-area-inset-left, 0px))) !important;
+  right:calc(.7rem + var(--safe-area-inset-right, env(safe-area-inset-right, 0px))) !important;
+  border-radius:1.35rem !important;
+  background:rgb(17 36 29 / .97) !important;
 }
-:root[data-app-tab="home"] nav[aria-label="Ana gezinme"] button { gap: .2rem !important; }
-:root[data-app-tab="home"] nav[aria-label="Ana gezinme"] button svg { width: 1.35rem; height: 1.35rem; }
-:root[data-app-tab="home"] nav[aria-label="Ana gezinme"] button span.text-\[11px\] { font-size: .58rem !important; }
+:root[data-app-tab="home"] nav[aria-label="Ana gezinme"] button { gap:.2rem !important; }
+:root[data-app-tab="home"] nav[aria-label="Ana gezinme"] button svg { width:1.35rem; height:1.35rem; }
+:root[data-app-tab="home"] nav[aria-label="Ana gezinme"] button span.text-\[11px\] { font-size:.58rem !important; }
 
-/* Safety controls stay available from account and messaging surfaces, but do not float over the approved storefront. */
 :root[data-app-tab="home"] button[aria-label="Güvenlik ve içerik bildirme merkezini aç"],
-:root[data-app-tab="product-detail"] button[aria-label="Güvenlik ve içerik bildirme merkezini aç"] { display: none !important; }
+:root[data-app-tab="product-detail"] button[aria-label="Güvenlik ve içerik bildirme merkezini aç"] { display:none !important; }
+:root[data-app-tab="product-detail"] nav[aria-label="Ana gezinme"] { display:none !important; }
+:root[data-app-tab="product-detail"] .go-product-recommendations { margin:1.5rem auto 7.5rem !important; }
+:root[data-app-tab="product-detail"] .go-product-recommendations__item { width:min(15rem,72vw); }
 
-/* Product detail in the approved recording has its own app bar and purchase dock;
-   the global five-tab navigation must not compete with it. */
-:root[data-app-tab="product-detail"] nav[aria-label="Ana gezinme"] { display: none !important; }
-:root[data-app-tab="product-detail"] .go-product-recommendations { margin: 1.5rem auto 7.5rem !important; }
-:root[data-app-tab="product-detail"] .go-product-recommendations__item { width: min(15rem,72vw); }
-
-@media (max-width: 420px) {
+@media (max-width:420px) {
   :root[data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"],
-  :root[data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"] img { width: 2.65rem !important; height: 2.65rem !important; }
+  :root[data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"] img { width:2.65rem !important; height:2.65rem !important; }
   :root[data-app-tab="home"] header button[aria-label^="Bildirimler"],
-  :root[data-app-tab="home"] header button[aria-label^="Sepetim"] { min-width: 2.7rem !important; min-height: 2.7rem !important; }
-  .go-reference-category-card { width: 72vw; min-height: 11.2rem; }
-  .go-reference-product-rail > .go-product-card--home-rail { width: 78vw; }
+  :root[data-app-tab="home"] header button[aria-label^="Sepetim"] { min-width:2.7rem !important; min-height:2.7rem !important; }
+  .go-reference-category-card { width:72vw; min-height:11.2rem; }
+  .go-reference-product-row { grid-template-columns:3.75rem minmax(0,1fr) auto; min-height:5.15rem; gap:.65rem; padding:.62rem .7rem; }
+  .go-reference-product-row__media { width:3.75rem; height:3.75rem; border-radius:.8rem; }
+  .go-reference-product-row__name { font-size:.94rem; }
+  .go-reference-product-row__end { min-width:3.9rem; }
+  .go-reference-product-row__price { font-size:.72rem; }
 }
