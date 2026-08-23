@@ -40,24 +40,24 @@ expect(app.includes("{currentTab==='home'?<header"),'Global storefront header mu
 expect(shellCss.includes(':root:not([data-app-tab="home"]) #root > .min-h-screen > header'),'CSS must retain defense-in-depth hiding for the global storefront header outside Home.');
 expect(shellCss.includes('.customer-disclosure'),'Collapsed long-form customer information styling must exist.');
 expect(premiumCss.includes('input[aria-label="Ürün, üretici veya köy ara"] ~ button[aria-label="Sesli arama"]'),'Voice search must stay compact until the search control is active.');
-expect(premiumCss.includes('.go-product-card__media'),'Premium product-card visual contract must exist.');
+expect(premiumCss.includes('.go-product-card__media'),'Premium product-card visual contract must remain available outside Home.');
 expect(densityCss.includes('.go-product-card--compact')&&densityCss.includes('@media(max-width:360px)'),'Compact card variant must remain available for screens that intentionally use it.');
-expect(referenceCss.includes('.go-reference-category-card')&&referenceCss.includes('.go-reference-product-rail'),'Approved category and product rail base presentation must exist.');
+expect(referenceCss.includes('.go-reference-category-card'),'Approved category presentation must exist.');
 expect(dockCss.includes(':root[data-app-tab="product-detail"] nav[aria-label="Ana gezinme"]'),'Product detail must replace the global bottom tab bar.');
 expect(dockCss.includes('position: fixed')&&dockCss.includes('safe-area-inset-bottom'),'Product detail purchase actions must remain fixed and native safe-area aware.');
 expect(compatibilityCss.includes('@supports not (color: color-mix'),'Premium surfaces must retain an older WebView/iOS 15 fallback.');
 
 for(const forbidden of ['HeroMetric','producerCount','originCount','label="Seçilmiş ürün"','label="Doğrulanmış üretici"','label="Üretim yöresi"'])expect(!home.includes(forbidden),`Home must not restore the metric-heavy hero marker: ${forbidden}`);
 expect(home.includes('data-video-reference-home="true"'),'Home must retain the approved video-reference storefront marker.');
-expect(home.includes('data-reference-layout="approved-recording-marketplace"'),'Home must retain the exact approved recording marketplace layout marker.');
-expect(home.includes('go-reference-product-rail'),'Managed home collections must use the approved recording visual product rails.');
-expect(home.includes('<CatalogProductCard homeRail'),'Primary Home collections must use the dedicated recording card variant.');
-expect(!home.includes('<CatalogProductCard compact'),'Primary Home collections must not regress to compact row cards.');
+expect(home.includes('data-reference-layout="approved-recording-list-marketplace"'),'Home must retain the approved recording list-marketplace layout marker.');
+expect(home.includes('go-reference-product-list'),'Managed home collections must use the single-row product list.');
+expect(home.includes('<HomeProductLinkRow'),'Primary Home products must use the dedicated navigation-row component.');
+expect(!home.includes('<CatalogProductCard'),'Home must not render commerce cards.');
+expect(!/ShoppingCart|Sepete Ekle|Hemen Ön Sipariş Ver|Soğuk Zincir|Mevsimlik Üretim/.test(home),'Home product rows must not expose cart actions or status-badge stacks.');
 expect(home.includes('go-reference-category-card'),'Managed categories must retain the approved wide visual discovery cards.');
 expect(home.includes('categoryPreviewImages')&&home.includes('products.filter(product=>product.categorySlug===category.id'),'Category preview imagery must be derived from the live catalog.');
 expect(home.includes('category.productCount'),'Category cards must expose live database-backed product counts when descriptive content is unavailable.');
-expect(home.includes('section.items.length>0')||home.includes('section.items.length'),'Managed product rails must derive visibility/count truth from live section items.');
-expect(home.includes('showcaseProducts=sortedProducts.slice'),'Bottom collection must be derived from the live sorted catalog rather than a static list.');
+expect(home.includes('section.items.length>0')||home.includes('section.items.length'),'Managed product sections must derive visibility/count truth from live section items.');
 expect(home.includes('useLiveHomeCatalog'),'Home must remain driven by the live catalog hook.');
 expect(home.includes('usePublicStorefrontConfig'),'Home must remain driven by managed storefront content.');
 expect(home.includes('heroCategories.map(config=>liveById.get(config.targetCategory))'),'Super Admin category ordering must remain authoritative on Home.');
@@ -65,19 +65,20 @@ expect(home.includes('homeSections.filter(section=>section.active)'),'Super Admi
 expect(home.indexOf('go-reference-category-section')<home.indexOf('go-reference-campaign'),'Category discovery must be rendered before the optional live-offer campaign surface.');
 expect(home.includes("const offerProducts=sectionProducts('offers')")&&home.includes('offerProducts.length>0'),'Campaign surface must be gated by real live offer products.');
 expect(home.includes("eventSpotlight?.enabled")&&home.includes('eventSpotlight.placement===placement'),'Event spotlight must stay dynamic and placement-managed.');
-expect(recordingCss.includes('width: min(24rem,72vw)')&&recordingCss.includes('width: min(22.5rem,78vw)'),'Approved recording rails must keep a partially visible next card for discoverability.');
+expect(recordingCss.includes('width: min(24rem,72vw)')&&recordingCss.includes('.go-reference-category-rail'),'Approved category rail must keep a partially visible next category for discoverability.');
+expect(recordingCss.includes('.go-reference-product-list')&&recordingCss.includes('.go-reference-product-row'),'Home products must render as vertical one-row navigation links.');
+expect(!recordingCss.includes('.go-product-card--home-rail'),'Home stylesheet must not restore the oversized commerce-card rail.');
 expect(recordingCss.includes('header button[aria-label^="Bildirimler"]')&&recordingCss.includes('display: grid !important'),'Home header must keep the live notification action beside cart.');
-expect(recordingCss.includes('background: rgb(17 36 29 / .97)'),'Home bottom navigation must retain the dark floating recording surface.');
+expect(recordingCss.includes('background:rgb(17 36 29 / .97)')||recordingCss.includes('background: rgb(17 36 29 / .97)'),'Home bottom navigation must retain the dark floating recording surface.');
 expect(recordingCss.includes(':root[data-app-tab="home"] button[aria-label="Güvenlik ve içerik bildirme merkezini aç"]'),'Floating safety controls must not cover the approved Home storefront.');
 
 expect(!card.includes('description?<p'),'Product cards must not reveal long descriptions by default.');
 expect(!card.includes('quantity,setQuantity'),'Product cards must not restore the large inline quantity stepper.');
-expect(card.includes('onAddToCart(product,1)'),'Product cards must use one-tap single-item add-to-cart.');
+expect(card.includes('onAddToCart(product,1)'),'Product cards must use one-tap single-item add-to-cart where cards are intentionally used.');
 expect(card.includes('safeHandling'),'Product-card handling metadata must remain fail-safe.');
 expect(card.includes('compact=false')&&card.includes('if(compact)return<article'),'Catalog cards must retain a compact variant for non-Home contexts.');
-expect(card.includes('homeRail=false')&&card.includes('if(homeRail)return<article'),'Home cards must retain the dedicated approved recording variant.');
-expect(card.includes('coldChain')&&card.includes('Soğuk Zincir'),'Cold-chain products must retain truthful handling visibility.');
-expect(card.includes('seasonal')&&card.includes('Mevsimlik Üretim'),'Seasonal stock mode must remain visibly and truthfully distinct.');
+expect(card.includes('coldChain')&&card.includes('Soğuk Zincir'),'Cold-chain products must retain truthful handling visibility outside Home.');
+expect(card.includes('seasonal')&&card.includes('Mevsimlik Üretim'),'Seasonal stock mode must remain visibly and truthfully distinct outside Home.');
 expect(card.includes('Seçkin Ürün'),'Featured status must not be mislabeled as a bestseller claim.');
 expect(card.includes("preorder?'Hemen Ön Sipariş Ver':'Sepete Ekle'"),'Preorder cards must use the correct purchase language.');
 expect(card.includes('originalPrice')&&card.includes('Önce '),'Real compare-at pricing may be shown without fabricated discount percentages.');
@@ -102,4 +103,4 @@ for(const forbidden of ['Şafak Horozu','Keklik Çağrısı','Dağ Kuşları'])e
 for(const marker of ['Oremar Kristali','Dağ Esintisi','Şafak İmzası','Zümrüt Yankı','Şampanya Çanı'])expect(sounds.includes(marker),`Premium sonic identity is missing refined option: ${marker}`);
 
 if(failures.length){console.error('Golden Oremar customer UI contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar customer UI contract audit passed: Home-only header, approved recording category/product rails, live notification/cart header, truthful dynamic product states, native-safe detail commerce, focused account settings and refined premium notification sounds are locked in.');
+console.log('Golden Oremar customer UI contract audit passed: Home-only header, approved category rail, single-row live product navigation, live notification/cart header, native-safe detail commerce, focused account settings and refined premium notification sounds are locked in.');
