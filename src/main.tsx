@@ -13,6 +13,7 @@ import './features/customer-experience/videoRecordingExact.css';
 import './features/customer-experience/homeMerchandisingUpgrade.css';
 import './features/customer-experience/homeOneRowPremium.css';
 import './features/customer-experience/storefrontNarrativePremium.css';
+import './features/customer-experience/productDiscoveryPremium.css';
 import { initNativeFeatures } from './native';
 import { initNativePushListeners } from './features/notifications/nativePush';
 import { applyThemeToDocument, resolveInitialTheme } from './features/appearance/theme';
