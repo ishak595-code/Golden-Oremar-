@@ -13,10 +13,10 @@ export const APP_THEME_OPTIONS: AppThemeOption[] = [
   {
     id: 'custom',
     label: 'Golden Oremar Marka Teması',
-    description: 'Super Admin tarafından canlı yönetilen fildişi, koyu orman ve rafine eski-altın resmi marka görünümü.',
-    surface: '#F5F2E8',
-    accent: '#0E4A31',
-    text: '#18251F',
+    description: 'Obsidyen-orman yüzey, metalik altın ve kontrollü zümrüt vurgularla resmi Golden Oremar görünümü.',
+    surface: '#07100D',
+    accent: '#1F9D63',
+    text: '#F4F3EE',
   },
   {
     id: 'emerald',
@@ -88,11 +88,11 @@ export function getSystemTheme(): AppTheme {
 }
 
 export function resolveInitialTheme(): AppTheme {
-  return getStoredTheme() || getSystemTheme();
+  return getStoredTheme() || 'custom';
 }
 
 export function isDarkTheme(theme: AppTheme) {
-  return theme === 'dark';
+  return theme === 'dark' || theme === 'custom';
 }
 
 export function applyThemeToDocument(theme: AppTheme) {
