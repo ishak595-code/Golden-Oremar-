@@ -55,6 +55,7 @@ const ADMIN_MENU_GROUPS: MenuGroup[] = [
     { id: 'shipping-readiness', label: 'Kargo Hazırlığı', icon: Package, superAdminOnly: true },
     { id: 'vendors', label: 'Satıcılar', icon: Store },
     { id: 'storefronts', label: 'Premium Mağaza Vitrinleri', icon: Sparkles, superAdminOnly: true },
+    { id: 'store-follow-simulation', label: 'Takip Simülasyonu', icon: Users, superAdminOnly: true },
     { id: 'vendor-applications', label: 'Satıcı Başvuruları', icon: FileText },
     { id: 'users', label: 'Kullanıcılar', icon: Users },
     { id: 'reviews', label: 'Yorumlar', icon: Star },
