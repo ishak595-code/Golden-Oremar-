@@ -1,0 +1,303 @@
+/* Connected discovery styling for product detail recommendations. */
+
+.go-product-recommendations--premium {
+  width: min(72rem,calc(100% - 2rem));
+  margin: 1.5rem auto 7.5rem;
+  padding: 1.2rem 0 0;
+  color: var(--go-home-text,#f5f1e7);
+}
+
+.go-product-recommendations__intro {
+  margin: 0 0 1.8rem;
+  padding: 0 .2rem;
+}
+
+.go-product-recommendations__eyebrow,
+.go-product-recommendations__group-head > div > span {
+  display: block;
+  color: #a98745;
+  font-size: .62rem;
+  font-weight: 950;
+  letter-spacing: .18em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.go-product-recommendations__intro h2 {
+  max-width: 48rem;
+  margin: .35rem 0 0;
+  color: #f3e8c9;
+  font-family: var(--font-serif);
+  font-size: clamp(1.9rem,5vw,3rem);
+  font-weight: 650;
+  letter-spacing: -.03em;
+  line-height: 1.03;
+}
+
+.go-product-recommendations__intro p {
+  max-width: 44rem;
+  margin: .7rem 0 0;
+  color: #9dafa5;
+  font-size: .88rem;
+  line-height: 1.55;
+}
+
+.go-product-recommendations__group {
+  margin-top: 2.1rem;
+}
+
+.go-product-recommendations__group-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: .9rem;
+  padding: 0 .2rem;
+}
+
+.go-product-recommendations__group-head h3 {
+  margin: .28rem 0 0;
+  color: #e5c96f;
+  font-family: var(--font-serif);
+  font-size: clamp(1.35rem,3.7vw,2rem);
+  font-weight: 650;
+  letter-spacing: -.02em;
+  line-height: 1.08;
+}
+
+.go-product-recommendations__group-head p {
+  max-width: 42rem;
+  margin: .38rem 0 0;
+  color: #8fa399;
+  font-size: .76rem;
+  line-height: 1.45;
+}
+
+.go-product-recommendations__group-head > button {
+  display: inline-flex;
+  min-height: 2.55rem;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: .25rem;
+  border: 1px solid #2b493e;
+  border-radius: 999px;
+  background: #0d241b;
+  padding: .48rem .72rem;
+  color: #dcc36f;
+  font-size: .7rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.go-product-recommendations__group-head > button svg {
+  width: .9rem;
+  height: .9rem;
+}
+
+.go-product-recommendations--premium .go-product-recommendations__rail {
+  display: flex;
+  gap: .85rem;
+  overflow-x: auto;
+  padding: .1rem .2rem 1rem;
+  scroll-padding-inline: .2rem;
+  scroll-snap-type: x mandatory;
+}
+
+.go-product-recommendations__item--premium {
+  width: min(19rem,72vw);
+  flex: 0 0 auto;
+  overflow: hidden;
+  scroll-snap-align: start;
+  border: 1px solid #28463a;
+  border-radius: 1.45rem;
+  background:
+    radial-gradient(circle at 86% 0%,rgb(226 195 102 / .07),transparent 10rem),
+    linear-gradient(160deg,#0d251b,#081811);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .026),0 14px 34px rgb(0 0 0 / .22);
+  color: #f6f1e8;
+  transition: transform .18s ease,border-color .18s ease,box-shadow .18s ease;
+}
+
+.go-product-recommendations__media {
+  display: block;
+  aspect-ratio: 1.24 / 1;
+  overflow: hidden;
+  border-bottom: 1px solid #254137;
+  background: #10281e;
+}
+
+.go-product-recommendations__media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.go-product-recommendations__media-placeholder {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  align-content: center;
+  gap: .45rem;
+  background: radial-gradient(circle at 50% 25%,rgb(226 195 102 / .11),transparent 55%),#10281e;
+  color: #d7bd68;
+}
+
+.go-product-recommendations__media-placeholder svg {
+  width: 2.35rem;
+  height: 2.35rem;
+  stroke-width: 1.5;
+}
+
+.go-product-recommendations__media-placeholder small {
+  color: #80968b;
+  font-size: .62rem;
+  font-weight: 700;
+}
+
+.go-product-recommendations__content {
+  display: block;
+  padding: .9rem .95rem 1rem;
+}
+
+.go-product-recommendations__meta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .4rem;
+}
+
+.go-product-recommendations__meta > span:first-child {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: #d6b95e;
+  font-size: .55rem;
+  font-weight: 950;
+  letter-spacing: .09em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.go-product-recommendations__ruby {
+  display: inline-flex;
+  align-items: center;
+  gap: .16rem;
+  border: 1px solid rgb(251 113 133 / .35);
+  border-radius: 999px;
+  background: #7d1735;
+  padding: .13rem .3rem;
+  color: #fff2f5;
+  font-size: .45rem;
+  font-weight: 950;
+}
+
+.go-product-recommendations__ruby svg {
+  width: .58rem;
+  height: .58rem;
+}
+
+.go-product-recommendations__content > strong {
+  display: -webkit-box;
+  min-height: 2.6rem;
+  margin-top: .35rem;
+  overflow: hidden;
+  color: #f5f1e7;
+  font-family: var(--font-serif);
+  font-size: 1.08rem;
+  font-weight: 800;
+  line-height: 1.2;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.go-product-recommendations__unit {
+  display: block;
+  margin-top: .3rem;
+  overflow: hidden;
+  color: #93a69d;
+  font-size: .64rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.go-product-recommendations__bottom {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: .6rem;
+  margin-top: .75rem;
+}
+
+.go-product-recommendations__bottom b {
+  color: #e8cd79;
+  font-size: .95rem;
+  font-weight: 950;
+}
+
+.go-product-recommendations__bottom > svg {
+  width: 1.05rem;
+  height: 1.05rem;
+  color: #adbbb4;
+}
+
+.go-product-recommendations__rating {
+  display: flex;
+  align-items: center;
+  gap: .2rem;
+  margin-top: .2rem;
+  color: #9aada3;
+}
+
+.go-product-recommendations__rating svg {
+  width: .72rem;
+  height: .72rem;
+  fill: #dabb5e;
+  color: #dabb5e;
+}
+
+.go-product-recommendations__rating em {
+  font-size: .55rem;
+  font-style: normal;
+}
+
+@media (hover:hover) {
+  .go-product-recommendations__item--premium:hover {
+    transform: translateY(-2px);
+    border-color: #3a5b4d;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .03),0 20px 42px rgb(0 0 0 / .28);
+  }
+}
+
+@media (max-width:520px) {
+  .go-product-recommendations--premium {
+    width: calc(100% - 1.5rem);
+    margin-bottom: 7rem;
+  }
+
+  .go-product-recommendations__intro h2 {
+    font-size: 1.9rem;
+  }
+
+  .go-product-recommendations__group-head {
+    align-items: start;
+  }
+
+  .go-product-recommendations__group-head > button {
+    max-width: 8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .go-product-recommendations__item--premium {
+    width: 71vw;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .go-product-recommendations__item--premium {
+    transition: none;
+  }
+}
