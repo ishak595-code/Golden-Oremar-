@@ -124,9 +124,15 @@
 :root[data-app-tab="home"] nav[aria-label="Ana gezinme"] button svg { width: 1.35rem; height: 1.35rem; }
 :root[data-app-tab="home"] nav[aria-label="Ana gezinme"] button span.text-\[11px\] { font-size: .58rem !important; }
 
+/* Safety controls stay available from account and messaging surfaces, but do not float over the approved storefront. */
+:root[data-app-tab="home"] button[aria-label="Güvenlik ve içerik bildirme merkezini aç"],
+:root[data-app-tab="product-detail"] button[aria-label="Güvenlik ve içerik bildirme merkezini aç"] { display: none !important; }
+
 /* Product detail in the approved recording has its own app bar and purchase dock;
    the global five-tab navigation must not compete with it. */
 :root[data-app-tab="product-detail"] nav[aria-label="Ana gezinme"] { display: none !important; }
+:root[data-app-tab="product-detail"] .go-product-recommendations { margin: 1.5rem auto 7.5rem !important; }
+:root[data-app-tab="product-detail"] .go-product-recommendations__item { width: min(15rem,72vw); }
 
 @media (max-width: 420px) {
   :root[data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"],
