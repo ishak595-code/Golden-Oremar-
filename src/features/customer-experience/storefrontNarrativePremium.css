@@ -1,0 +1,359 @@
+/* Premium narrative layer for the customer storefront.
+   Product rows stay horizontal and remain inside one continuous list surface.
+   No product claim, price, stock value or verification state is invented here. */
+
+.go-reference-home .go-reference-section-intro {
+  position: relative;
+  margin: 0 0 1.05rem;
+  padding: 0 .1rem;
+}
+
+.go-reference-home .go-reference-section-eyebrow {
+  display: block;
+  margin-bottom: .32rem;
+  color: #a98745;
+  font-size: .62rem;
+  font-weight: 950;
+  letter-spacing: .19em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.go-reference-home .go-reference-section-heading {
+  display: flex;
+  align-items: center;
+  gap: .62rem;
+  margin: 0;
+}
+
+.go-reference-home .go-reference-section-heading__icon {
+  display: grid;
+  width: 2.1rem;
+  height: 2.1rem;
+  flex: 0 0 auto;
+  place-items: center;
+  color: #e2c366;
+}
+
+.go-reference-home .go-reference-section-heading__icon svg {
+  width: 1.65rem;
+  height: 1.65rem;
+  stroke-width: 1.65;
+}
+
+.go-reference-home .go-reference-section-heading h2,
+.go-reference-home .go-reference-category-intro h2 {
+  margin: 0;
+  color: #e6ca74;
+  font-family: var(--font-serif);
+  font-size: clamp(1.72rem,4.7vw,2.45rem);
+  font-weight: 650;
+  letter-spacing: -.024em;
+  line-height: 1.06;
+}
+
+.go-reference-home .go-reference-section-copy,
+.go-reference-home .go-reference-category-intro p {
+  max-width: 46rem;
+  margin: .48rem 0 0 2.72rem;
+  color: #9daf a5;
+  color: #9dafa5;
+  font-size: .83rem;
+  font-weight: 560;
+  line-height: 1.52;
+}
+
+.go-reference-home .go-reference-category-intro {
+  margin-bottom: .75rem;
+}
+
+.go-reference-home .go-reference-category-intro p {
+  margin-left: 0;
+}
+
+.go-reference-home .go-reference-product-list {
+  overflow: hidden;
+  border: 1px solid #29463b;
+  border-radius: 1.65rem;
+  background:
+    radial-gradient(circle at 94% -5%,rgb(226 195 102 / .055),transparent 16rem),
+    linear-gradient(180deg,#0b2118,#07170f);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .025),0 18px 44px rgb(0 0 0 / .2);
+}
+
+.go-reference-home .go-reference-product-row {
+  display: grid !important;
+  grid-template-columns: 5.15rem minmax(0,1fr) 6.25rem !important;
+  width: 100% !important;
+  min-height: 10rem !important;
+  gap: .76rem !important;
+  align-items: center !important;
+  padding: .82rem .82rem !important;
+  border: 0 !important;
+  border-bottom: 1px solid #203b31 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.go-reference-home .go-reference-product-row:last-child {
+  border-bottom: 0 !important;
+}
+
+.go-reference-home .go-reference-product-row__media {
+  width: 5.15rem !important;
+  height: 5.15rem !important;
+  border: 1px solid #315246 !important;
+  border-radius: 1.08rem !important;
+  background: radial-gradient(circle at 35% 25%,rgb(226 195 102 / .1),transparent 55%),#10281e !important;
+}
+
+.go-reference-home .go-reference-product-row__body {
+  display: flex !important;
+  min-width: 0 !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: .24rem !important;
+}
+
+.go-reference-home .go-reference-product-row__topline {
+  display: flex !important;
+  min-width: 0;
+  align-items: center;
+  gap: .36rem;
+}
+
+.go-reference-home .go-reference-product-row__category {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  color: #dfc063 !important;
+  font-size: .61rem !important;
+  font-weight: 950 !important;
+  letter-spacing: .095em !important;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.go-reference-home .go-reference-product-row__ruby {
+  display: inline-flex !important;
+  min-height: 1.2rem;
+  align-items: center;
+  gap: .2rem;
+  border: 1px solid rgb(251 113 133 / .4);
+  border-radius: 999px;
+  background: linear-gradient(135deg,#70172f,#a31b44);
+  padding: .13rem .34rem;
+  color: #fff5f7;
+  font-size: .47rem;
+  font-weight: 950;
+  line-height: 1;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .14),0 4px 12px rgb(100 10 40 / .2);
+}
+
+.go-reference-home .go-reference-product-row__ruby svg {
+  width: .63rem;
+  height: .63rem;
+}
+
+.go-reference-home .go-reference-product-row__name {
+  display: -webkit-box !important;
+  overflow: hidden;
+  color: #f6f1e8 !important;
+  font-family: var(--font-serif);
+  font-size: 1rem !important;
+  font-weight: 820 !important;
+  letter-spacing: -.016em;
+  line-height: 1.16 !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.go-reference-home .go-reference-product-row__pitch {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  color: #aebdb5 !important;
+  font-size: .61rem !important;
+  font-weight: 570;
+  line-height: 1.34 !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
+
+.go-reference-home .go-reference-product-row__signals {
+  display: flex !important;
+  min-width: 0;
+  flex-wrap: wrap !important;
+  gap: .22rem !important;
+  max-height: 2.5rem;
+  overflow: hidden;
+  padding-top: .03rem;
+}
+
+.go-reference-home .go-reference-product-row__signals > span {
+  display: inline-flex !important;
+  min-height: 1.16rem;
+  max-width: 100%;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid #2b493e;
+  border-radius: 999px;
+  background: rgb(17 44 34 / .92);
+  padding: .1rem .34rem;
+  color: #d0dcd6;
+  font-size: .49rem;
+  font-weight: 790;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.go-reference-home .go-reference-product-row__producer {
+  display: block !important;
+  overflow: hidden;
+  color: #84978e !important;
+  font-size: .54rem !important;
+  font-weight: 680;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.go-reference-home .go-reference-product-row__end {
+  display: flex !important;
+  min-width: 6.25rem !important;
+  align-self: stretch;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+  gap: .14rem;
+}
+
+.go-reference-home .go-reference-product-row__discount {
+  display: inline-flex;
+  min-height: 1.25rem;
+  align-items: center;
+  border: 1px solid rgb(226 195 102 / .26);
+  border-radius: 999px;
+  background: rgb(226 195 102 / .08);
+  padding: .12rem .36rem;
+  color: #e8cd79;
+  font-size: .49rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.go-reference-home .go-reference-product-row__price {
+  color: #f0d77f !important;
+  font-size: .9rem !important;
+  font-weight: 950 !important;
+  letter-spacing: -.02em;
+  line-height: 1.08;
+  white-space: nowrap;
+}
+
+.go-reference-home .go-reference-product-row__previous {
+  color: #83958c !important;
+  font-size: .51rem !important;
+  font-weight: 720;
+  line-height: 1.05;
+  text-decoration: line-through;
+  white-space: nowrap;
+}
+
+.go-reference-home .go-reference-product-row__end svg {
+  width: .93rem;
+  height: .93rem;
+  margin-top: .14rem;
+  color: #9eafa7;
+}
+
+@media (hover:hover) {
+  .go-reference-home .go-reference-product-row:hover {
+    background: linear-gradient(90deg,rgb(32 68 53 / .22),transparent 70%) !important;
+  }
+}
+
+@media (max-width:520px) {
+  .go-reference-home .go-reference-section-intro {
+    margin-bottom: .82rem;
+  }
+
+  .go-reference-home .go-reference-section-heading {
+    gap: .48rem;
+  }
+
+  .go-reference-home .go-reference-section-heading__icon {
+    width: 1.85rem;
+    height: 1.85rem;
+  }
+
+  .go-reference-home .go-reference-section-heading__icon svg {
+    width: 1.45rem;
+    height: 1.45rem;
+  }
+
+  .go-reference-home .go-reference-section-heading h2,
+  .go-reference-home .go-reference-category-intro h2 {
+    font-size: 1.68rem;
+  }
+
+  .go-reference-home .go-reference-section-copy {
+    margin-left: 2.32rem;
+  }
+
+  .go-reference-home .go-reference-section-copy,
+  .go-reference-home .go-reference-category-intro p {
+    font-size: .76rem;
+    line-height: 1.45;
+  }
+
+  .go-reference-home .go-reference-product-row {
+    grid-template-columns: 4.55rem minmax(0,1fr) 5.15rem !important;
+    min-height: 9.7rem !important;
+    gap: .56rem !important;
+    padding: .7rem .62rem !important;
+  }
+
+  .go-reference-home .go-reference-product-row__media {
+    width: 4.55rem !important;
+    height: 4.55rem !important;
+  }
+
+  .go-reference-home .go-reference-product-row__name {
+    font-size: .91rem !important;
+  }
+
+  .go-reference-home .go-reference-product-row__pitch {
+    font-size: .56rem !important;
+  }
+
+  .go-reference-home .go-reference-product-row__signals > span {
+    font-size: .45rem;
+  }
+
+  .go-reference-home .go-reference-product-row__signals > span:nth-child(n+4) {
+    display: none !important;
+  }
+
+  .go-reference-home .go-reference-product-row__end {
+    min-width: 5.15rem !important;
+  }
+
+  .go-reference-home .go-reference-product-row__price {
+    font-size: .77rem !important;
+  }
+
+  .go-reference-home .go-reference-product-row__discount {
+    font-size: .43rem;
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .go-reference-home .go-reference-product-row {
+    transition: none !important;
+  }
+}
