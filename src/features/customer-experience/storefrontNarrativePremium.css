@@ -56,7 +56,6 @@
 .go-reference-home .go-reference-category-intro p {
   max-width: 46rem;
   margin: .48rem 0 0 2.72rem;
-  color: #9daf a5;
   color: #9dafa5;
   font-size: .83rem;
   font-weight: 560;
@@ -88,7 +87,7 @@
   min-height: 10rem !important;
   gap: .76rem !important;
   align-items: center !important;
-  padding: .82rem .82rem !important;
+  padding: .82rem !important;
   border: 0 !important;
   border-bottom: 1px solid #203b31 !important;
   border-radius: 0 !important;
@@ -185,9 +184,9 @@
 .go-reference-home .go-reference-product-row__signals {
   display: flex !important;
   min-width: 0;
+  max-height: 2.5rem;
   flex-wrap: wrap !important;
   gap: .22rem !important;
-  max-height: 2.5rem;
   overflow: hidden;
   padding-top: .03rem;
 }
