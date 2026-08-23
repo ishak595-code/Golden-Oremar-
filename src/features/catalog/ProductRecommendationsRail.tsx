@@ -1,13 +1,14 @@
 import React,{useEffect,useMemo,useState}from'react';
-import{ChevronRight,Star}from'lucide-react';
+import{ChevronRight,Gem,Leaf,Star}from'lucide-react';
 import{buildProductUrl,parsePublicRoute}from'../navigation/appUrl';
 import{useLiveHomeCatalog,type LegacyHomeProduct}from'./useLiveHomeCatalog';
 
 const ROUTE_EVENT='golden-oremar:route-change';
 function safePrice(value:unknown){return typeof value==='number'&&Number.isFinite(value)&&value>=0?value:null;}
 function safeCurrency(value:unknown){const valueText=typeof value==='string'?value.trim().toUpperCase():'';return/^[A-Z]{3}$/.test(valueText)?valueText:null;}
-function money(value:number,currency:string){try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency}).format(value);}catch{return`${value.toLocaleString('tr-TR')} ${currency}`;}}
+function money(value:number,currency:string){try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency,maximumFractionDigits:2}).format(value);}catch{return`${value.toLocaleString('tr-TR')} ${currency}`;}}
 function referenceOf(product:LegacyHomeProduct){return product.slug||product.legacyId||product.id;}
+function uniqueProducts(items:LegacyHomeProduct[]){return Array.from(new Map(items.map(item=>[item.id,item])).values());}
 
 export default function ProductRecommendationsRail(){
  const[routeVersion,setRouteVersion]=useState(0);
@@ -15,28 +16,27 @@ export default function ProductRecommendationsRail(){
  useEffect(()=>{const refresh=()=>setRouteVersion(value=>value+1);window.addEventListener(ROUTE_EVENT,refresh);window.addEventListener('popstate',refresh);return()=>{window.removeEventListener(ROUTE_EVENT,refresh);window.removeEventListener('popstate',refresh);};},[]);
  const route=useMemo(()=>parsePublicRoute(),[routeVersion]);
  const reference=route.tab==='product-detail'?route.productReference:null;
- const recommendations=useMemo(()=>{
-  if(!reference||!products.length)return[];
+ const context=useMemo(()=>{
+  if(!reference||!products.length)return null;
   const current=products.find(item=>item.slug===reference||item.id===reference||item.legacyId===reference);
-  if(!current)return[];
-  const sameCategory=products.filter(item=>item.id!==current.id&&item.categorySlug===current.categorySlug);
-  const featured=products.filter(item=>item.id!==current.id&&item.categorySlug!==current.categorySlug&&item.is_featured);
-  const fallback=products.filter(item=>item.id!==current.id);
-  return Array.from(new Map([...sameCategory,...featured,...fallback].map(item=>[item.id,item])).values()).slice(0,8);
+  if(!current)return null;
+  const alternatives=uniqueProducts(products.filter(item=>item.id!==current.id&&item.categorySlug===current.categorySlug)).slice(0,8);
+  const sameStore=uniqueProducts([
+   ...products.filter(item=>item.id!==current.id&&item.categorySlug!==current.categorySlug&&item.producerId===current.producerId&&item.is_featured),
+   ...products.filter(item=>item.id!==current.id&&item.categorySlug!==current.categorySlug&&item.producerId===current.producerId),
+  ]).slice(0,8);
+  return{current,alternatives,sameStore};
  },[products,reference]);
- if(!reference||loading||recommendations.length===0)return null;
- function openProduct(product:LegacyHomeProduct){
-  const target=referenceOf(product);if(!target)return;
-  const currentDepth=Number(window.history.state?.goldenOremarDepth);
-  const nextDepth=Number.isSafeInteger(currentDepth)&&currentDepth>=0?currentDepth+1:1;
-  const url=buildProductUrl(target);
-  const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'product-detail'};
-  window.history.pushState(state,'',url);
-  window.dispatchEvent(new PopStateEvent('popstate',{state}));
-  window.scrollTo({top:0,behavior:'auto'});
- }
- return<section className="go-product-recommendations" aria-labelledby="product-recommendations-title">
-  <div className="mb-3 flex items-end justify-between gap-3"><div><div className="go-premium-section__eyebrow">Golden Oremar seçkisi</div><h2 id="product-recommendations-title" className="mt-1 text-2xl font-black text-brand-text">Benzer ve Önerilen Ürünler</h2><p className="mt-1 text-sm text-brand-muted">İncelediğiniz ürünle aynı seçkiden canlı katalog önerileri.</p></div></div>
-  <div className="go-product-recommendations__rail hide-scrollbar">{recommendations.map(product=>{const price=safePrice(product.price),currency=safeCurrency(product.currency);return<button type="button" key={product.id} onClick={()=>openProduct(product)} className="go-product-recommendations__item text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{product.image?<img src={product.image} alt={`${product.name} ürün görseli`} loading="lazy" decoding="async"/>:<div className="grid aspect-[4/3] place-items-center bg-brand-card px-4 text-center text-sm text-brand-muted">Ürün görseli yakında</div>}<span className="block p-3.5"><span className="block text-[10px] font-black uppercase tracking-[.12em] text-brand-gold">{product.category}</span><span className="mt-1 line-clamp-2 block min-h-11 font-black leading-snug text-brand-text">{product.name}</span><span className="mt-2 flex items-end justify-between gap-2"><span>{price!==null&&currency?<span className="block font-black text-brand-green dark:text-brand-gold">{money(price,currency)}</span>:<span className="text-xs font-bold text-brand-muted">Fiyat yakında</span>}{product.reviewCount!==null&&product.reviewCount>0?<span className="mt-1 flex items-center gap-1 text-xs text-brand-muted"><Star aria-hidden="true" className="h-3.5 w-3.5 fill-brand-gold text-brand-gold"/><strong className="text-brand-text">{product.rating!==null?product.rating.toFixed(1):'—'}</strong><span>({product.reviewCount})</span></span>:null}</span><ChevronRight aria-hidden="true" className="mb-1 h-5 w-5 shrink-0 text-brand-gold"/></span></span></button>;})}</div>
+ if(!reference||loading||!context||(!context.alternatives.length&&!context.sameStore.length))return null;
+ function openProduct(product:LegacyHomeProduct){const target=referenceOf(product);if(!target)return;const currentDepth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(currentDepth)&&currentDepth>=0?currentDepth+1:1;const url=buildProductUrl(target);const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'product-detail'};window.history.pushState(state,'',url);window.dispatchEvent(new PopStateEvent('popstate',{state}));window.dispatchEvent(new Event(ROUTE_EVENT));window.scrollTo({top:0,behavior:'auto'});}
+ function openCategory(){const slug=context.current.categorySlug;if(!slug)return;const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','categories');url.searchParams.set('category',slug);const currentDepth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(currentDepth)&&currentDepth>=0?currentDepth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.dispatchEvent(new Event(ROUTE_EVENT));window.scrollTo({top:0,behavior:'auto'});}
+ return<section className="go-product-recommendations go-product-recommendations--premium" aria-labelledby="product-recommendations-title">
+  <div className="go-product-recommendations__intro"><span className="go-product-recommendations__eyebrow">Keşif devam ediyor</span><h2 id="product-recommendations-title">Bir ürün değil, birbirine bağlı bir seçki.</h2><p>İncelediğiniz üründen aynı kategoriye veya Golden Oremar'ın başka bir seçkisine tek dokunuşla geçin.</p></div>
+  {context.alternatives.length?<RecommendationGroup eyebrow="Aynı kategoriden" title={`${context.current.category} içinde başka seçenekler`} description="Aynı kategori içinde fiyat, paket ve ürün özelliklerini karşılaştırabileceğiniz alternatifler." items={context.alternatives} onOpen={openProduct} actionLabel={`${context.current.category} kategorisini aç`} onAction={openCategory}/>:null}
+  {context.sameStore.length?<RecommendationGroup eyebrow="Aynı mağazadan" title="Bir sonraki keşfiniz" description="Aynı mağazanın farklı kategorilerinden, vitrinde keşfedebileceğiniz başka ürünler." items={context.sameStore} onOpen={openProduct}/>:null}
  </section>;
 }
+
+function RecommendationGroup({eyebrow,title,description,items,onOpen,actionLabel,onAction}:{eyebrow:string;title:string;description:string;items:LegacyHomeProduct[];onOpen:(product:LegacyHomeProduct)=>void;actionLabel?:string;onAction?:()=>void}){return<section className="go-product-recommendations__group"><div className="go-product-recommendations__group-head"><div><span>{eyebrow}</span><h3>{title}</h3><p>{description}</p></div>{actionLabel&&onAction?<button type="button" onClick={onAction}>{actionLabel}<ChevronRight aria-hidden="true"/></button>:null}</div><div className="go-product-recommendations__rail hide-scrollbar">{items.map(product=><RecommendationCard key={product.id} product={product} onOpen={()=>onOpen(product)}/>)}</div></section>;}
+
+function RecommendationCard({product,onOpen}:{product:LegacyHomeProduct;onOpen:()=>void}){const price=safePrice(product.price),currency=safeCurrency(product.currency),ruby=product.producerVerified&&product.producerBadgeTone==='ruby';return<button type="button" onClick={onOpen} className="go-product-recommendations__item go-product-recommendations__item--premium text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span className="go-product-recommendations__media">{product.image?<img src={product.image} alt={`${product.name} ürün görseli`} loading="lazy" decoding="async"/>:<span className="go-product-recommendations__media-placeholder"><Leaf aria-hidden="true"/><small>Ürün görseli doğrulanıyor</small></span>}</span><span className="go-product-recommendations__content"><span className="go-product-recommendations__meta"><span>{product.category}</span>{ruby?<span className="go-product-recommendations__ruby"><Gem aria-hidden="true"/>Yakut</span>:null}</span><strong>{product.name}</strong>{product.unit?<span className="go-product-recommendations__unit">{product.unit}</span>:null}<span className="go-product-recommendations__bottom"><span>{price!==null&&currency?<b>{money(price,currency)}</b>:<small>Fiyat yakında</small>}{product.reviewCount!==null&&product.reviewCount>0?<span className="go-product-recommendations__rating"><Star aria-hidden="true"/><em>{product.rating!==null?product.rating.toFixed(1):'—'} ({product.reviewCount})</em></span>:null}</span><ChevronRight aria-hidden="true"/></span></span></button>;}
