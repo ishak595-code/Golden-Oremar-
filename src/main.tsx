@@ -15,6 +15,7 @@ import './features/customer-experience/homeOneRowPremium.css';
 import './features/customer-experience/storefrontNarrativePremium.css';
 import './features/customer-experience/productDiscoveryPremium.css';
 import './features/customer-experience/productDetailConnectionsPremium.css';
+import './features/customer-experience/productDetailPrestige.css';
 import { initNativeFeatures } from './native';
 import { initNativePushListeners } from './features/notifications/nativePush';
 import { applyThemeToDocument, resolveInitialTheme } from './features/appearance/theme';
