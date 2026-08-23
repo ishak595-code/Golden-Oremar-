@@ -1,23 +1,27 @@
 import fs from 'node:fs';
 
 const home=fs.readFileSync('src/features/home/HomeSection.tsx','utf8');
-const css=fs.readFileSync('src/features/customer-experience/referenceHomeExact.css','utf8');
+const card=fs.readFileSync('src/features/catalog/CatalogProductCard.tsx','utf8');
+const baseCss=fs.readFileSync('src/features/customer-experience/referenceHomeExact.css','utf8');
+const finalCss=fs.readFileSync('src/features/customer-experience/videoRecordingExact.css','utf8');
 const main=fs.readFileSync('src/main.tsx','utf8');
 const theme=fs.readFileSync('src/features/appearance/theme.ts','utf8');
 
 const checks=[
- ['approved home layout marker is present',home.includes('data-reference-layout="approved-dark-marketplace"')],
+ ['approved recording layout marker is present',home.includes('data-reference-layout="approved-recording-marketplace"')],
  ['home categories remain live and Super Admin ordered',home.includes('heroCategories.map')&&home.includes('category.productCount>0')],
  ['category previews are derived from live product images',home.includes('categoryPreviewImages')&&home.includes('products.filter(product=>product.categorySlug===category.id')],
- ['home collection cards use full visual cards, not compact row cards',!home.includes('<CatalogProductCard compact')],
- ['home collection order remains controlled by active homeSections',home.includes('homeSections.filter(section=>section.active).map')],
- ['fake empty seasonal/offer products are not synthesized',home.includes("products.filter(product=>product.stockMode==='seasonal'||product.homeSection==='seasonal')")&&home.includes("products.filter(product=>product.homeSection===id)")],
- ['approved reference stylesheet is loaded last',main.includes("import './features/customer-experience/referenceHomeExact.css';")],
- ['dark prestige home surface is enforced',css.includes('--go-home-bg: #03110c')&&css.includes('.go-reference-home')],
- ['reference category cards preserve partial-next-card rail behavior',css.includes('width: min(29rem,78vw)')&&css.includes('scroll-snap-type: x mandatory')],
- ['reference product rails use large visual cards',css.includes('.go-reference-product-rail > .go-product-card')&&css.includes('width: min(32rem,79vw)')],
- ['home notification action is removed from the compact header',css.includes('header button[aria-label^="Bildirimler"]')&&css.includes('display: none !important')],
- ['floating bottom navigation uses dark reference treatment',css.includes('nav[aria-label="Ana gezinme"]')&&css.includes('background: rgb(19 37 30 / .97)')],
+ ['home collection order remains controlled by active homeSections',home.includes('homeSections.filter(section=>section.active)')],
+ ['home rails use the dedicated uncluttered video card variant',home.includes('<CatalogProductCard homeRail')&&card.includes('data-home-product-card="video-reference"')],
+ ['home no longer renders the old all-products grid',!home.includes('go-reference-catalog-grid')&&!home.includes('<CatalogProductCard compact')],
+ ['full catalog remains reachable from a dedicated discovery action',home.includes('Tüm Ürünleri Keşfet')&&home.includes("tab:'categories'")],
+ ['seasonal and offer sections only use real catalog signals',home.includes("product.stockMode==='seasonal'")&&home.includes("product.homeSection==='offers'")],
+ ['dark prestige base surface remains enforced',baseCss.includes('--go-home-bg: #03110c')&&baseCss.includes('.go-reference-home')],
+ ['final recording stylesheet is loaded after the base reference stylesheet',main.indexOf("referenceHomeExact.css")<main.indexOf("videoRecordingExact.css")],
+ ['category rail preserves the partial-next-card recording behavior',finalCss.includes('width: min(24rem,72vw)')&&finalCss.includes('.go-reference-category-rail')],
+ ['product rails preserve one-card-plus-next-card recording rhythm',finalCss.includes('width: min(22.5rem,78vw)')&&finalCss.includes('.go-product-card--home-rail')],
+ ['notification remains visible beside cart in the home header',finalCss.includes('header button[aria-label^="Bildirimler"]')&&finalCss.includes('display: grid !important')],
+ ['product detail hides the global five-tab navigation',finalCss.includes(':root[data-app-tab="product-detail"] nav[aria-label="Ana gezinme"]')&&finalCss.includes('display: none !important')],
  ['first-run theme is the official custom brand theme',theme.includes("return getStoredTheme() || 'custom';")],
 ];
 
