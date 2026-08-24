@@ -8,11 +8,13 @@ const driftMigrationPath='supabase/migrations/20260824173500_add_product_media_d
 const migration=read(migrationPath);
 const driftMigration=read(driftMigrationPath);
 const producerApi=read('src/features/producer-products/api.ts');
+const customerE2E=read('scripts/customer-e2e.mjs');
 const forensic=read('docs/task3-product-media-forensic-matrix.md');
 
 const failures=[];
 const requireMatch=(source,pattern,message)=>{if(!pattern.test(source))failures.push(message);};
 const requireText=(source,text,message)=>{if(!source.includes(text))failures.push(message);};
+const forbidText=(source,text,message)=>{if(source.includes(text))failures.push(message);};
 
 requireText(migration,'private.verified_catalog_product_image_path_v1','Missing canonical verified catalog image helper.');
 requireMatch(migration,/metadata->>'mimetype'.*image\/jpeg/s,'Server image verification must inspect Storage MIME metadata.');
@@ -42,6 +44,16 @@ requireMatch(producerApi,/file\.size>10\*1024\*1024/,'Producer client must rejec
 requireMatch(producerApi,/\$\{normalizedProducerId\}\/products\/\$\{crypto\.randomUUID\(\)\}/,'Producer uploads must use randomized producer-owned catalog paths.');
 requireMatch(producerApi,/upsert:false/,'Product media uploads must remain immutable and non-overwriting.');
 requireMatch(producerApi,/if\(uploaded\.length\).*\.remove\(uploaded\)/s,'Partial upload failures must clean up newly uploaded orphan objects.');
+
+requireText(customerE2E,'get_public_home_catalog_v3','Customer E2E must discover a current published catalog fixture instead of pinning a stale product.');
+requireText(customerE2E,'catalog_fixture_discovered','Customer E2E must record dynamic public catalog fixture discovery.');
+requireText(customerE2E,'catalog_fail_closed_without_authentic_media','Customer E2E must prove the no-authentic-media catalog state fails closed without timing out.');
+requireText(customerE2E,'AUTHENTIC_CATALOG_MEDIA_REQUIRED_FOR_COMMERCE_E2E','Customer E2E must explicitly classify commerce coverage as deferred until authentic product media exists.');
+requireMatch(customerE2E,/if\(!fixture\)[\s\S]*return false;/,'Customer E2E must short-circuit product commerce cleanly when no verified public product fixture exists.');
+requireMatch(customerE2E,/if\(productAvailable\)await verifyProductCommerceJourney\(page\);else\{mark\('commerce_e2e_deferred_for_authentic_media'/,'Authenticated E2E must continue non-commerce account and staff security coverage when catalog media is intentionally quarantined.');
+requireText(customerE2E,'PUBLISHED_PRODUCT_MEDIA_PLACEHOLDER_EXPOSED','A published product must never silently pass E2E with a media placeholder.');
+forbidText(customerE2E,"const productName='Avaşin Meşe Balı'",'Customer E2E must not pin the former quarantined product as its commerce fixture.');
+
 requireText(forensic,'NO_VERIFIED_ORIGINAL_ASSET','Forensic baseline must preserve the no-authentic-asset finding.');
 requireText(forensic,'disqualified','Demo/stock recovery candidates must remain explicitly disqualified.');
 
