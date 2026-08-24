@@ -5,7 +5,7 @@ import{accountErasureErrorMessage,cleanupAnonymizedUserMedia,superAdminAnonymize
 import{useAccessibleDialog}from'../features/accessibility/useAccessibleDialog';
 
 type Action='reopen'|'anonymize';
-const ROLE_LABELS:Record<AdminPlatformUserRole,string>={customer:'Müşteri',producer:'Satıcı - Üretici',support:'Destek',content_editor:'İçerik Editörü',operations:'Operasyon',admin:'Admin',super_admin:'Super Admin - Uygulama Sahibi'};
+const ROLE_LABELS:Record<AdminPlatformUserRole,string>={customer:'Müşteri',producer:'Satıcı - Üretici',support:'Destek',content_editor:'İçerik Editörü',operations:'Operasyon',moderator:'Moderatör',admin:'Admin',super_admin:'Super Admin - Uygulama Sahibi'};
 function roleLabel(role:AdminPlatformUserRole){return ROLE_LABELS[role];}
 function displayName(user:AdminPlatformUser){return user.displayName||user.email||user.id;}
 function isProtectedAdministrator(user:AdminPlatformUser){return user.roles.includes('admin')||user.roles.includes('super_admin');}
