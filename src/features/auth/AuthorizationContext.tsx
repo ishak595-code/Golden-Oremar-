@@ -1,6 +1,6 @@
 import React,{createContext,useCallback,useContext,useEffect,useMemo,useState}from'react';
 import{useCustomerSession}from'./useCustomerSession';
-import{getAuthorizationContext,type AuthorizationContextSnapshot}from'./api';
+import{getAuthorizationContext,type AuthorizationContextSnapshot}from'./authorizationApi';
 import type{PermissionKey}from'./permissions';
 
 type AuthorizationContextValue={
