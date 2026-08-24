@@ -34,7 +34,7 @@ forbid(migration,/grant\s+execute[\s\S]*product\.publish[\s\S]*(?:admin|moderato
 
 const mfaE2E=read('scripts/staff-mfa-e2e.mjs');
 req(mfaE2E,/moderator AAL2 leaked \$\{p\}/,'Moderator AAL2 capability negatives must remain explicit.');
-req(mfaE2E,/product\.publish','Staff MFA E2E must exercise product.publish.');
+req(mfaE2E,/product\.publish/,'Staff MFA E2E must exercise product.publish.');
 req(mfaE2E,/product\.health_manage/,'Staff MFA E2E must exercise product.health_manage.');
 req(mfaE2E,/moderator owner publication attack/,'Moderator direct approval attack must be tested.');
 req(mfaE2E,/admin owner publication attack/,'Admin direct approval attack must be tested.');
