@@ -9,6 +9,8 @@ const migration=read(migrationPath);
 const driftMigration=read(driftMigrationPath);
 const producerApi=read('src/features/producer-products/api.ts');
 const customerE2E=read('scripts/customer-e2e.mjs');
+const mediaFallback=read('src/features/catalog/installCatalogMediaFallback.ts');
+const mainEntry=read('src/main.tsx');
 const forensic=read('docs/task3-product-media-forensic-matrix.md');
 
 const failures=[];
@@ -55,6 +57,20 @@ requireText(customerE2E,'PUBLISHED_PRODUCT_MEDIA_PLACEHOLDER_EXPOSED','A publish
 forbidText(customerE2E,"const productName='Avaşin Meşe Balı'",'Customer E2E must not pin the former quarantined product as its commerce fixture.');
 forbidText(customerE2E,'noSearchResultText','No-media E2E fallback must rely on the canonical public catalog API, not a potentially hidden UI empty-state clone.');
 forbidText(customerE2E,'emptyState.waitFor','No-media E2E fallback must not wait on duplicated or hidden DOM empty-state nodes.');
+
+requireText(mainEntry,"installCatalogMediaFallback","Catalog media fallback must be installed before the customer UI renders.");
+requireText(mainEntry,'installCatalogMediaFallback();','Catalog media fallback installer must run during application bootstrap.');
+requireText(mediaFallback,"/storage/v1/object/public/catalog-public/",'Runtime fallback must be scoped to the canonical catalog-public Storage namespace.');
+requireText(mediaFallback,"/images/products/",'Runtime fallback must safely recognize the historical product-media namespace during migration.');
+requireText(mediaFallback,"Ürün görseli şu anda kullanılamıyor",'Runtime fallback must expose a truthful Turkish accessibility message.');
+requireText(mediaFallback,"img.style.background = '#000'",'Broken catalog media must render a neutral black surface rather than another product image.');
+requireText(mediaFallback,"window.addEventListener('error', onError, true)",'Catalog media fallback must capture native image load failures.');
+requireText(mediaFallback,"window.addEventListener('online', onOnline)",'Catalog media fallback must allow one recovery attempt when network connectivity returns.');
+requireText(mediaFallback,"goCatalogMediaRetry === '1'",'Catalog media fallback must cap automatic network recovery at one retry per image element.');
+requireText(mediaFallback,"img.removeAttribute('srcset')",'Broken catalog media must remove alternate image candidates before applying fallback.');
+requireText(mediaFallback,'FALLBACK_DATA_URI','Broken catalog media must replace the broken source so the browser broken-image glyph is not exposed.');
+forbidText(mediaFallback,'unsplash','Runtime fallback must never substitute stock imagery.');
+forbidText(mediaFallback,'placeholder.com','Runtime fallback must never substitute third-party placeholder imagery.');
 
 requireText(forensic,'NO_VERIFIED_ORIGINAL_ASSET','Forensic baseline must preserve the no-authentic-asset finding.');
 requireText(forensic,'disqualified','Demo/stock recovery candidates must remain explicitly disqualified.');
