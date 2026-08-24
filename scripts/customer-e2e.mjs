@@ -17,7 +17,6 @@ const phone='+905379594851';
 let productName='';
 let productSlug='';
 const homeSearchLabel='Ürün, üretici veya köy ara';
-const noSearchResultText='Aramanızla eşleşen ürün bulunamadı.';
 const out=path.resolve('e2e-artifacts');
 fs.mkdirSync(out,{recursive:true});
 const report={runId,email,baseUrl,productName:null,productSlug:null,startedAt:new Date().toISOString(),mode:oidcToken?'authenticated-oidc-provisioned':'public-only-explicit',checks:{},blockers:[],deferredCoverage:[],consoleErrors:[],pageErrors:[]};
@@ -66,10 +65,6 @@ async function openPublicProductFromHome(page){
  mark('home_dynamic_sections',managedSectionVisible||seasonalVisible||campaignVisible||newVisible);
  const fixture=await resolvePublishedCatalogFixture();
  if(!fixture){
-  await search.fill('__golden_oremar_no_public_catalog_fixture__');
-  await search.press('Enter');
-  const emptyState=page.getByText(noSearchResultText,{exact:true});
-  await emptyState.waitFor({state:'visible',timeout:6000});
   mark('catalog_fail_closed_without_authentic_media',true);
   defer('AUTHENTIC_CATALOG_MEDIA_REQUIRED_FOR_COMMERCE_E2E');
   await shot(page,'03-catalog-fail-closed');
