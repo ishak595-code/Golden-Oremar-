@@ -12,10 +12,8 @@ const EXPECTED_AUDIENCE = "golden-oremar-ci-e2e";
 const EXPECTED_REPOSITORY = "ishak595-code/Golden-Oremar-";
 const EXPECTED_REPOSITORY_ID = "1335636205";
 const EXPECTED_OWNER_ID = "233486723";
-const EXPECTED_WORKFLOW_PATHS: Record<string, string> = {
-  "Mobile Quality Gate": `${EXPECTED_REPOSITORY}/.github/workflows/mobile-quality.yml@`,
-  "Authorization Quality Gate": `${EXPECTED_REPOSITORY}/.github/workflows/authorization-quality.yml@`,
-};
+const EXPECTED_WORKFLOW = "Mobile Quality Gate";
+const EXPECTED_WORKFLOW_PATH = `${EXPECTED_REPOSITORY}/.github/workflows/mobile-quality.yml@`;
 const TRUSTED_BRANCH_REFS = new Set([
   "refs/heads/main",
   "refs/heads/integration/full-consolidation-2026-08",
@@ -25,6 +23,17 @@ const PULL_REQUEST_REF_RE = /^refs\/pull\/\d{1,12}\/merge$/;
 const RUN_ID_RE = /^\d{1,24}$/;
 const PASSWORD_RE = /^[^\u0000-\u001F\u007F]{12,72}$/;
 const PHONE_RE = /^\+[1-9][0-9]{9,14}$/;
+const FORBIDDEN_CUSTOMER_PERMISSIONS = [
+  "admin.access",
+  "role.manage",
+  "refund.execute",
+  "payout.release",
+  "system.configure",
+  "payment.manage",
+  "security.manage",
+  "user.erase",
+  "product.remove",
+] as const;
 
 type Action = "provision" | "confirm" | "delete";
 type GithubClaims = {
@@ -86,7 +95,7 @@ function cleanPhone(value: unknown) {
   return phone;
 }
 
-function verifyMobileEventAndRef(payload: GithubClaims) {
+function verifyEventAndRef(payload: GithubClaims) {
   const eventName = String(payload.event_name || "");
   const ref = String(payload.ref || "");
   if (eventName === "pull_request") {
@@ -100,18 +109,6 @@ function verifyMobileEventAndRef(payload: GithubClaims) {
   throw new Error("github_event_not_allowed");
 }
 
-function verifyWorkflowEventAndRef(payload: GithubClaims, workflow: string) {
-  if (workflow === "Authorization Quality Gate") {
-    const eventName = String(payload.event_name || "");
-    const ref = String(payload.ref || "");
-    if ((eventName !== "push" && eventName !== "workflow_dispatch") || ref !== "refs/heads/main") {
-      throw new Error("github_authorization_workflow_ref_not_allowed");
-    }
-    return;
-  }
-  verifyMobileEventAndRef(payload);
-}
-
 async function verifyGithubOidc(req: Request, runId: string) {
   const token = bearerToken(req);
   if (!token) throw new Error("github_oidc_token_required");
@@ -121,15 +118,13 @@ async function verifyGithubOidc(req: Request, runId: string) {
     algorithms: ["RS256"],
     clockTolerance: 5,
   });
-  const workflow = String(payload.workflow || "");
-  const expectedWorkflowPath = EXPECTED_WORKFLOW_PATHS[workflow];
   const workflowRef = String(payload.workflow_ref || payload.job_workflow_ref || "");
   if (String(payload.repository || "") !== EXPECTED_REPOSITORY) throw new Error("github_repository_not_allowed");
   if (String(payload.repository_id || "") !== EXPECTED_REPOSITORY_ID) throw new Error("github_repository_id_not_allowed");
   if (String(payload.repository_owner_id || "") !== EXPECTED_OWNER_ID) throw new Error("github_owner_not_allowed");
-  if (!expectedWorkflowPath) throw new Error("github_workflow_not_allowed");
-  if (!workflowRef.includes(expectedWorkflowPath)) throw new Error("github_workflow_ref_not_allowed");
-  verifyWorkflowEventAndRef(payload, workflow);
+  if (String(payload.workflow || "") !== EXPECTED_WORKFLOW) throw new Error("github_workflow_not_allowed");
+  if (!workflowRef.includes(EXPECTED_WORKFLOW_PATH)) throw new Error("github_workflow_ref_not_allowed");
+  verifyEventAndRef(payload);
   if (String(payload.run_id || "") !== runId) throw new Error("github_run_id_mismatch");
   if (String(payload.runner_environment || "") !== "github-hosted") throw new Error("github_runner_not_allowed");
 }
@@ -148,6 +143,37 @@ async function findUserByEmail(supabaseUrl: string, serviceRole: string, email: 
   return users.find((user: any) => String(user?.email || "").toLowerCase() === email.toLowerCase()) || null;
 }
 
+async function verifyDisposableCustomerAuthorization(supabaseUrl: string, anonKey: string, email: string, password: string) {
+  const customer = createClient(supabaseUrl, anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  const { data: signInData, error: signInError } = await customer.auth.signInWithPassword({ email, password });
+  if (signInError || !signInData.session?.access_token) throw new Error("authorization_negative_customer_sign_in_failed");
+  try {
+    const { data: context, error: contextError } = await customer.rpc("authorization_context_v1");
+    if (contextError || !context || typeof context !== "object" || Array.isArray(context)) throw new Error("authorization_negative_context_failed");
+    const snapshot = context as Record<string, unknown>;
+    const roles = Array.isArray(snapshot.roles) ? snapshot.roles.map(String) : [];
+    const permissions = Array.isArray(snapshot.permissions) ? snapshot.permissions.map(String) : [];
+    if (!roles.includes("customer")) throw new Error("authorization_negative_customer_role_missing");
+    if (roles.some((role) => ["support", "content_editor", "operations", "moderator", "admin", "super_admin"].includes(role))) {
+      throw new Error("authorization_negative_management_role_leak");
+    }
+    if (snapshot.canAccessAdmin !== false) throw new Error("authorization_negative_admin_shell_escalation");
+    if (FORBIDDEN_CUSTOMER_PERMISSIONS.some((permission) => permissions.includes(permission))) {
+      throw new Error("authorization_negative_critical_capability_leak");
+    }
+
+    const { data: canManageRoles, error: permissionError } = await customer.rpc("authorization_has_permission_v1", { p_permission_key: "role.manage" });
+    if (permissionError || canManageRoles !== false) throw new Error("authorization_negative_role_manage_escalation");
+
+    const { error: privilegedError } = await customer.rpc("admin_list_platform_users_v3");
+    if (!privilegedError) throw new Error("authorization_negative_direct_admin_rpc_escalation");
+  } finally {
+    await customer.auth.signOut().catch(() => undefined);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
   try {
@@ -159,8 +185,9 @@ Deno.serve(async (req) => {
     await verifyGithubOidc(req, runId);
 
     const supabaseUrl = String(Deno.env.get("SUPABASE_URL") || "").trim();
+    const anonKey = String(Deno.env.get("SUPABASE_ANON_KEY") || "").trim();
     const serviceRole = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
-    if (!supabaseUrl || !serviceRole) throw new Error("supabase_admin_runtime_missing");
+    if (!supabaseUrl || !anonKey || !serviceRole) throw new Error("supabase_admin_runtime_missing");
     const admin = createClient(supabaseUrl, serviceRole, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     });
@@ -196,7 +223,18 @@ Deno.serve(async (req) => {
       });
       if (error) throw error;
       if (!data.user?.id) throw new Error("e2e_user_provision_failed");
-      return json({ ok: true, provisioned: true, emailConfirmed: Boolean(data.user.email_confirmed_at) });
+      try {
+        await verifyDisposableCustomerAuthorization(supabaseUrl, anonKey, email, password);
+      } catch (verificationError) {
+        await admin.auth.admin.deleteUser(data.user.id, false).catch(() => undefined);
+        throw verificationError;
+      }
+      return json({
+        ok: true,
+        provisioned: true,
+        emailConfirmed: Boolean(data.user.email_confirmed_at),
+        authorizationNegativeVerified: true,
+      });
     }
 
     if (!existing?.id) return json({ ok: false, error: "e2e_user_not_found" }, 404);
