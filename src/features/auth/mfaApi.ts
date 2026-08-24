@@ -11,7 +11,7 @@ function factorId(value:unknown){const id=typeof value==='string'?value.trim():'
 function totpCode(value:unknown){const code=typeof value==='string'?value.replace(/\s+/g,''):'';if(!TOTP_CODE_RE.test(code))throw new Error('Doğrulama kodu 6 rakam olmalıdır.');return code;}
 function friendlyName(value:unknown){const text=typeof value==='string'?value.trim():'';return text&&text.length<=120&&!/[\u0000-\u001F\u007F]/.test(text)?text:'Authenticator';}
 function enrollmentSecret(value:unknown){const text=typeof value==='string'?value.trim():'';if(!text||text.length>256||/[\u0000-\u0020\u007F]/.test(text))throw new Error('Authenticator kurulum anahtarı doğrulanamadı.');return text;}
-function qrCodeSource(value:unknown){const text=typeof value==='string'?value.trim():'';if(!text||text.length>MAX_QR_LENGTH||!/^data:image\/svg\+xml(?:;charset=utf-8)?(?:;base64)?,/i.test(text))throw new Error('Authenticator QR kodu güvenli biçimde alınamadı.');return text;}
+function qrCodeSource(value:unknown){const text=typeof value==='string'?value.trim():'';if(!text||text.length>MAX_QR_LENGTH||!/^data:image\/svg\+xml(?:(?:;charset=utf-8|;utf-8)?(?:;base64)?)?,/i.test(text))throw new Error('Authenticator QR kodu güvenli biçimde alınamadı.');return text;}
 
 function normalizeTotpFactors(data:unknown):StaffTotpFactor[]{
   const record=Boolean(data)&&typeof data==='object'&&!Array.isArray(data)?data as Record<string,unknown>:{};
