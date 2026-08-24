@@ -38,7 +38,7 @@ async function ciControl(action,payload={}){
 
 async function resolvePublishedCatalogFixture(){
  if(!supabaseUrl||!supabasePublishableKey)throw new Error('PUBLIC_CATALOG_FIXTURE_CONFIG_REQUIRED');
- const response=await fetch(`${supabaseUrl}/rest/v1/rpc/get_public_home_catalog_v3`,{method:'POST',headers:{apikey:supabasePublishableKey,Authorization:`Bearer ${supabasePublishableKey}`,'Content-Type':'application/json'},body:'{}'});
+ const response=await fetch(`${supabaseUrl}/rest/v1/rpc/get_public_home_catalog_v3`,{method:'POST',headers:{apikey:supabasePublishableKey,'Content-Type':'application/json'},body:'{}'});
  const payload=await response.json().catch(()=>null);
  if(!response.ok||!payload||typeof payload!=='object')throw new Error(`PUBLIC_CATALOG_FIXTURE_QUERY_FAILED:${response.status}`);
  const items=Array.isArray(payload.items)?payload.items:[];
