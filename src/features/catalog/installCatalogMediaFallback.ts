@@ -4,6 +4,8 @@ const LEGACY_PRODUCT_MARKER = '/images/products/';
 const FALLBACK_CLASS = 'go-catalog-media-fallback';
 const FALLBACK_LABEL = 'Ürün görseli şu anda kullanılamıyor';
 
+type FallbackState = 'true' | 'retrying';
+
 function catalogMediaSource(img: HTMLImageElement) {
   return String(img.currentSrc || img.src || '').trim();
 }
@@ -32,11 +34,13 @@ function applyFallback(img: HTMLImageElement) {
 
   img.dataset.goCatalogMediaFallback = 'true';
   img.dataset.goCatalogMediaOriginalSrc = originalSrc;
-  img.dataset.goCatalogMediaOriginalAlt = img.alt;
+  if (typeof img.dataset.goCatalogMediaOriginalAlt !== 'string') {
+    img.dataset.goCatalogMediaOriginalAlt = img.alt;
+  }
   img.classList.add(FALLBACK_CLASS);
   img.removeAttribute('srcset');
   img.removeAttribute('sizes');
-  img.alt = unavailableAlt(img.alt);
+  img.alt = unavailableAlt(img.dataset.goCatalogMediaOriginalAlt || img.alt);
   img.title = FALLBACK_LABEL;
   img.style.background = '#000';
   img.style.objectFit = 'contain';
@@ -44,7 +48,8 @@ function applyFallback(img: HTMLImageElement) {
 }
 
 function clearFallback(img: HTMLImageElement) {
-  if (img.dataset.goCatalogMediaFallback !== 'true') return;
+  const state = img.dataset.goCatalogMediaFallback as FallbackState | undefined;
+  if (state !== 'true' && state !== 'retrying') return;
   if (catalogMediaSource(img) === FALLBACK_DATA_URI) return;
   img.dataset.goCatalogMediaFallback = 'false';
   img.classList.remove(FALLBACK_CLASS);
@@ -61,6 +66,7 @@ function retryRecoveredNetworkImages() {
     const originalSrc = String(img.dataset.goCatalogMediaOriginalSrc || '').trim();
     if (!isCatalogMediaSource(originalSrc)) return;
     img.dataset.goCatalogMediaRetry = '1';
+    img.dataset.goCatalogMediaFallback = 'retrying';
     img.src = originalSrc;
   });
 }
