@@ -27,6 +27,7 @@ import StoreComplianceControls from './features/store/StoreComplianceControls';
 import NativeAppUpdateBanner from './features/app-update/NativeAppUpdateBanner';
 import ProductDetailConnections from './features/catalog/ProductDetailConnections';
 import ProductRecommendationsRail from './features/catalog/ProductRecommendationsRail';
+import {AuthorizationProvider} from './features/auth/AuthorizationContext';
 
 installBackendPerformanceHints();
 const initialTheme = resolveInitialTheme();
@@ -41,11 +42,13 @@ void initNativePushListeners().catch(error=>sendClientError('native.push.init',e
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <NativeAppUpdateBanner />
-      <App />
-      <ProductDetailConnections />
-      <ProductRecommendationsRail />
-      <StoreComplianceControls />
+      <AuthorizationProvider>
+        <NativeAppUpdateBanner />
+        <App />
+        <ProductDetailConnections />
+        <ProductRecommendationsRail />
+        <StoreComplianceControls />
+      </AuthorizationProvider>
     </ErrorBoundary>
   </StrictMode>,
 );
