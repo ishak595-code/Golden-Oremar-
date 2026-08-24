@@ -53,6 +53,8 @@ requireMatch(customerE2E,/if\(!fixture\)[\s\S]*return false;/,'Customer E2E must
 requireMatch(customerE2E,/if\(productAvailable\)await verifyProductCommerceJourney\(page\);else\{mark\('commerce_e2e_deferred_for_authentic_media'/,'Authenticated E2E must continue non-commerce account and staff security coverage when catalog media is intentionally quarantined.');
 requireText(customerE2E,'PUBLISHED_PRODUCT_MEDIA_PLACEHOLDER_EXPOSED','A published product must never silently pass E2E with a media placeholder.');
 forbidText(customerE2E,"const productName='Avaşin Meşe Balı'",'Customer E2E must not pin the former quarantined product as its commerce fixture.');
+forbidText(customerE2E,'noSearchResultText','No-media E2E fallback must rely on the canonical public catalog API, not a potentially hidden UI empty-state clone.');
+forbidText(customerE2E,'emptyState.waitFor','No-media E2E fallback must not wait on duplicated or hidden DOM empty-state nodes.');
 
 requireText(forensic,'NO_VERIFIED_ORIGINAL_ASSET','Forensic baseline must preserve the no-authentic-asset finding.');
 requireText(forensic,'disqualified','Demo/stock recovery candidates must remain explicitly disqualified.');
