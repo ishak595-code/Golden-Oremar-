@@ -90,10 +90,23 @@ const finalCleanup=read('supabase/migrations/20260824114642_close_final_coarse_a
 req(finalCleanup,/has_permission\('role\.manage'\)/,'Final user target-owner protection must use role.manage capability.');
 req(finalCleanup,/drop function if exists public\.admin_set_review_status/,'Deprecated coarse review mutation must be retired.');
 
+const invoker=read('supabase/migrations/20260824120406_harden_authorization_public_invoker_boundaries_v1.sql');
+for(const signature of[/create or replace function public\.authorization_context_v1\(\)[\s\S]*security invoker/i,/create or replace function public\.authorization_has_permission_v1\(p_permission_key text\)[\s\S]*security invoker/i,/create or replace function public\.admin_list_reviews\(\)[\s\S]*security invoker/i])req(invoker,signature,'Exposed authorization and review wrappers must remain SECURITY INVOKER.');
+req(invoker,/private\.authorization_context_core_v1/,'Authorization context must keep a private core.');
+req(invoker,/private\.admin_list_reviews_core_v1/,'Review list must keep a private capability-gated core.');
+req(invoker,/revoke all on function public\.authorization_policy_self_test_v1\(\) from public,anon,authenticated,service_role/i,'Authorization policy self-test must be removed from client execution.');
+req(invoker,/revoke all on function public\.authorization_enforcement_self_test_v1\(\) from public,anon,authenticated,service_role/i,'Authorization enforcement self-test must be removed from client execution.');
+req(invoker,/grant execute on function public\.authorization_policy_self_test_v1\(\) to service_role/i,'Authorization policy self-test must remain service-role maintenance only.');
+req(invoker,/grant execute on function public\.authorization_enforcement_self_test_v1\(\) to service_role/i,'Authorization enforcement self-test must remain service-role maintenance only.');
+
+const roleIndexes=read('supabase/migrations/20260824120541_index_role_permission_foreign_keys_v1.sql');
+req(roleIndexes,/role_permissions_permission_key_idx[\s\S]*private\.role_permissions\(permission_key\)/i,'Role-permission permission-key foreign key must retain its covering index.');
+req(roleIndexes,/role_permissions_granted_by_idx[\s\S]*private\.role_permissions\(granted_by\)/i,'Role-permission grant-actor foreign key must retain its covering index.');
+
 for(const file of fs.existsSync(path.join(root,'supabase/migrations'))?fs.readdirSync(path.join(root,'supabase/migrations')).filter(name=>name.startsWith('20260824')&&name.endsWith('.sql')):[]){
   const content=read(`supabase/migrations/${file}`);
   forbid(content,/drop\s+table\s+(?:if\s+exists\s+)?private\.user_roles/i,`AŞAMA 1 must not destructively drop private.user_roles: ${file}`);
 }
 
 if(failures.length){console.error('Golden Oremar authorization contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar authorization contract audit passed: eight canonical roles, capability-gated UI and RPCs, real-JWT CI denial checks, owner protections and break-glass invariants are intact.');
+console.log('Golden Oremar authorization contract audit passed: eight canonical roles, capability-gated UI and RPCs, invoker-safe public boundaries, real-JWT CI denial checks, indexed authorization foreign keys, owner protections and break-glass invariants are intact.');
