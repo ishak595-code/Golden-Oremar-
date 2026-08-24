@@ -14,7 +14,7 @@ const credentials=new Map();
 const created=[];
 
 function email(slot){return `goldenoremar+ci-e2e-${runId}-${slot}@gmail.com`;}
-function password(){return `Mfa-${randomBytes(18).toString('base64url')}!9`;} 
+function password(){return `Mfa-${randomBytes(18).toString('base64url')}!9`;}
 function client(){return createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});}
 function decodeJwt(token){const part=String(token||'').split('.')[1]||'';const padded=part.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(part.length/4)*4,'=');return JSON.parse(Buffer.from(padded,'base64').toString('utf8'));}
 function base32(secret){const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';const clean=String(secret||'').toUpperCase().replace(/=+$/,'').replace(/\s+/g,'');let bits='';for(const ch of clean){const idx=alphabet.indexOf(ch);if(idx<0)throw new Error('invalid_totp_secret');bits+=idx.toString(2).padStart(5,'0');}const bytes=[];for(let i=0;i+8<=bits.length;i+=8)bytes.push(Number.parseInt(bits.slice(i,i+8),2));return Buffer.from(bytes);}
@@ -25,7 +25,7 @@ async function provision(role,slot){const pass=password();credentials.set(slot,{
 async function signIn(c,slot){const cred=credentials.get(slot);assert.ok(cred);const{data,error}=await c.auth.signInWithPassword(cred);assert.ifError(error);assert.ok(data.session?.access_token);return data.session;}
 async function context(c){const{data,error}=await c.rpc('authorization_context_v1');assert.ifError(error);assert.ok(data&&typeof data==='object'&&!Array.isArray(data));return data;}
 async function can(c,permission){const{data,error}=await c.rpc('authorization_has_permission_v1',{p_permission_key:permission});assert.ifError(error);assert.equal(typeof data,'boolean');return data;}
-function permissionDenied(error){return Boolean(error&&(error.code==='42501'||/permission_required|admin_required|access_denied|not_allowed/i.test(String(error.message||''))));}
+function permissionDenied(error){return Boolean(error&&(error.code==='42501'||/permission_required|admin_required|access_denied|not_allowed|aal2_verified_factor_required|mfa_factor_not_owned|staff_mfa_event_required/i.test(String(error.message||''))));}
 async function expectPermissionDenied(promise,label){const{error}=await promise;assert.ok(error,`${label}: privileged RPC unexpectedly succeeded`);assert.ok(permissionDenied(error),`${label}: expected authorization denial, got ${error.code||''} ${error.message||''}`);}
 async function expectNotAuthorizationDenied(promise,label){const{error}=await promise;assert.ok(error,`${label}: random fixture unexpectedly mutated data`);assert.ok(!permissionDenied(error),`${label}: authorized role was blocked by permission gate: ${error.code||''} ${error.message||''}`);}
 async function assertAal1StaffDenied(c,expectedRole){const snap=await context(c);assert.ok(Array.isArray(snap.roles)&&snap.roles.includes(expectedRole));assert.equal(snap.staffMfaRequired,true);assert.equal(snap.mfaSatisfied,false);assert.equal(snap.authenticatorAssuranceLevel,'aal1');assert.equal(snap.canAccessAdmin,false);assert.deepEqual(snap.permissions,['mfa.self_manage']);for(const p of ['admin.access','product.moderate','seller.approve','refund.approve','refund.execute','payout.release','role.manage','system.configure'])assert.equal(await can(c,p),false,`${expectedRole} AAL1 leaked ${p}`);
@@ -47,6 +47,7 @@ async function moderatorScenario(){
   await provision('moderator','mfa-mod-a');await provision('moderator','mfa-mod-b');
   const a=client();await signIn(a,'mfa-mod-a');let snap=await assertAal1StaffDenied(a,'moderator');assert.equal(snap.staffMfaState,'enrollment_required');assert.equal(snap.staffMfaTransitionPending,true);
   const primary=await enroll(a,'CI Moderator Primary');snap=await context(a);assert.equal(snap.mfaFactorEnrolled,false);assert.deepEqual(snap.permissions,['mfa.self_manage']);
+  const forgedPrivilegedAudit=await a.rpc('mfa_record_self_event_v1',{p_event:'mfa.privileged_session_established',p_factor_id:primary.id});assert.ok(forgedPrivilegedAudit.error&&permissionDenied(forgedPrivilegedAudit.error),'AAL1/unverified factor forged privileged-session audit event unexpectedly succeeded');
   await verifyFactor(a,primary);snap=await context(a);assert.equal(snap.staffMfaState,'enforced');assert.equal(snap.staffMfaTransitionPending,false);assert.equal(snap.mfaSatisfied,true);assert.equal(await can(a,'product.moderate'),true);for(const p of ['refund.execute','payout.release','role.manage','system.configure'])assert.equal(await can(a,p),false,`moderator AAL2 leaked ${p}`);
   await expectNotAuthorizationDenied(a.rpc('admin_review_product_v3',{p_product_id:randomUUID(),p_approve:false,p_reason:'CI authorized moderator probe',p_ownership_checked:false,p_image_checked:false,p_scope_checked:false,p_origin_checked:false}),'moderator product endpoint');
   await challengeWithBadCode(a,primary);
@@ -67,9 +68,10 @@ async function moderatorScenario(){
   const refresh=await a.auth.refreshSession();assert.ifError(refresh.error);assert.equal(decodeJwt(refresh.data.session.access_token).aal,'aal2');assert.equal(await can(a,'product.moderate'),true);
 
   await control('set-block',{slot:'mfa-mod-a',blocked:true});assert.equal(await can(a,'product.moderate'),false,'blocked account retained moderator capability on old AAL2 token');snap=await context(a);assert.deepEqual(snap.permissions,[]);await control('set-block',{slot:'mfa-mod-a',blocked:false});assert.equal(await can(a,'product.moderate'),true);
-  await control('remove-staff-roles',{slot:'mfa-mod-a'});assert.equal(await can(a,'product.moderate'),false,'removed staff role retained capability on old AAL2 token');snap=await context(a);assert.ok(!snap.roles.includes('moderator'));
 
-  const auditSummary=await control('mfa-audit-summary',{slot:'mfa-mod-b'});const events=auditSummary.events||{};for(const event of ['mfa.enrollment_started','mfa.factor_verified','mfa.transition_completed','mfa.challenge_started','mfa.challenge_succeeded','mfa.privileged_session_established'])assert.ok(Number(events[event]||0)>=1,`missing MFA audit event ${event}`);
+  const auditSummary=await control('mfa-audit-summary',{slot:'mfa-mod-a'});const events=auditSummary.events||{};for(const event of ['mfa.enrollment_started','mfa.factor_verified','mfa.transition_completed','mfa.challenge_started','mfa.challenge_succeeded','mfa.challenge_failed','mfa.privileged_session_established'])assert.ok(Number(events[event]||0)>=1,`missing MFA audit event ${event}`);
+
+  await control('remove-staff-roles',{slot:'mfa-mod-a'});assert.equal(await can(a,'product.moderate'),false,'removed staff role retained capability on old AAL2 token');snap=await context(a);assert.ok(!snap.roles.includes('moderator'));
 }
 
 async function roleScenario(role,slot,allowed,denied){
