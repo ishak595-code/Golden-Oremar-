@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { AdminLayout } from '../admin/AdminLayout';
 import { firstAllowedAdminTab, isAdminTab, permissionForAdminTab, type AdminTab } from '../admin/adminCapabilities';
 import { useAuthorization } from '../features/auth/AuthorizationContext';
+import StaffMfaGate from '../features/auth/StaffMfaGate';
 
 const AdminDashboard = lazy(() => import('../admin/AdminDashboard').then(module => ({ default: module.AdminDashboard })));
 const AdminProductionReadiness = lazy(() => import('../admin/AdminProductionReadiness').then(module => ({ default: module.AdminProductionReadiness })));
@@ -43,12 +44,13 @@ function PanelLoading(){return <div className="flex min-h-[45vh] items-center ju
 function AccessDenied(){return <div className="mx-auto max-w-xl rounded-2xl border border-red-200 bg-white p-6 text-center shadow-sm dark:border-red-900/60 dark:bg-gray-900"><h2 className="text-lg font-black text-gray-900 dark:text-white">Bu yönetim alanına erişim yok</h2><p className="mt-2 text-sm text-gray-600 dark:text-gray-300">Menü görünürlüğü yalnız kullanıcı deneyimidir. Sunucu da her işlemde capability kontrolünü yeniden uygular.</p></div>;}
 
 export function AdminPage({onLogout,onBack,initialTab}:AdminPageProps){
- const{loading:authorizationLoading,can}=useAuthorization();
+ const{loading:authorizationLoading,can,snapshot,refresh}=useAuthorization();
  const[activeTab,setActiveTab]=useState<AdminTab>(()=>safeAdminTab(initialTab));
  const navigate=useCallback((value:string)=>{const tab=safeAdminTab(value);if(can(permissionForAdminTab(tab)))setActiveTab(tab);},[can]);
  useEffect(()=>{const requested=safeAdminTab(initialTab);if(authorizationLoading){setActiveTab(requested);return;}if(can(permissionForAdminTab(requested))){setActiveTab(requested);return;}const fallback=firstAllowedAdminTab(can);if(fallback)setActiveTab(fallback);},[initialTab,authorizationLoading,can]);
  useEffect(()=>{if(authorizationLoading)return;if(!can(permissionForAdminTab(activeTab))){const fallback=firstAllowedAdminTab(can);if(fallback&&fallback!==activeTab)setActiveTab(fallback);}},[activeTab,authorizationLoading,can]);
  if(authorizationLoading)return<PanelLoading/>;
+ if(snapshot?.staffMfaRequired&&!snapshot.mfaSatisfied)return<StaffMfaGate factorEnrolled={snapshot.mfaFactorEnrolled} onVerified={refresh} onLogout={onLogout}/>;
  const fallback=firstAllowedAdminTab(can);
  if(!fallback)return<AccessDenied/>;
  if(!can(permissionForAdminTab(activeTab)))return<PanelLoading/>;
