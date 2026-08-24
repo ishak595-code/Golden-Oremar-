@@ -4,7 +4,9 @@ import path from 'node:path';
 const root=process.cwd();
 const read=(relative)=>fs.readFileSync(path.join(root,relative),'utf8');
 const migrationPath='supabase/migrations/20260824172652_harden_product_media_integrity_lifecycle_v1.sql';
+const driftMigrationPath='supabase/migrations/20260824173500_add_product_media_drift_quarantine_v1.sql';
 const migration=read(migrationPath);
+const driftMigration=read(driftMigrationPath);
 const producerApi=read('src/features/producer-products/api.ts');
 const forensic=read('docs/task3-product-media-forensic-matrix.md');
 
@@ -27,6 +29,12 @@ requireText(migration,'storage_admin_public_assets_delete_v2','Admin Storage del
 requireText(migration,'storage_admin_public_assets_update_v2','Admin Storage update policy must be hardened.');
 requireMatch(migration,/not exists\([\s\S]*public\.product_images image[\s\S]*image\.storage_path=storage\.objects\.name/s,'Referenced catalog assets must not be deleted or overwritten by admin policy.');
 requireMatch(migration,/update public\.products p[\s\S]*set is_active=false[\s\S]*not private\.product_media_integrity_ok_v1\(p\.id\)/s,'Existing published products with broken media must be quarantined instead of exposed.');
+
+requireText(driftMigration,'private.quarantine_invalid_published_product_media_v1','Missing service-role drift quarantine function.');
+requireMatch(driftMigration,/update public\.products p[\s\S]*set is_active=false[\s\S]*not private\.product_media_integrity_ok_v1\(p\.id\)/s,'Drift monitor must fail closed by quarantining newly invalid published products.');
+requireText(driftMigration,'golden-oremar-product-media-integrity','Missing named media-integrity cron monitor.');
+requireText(driftMigration,"'*/5 * * * *'",'Media-integrity drift monitor must run every five minutes.');
+requireMatch(driftMigration,/revoke all on function private\.quarantine_invalid_published_product_media_v1\(\) from public,anon,authenticated,service_role/i,'Drift quarantine function must not be a client/service-role callable API.');
 
 requireMatch(producerApi,/uploadProducerProductImages[\s\S]*files\.length>10/,'Producer upload must cap the gallery at ten files.');
 requireMatch(producerApi,/image\/jpeg[\s\S]*image\/png[\s\S]*image\/webp[\s\S]*image\/avif/,'Producer upload must use the canonical image MIME allowlist.');
