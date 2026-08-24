@@ -12,8 +12,10 @@ const EXPECTED_AUDIENCE = "golden-oremar-ci-e2e";
 const EXPECTED_REPOSITORY = "ishak595-code/Golden-Oremar-";
 const EXPECTED_REPOSITORY_ID = "1335636205";
 const EXPECTED_OWNER_ID = "233486723";
-const EXPECTED_WORKFLOW = "Mobile Quality Gate";
-const EXPECTED_WORKFLOW_PATH = `${EXPECTED_REPOSITORY}/.github/workflows/mobile-quality.yml@`;
+const EXPECTED_WORKFLOW_PATHS: Record<string, string> = {
+  "Mobile Quality Gate": `${EXPECTED_REPOSITORY}/.github/workflows/mobile-quality.yml@`,
+  "Authorization Quality Gate": `${EXPECTED_REPOSITORY}/.github/workflows/authorization-quality.yml@`,
+};
 const TRUSTED_BRANCH_REFS = new Set([
   "refs/heads/main",
   "refs/heads/integration/full-consolidation-2026-08",
@@ -84,7 +86,7 @@ function cleanPhone(value: unknown) {
   return phone;
 }
 
-function verifyEventAndRef(payload: GithubClaims) {
+function verifyMobileEventAndRef(payload: GithubClaims) {
   const eventName = String(payload.event_name || "");
   const ref = String(payload.ref || "");
   if (eventName === "pull_request") {
@@ -98,6 +100,18 @@ function verifyEventAndRef(payload: GithubClaims) {
   throw new Error("github_event_not_allowed");
 }
 
+function verifyWorkflowEventAndRef(payload: GithubClaims, workflow: string) {
+  if (workflow === "Authorization Quality Gate") {
+    const eventName = String(payload.event_name || "");
+    const ref = String(payload.ref || "");
+    if ((eventName !== "push" && eventName !== "workflow_dispatch") || ref !== "refs/heads/main") {
+      throw new Error("github_authorization_workflow_ref_not_allowed");
+    }
+    return;
+  }
+  verifyMobileEventAndRef(payload);
+}
+
 async function verifyGithubOidc(req: Request, runId: string) {
   const token = bearerToken(req);
   if (!token) throw new Error("github_oidc_token_required");
@@ -107,13 +121,15 @@ async function verifyGithubOidc(req: Request, runId: string) {
     algorithms: ["RS256"],
     clockTolerance: 5,
   });
+  const workflow = String(payload.workflow || "");
+  const expectedWorkflowPath = EXPECTED_WORKFLOW_PATHS[workflow];
   const workflowRef = String(payload.workflow_ref || payload.job_workflow_ref || "");
   if (String(payload.repository || "") !== EXPECTED_REPOSITORY) throw new Error("github_repository_not_allowed");
   if (String(payload.repository_id || "") !== EXPECTED_REPOSITORY_ID) throw new Error("github_repository_id_not_allowed");
   if (String(payload.repository_owner_id || "") !== EXPECTED_OWNER_ID) throw new Error("github_owner_not_allowed");
-  if (String(payload.workflow || "") !== EXPECTED_WORKFLOW) throw new Error("github_workflow_not_allowed");
-  if (!workflowRef.includes(EXPECTED_WORKFLOW_PATH)) throw new Error("github_workflow_ref_not_allowed");
-  verifyEventAndRef(payload);
+  if (!expectedWorkflowPath) throw new Error("github_workflow_not_allowed");
+  if (!workflowRef.includes(expectedWorkflowPath)) throw new Error("github_workflow_ref_not_allowed");
+  verifyWorkflowEventAndRef(payload, workflow);
   if (String(payload.run_id || "") !== runId) throw new Error("github_run_id_mismatch");
   if (String(payload.runner_environment || "") !== "github-hosted") throw new Error("github_runner_not_allowed");
 }
