@@ -50,14 +50,27 @@ async function removeStaleUnverifiedFactors(){
   }
 }
 
-export async function beginStaffTotpEnrollment():Promise<StaffTotpEnrollment>{
-  const existing=await listStaffTotpFactors();
-  if(existing.some(factor=>factor.status==='verified'))throw new Error('Doğrulanmış bir authenticator zaten kayıtlı. Yeni kurulum yerine mevcut faktörle doğrulama yapın.');
+async function enrollTotp(friendly:string):Promise<StaffTotpEnrollment>{
   await removeStaleUnverifiedFactors();
-  const{data,error}=await supabase.auth.mfa.enroll({factorType:'totp',friendlyName:'Golden Oremar Yönetim'});
+  const{data,error}=await supabase.auth.mfa.enroll({factorType:'totp',friendlyName:friendlyName(friendly)});
   if(error)throw error;
   if(!data?.totp)throw new Error('Authenticator kurulum bilgisi alınamadı.');
   return{factorId:factorId(data.id),qrCode:qrCodeSource(data.totp.qr_code),secret:enrollmentSecret(data.totp.secret)};
+}
+
+export async function beginStaffTotpEnrollment():Promise<StaffTotpEnrollment>{
+  const existing=await listStaffTotpFactors();
+  if(existing.some(factor=>factor.status==='verified'))throw new Error('Doğrulanmış bir authenticator zaten kayıtlı. Yeni kurulum yerine mevcut faktörle doğrulama yapın.');
+  return enrollTotp('Golden Oremar Yönetim');
+}
+
+export async function beginBackupStaffTotpEnrollment():Promise<StaffTotpEnrollment>{
+  const assurance=await getAuthenticatorAssuranceLevel();
+  if(assurance.currentLevel!=='aal2')throw new Error('Yedek authenticator eklemek için önce mevcut ikinci faktörünüzle AAL2 doğrulaması yapın.');
+  const verified=(await listStaffTotpFactors()).filter(factor=>factor.status==='verified');
+  if(!verified.length)throw new Error('Yedek faktör eklemek için önce ana authenticator kurulmalıdır.');
+  if(verified.length>=9)throw new Error('Güvenlik için bu hesapta daha fazla authenticator kaydı açılamıyor.');
+  return enrollTotp(`Golden Oremar Yedek ${verified.length+1}`);
 }
 
 async function verifyChallenge(targetFactorId:string,code:string){
@@ -93,4 +106,18 @@ export async function cancelStaffTotpEnrollment(targetFactorId:string){
   const{error}=await supabase.auth.mfa.unenroll({factorId:id});
   if(error)throw error;
   return true;
+}
+
+export async function removeVerifiedStaffTotpFactor(targetFactorId:string){
+  const assurance=await getAuthenticatorAssuranceLevel();
+  if(assurance.currentLevel!=='aal2')throw new Error('Authenticator kaldırmak için AAL2 doğrulaması gereklidir.');
+  const id=factorId(targetFactorId);
+  const verified=(await listStaffTotpFactors()).filter(factor=>factor.status==='verified');
+  if(verified.length<=1)throw new Error('Son doğrulanmış authenticator kaldırılamaz. Önce yedek bir faktör ekleyin.');
+  if(!verified.some(factor=>factor.id===id))throw new Error('Kaldırılacak doğrulanmış authenticator bulunamadı.');
+  const{error}=await supabase.auth.mfa.unenroll({factorId:id});
+  if(error)throw error;
+  const refreshed=await supabase.auth.refreshSession();
+  if(refreshed.error)throw refreshed.error;
+  return listStaffTotpFactors();
 }
