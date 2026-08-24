@@ -27,7 +27,7 @@ export const ADMIN_TAB_PERMISSIONS = {
   'payment-controls':'payment.manage',
   'transactional-emails':'notification.manage',
   notifications:'notification.read',
-  'security-mfa':'security.read',
+  'security-mfa':'mfa.self_manage',
   'role-governance':'role.manage',
   'account-erasure':'user.erase',
   'system-errors':'system.read',
