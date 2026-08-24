@@ -6,6 +6,7 @@ const MAX_QR_LENGTH=512_000;
 
 export type StaffTotpFactor={id:string;friendlyName:string;status:'verified'|'unverified'};
 export type StaffTotpEnrollment={factorId:string;qrCode:string;secret:string};
+export type AuthenticatorAssuranceLevel={currentLevel:'aal1'|'aal2';nextLevel:'aal1'|'aal2'};
 
 function factorId(value:unknown){const id=typeof value==='string'?value.trim():'';if(!UUID_RE.test(id))throw new Error('MFA faktör kimliği doğrulanamadı.');return id;}
 function totpCode(value:unknown){const code=typeof value==='string'?value.replace(/\s+/g,''):'';if(!TOTP_CODE_RE.test(code))throw new Error('Doğrulama kodu 6 rakam olmalıdır.');return code;}
@@ -27,17 +28,22 @@ function normalizeTotpFactors(data:unknown):StaffTotpFactor[]{
   return factors;
 }
 
+async function recordMfaSelfEvent(event:'mfa.challenge_failed'|'mfa.privileged_session_established',targetFactorId?:string){
+  const{error}=await supabase.rpc('mfa_record_self_event_v1',{p_event:event,p_factor_id:targetFactorId?factorId(targetFactorId):null});
+  if(error)throw error;
+}
+
 export async function listStaffTotpFactors(){
   const{data,error}=await supabase.auth.mfa.listFactors();
   if(error)throw error;
   return normalizeTotpFactors(data);
 }
 
-export async function getAuthenticatorAssuranceLevel(){
+export async function getAuthenticatorAssuranceLevel():Promise<AuthenticatorAssuranceLevel>{
   const{data,error}=await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if(error)throw error;
-  const currentLevel=data?.currentLevel==='aal2'?'aal2':'aal1';
-  const nextLevel=data?.nextLevel==='aal2'?'aal2':'aal1';
+  const currentLevel:'aal1'|'aal2'=data?.currentLevel==='aal2'?'aal2':'aal1';
+  const nextLevel:'aal1'|'aal2'=data?.nextLevel==='aal2'?'aal2':'aal1';
   return{currentLevel,nextLevel};
 }
 
@@ -79,11 +85,12 @@ async function verifyChallenge(targetFactorId:string,code:string){
   if(challenge.error)throw challenge.error;
   const challengeId=factorId(challenge.data.id);
   const verification=await supabase.auth.mfa.verify({factorId:id,challengeId,code:normalizedCode});
-  if(verification.error)throw verification.error;
+  if(verification.error){await recordMfaSelfEvent('mfa.challenge_failed',id).catch(()=>undefined);throw verification.error;}
   const refreshed=await supabase.auth.refreshSession();
   if(refreshed.error)throw refreshed.error;
   const assurance=await getAuthenticatorAssuranceLevel();
   if(assurance.currentLevel!=='aal2')throw new Error('İkinci faktör doğrulandı ancak güvenli AAL2 oturumu oluşturulamadı.');
+  await recordMfaSelfEvent('mfa.privileged_session_established',id);
   return true;
 }
 

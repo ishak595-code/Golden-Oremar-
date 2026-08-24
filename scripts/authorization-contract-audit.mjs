@@ -52,7 +52,8 @@ req(ciEdge,/authorization_has_permission_v1/,'CI provisioning must test a critic
 req(ciEdge,/admin_list_platform_users_v3/,'CI provisioning must attempt a direct privileged RPC and require denial.');
 for(const capability of['admin.access','role.manage','refund.execute','payout.release','system.configure','payment.manage','security.manage','user.erase','product.remove'])req(ciEdge,new RegExp(`"${capability.replace('.','\\.')}"`),`Real-JWT CI negative test must deny ${capability}.`);
 req(ciEdge,/authorizationNegativeVerified:\s*true/,'CI provisioning must only report success after the authorization negative test passes.');
-req(ciEdge,/deleteUser\(data\.user\.id/,'Failed authorization verification must delete the disposable CI user.');
+req(ciEdge,/async function deleteCiUser\([^)]*\)[\s\S]*admin\.auth\.admin\.deleteUser\(userId,false\)/,'CI cleanup helper must hard-delete disposable users through the Auth Admin API.');
+req(ciEdge,/catch\(verificationError\)[\s\S]*deleteCiUserBestEffort\(admin,data\.user\.id\)/,'Failed authorization verification must invoke best-effort hard deletion for the disposable CI user.');
 const mobileWorkflow=read('.github/workflows/mobile-quality.yml');
 req(mobileWorkflow,/id-token:\s*write/,'Mandatory Mobile Quality Gate must retain OIDC permission.');
 req(mobileWorkflow,/audience=golden-oremar-ci-e2e/,'Mandatory Mobile Quality Gate must request the pinned CI audience.');

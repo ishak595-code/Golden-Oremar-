@@ -30,6 +30,7 @@ export const CANONICAL_PERMISSION_KEYS = [
   'support.read','support.manage',
   'audit.read','analytics.read',
   'security.read','security.manage',
+  'mfa.self_manage',
   'system.read','system.configure',
   'inventory.read','inventory.manage',
   'shipping.read','shipping.manage',

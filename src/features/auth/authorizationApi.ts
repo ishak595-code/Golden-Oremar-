@@ -13,6 +13,8 @@ export type AuthorizationContextSnapshot = {
   mfaFactorEnrolled: boolean;
   mfaSatisfied: boolean;
   mfaEnforcementActive: boolean;
+  staffMfaState: 'enrollment_required'|'enforced'|null;
+  staffMfaTransitionPending: boolean;
   authenticatorAssuranceLevel: 'aal1'|'aal2';
 };
 
@@ -21,6 +23,7 @@ function record(value:unknown):value is Record<string,unknown>{return Boolean(va
 function bool(value:unknown,label:string){if(typeof value!=='boolean')throw new Error(`${label} doğrulanamadı.`);return value;}
 function text(value:unknown,label:string,max=120){const next=typeof value==='string'?value.trim():'';if(!next||next.length>max||/[\u0000-\u001F\u007F]/.test(next))throw new Error(`${label} doğrulanamadı.`);return next;}
 function assuranceLevel(value:unknown):'aal1'|'aal2'{if(value==='aal1'||value==='aal2')return value;throw new Error('Authenticator güven seviyesi doğrulanamadı.');}
+function staffMfaState(value:unknown):'enrollment_required'|'enforced'|null{if(value===null||value===undefined)return null;if(value==='enrollment_required'||value==='enforced')return value;throw new Error('Personel MFA güvenlik durumu doğrulanamadı.');}
 
 export async function getAuthorizationContext():Promise<AuthorizationContextSnapshot>{
   const{data,error}=await supabase.rpc('authorization_context_v1');
@@ -42,13 +45,18 @@ export async function getAuthorizationContext():Promise<AuthorizationContextSnap
   const mfaFactorEnrolled=bool(data.mfaFactorEnrolled,'MFA faktör durumu');
   const mfaSatisfied=bool(data.mfaSatisfied,'MFA doğrulama durumu');
   const mfaEnforcementActive=bool(data.mfaEnforcementActive,'MFA enforcement durumu');
+  const staffMfaStateValue=staffMfaState(data.staffMfaState);
+  const staffMfaTransitionPending=bool(data.staffMfaTransitionPending,'MFA transition durumu');
   const authenticatorAssuranceLevel=assuranceLevel(data.authenticatorAssuranceLevel);
   if(canAccessAdmin!==permissions.includes('admin.access'))throw new Error('Yönetim capability cevabı tutarsız.');
   if(isSuperAdmin!==roles.includes('super_admin'))throw new Error('Super Admin rol cevabı tutarsız.');
   if(isAdmin!==(roles.includes('admin')||roles.includes('super_admin')))throw new Error('Admin rol cevabı tutarsız.');
-  if(mfaEnforcementActive!==(staffMfaRequired&&mfaFactorEnrolled))throw new Error('MFA enforcement cevabı tutarsız.');
-  if(!staffMfaRequired&&mfaSatisfied!==true)throw new Error('MFA gerektirmeyen oturum yanlış güven durumunda.');
-  if(staffMfaRequired&&mfaFactorEnrolled&&authenticatorAssuranceLevel==='aal2'&&mfaSatisfied!==true)throw new Error('AAL2 personel oturumu yanlış MFA durumunda.');
-  if(staffMfaRequired&&mfaFactorEnrolled&&authenticatorAssuranceLevel!=='aal2'&&(permissions.length!==0||canAccessAdmin))throw new Error('AAL1 personel oturumuna capability sızdı.');
-  return{userId,accountStatus,roles,permissions,canAccessAdmin,isAdmin,isSuperAdmin,staffMfaRequired,mfaFactorEnrolled,mfaSatisfied,mfaEnforcementActive,authenticatorAssuranceLevel};
+  if(mfaEnforcementActive!==staffMfaRequired)throw new Error('MFA enforcement cevabı tutarsız.');
+  if(!staffMfaRequired&&(mfaSatisfied!==true||staffMfaStateValue!==null||staffMfaTransitionPending))throw new Error('MFA gerektirmeyen oturum yanlış güven durumunda.');
+  if(staffMfaRequired&&staffMfaStateValue===null)throw new Error('Personel MFA güvenlik durumu eksik.');
+  if(staffMfaTransitionPending!==(staffMfaRequired&&staffMfaStateValue==='enrollment_required'))throw new Error('Personel MFA transition cevabı tutarsız.');
+  if(staffMfaRequired&&mfaSatisfied&&!(staffMfaStateValue==='enforced'&&mfaFactorEnrolled&&authenticatorAssuranceLevel==='aal2'))throw new Error('Personel MFA doğrulaması güvenli AAL2 koşullarını sağlamıyor.');
+  if(staffMfaRequired&&!mfaSatisfied){const unsafe=permissions.filter(permission=>permission!=='mfa.self_manage');if(unsafe.length||canAccessAdmin)throw new Error('AAL1 personel oturumuna ayrıcalıklı capability sızdı.');}
+  if(staffMfaRequired&&!permissions.includes('mfa.self_manage'))throw new Error('Personel kendi MFA faktörünü yönetme capability’sini alamadı.');
+  return{userId,accountStatus,roles,permissions,canAccessAdmin,isAdmin,isSuperAdmin,staffMfaRequired,mfaFactorEnrolled,mfaSatisfied,mfaEnforcementActive,staffMfaState:staffMfaStateValue,staffMfaTransitionPending,authenticatorAssuranceLevel};
 }
