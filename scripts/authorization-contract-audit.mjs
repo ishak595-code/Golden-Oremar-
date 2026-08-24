@@ -27,6 +27,7 @@ const mobileWorkflow=read('.github/workflows/mobile-quality.yml');req(mobileWork
 const core=read('supabase/migrations/20260824101926_add_capability_authorization_core_v1.sql');req(core,/private\.permissions/,'Canonical permission table migration is missing.');req(core,/private\.role_permissions/,'Canonical role-permission table migration is missing.');req(core,/private\.has_permission/,'Server has_permission helper is missing.');req(core,/moderator/,'Moderator role must be represented in the canonical matrix.');
 const breakGlass=read('supabase/migrations/20260824103018_add_super_admin_break_glass_bootstrap_v1.sql');req(breakGlass,/service_role/,'Break-glass Super Admin bootstrap must remain service-role only.');req(breakGlass,/pg_advisory_xact_lock/,'Break-glass bootstrap must remain concurrency protected.');
 const lastGuard=read('supabase/migrations/20260824102532_harden_role_governance_v1.sql');req(lastGuard,/protect_last_super_admin_role_v1/,'Last Super Admin protection trigger must remain present.');
+const finalCleanup=read('supabase/migrations/20260824114642_close_final_coarse_authorization_gates_v1.sql');req(finalCleanup,/has_permission\('role\.manage'\)/,'Final user target-owner protection must use role.manage capability.');req(finalCleanup,/drop function if exists public\.admin_set_review_status/,'Deprecated coarse review mutation must be retired.');
 
 const liveMirror=new Map([
 ['20260824101926_add_capability_authorization_core_v1.sql','ed7c6f79745446ea640947d5224c7970f7491a2887a94fe7b23addae757f321a'],
@@ -49,8 +50,9 @@ const liveMirror=new Map([
 ['20260824105823_fix_producer_archive_ownership_variable_collision_v1.sql','73117c271410ace948ba874a63d5b69fa50d65b1cbb30dd858b433170e1602f9'],
 ['20260824105922_add_authorization_enforcement_self_test_v1.sql','7013bfbbff4bc705c5058c5e4b7b68f046c71767814017f9ff2e85d515a3d3ce'],
 ['20260824105954_fix_authorization_enforcement_self_test_v2.sql','e66aa7d1a2ca615450a3d833b78efb675fcbcab1de561d8b99c5071304009600'],
+['20260824114642_close_final_coarse_authorization_gates_v1.sql','1d1f0b1a52510ef1d8d5a784b47eacb05843b0e3cf1e6e18abd860804b9bf4a3'],
 ]);
 for(const [file,expected] of liveMirror){const content=read(`supabase/migrations/${file}`);if(content&&normalizedSha256(content)!==expected)failures.push(`Live authorization migration mirror drift detected: ${file}`);}
-for(const file of fs.existsSync(path.join(root,'supabase/migrations'))?fs.readdirSync(path.join(root,'supabase/migrations')).filter(name=>name.startsWith('2026082410')&&name.endsWith('.sql')):[])forbid(read(`supabase/migrations/${file}`),/drop\s+table\s+(?:if\s+exists\s+)?private\.user_roles/i,`AŞAMA 1 must not destructively drop private.user_roles: ${file}`);
+for(const file of fs.existsSync(path.join(root,'supabase/migrations'))?fs.readdirSync(path.join(root,'supabase/migrations')).filter(name=>name.startsWith('20260824')&&name.endsWith('.sql')):[])forbid(read(`supabase/migrations/${file}`),/drop\s+table\s+(?:if\s+exists\s+)?private\.user_roles/i,`AŞAMA 1 must not destructively drop private.user_roles: ${file}`);
 
 if(failures.length){console.error('Golden Oremar authorization contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}console.log('Golden Oremar authorization contract audit passed: eight canonical roles, capability-gated UI, real-JWT CI denial tests, production-mirrored migrations and owner break-glass invariants are intact.');
