@@ -6,6 +6,7 @@ const MAX_QR_LENGTH=512_000;
 
 export type StaffTotpFactor={id:string;friendlyName:string;status:'verified'|'unverified'};
 export type StaffTotpEnrollment={factorId:string;qrCode:string;secret:string};
+export type AuthenticatorAssuranceLevel={currentLevel:'aal1'|'aal2';nextLevel:'aal1'|'aal2'};
 
 function factorId(value:unknown){const id=typeof value==='string'?value.trim():'';if(!UUID_RE.test(id))throw new Error('MFA faktör kimliği doğrulanamadı.');return id;}
 function totpCode(value:unknown){const code=typeof value==='string'?value.replace(/\s+/g,''):'';if(!TOTP_CODE_RE.test(code))throw new Error('Doğrulama kodu 6 rakam olmalıdır.');return code;}
@@ -38,11 +39,11 @@ export async function listStaffTotpFactors(){
   return normalizeTotpFactors(data);
 }
 
-export async function getAuthenticatorAssuranceLevel(){
+export async function getAuthenticatorAssuranceLevel():Promise<AuthenticatorAssuranceLevel>{
   const{data,error}=await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if(error)throw error;
-  const currentLevel=data?.currentLevel==='aal2'?'aal2':'aal1';
-  const nextLevel=data?.nextLevel==='aal2'?'aal2':'aal1';
+  const currentLevel:'aal1'|'aal2'=data?.currentLevel==='aal2'?'aal2':'aal1';
+  const nextLevel:'aal1'|'aal2'=data?.nextLevel==='aal2'?'aal2':'aal1';
   return{currentLevel,nextLevel};
 }
 
