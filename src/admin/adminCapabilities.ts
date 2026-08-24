@@ -7,7 +7,7 @@ export const ADMIN_TAB_PERMISSIONS = {
   'release-setup':'system.configure',
   appearance:'system.configure',
   'official-store-products':'product.update',
-  'product-health':'content.read',
+  'product-health':'product.health_manage',
   products:'product.read',
   'product-approvals':'product.moderate',
   'product-removal':'product.remove',
