@@ -11,7 +11,6 @@ const url = String(import.meta.env.VITE_SUPABASE_URL || CANONICAL_SUPABASE_URL).
 const publishableKey = String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || CANONICAL_SUPABASE_PUBLISHABLE_KEY).trim();
 const DEVICE_STORAGE_KEY = 'golden_oremar_device_id_v1';
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const PRODUCT_IMAGE_UPLOAD_RE = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/products|admin\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\/official-products)\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(?:jpg|jpeg|png|webp|avif)$/i;
 
 if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(url) || !publishableKey.startsWith('sb_publishable_')) {
   throw new Error('Invalid Supabase public client configuration.');
@@ -58,28 +57,3 @@ export const supabase = createClient(url, publishableKey, {
     detectSessionInUrl: !Capacitor.isNativePlatform(),
   },
 });
-
-// Product images are uploaded with the signed-in user's existing Storage/RLS authority,
-// then the stored binary is independently verified by an authenticated Edge Function.
-// Only canonical product-image namespaces are intercepted; videos and unrelated assets
-// continue through the normal Supabase Storage client untouched.
-const rawStorageFrom = supabase.storage.from.bind(supabase.storage);
-(supabase.storage as any).from = (bucketId: string) => {
-  const bucket = rawStorageFrom(bucketId);
-  if (bucketId !== 'catalog-public') return bucket;
-
-  const rawUpload = bucket.upload.bind(bucket);
-  (bucket as any).upload = async (path: string, body: unknown, options?: unknown) => {
-    const result = await (rawUpload as any)(path, body, options);
-    if (result?.error || !PRODUCT_IMAGE_UPLOAD_RE.test(String(path || ''))) return result;
-
-    const verification = await supabase.functions.invoke('catalog-media-verify', { body: { path } });
-    if (verification.error || verification.data?.ok !== true) {
-      await bucket.remove([path]).catch(() => undefined);
-      const message = String(verification.data?.error || verification.error?.message || 'catalog_media_verification_failed');
-      return { data: null, error: new Error(message) };
-    }
-    return result;
-  };
-  return bucket;
-};
