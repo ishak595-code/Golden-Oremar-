@@ -12,7 +12,7 @@ export const ADMIN_TAB_PERMISSIONS = {
   'product-approvals':'product.moderate',
   'product-removal':'product.remove',
   orders:'order.read',
-  returns:'refund.read',
+  returns:'refund.approve',
   stock:'inventory.read',
   'shipping-readiness':'shipping.read',
   vendors:'seller.read',
