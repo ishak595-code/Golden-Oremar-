@@ -27,9 +27,11 @@ import StoreComplianceControls from './features/store/StoreComplianceControls';
 import NativeAppUpdateBanner from './features/app-update/NativeAppUpdateBanner';
 import ProductDetailConnections from './features/catalog/ProductDetailConnections';
 import ProductRecommendationsRail from './features/catalog/ProductRecommendationsRail';
+import {installCatalogMediaFallback} from './features/catalog/installCatalogMediaFallback';
 import {AuthorizationProvider} from './features/auth/AuthorizationContext';
 
 installBackendPerformanceHints();
+installCatalogMediaFallback();
 const initialTheme = resolveInitialTheme();
 applyThemeToDocument(initialTheme);
 installCustomerShellRouteState();
