@@ -27,6 +27,11 @@ function normalizeTotpFactors(data:unknown):StaffTotpFactor[]{
   return factors;
 }
 
+async function recordMfaSelfEvent(event:'mfa.challenge_failed'|'mfa.privileged_session_established',targetFactorId?:string){
+  const{error}=await supabase.rpc('mfa_record_self_event_v1',{p_event:event,p_factor_id:targetFactorId?factorId(targetFactorId):null});
+  if(error)throw error;
+}
+
 export async function listStaffTotpFactors(){
   const{data,error}=await supabase.auth.mfa.listFactors();
   if(error)throw error;
@@ -79,11 +84,12 @@ async function verifyChallenge(targetFactorId:string,code:string){
   if(challenge.error)throw challenge.error;
   const challengeId=factorId(challenge.data.id);
   const verification=await supabase.auth.mfa.verify({factorId:id,challengeId,code:normalizedCode});
-  if(verification.error)throw verification.error;
+  if(verification.error){await recordMfaSelfEvent('mfa.challenge_failed',id).catch(()=>undefined);throw verification.error;}
   const refreshed=await supabase.auth.refreshSession();
   if(refreshed.error)throw refreshed.error;
   const assurance=await getAuthenticatorAssuranceLevel();
   if(assurance.currentLevel!=='aal2')throw new Error('İkinci faktör doğrulandı ancak güvenli AAL2 oturumu oluşturulamadı.');
+  await recordMfaSelfEvent('mfa.privileged_session_established',id);
   return true;
 }
 
