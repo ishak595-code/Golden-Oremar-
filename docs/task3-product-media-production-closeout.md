@@ -16,11 +16,12 @@ No authentic product binary was found in the inspected repository/history or liv
 
 ## Production remediation
 
-Applied live Supabase migration:
+Applied live Supabase migrations:
 
-`20260824172652_harden_product_media_integrity_lifecycle_v1`
+- `20260824172652_harden_product_media_integrity_lifecycle_v1`
+- `20260824173500_add_product_media_drift_quarantine_v1`
 
-The migration establishes one canonical server-side product-media integrity contract:
+The migrations establish one canonical server-side product-media integrity contract:
 
 1. `private.verified_catalog_product_image_path_v1` accepts only an existing, non-archived, non-delete-marker object in `catalog-public` with approved image MIME, matching extension, and size between 1 byte and 10 MiB.
 2. `private.product_media_integrity_ok_v1` requires 1-10 valid images, exactly one primary image, and no invalid gallery reference.
@@ -29,6 +30,8 @@ The migration establishes one canonical server-side product-media integrity cont
 5. Deferred constraint triggers protect the final committed state of both `public.products` and `public.product_images`. A published active product cannot commit without valid media, while an atomic old-image/new-image replacement transaction remains possible.
 6. Admin Storage update/delete policies no longer allow a referenced `catalog-public` object to be overwritten or deleted.
 7. Existing published products with invalid media were quarantined by setting `is_active=false`. Records, moderation state, audit history, prices, inventory, and product identity were preserved.
+8. A database-owned cron monitor named `golden-oremar-product-media-integrity` runs every five minutes. If a service-role or external operation later removes/corrupts a referenced Storage object outside normal RLS-protected flows, the affected published active product is automatically quarantined.
+9. The cron quarantine function is not exposed as a public, authenticated, anonymous, or service-role callable API. The scheduled database owner executes it internally.
 
 ## Post-migration production evidence
 
@@ -40,6 +43,7 @@ Immediately after migration:
 - Existing `product_images` rows: `42`.
 - Existing invalid `product_images` rows: `42`.
 - `catalog-public` Storage objects: `0`.
+- Product media drift monitor cadence: every `5` minutes.
 
 This is intentional fail-closed behavior. The platform no longer publicly exposes products whose media claims cannot be backed by a real Storage object.
 
@@ -48,7 +52,7 @@ This is intentional fail-closed behavior. The platform no longer publicly expose
 - Reactivating a quarantined published product and forcing the deferred product-media constraint to `IMMEDIATE` raised the expected `check_violation`; the test transaction rolled back.
 - Re-writing an invalid legacy product image path triggered the strict product-image Storage guard and raised the expected invalid-parameter error; the test transaction rolled back.
 
-These tests prove that the former broken state cannot be reintroduced through normal product/image writes.
+These tests prove that the former broken state cannot be reintroduced through normal product/image writes. The scheduled drift quarantine covers object-loss scenarios that can occur outside those normal writes.
 
 ## CI regression protection
 
@@ -62,6 +66,7 @@ The contract audit locks the following invariants:
 - 1-10 image limit and exactly one primary;
 - deferred publish and gallery integrity constraints;
 - admin referenced-object delete/update protection;
+- five-minute out-of-band Storage drift quarantine;
 - producer randomized immutable uploads with partial-upload cleanup;
 - forensic prohibition on demo/stock media recovery.
 
