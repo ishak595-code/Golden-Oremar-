@@ -19,6 +19,7 @@ if(workflow){
  requirePattern(workflow,/Run mandatory authenticated customer Chromium journey/,'Authenticated customer journey must remain a mandatory quality-gate step.');
  forbidPattern(workflow,/SUPABASE_SERVICE_ROLE_KEY/,'GitHub Actions must never receive the Supabase service-role credential for E2E.');
 }
+
 if(journey){
  requirePattern(journey,/AUTHENTICATED_E2E_REQUIRES_GITHUB_OIDC/,'Customer E2E must fail closed when GitHub OIDC is unavailable.');
  requirePattern(journey,/inspectRegistrationUi\(page\)/,'Customer E2E must exercise the real registration UI contract before provisioning.');
@@ -34,29 +35,37 @@ if(journey){
  requirePattern(journey,/profile_update_roundtrip/,'Customer E2E must verify profile persistence.');
  requirePattern(journey,/favorite_roundtrip/,'Customer E2E must verify favorite persistence.');
  requirePattern(journey,/buy_now_to_cart/,'Customer E2E must verify Buy Now to cart routing.');
+ requirePattern(journey,/import\('\.\/staff-mfa-e2e\.mjs'\)/,'Authenticated customer E2E must execute the real staff MFA attack matrix on the same run.');
  forbidPattern(journey,/createClient\([^\n]*serviceRole|SUPABASE_SERVICE_ROLE_KEY/,'Browser E2E code must not receive or use service-role credentials.');
 }
+
 if(control){
  requirePattern(control,/EXPECTED_REPOSITORY_ID\s*=\s*"1335636205"/,'CI control must pin the immutable Golden Oremar repository id.');
  requirePattern(control,/EXPECTED_OWNER_ID\s*=\s*"233486723"/,'CI control must pin the immutable repository owner id.');
  requirePattern(control,/EXPECTED_AUDIENCE\s*=\s*"golden-oremar-ci-e2e"/,'CI control must pin the dedicated OIDC audience.');
- requirePattern(control,/jwtVerify<.*>\(token, GITHUB_JWKS/,'CI control must cryptographically verify GitHub OIDC tokens.');
- requirePattern(control,/TRUSTED_BRANCH_REFS\s*=\s*new Set\(\[[\s\S]*"refs\/heads\/main"[\s\S]*"refs\/heads\/integration\/full-consolidation-2026-08"[\s\S]*"refs\/heads\/release\/store-readiness-2026-08"[\s\S]*\]\)/,'Push/workflow-dispatch E2E must be restricted to the explicitly trusted main, consolidation and store-readiness branches.');
+ requirePattern(control,/jwtVerify\s*<[^>]+>\s*\(\s*token\s*,\s*GITHUB_JWKS/,'CI control must cryptographically verify GitHub OIDC tokens.');
+ requirePattern(control,/TRUSTED_BRANCH_REFS\s*=\s*new Set\s*\(\s*\[[\s\S]*"refs\/heads\/main"[\s\S]*"refs\/heads\/integration\/full-consolidation-2026-08"[\s\S]*"refs\/heads\/release\/store-readiness-2026-08"[\s\S]*\]\s*\)/,'Push/workflow-dispatch E2E must be restricted to the explicitly trusted branches.');
  requirePattern(control,/PULL_REQUEST_REF_RE\s*=\s*\/\^refs\\\/pull\\\/\\d\{1,12\}\\\/merge\$\//,'Pull-request E2E must require a canonical refs/pull/<id>/merge ref.');
- requirePattern(control,/eventName === "pull_request"[\s\S]*PULL_REQUEST_REF_RE\.test\(ref\)/,'Pull-request OIDC events must validate their ref.');
- requirePattern(control,/eventName === "push" \|\| eventName === "workflow_dispatch"[\s\S]*TRUSTED_BRANCH_REFS\.has\(ref\)/,'Push and workflow-dispatch OIDC events must fail closed outside trusted branch refs.');
+ requirePattern(control,/eventName\s*===\s*"pull_request"[\s\S]*PULL_REQUEST_REF_RE\.test\(ref\)/,'Pull-request OIDC events must validate their ref.');
+ requirePattern(control,/eventName\s*===\s*"push"\s*\|\|\s*eventName\s*===\s*"workflow_dispatch"[\s\S]*TRUSTED_BRANCH_REFS\.has\(ref\)/,'Push and workflow-dispatch OIDC events must fail closed outside trusted branch refs.');
  requirePattern(control,/verifyEventAndRef\(payload\)/,'CI control must validate GitHub event and ref after cryptographic claim checks.');
- requirePattern(control,/type Action = "provision" \| "confirm" \| "delete"/,'CI control must expose the provision and cleanup actions required by the authenticated E2E model.');
- requirePattern(control,/action === "provision"/,'CI control must implement protected disposable-user provisioning.');
- requirePattern(control,/admin\.auth\.admin\.createUser/,'CI control must create the disposable Auth user server-side.');
- requirePattern(control,/email_confirm:\s*true/,'CI control must provision the disposable E2E user as email-confirmed.');
+ for(const action of['provision','confirm','delete','provision-staff','remove-staff-roles','set-block','mfa-audit-summary'])requirePattern(control,new RegExp(`type Action=[^;]*"${action.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}"`),`CI control Action union must include ${action}.`);
+ requirePattern(control,/action===?"provision"\|\|action===?"provision-staff"/,'CI control must implement protected customer and staff provisioning.');
+ requirePattern(control,/admin\.auth\.admin\.createUser/,'CI control must create disposable Auth users server-side.');
+ requirePattern(control,/email_confirm:\s*true/,'CI control must provision disposable E2E users as email-confirmed.');
  requirePattern(control,/SUPABASE_SERVICE_ROLE_KEY/,'CI control must keep Auth admin operations server-side.');
- requirePattern(control,/emailForRun\(runId\)/,'CI control must derive the disposable account email from the verified run id.');
- requirePattern(control,/action === "delete"/,'CI control must support idempotent hard cleanup.');
+ requirePattern(control,/emailForRun\(runId,slot\)/,'CI control must derive disposable account identity from verified run id plus constrained slot.');
+ requirePattern(control,/if\(action==="delete"\)[\s\S]*deleteCiUser\(admin,String\(existing\.id\)\)/,'CI control must perform strict idempotent cleanup through the canonical delete helper.');
+ requirePattern(control,/async function removeCiStaffRoles\([\s\S]*await admin\.rpc\("ci_remove_e2e_staff_roles_for_service_v1"[\s\S]*if\(error\)throw error/,'CI role cleanup must await and inspect the Supabase RPC result explicitly.');
+ requirePattern(control,/async function deleteCiUser\([\s\S]*removeCiStaffRoles\(admin,userId\)[\s\S]*admin\.auth\.admin\.deleteUser\(userId,false\)/,'CI user cleanup must remove disposable staff roles before Auth hard deletion.');
+ forbidPattern(control,/admin\.rpc\([^;\n]+\)\.catch\s*\(/,'Supabase RPC builders must not be treated as native Promises with .catch(); await and inspect their error result instead.');
+ requirePattern(control,/authorization_negative_customer_mfa_audit_forgery/,'Disposable customer provisioning must prove non-staff cannot forge MFA audit events.');
+ requirePattern(control,/runner_environment/,'CI control must pin execution to GitHub-hosted runners.');
 }
+
 if(controlConfig){
  requirePattern(controlConfig,/"jose":\s*"npm:jose@6\.2\.9"/,'CI control JWT verification dependency must stay pinned.');
 }
 
 if(failures.length){console.error('Golden Oremar authenticated E2E contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar authenticated E2E contract audit passed: the real registration UI is exercised, GitHub OIDC is cryptographically pinned to the repository/workflow/run/hosted runner and trusted event refs, disposable accounts are provisioned server-side, login runs through the real UI, cleanup is mandatory, and service-role credentials never enter Actions.');
+console.log('Golden Oremar authenticated E2E contract audit passed: real customer and staff journeys are mandatory, GitHub OIDC is cryptographically pinned, disposable identities are server-provisioned, Supabase RPC cleanup semantics are correct, cleanup is strict, and service-role credentials never enter Actions.');
