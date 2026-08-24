@@ -95,7 +95,7 @@ const adminPage=read('src/pages/AdminPage.tsx');
 req(adminPage,/StaffMfaGate/,'Admin workspace must mount the staff MFA gate.');
 req(adminPage,/snapshot\?\.staffMfaRequired&&!snapshot\.mfaSatisfied/,'Admin workspace must gate unsatisfied staff MFA.');
 req(adminPage,/case'security-mfa':return<AdminMfaSecurity\/>/,'Admin workspace must expose the personal MFA management surface.');
-const gateIndex=adminPage.indexOf("if(snapshot?.staffMfaRequired&&!snapshot.mfaSatisfied)");const fallbackIndex=adminPage.indexOf('const fallback=firstAllowedAdminTab(can);');if(gateIndex<0||fallbackIndex<0||gateIndex>fallbackIndex)failures.push('MFA gate must run before permission fallback.');
+const gateIndex=adminPage.indexOf("if(snapshot?.staffMfaRequired&&!snapshot.mfaSatisfied)");const fallbackIndex=adminPage.lastIndexOf('const fallback=firstAllowedAdminTab(can);');if(gateIndex<0||fallbackIndex<0||gateIndex>fallbackIndex)failures.push('MFA gate must run before the render-time permission fallback.');
 
 const staffE2E=read('scripts/staff-mfa-e2e.mjs');
 for(const marker of['assertAal1StaffDenied','mfa-mod-a','mfa-mod-b','mfa-admin','mfa-super','other-user factor ID','last verified staff factor deletion','set-block','remove-staff-roles','Super Admin does not receive the complete active capability set','AAL1/unverified factor forged privileged-session audit event','mfa.challenge_failed'])req(staffE2E,new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'),`Live staff MFA E2E is missing ${marker}.`);
