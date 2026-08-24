@@ -3,250 +3,59 @@ import { createClient } from "@supabase/supabase-js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 
 const GITHUB_ISSUER = "https://token.actions.githubusercontent.com";
-const GITHUB_JWKS = createRemoteJWKSet(new URL(`${GITHUB_ISSUER}/.well-known/jwks`), {
-  timeoutDuration: 5000,
-  cooldownDuration: 30_000,
-  cacheMaxAge: 10 * 60_000,
-});
+const GITHUB_JWKS = createRemoteJWKSet(new URL(`${GITHUB_ISSUER}/.well-known/jwks`), { timeoutDuration: 5000, cooldownDuration: 30_000, cacheMaxAge: 10 * 60_000 });
 const EXPECTED_AUDIENCE = "golden-oremar-ci-e2e";
 const EXPECTED_REPOSITORY = "ishak595-code/Golden-Oremar-";
 const EXPECTED_REPOSITORY_ID = "1335636205";
 const EXPECTED_OWNER_ID = "233486723";
 const EXPECTED_WORKFLOW = "Mobile Quality Gate";
 const EXPECTED_WORKFLOW_PATH = `${EXPECTED_REPOSITORY}/.github/workflows/mobile-quality.yml@`;
-const TRUSTED_BRANCH_REFS = new Set([
-  "refs/heads/main",
-  "refs/heads/integration/full-consolidation-2026-08",
-  "refs/heads/release/store-readiness-2026-08",
-]);
+const TRUSTED_BRANCH_REFS = new Set(["refs/heads/main","refs/heads/integration/full-consolidation-2026-08","refs/heads/release/store-readiness-2026-08"]);
 const PULL_REQUEST_REF_RE = /^refs\/pull\/\d{1,12}\/merge$/;
 const RUN_ID_RE = /^\d{1,24}$/;
+const SLOT_RE = /^[a-z0-9-]{1,24}$/;
 const PASSWORD_RE = /^[^\u0000-\u001F\u007F]{12,72}$/;
 const PHONE_RE = /^\+[1-9][0-9]{9,14}$/;
-const FORBIDDEN_CUSTOMER_PERMISSIONS = [
-  "admin.access",
-  "role.manage",
-  "refund.execute",
-  "payout.release",
-  "system.configure",
-  "payment.manage",
-  "security.manage",
-  "user.erase",
-  "product.remove",
-] as const;
+const STAFF_ROLES = new Set(["moderator","admin","super_admin"]);
+const FORBIDDEN_CUSTOMER_PERMISSIONS = ["admin.access","role.manage","refund.execute","payout.release","system.configure","payment.manage","security.manage","user.erase","product.remove","mfa.self_manage"] as const;
 
-type Action = "provision" | "confirm" | "delete";
-type GithubClaims = {
-  repository?: string;
-  repository_id?: string;
-  repository_owner_id?: string;
-  workflow?: string;
-  workflow_ref?: string;
-  job_workflow_ref?: string;
-  event_name?: string;
-  ref?: string;
-  run_id?: string;
-  runner_environment?: string;
-};
-type Body = {
-  action?: unknown;
-  runId?: unknown;
-  password?: unknown;
-  displayName?: unknown;
-  phone?: unknown;
-};
+type Action = "provision"|"confirm"|"delete"|"provision-staff"|"remove-staff-roles"|"set-block";
+type GithubClaims = {repository?:string;repository_id?:string;repository_owner_id?:string;workflow?:string;workflow_ref?:string;job_workflow_ref?:string;event_name?:string;ref?:string;run_id?:string;runner_environment?:string;};
+type Body = {action?:unknown;runId?:unknown;password?:unknown;displayName?:unknown;phone?:unknown;slot?:unknown;staffRole?:unknown;blocked?:unknown;};
 
-function json(body: unknown, status = 200) {
-  return Response.json(body, {
-    status,
-    headers: {
-      "Cache-Control": "no-store",
-      "Content-Type": "application/json; charset=utf-8",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
-}
+function json(body:unknown,status=200){return Response.json(body,{status,headers:{"Cache-Control":"no-store","Content-Type":"application/json; charset=utf-8","X-Content-Type-Options":"nosniff"}});}
+function bearerToken(req:Request){const value=String(req.headers.get("authorization")||"").trim();return value.toLowerCase().startsWith("bearer ")?value.slice(7).trim():"";}
+function cleanSlot(value:unknown){const slot=String(value||"").trim().toLowerCase();if(!slot)return"";if(!SLOT_RE.test(slot))throw new Error("invalid_slot");return slot;}
+function emailForRun(runId:string,slot:string){return `goldenoremar+ci-e2e-${runId}${slot?`-${slot}`:""}@gmail.com`;}
+function cleanDisplayName(value:unknown){const normalized=String(value||"").trim().replace(/\s+/g," ");if(normalized.length<2||normalized.length>120||/[\u0000-\u001F\u007F]/.test(normalized))throw new Error("invalid_display_name");return normalized;}
+function cleanPassword(value:unknown){const password=typeof value==="string"?value:"";if(!PASSWORD_RE.test(password))throw new Error("invalid_password");return password;}
+function cleanPhone(value:unknown){const phone=String(value||"").trim();if(!PHONE_RE.test(phone))throw new Error("invalid_phone");return phone;}
+function cleanStaffRole(value:unknown){const role=String(value||"").trim().toLowerCase();if(!STAFF_ROLES.has(role))throw new Error("invalid_staff_role");return role;}
+function verifyEventAndRef(payload:GithubClaims){const eventName=String(payload.event_name||"");const ref=String(payload.ref||"");if(eventName==="pull_request"){if(!PULL_REQUEST_REF_RE.test(ref))throw new Error("github_ref_not_allowed");return;}if(eventName==="push"||eventName==="workflow_dispatch"){if(!TRUSTED_BRANCH_REFS.has(ref))throw new Error("github_ref_not_allowed");return;}throw new Error("github_event_not_allowed");}
+async function verifyGithubOidc(req:Request,runId:string){const token=bearerToken(req);if(!token)throw new Error("github_oidc_token_required");const{payload}=await jwtVerify<GithubClaims>(token,GITHUB_JWKS,{issuer:GITHUB_ISSUER,audience:EXPECTED_AUDIENCE,algorithms:["RS256"],clockTolerance:5});const workflowRef=String(payload.workflow_ref||payload.job_workflow_ref||"");if(String(payload.repository||"")!==EXPECTED_REPOSITORY)throw new Error("github_repository_not_allowed");if(String(payload.repository_id||"")!==EXPECTED_REPOSITORY_ID)throw new Error("github_repository_id_not_allowed");if(String(payload.repository_owner_id||"")!==EXPECTED_OWNER_ID)throw new Error("github_owner_not_allowed");if(String(payload.workflow||"")!==EXPECTED_WORKFLOW)throw new Error("github_workflow_not_allowed");if(!workflowRef.includes(EXPECTED_WORKFLOW_PATH))throw new Error("github_workflow_ref_not_allowed");verifyEventAndRef(payload);if(String(payload.run_id||"")!==runId)throw new Error("github_run_id_mismatch");if(String(payload.runner_environment||"")!=="github-hosted")throw new Error("github_runner_not_allowed");}
 
-function bearerToken(req: Request) {
-  const value = String(req.headers.get("authorization") || "").trim();
-  if (!value.toLowerCase().startsWith("bearer ")) return "";
-  return value.slice(7).trim();
-}
+async function findUserByEmail(supabaseUrl:string,serviceRole:string,email:string){const endpoint=new URL(`${supabaseUrl.replace(/\/+$/,"")}/auth/v1/admin/users`);endpoint.searchParams.set("filter",email);endpoint.searchParams.set("page","1");endpoint.searchParams.set("per_page","50");const response=await fetch(endpoint,{headers:{apikey:serviceRole,Authorization:`Bearer ${serviceRole}`,Accept:"application/json"}});if(!response.ok)throw new Error(`auth_admin_lookup_failed_${response.status}`);const body=await response.json().catch(()=>({}));const users=Array.isArray(body?.users)?body.users:Array.isArray(body)?body:[];return users.find((user:any)=>String(user?.email||"").toLowerCase()===email.toLowerCase())||null;}
 
-function emailForRun(runId: string) {
-  return `goldenoremar+ci-e2e-${runId}@gmail.com`;
-}
+async function verifyDisposableCustomerAuthorization(supabaseUrl:string,anonKey:string,email:string,password:string){const customer=createClient(supabaseUrl,anonKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});const{data:signInData,error:signInError}=await customer.auth.signInWithPassword({email,password});if(signInError||!signInData.session?.access_token)throw new Error("authorization_negative_customer_sign_in_failed");try{const{data:context,error:contextError}=await customer.rpc("authorization_context_v1");if(contextError||!context||typeof context!=="object"||Array.isArray(context))throw new Error("authorization_negative_context_failed");const snapshot=context as Record<string,unknown>;const roles=Array.isArray(snapshot.roles)?snapshot.roles.map(String):[];const permissions=Array.isArray(snapshot.permissions)?snapshot.permissions.map(String):[];if(!roles.includes("customer"))throw new Error("authorization_negative_customer_role_missing");if(roles.some(role=>["support","content_editor","operations","moderator","admin","super_admin"].includes(role)))throw new Error("authorization_negative_management_role_leak");if(snapshot.canAccessAdmin!==false)throw new Error("authorization_negative_admin_shell_escalation");if(FORBIDDEN_CUSTOMER_PERMISSIONS.some(permission=>permissions.includes(permission)))throw new Error("authorization_negative_critical_capability_leak");const{data:canManageRoles,error:permissionError}=await customer.rpc("authorization_has_permission_v1",{p_permission_key:"role.manage"});if(permissionError||canManageRoles!==false)throw new Error("authorization_negative_role_manage_escalation");const{error:privilegedError}=await customer.rpc("admin_list_platform_users_v3");if(!privilegedError)throw new Error("authorization_negative_direct_admin_rpc_escalation");}finally{await customer.auth.signOut().catch(()=>undefined);}}
 
-function cleanDisplayName(value: unknown) {
-  const normalized = String(value || "").trim().replace(/\s+/g, " ");
-  if (normalized.length < 2 || normalized.length > 120 || /[\u0000-\u001F\u007F]/.test(normalized)) throw new Error("invalid_display_name");
-  return normalized;
-}
+Deno.serve(async(req)=>{if(req.method!=="POST")return json({ok:false,error:"method_not_allowed"},405);try{const body=await req.json().catch(()=>null) as Body|null;const action=String(body?.action||"") as Action;const runId=String(body?.runId||"").trim();if(!(["provision","confirm","delete","provision-staff","remove-staff-roles","set-block"] as string[]).includes(action))return json({ok:false,error:"invalid_action"},400);if(!RUN_ID_RE.test(runId))return json({ok:false,error:"invalid_run_id"},400);const slot=cleanSlot(body?.slot);await verifyGithubOidc(req,runId);
+  const supabaseUrl=String(Deno.env.get("SUPABASE_URL")||"").trim();const anonKey=String(Deno.env.get("SUPABASE_ANON_KEY")||"").trim();const serviceRole=String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"").trim();if(!supabaseUrl||!anonKey||!serviceRole)throw new Error("supabase_admin_runtime_missing");const admin=createClient(supabaseUrl,serviceRole,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});const email=emailForRun(runId,slot);const existing=await findUserByEmail(supabaseUrl,serviceRole,email);
 
-function cleanPassword(value: unknown) {
-  const password = typeof value === "string" ? value : "";
-  if (!PASSWORD_RE.test(password)) throw new Error("invalid_password");
-  return password;
-}
+  if(action==="delete"){if(!existing?.id)return json({ok:true,deleted:false,alreadyAbsent:true});await admin.rpc("ci_remove_e2e_staff_roles_for_service_v1",{p_user_id:String(existing.id)}).catch(()=>undefined);const{error}=await admin.auth.admin.deleteUser(String(existing.id),false);if(error)throw error;return json({ok:true,deleted:true});}
+  if(action==="remove-staff-roles"){if(!existing?.id)return json({ok:false,error:"e2e_user_not_found"},404);const{error}=await admin.rpc("ci_remove_e2e_staff_roles_for_service_v1",{p_user_id:String(existing.id)});if(error)throw error;return json({ok:true,rolesRemoved:true});}
+  if(action==="set-block"){if(!existing?.id)return json({ok:false,error:"e2e_user_not_found"},404);if(typeof body?.blocked!=="boolean")throw new Error("invalid_blocked_state");const{error}=await admin.rpc("ci_set_e2e_account_block_for_service_v1",{p_user_id:String(existing.id),p_blocked:body.blocked});if(error)throw error;return json({ok:true,blocked:body.blocked});}
 
-function cleanPhone(value: unknown) {
-  const phone = String(value || "").trim();
-  if (!PHONE_RE.test(phone)) throw new Error("invalid_phone");
-  return phone;
-}
-
-function verifyEventAndRef(payload: GithubClaims) {
-  const eventName = String(payload.event_name || "");
-  const ref = String(payload.ref || "");
-  if (eventName === "pull_request") {
-    if (!PULL_REQUEST_REF_RE.test(ref)) throw new Error("github_ref_not_allowed");
-    return;
+  if(action==="provision"||action==="provision-staff"){
+    const password=cleanPassword(body?.password);const displayName=cleanDisplayName(body?.displayName);const phone=action==="provision"?cleanPhone(body?.phone):String(body?.phone||"").trim();const staffRole=action==="provision-staff"?cleanStaffRole(body?.staffRole):"";
+    if(existing?.id){await admin.rpc("ci_remove_e2e_staff_roles_for_service_v1",{p_user_id:String(existing.id)}).catch(()=>undefined);const{error}=await admin.auth.admin.deleteUser(String(existing.id),false);if(error)throw error;}
+    const metadata:Record<string,string>={display_name:displayName,locale:"tr",e2e_run_id:runId,source:"github-actions-e2e"};if(phone)metadata.phone=phone;if(slot)metadata.e2e_slot=slot;
+    const{data,error}=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:metadata});if(error)throw error;if(!data.user?.id)throw new Error("e2e_user_provision_failed");
+    try{
+      if(action==="provision"){await verifyDisposableCustomerAuthorization(supabaseUrl,anonKey,email,password);return json({ok:true,provisioned:true,emailConfirmed:Boolean(data.user.email_confirmed_at),authorizationNegativeVerified:true});}
+      const{error:roleError}=await admin.rpc("ci_set_e2e_staff_role_for_service_v1",{p_user_id:data.user.id,p_role:staffRole,p_slot:slot||null});if(roleError)throw roleError;
+      return json({ok:true,provisioned:true,staffRole,slot,userId:data.user.id});
+    }catch(verificationError){await admin.rpc("ci_remove_e2e_staff_roles_for_service_v1",{p_user_id:data.user.id}).catch(()=>undefined);await admin.auth.admin.deleteUser(data.user.id,false).catch(()=>undefined);throw verificationError;}
   }
-  if (eventName === "push" || eventName === "workflow_dispatch") {
-    if (!TRUSTED_BRANCH_REFS.has(ref)) throw new Error("github_ref_not_allowed");
-    return;
-  }
-  throw new Error("github_event_not_allowed");
-}
 
-async function verifyGithubOidc(req: Request, runId: string) {
-  const token = bearerToken(req);
-  if (!token) throw new Error("github_oidc_token_required");
-  const { payload } = await jwtVerify<GithubClaims>(token, GITHUB_JWKS, {
-    issuer: GITHUB_ISSUER,
-    audience: EXPECTED_AUDIENCE,
-    algorithms: ["RS256"],
-    clockTolerance: 5,
-  });
-  const workflowRef = String(payload.workflow_ref || payload.job_workflow_ref || "");
-  if (String(payload.repository || "") !== EXPECTED_REPOSITORY) throw new Error("github_repository_not_allowed");
-  if (String(payload.repository_id || "") !== EXPECTED_REPOSITORY_ID) throw new Error("github_repository_id_not_allowed");
-  if (String(payload.repository_owner_id || "") !== EXPECTED_OWNER_ID) throw new Error("github_owner_not_allowed");
-  if (String(payload.workflow || "") !== EXPECTED_WORKFLOW) throw new Error("github_workflow_not_allowed");
-  if (!workflowRef.includes(EXPECTED_WORKFLOW_PATH)) throw new Error("github_workflow_ref_not_allowed");
-  verifyEventAndRef(payload);
-  if (String(payload.run_id || "") !== runId) throw new Error("github_run_id_mismatch");
-  if (String(payload.runner_environment || "") !== "github-hosted") throw new Error("github_runner_not_allowed");
-}
-
-async function findUserByEmail(supabaseUrl: string, serviceRole: string, email: string) {
-  const endpoint = new URL(`${supabaseUrl.replace(/\/+$/, "")}/auth/v1/admin/users`);
-  endpoint.searchParams.set("filter", email);
-  endpoint.searchParams.set("page", "1");
-  endpoint.searchParams.set("per_page", "50");
-  const response = await fetch(endpoint, {
-    headers: { apikey: serviceRole, Authorization: `Bearer ${serviceRole}`, Accept: "application/json" },
-  });
-  if (!response.ok) throw new Error(`auth_admin_lookup_failed_${response.status}`);
-  const body = await response.json().catch(() => ({}));
-  const users = Array.isArray(body?.users) ? body.users : Array.isArray(body) ? body : [];
-  return users.find((user: any) => String(user?.email || "").toLowerCase() === email.toLowerCase()) || null;
-}
-
-async function verifyDisposableCustomerAuthorization(supabaseUrl: string, anonKey: string, email: string, password: string) {
-  const customer = createClient(supabaseUrl, anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-  });
-  const { data: signInData, error: signInError } = await customer.auth.signInWithPassword({ email, password });
-  if (signInError || !signInData.session?.access_token) throw new Error("authorization_negative_customer_sign_in_failed");
-  try {
-    const { data: context, error: contextError } = await customer.rpc("authorization_context_v1");
-    if (contextError || !context || typeof context !== "object" || Array.isArray(context)) throw new Error("authorization_negative_context_failed");
-    const snapshot = context as Record<string, unknown>;
-    const roles = Array.isArray(snapshot.roles) ? snapshot.roles.map(String) : [];
-    const permissions = Array.isArray(snapshot.permissions) ? snapshot.permissions.map(String) : [];
-    if (!roles.includes("customer")) throw new Error("authorization_negative_customer_role_missing");
-    if (roles.some((role) => ["support", "content_editor", "operations", "moderator", "admin", "super_admin"].includes(role))) {
-      throw new Error("authorization_negative_management_role_leak");
-    }
-    if (snapshot.canAccessAdmin !== false) throw new Error("authorization_negative_admin_shell_escalation");
-    if (FORBIDDEN_CUSTOMER_PERMISSIONS.some((permission) => permissions.includes(permission))) {
-      throw new Error("authorization_negative_critical_capability_leak");
-    }
-
-    const { data: canManageRoles, error: permissionError } = await customer.rpc("authorization_has_permission_v1", { p_permission_key: "role.manage" });
-    if (permissionError || canManageRoles !== false) throw new Error("authorization_negative_role_manage_escalation");
-
-    const { error: privilegedError } = await customer.rpc("admin_list_platform_users_v3");
-    if (!privilegedError) throw new Error("authorization_negative_direct_admin_rpc_escalation");
-  } finally {
-    await customer.auth.signOut().catch(() => undefined);
-  }
-}
-
-Deno.serve(async (req) => {
-  if (req.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405);
-  try {
-    const body = await req.json().catch(() => null) as Body | null;
-    const action = String(body?.action || "") as Action;
-    const runId = String(body?.runId || "").trim();
-    if (!(["provision", "confirm", "delete"] as string[]).includes(action)) return json({ ok: false, error: "invalid_action" }, 400);
-    if (!RUN_ID_RE.test(runId)) return json({ ok: false, error: "invalid_run_id" }, 400);
-    await verifyGithubOidc(req, runId);
-
-    const supabaseUrl = String(Deno.env.get("SUPABASE_URL") || "").trim();
-    const anonKey = String(Deno.env.get("SUPABASE_ANON_KEY") || "").trim();
-    const serviceRole = String(Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
-    if (!supabaseUrl || !anonKey || !serviceRole) throw new Error("supabase_admin_runtime_missing");
-    const admin = createClient(supabaseUrl, serviceRole, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    });
-    const email = emailForRun(runId);
-    const existing = await findUserByEmail(supabaseUrl, serviceRole, email);
-
-    if (action === "delete") {
-      if (!existing?.id) return json({ ok: true, deleted: false, alreadyAbsent: true });
-      const { error } = await admin.auth.admin.deleteUser(String(existing.id), false);
-      if (error) throw error;
-      return json({ ok: true, deleted: true });
-    }
-
-    if (action === "provision") {
-      const password = cleanPassword(body?.password);
-      const displayName = cleanDisplayName(body?.displayName);
-      const phone = cleanPhone(body?.phone);
-      if (existing?.id) {
-        const { error } = await admin.auth.admin.deleteUser(String(existing.id), false);
-        if (error) throw error;
-      }
-      const { data, error } = await admin.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          display_name: displayName,
-          phone,
-          locale: "tr",
-          e2e_run_id: runId,
-          source: "github-actions-e2e",
-        },
-      });
-      if (error) throw error;
-      if (!data.user?.id) throw new Error("e2e_user_provision_failed");
-      try {
-        await verifyDisposableCustomerAuthorization(supabaseUrl, anonKey, email, password);
-      } catch (verificationError) {
-        await admin.auth.admin.deleteUser(data.user.id, false).catch(() => undefined);
-        throw verificationError;
-      }
-      return json({
-        ok: true,
-        provisioned: true,
-        emailConfirmed: Boolean(data.user.email_confirmed_at),
-        authorizationNegativeVerified: true,
-      });
-    }
-
-    if (!existing?.id) return json({ ok: false, error: "e2e_user_not_found" }, 404);
-    if (!existing.email_confirmed_at) {
-      const { error } = await admin.auth.admin.updateUserById(String(existing.id), { email_confirm: true });
-      if (error) throw error;
-    }
-    return json({ ok: true, confirmed: true });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "unexpected_error";
-    console.error("ci-e2e-user", message);
-    const status = message.startsWith("github_") ? 403 : message.startsWith("invalid_") ? 400 : 500;
-    return json({ ok: false, error: message }, status);
-  }
-});
+  if(!existing?.id)return json({ok:false,error:"e2e_user_not_found"},404);if(!existing.email_confirmed_at){const{error}=await admin.auth.admin.updateUserById(String(existing.id),{email_confirm:true});if(error)throw error;}return json({ok:true,confirmed:true});
+}catch(error){const message=error instanceof Error?error.message:"unexpected_error";console.error("ci-e2e-user",message);const status=message.startsWith("github_")?403:message.startsWith("invalid_")?400:500;return json({ok:false,error:message},status);}});
