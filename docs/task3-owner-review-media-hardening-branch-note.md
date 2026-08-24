@@ -1,1 +1,0 @@
-Task 3 owner review and media hardening work continues from main commit cede8b72b0f22550bbc7ad0614de9a8057771b65. This note exists only to keep the branch lineage explicit.
