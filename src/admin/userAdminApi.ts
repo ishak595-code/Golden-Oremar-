@@ -6,6 +6,7 @@ export type AdminPlatformUserRole =
   | 'support'
   | 'content_editor'
   | 'operations'
+  | 'moderator'
   | 'admin'
   | 'super_admin';
 
@@ -49,6 +50,7 @@ export const ADMIN_PLATFORM_USER_ROLES: readonly AdminPlatformUserRole[] = [
   'support',
   'content_editor',
   'operations',
+  'moderator',
   'admin',
   'super_admin',
 ] as const;
@@ -61,10 +63,11 @@ const ROLE_PRIORITY: Record<AdminPlatformUserRole, number> = {
   super_admin: 1,
   admin: 2,
   operations: 3,
-  content_editor: 4,
-  support: 5,
-  producer: 6,
-  customer: 7,
+  moderator: 4,
+  content_editor: 5,
+  support: 6,
+  producer: 7,
+  customer: 8,
 };
 
 function unwrap<T>(data: T | null, error: unknown): T {
