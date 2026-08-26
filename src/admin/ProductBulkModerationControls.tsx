@@ -1,15 +1,18 @@
-import React,{useState}from'react';
+import React,{useEffect,useState}from'react';
 import{CheckCircle2,Loader2,ShieldCheck,XCircle}from'lucide-react';
+import{supabase}from'../lib/supabase';
 import{bulkModerationErrorMessage,superAdminBulkReviewProducts,type BulkModerationResult}from'./productBulkModerationApi';
 
 type Mode='approve'|'reject'|null;
 type Props={pendingCount:number;onCompleted:()=>Promise<void>|void;};
 
 export default function ProductBulkModerationControls({pendingCount,onCompleted}:Props){
- const[mode,setMode]=useState<Mode>(null),[reason,setReason]=useState(''),[confirmed,setConfirmed]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[result,setResult]=useState<BulkModerationResult|null>(null);
+ const[allowed,setAllowed]=useState(false),[permissionReady,setPermissionReady]=useState(false),[mode,setMode]=useState<Mode>(null),[reason,setReason]=useState(''),[confirmed,setConfirmed]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[result,setResult]=useState<BulkModerationResult|null>(null);
+ useEffect(()=>{let active=true;(async()=>{const{data,error}=await supabase.rpc('authorization_has_permission_v1',{p_permission_key:'product.publish'});if(active){setAllowed(!error&&data===true);setPermissionReady(true);}})();return()=>{active=false;};},[]);
  function choose(next:Exclude<Mode,null>){setMode(next);setReason('');setConfirmed(false);setError('');setResult(null);}
  function cancel(){if(busy)return;setMode(null);setReason('');setConfirmed(false);setError('');}
  async function submit(event:React.FormEvent){event.preventDefault();if(!mode||busy||pendingCount<=0)return;if(!confirmed){setError('Toplu işlem onay kutusunu işaretleyin.');return;}if(mode==='reject'&&reason.trim().length<8){setError('Toplu ret gerekçesi en az 8 karakter olmalıdır.');return;}try{setBusy(true);setError('');const next=await superAdminBulkReviewProducts({approve:mode==='approve',reason});setResult(next);setMode(null);setConfirmed(false);setReason('');await onCompleted();}catch(nextError){setError(bulkModerationErrorMessage(nextError));}finally{setBusy(false);}}
+ if(!permissionReady||!allowed)return null;
  return<section className="rounded-2xl border border-rose-200 bg-rose-50/40 p-4 dark:border-rose-900/40 dark:bg-rose-950/10" aria-labelledby="bulk-product-moderation-title">
   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"><div><div className="flex items-center gap-2"><ShieldCheck aria-hidden="true" className="h-5 w-5 text-rose-700"/><h3 id="bulk-product-moderation-title" className="font-black">Super Admin toplu ürün kararı</h3></div><p className="mt-1 max-w-3xl text-sm text-gray-600 dark:text-gray-300">Onay bekleyen ürünlerin tamamını tek komutla işleyebilirsiniz. Her ürün kendi yayın gate'lerinden ayrı ayrı geçer, başarısız ürün diğerlerinin sonucunu geri almaz ve her ürün için moderasyon/audit kaydı oluşur.</p></div><div className="rounded-full bg-white px-3 py-1.5 text-sm font-black text-rose-800 shadow-sm dark:bg-gray-900 dark:text-rose-200">{pendingCount} onay bekliyor</div></div>
   <div className="mt-4 grid gap-2 sm:grid-cols-2"><button type="button" disabled={busy||pendingCount===0} onClick={()=>choose('approve')} className="min-h-11 rounded-xl bg-brand-green px-4 font-black text-brand-on-green disabled:opacity-40"><CheckCircle2 aria-hidden="true" className="mr-2 inline h-4 w-4"/>Tümünü onayla</button><button type="button" disabled={busy||pendingCount===0} onClick={()=>choose('reject')} className="min-h-11 rounded-xl border border-red-300 bg-white px-4 font-black text-red-700 disabled:opacity-40 dark:bg-gray-900"><XCircle aria-hidden="true" className="mr-2 inline h-4 w-4"/>Tümünü reddet</button></div>
