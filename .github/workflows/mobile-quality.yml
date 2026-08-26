@@ -23,6 +23,7 @@ jobs:
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
       E2E_CI_CONTROL_URL: https://rmfcziawxjgcnxexbrvw.supabase.co/functions/v1/ci-e2e-user
       CATALOG_PUBLICATION_APPROVED: '1'
+      OFFICIAL_NOTIFICATION_BOUNDARY: 'producer-owned-only'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
