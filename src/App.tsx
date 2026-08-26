@@ -2,10 +2,9 @@ import React,{useCallback,useEffect,useRef,useState}from'react';
 import{App as CapApp}from'@capacitor/app';
 import{Capacitor}from'@capacitor/core';
 import{Haptics,ImpactStyle}from'@capacitor/haptics';
-import{Bell,CheckCircle,Grid,Heart,Home,Mic,ShoppingCart,User,X}from'lucide-react';
+import{Bell,CheckCircle,Grid,Heart,Home,ShoppingCart,User}from'lucide-react';
 import{useCustomerSession}from'./features/auth/useCustomerSession';
 import{useUnreadNotificationCount}from'./features/account/useUnreadNotificationCount';
-import{useAccessibleDialog}from'./features/accessibility/useAccessibleDialog';
 import{listFavoriteReferences as serverFavoriteReferences,toggleProductFavorite as serverToggleProductFavorite}from'./features/catalog/api';
 import CatalogSearchInput from'./features/catalog/CatalogSearchInput';
 import CatalogSearchOverlay from'./features/catalog/CatalogSearchOverlay';
@@ -72,9 +71,6 @@ function AppContent(){
  const[giftProduct,setGiftProduct]=useState<any>(null);
  const[isSearchFocused,setIsSearchFocused]=useState(false);
  const[isListening,setIsListening]=useState(false);
- const[speechText,setSpeechText]=useState('');
- const[voiceError,setVoiceError]=useState('');
- const voiceDialogRef=useAccessibleDialog<HTMLDivElement>(isListening,()=>stopVoiceSearch());
  const[adminSession,setAdminSession]=useState<{checked:boolean;isAdmin:boolean;roles:string[]}>({checked:false,isAdmin:false,roles:[]});
  const isAdminLoggedIn=adminSession.checked&&adminSession.isAdmin;
 
@@ -174,12 +170,12 @@ function AppContent(){
 
  const goBack=useCallback(()=>{if(currentTab==='account'&&accountView!=='menu'){setAccountView('menu');return;}if(routeDepth>0){window.history.back();return;}if(currentTab!=='home')replaceWithHome();},[currentTab,accountView,routeDepth,replaceWithHome]);
 
- function stopVoiceSearch(){void stopVoiceSearchAdapter().catch(()=>undefined);setIsListening(false);setSpeechText('');}
+ function stopVoiceSearch(){void stopVoiceSearchAdapter().catch(()=>undefined);setIsListening(false);}
  const processVoiceText=useCallback((text:string)=>{const value=String(text||'').trim().replace(/\s+/g,' ').slice(0,100);if(!value)return;setSearchQuery(value);openSearch(value);},[openSearch]);
  const triggerVoiceSearch=useCallback(()=>{
   if(isListening){stopVoiceSearch();return;}
-  setSpeechText('');setVoiceError('');setIsListening(true);
-  void recognizeVoiceSearch({language:'tr-TR',onInterim:value=>setSpeechText(value)}).then(text=>{setSpeechText(text);setIsListening(false);processVoiceText(text);}).catch(error=>{setIsListening(false);const message=voiceSearchErrorMessage(error);setVoiceError(message);if(message)showToast(message);});
+  setIsListening(true);
+  void recognizeVoiceSearch({language:'tr-TR'}).then(text=>{setIsListening(false);processVoiceText(text);}).catch(error=>{setIsListening(false);const message=voiceSearchErrorMessage(error);if(message)showToast(message);});
  },[isListening,processVoiceText,showToast]);
 
  useEffect(()=>{if(!Capacitor.isNativePlatform())return;let disposed=false;let handle:{remove:()=>Promise<void>}|undefined;void CapApp.addListener('backButton',()=>{if(authRecovery.recoveryPending)return;if(isListening){stopVoiceSearch();return;}if(isSearchFocused){setIsSearchFocused(false);return;}if(showGiftModal){setShowGiftModal(false);return;}if(currentTab==='account'&&accountView!=='menu'){setAccountView('menu');return;}if(routeDepth>0){window.history.back();return;}if(currentTab!=='home'){replaceWithHome();return;}void CapApp.exitApp();}).then(next=>{if(disposed)void next.remove();else handle=next;});return()=>{disposed=true;if(handle)void handle.remove();};},[authRecovery.recoveryPending,isListening,isSearchFocused,showGiftModal,currentTab,accountView,routeDepth,replaceWithHome]);
@@ -218,7 +214,6 @@ function AppContent(){
   <nav aria-label="Ana gezinme" className="fixed bottom-4 left-3 right-3 z-[60] mx-auto flex h-[68px] max-w-[44rem] items-center justify-around rounded-3xl border border-gray-200/70 bg-white/95 px-1 shadow-xl backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/95" style={{bottom:'calc(0.75rem + env(safe-area-inset-bottom, 0px))'}}><BottomNavButton icon={Home} label="Ana Sayfa" active={currentTab==='home'} onClick={()=>navigateToTab('home')}/><BottomNavButton icon={Grid} label="Kategoriler" active={currentTab==='categories'} onClick={()=>navigateToTab('categories')}/><BottomNavButton icon={Heart} label="Favoriler" active={currentTab==='account'&&accountView==='favorites'} onClick={()=>{setAccountView('favorites');navigateToTab('account');}}/><BottomNavButton icon={ShoppingCart} label="Sepet" active={currentTab==='cart'} onClick={()=>navigateToTab('cart')} badge={cartItemCount}/><BottomNavButton icon={User} label="Hesabım" active={currentTab==='account'&&accountView!=='favorites'} onClick={()=>{setAccountView('menu');navigateToTab('account');}}/></nav>
 
   {showGiftModal&&giftProduct?<React.Suspense fallback={<RouteLoading label="Hediye sipariş ekranı yükleniyor"/>}><GiftOrderFlow productReference={giftProduct.slug||String(giftProduct.id)} onClose={()=>setShowGiftModal(false)} onOpenPayments={()=>{setShowGiftModal(false);setAccountView('payments');navigateToTab('account');}} onCreated={()=>{showToast('Hediye siparişiniz oluşturuldu ve ödeme doğrulaması bekliyor.');setShowGiftModal(false);setAccountView('gifts');navigateToTab('account');}}/></React.Suspense>:null}
-  {isListening?<div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/65 p-0 sm:items-center sm:p-4"><div ref={voiceDialogRef} role="dialog" aria-modal="true" aria-labelledby="voice-title" aria-describedby="voice-description" tabIndex={-1} className="relative w-full max-w-lg rounded-t-3xl bg-gray-950 p-6 text-white shadow-2xl outline-none sm:rounded-3xl"><button type="button" onClick={stopVoiceSearch} aria-label="Sesli aramayı kapat" className="absolute right-4 top-4 grid min-h-11 min-w-11 place-items-center rounded-xl bg-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><X aria-hidden="true" className="h-5 w-5"/></button><div className="mx-auto mt-4 grid h-20 w-20 place-items-center rounded-full border border-brand-gold/40 bg-brand-gold/10"><Mic aria-hidden="true" className="h-8 w-8 text-brand-gold"/></div><h2 id="voice-title" className="mt-5 text-center text-xl font-bold">Sesli arama</h2><p id="voice-description" className="mt-2 text-center text-sm text-gray-400">Aramak istediğiniz ürünü, kategoriyi veya bölgeyi söyleyin. Söylediğiniz metin normal katalog aramasında kullanılacak.</p><div role="status" aria-live="polite" className="mt-4 min-h-14 rounded-xl bg-gray-900 p-4 text-center font-semibold">{speechText||'Dinleniyor…'}</div>{voiceError?<div role="alert" className="mt-3 rounded-xl bg-red-950/50 p-3 text-sm text-red-200">{voiceError}</div>:null}</div></div>:null}
   {toast.visible?<div role="status" aria-live="polite" aria-atomic="true" className="fixed left-1/2 z-[130] flex max-w-[90vw] -translate-x-1/2 items-center gap-2 rounded-full bg-brand-green px-5 py-3 text-sm font-semibold text-brand-on-green shadow-2xl" style={{top:'calc(4rem + env(safe-area-inset-top, 0px))'}}><CheckCircle aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-gold"/><span>{toast.message}</span></div>:null}
  </div>;
 }
