@@ -12,6 +12,7 @@ if(!url||!key||!controlUrl||!oidc||!/^[0-9]{1,24}$/.test(runId))throw new Error(
 const slots=['mfa-mod-a','mfa-mod-b','mfa-admin','mfa-super'];
 const credentials=new Map();
 const created=[];
+const PNG_1PX=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Z4x8AAAAASUVORK5CYII=','base64');
 
 function email(slot){return `goldenoremar+ci-e2e-${runId}-${slot}@gmail.com`;}
 function password(){return `Mfa-${randomBytes(18).toString('base64url')}!9`;}
@@ -28,7 +29,7 @@ async function can(c,permission){const{data,error}=await c.rpc('authorization_ha
 function permissionDenied(error){return Boolean(error&&(error.code==='42501'||/permission_required|admin_required|access_denied|not_allowed|aal2_verified_factor_required|mfa_factor_not_owned|staff_mfa_event_required/i.test(String(error.message||''))));}
 async function expectPermissionDenied(promise,label){const{error}=await promise;assert.ok(error,`${label}: privileged RPC unexpectedly succeeded`);assert.ok(permissionDenied(error),`${label}: expected authorization denial, got ${error.code||''} ${error.message||''}`);}
 async function expectNotAuthorizationDenied(promise,label){const{error}=await promise;assert.ok(error,`${label}: random fixture unexpectedly mutated data`);assert.ok(!permissionDenied(error),`${label}: authorized role was blocked by permission gate: ${error.code||''} ${error.message||''}`);}
-async function assertAal1StaffDenied(c,expectedRole){const snap=await context(c);assert.ok(Array.isArray(snap.roles)&&snap.roles.includes(expectedRole));assert.equal(snap.staffMfaRequired,true);assert.equal(snap.mfaSatisfied,false);assert.equal(snap.authenticatorAssuranceLevel,'aal1');assert.equal(snap.canAccessAdmin,false);assert.deepEqual(snap.permissions,['mfa.self_manage']);for(const p of ['admin.access','product.moderate','seller.approve','refund.approve','refund.execute','payout.release','role.manage','system.configure'])assert.equal(await can(c,p),false,`${expectedRole} AAL1 leaked ${p}`);
+async function assertAal1StaffDenied(c,expectedRole){const snap=await context(c);assert.ok(Array.isArray(snap.roles)&&snap.roles.includes(expectedRole));assert.equal(snap.staffMfaRequired,true);assert.equal(snap.mfaSatisfied,false);assert.equal(snap.authenticatorAssuranceLevel,'aal1');assert.equal(snap.canAccessAdmin,false);assert.deepEqual(snap.permissions,['mfa.self_manage']);for(const p of ['admin.access','product.moderate','product.publish','product.health_manage','seller.approve','refund.approve','refund.execute','payout.release','role.manage','system.configure'])assert.equal(await can(c,p),false,`${expectedRole} AAL1 leaked ${p}`);
   await expectPermissionDenied(c.rpc('admin_review_product_v3',{p_product_id:randomUUID(),p_approve:false,p_reason:'CI MFA AAL1 denial',p_ownership_checked:false,p_image_checked:false,p_scope_checked:false,p_origin_checked:false}),'product moderation');
   await expectPermissionDenied(c.rpc('admin_review_producer_application_v3',{p_application_id:randomUUID(),p_status:'approved',p_reason:'CI MFA AAL1 denial',p_commission_basis_points:1000}),'seller approval');
   await expectPermissionDenied(c.rpc('admin_record_manual_refund_v1',{p_return_id:randomUUID(),p_payment_id:randomUUID(),p_provider_reference:'ci-mfa-deny',p_amount_minor:100,p_status:'completed'}),'refund execution');
@@ -42,13 +43,18 @@ async function verifyFactor(c,factor){const challenge=await c.auth.mfa.challenge
 async function challengeWithBadCode(c,factor){const challenge=await c.auth.mfa.challenge({factorId:factor.id});assert.ifError(challenge.error);const verification=await c.auth.mfa.verify({factorId:factor.id,challengeId:challenge.data.id,code:wrongTotp(factor.secret)});assert.ok(verification.error,'invalid TOTP unexpectedly verified');const audit=await c.rpc('mfa_record_self_event_v1',{p_event:'mfa.challenge_failed',p_factor_id:factor.id});assert.ifError(audit.error);}
 async function verifiedFactors(c){const{data,error}=await c.auth.mfa.listFactors();assert.ifError(error);return(data?.totp||[]).filter(x=>x.status==='verified');}
 async function aal(c){const{data,error}=await c.auth.mfa.getAuthenticatorAssuranceLevel();assert.ifError(error);return data;}
+async function invokeCatalogVerifier(c,path){const{data,error}=await c.auth.getSession();assert.ifError(error);assert.ok(data.session?.access_token);const response=await fetch(`${url}/functions/v1/catalog-media-verify`,{method:'POST',headers:{Authorization:`Bearer ${data.session.access_token}`,apikey:key,'Content-Type':'application/json'},body:JSON.stringify({path})});const body=await response.json().catch(()=>({}));return{response,body};}
+async function assertStoragePathsAbsent(c,paths){const grouped=new Map();for(const path of paths){const parts=path.split('/');const name=parts.pop();const dir=parts.join('/');const names=grouped.get(dir)||[];names.push(name);grouped.set(dir,names);}for(const[dir,names]of grouped){for(const name of names){const{data,error}=await c.storage.from('catalog-public').list(dir,{search:name,limit:10});assert.ifError(error);assert.ok(!data.some(item=>item.name===name),`CI catalog media cleanup failed for ${dir}/${name}`);}}}
+async function verifyOwnerCatalogMedia(c){const{data:userData,error:userError}=await c.auth.getUser();assert.ifError(userError);const userId=userData.user?.id;assert.ok(userId);const dir=`admin/${userId}/official-products`;const validPath=`${dir}/${randomUUID()}.png`;const fakePath=`${dir}/${randomUUID()}.png`;const uploaded=[];try{let result=await c.storage.from('catalog-public').upload(validPath,PNG_1PX,{contentType:'image/png',upsert:false,cacheControl:'60'});assert.ifError(result.error);uploaded.push(validPath);let verification=await invokeCatalogVerifier(c,validPath);assert.equal(verification.response.status,200);assert.equal(verification.body?.ok,true);assert.equal(verification.body?.detectedMime,'image/png');assert.equal(verification.body?.byteSize,PNG_1PX.byteLength);
+  result=await c.storage.from('catalog-public').upload(fakePath,Buffer.from('not-a-real-png-binary','utf8'),{contentType:'image/png',upsert:false,cacheControl:'60'});assert.ifError(result.error);uploaded.push(fakePath);verification=await invokeCatalogVerifier(c,fakePath);assert.equal(verification.response.status,400,'fake MIME catalog media was not rejected');assert.equal(verification.body?.ok,false);assert.equal(verification.body?.error,'catalog_media_binary_type_invalid');
+ }finally{if(uploaded.length){const{error}=await c.storage.from('catalog-public').remove(uploaded);assert.ifError(error);}await assertStoragePathsAbsent(c,[validPath,fakePath]);}}
 
 async function moderatorScenario(){
   await provision('moderator','mfa-mod-a');await provision('moderator','mfa-mod-b');
   const a=client();await signIn(a,'mfa-mod-a');let snap=await assertAal1StaffDenied(a,'moderator');assert.equal(snap.staffMfaState,'enrollment_required');assert.equal(snap.staffMfaTransitionPending,true);
   const primary=await enroll(a,'CI Moderator Primary');snap=await context(a);assert.equal(snap.mfaFactorEnrolled,false);assert.deepEqual(snap.permissions,['mfa.self_manage']);
   const forgedPrivilegedAudit=await a.rpc('mfa_record_self_event_v1',{p_event:'mfa.privileged_session_established',p_factor_id:primary.id});assert.ok(forgedPrivilegedAudit.error&&permissionDenied(forgedPrivilegedAudit.error),'AAL1/unverified factor forged privileged-session audit event unexpectedly succeeded');
-  await verifyFactor(a,primary);snap=await context(a);assert.equal(snap.staffMfaState,'enforced');assert.equal(snap.staffMfaTransitionPending,false);assert.equal(snap.mfaSatisfied,true);assert.equal(await can(a,'product.moderate'),true);for(const p of ['refund.execute','payout.release','role.manage','system.configure'])assert.equal(await can(a,p),false,`moderator AAL2 leaked ${p}`);
+  await verifyFactor(a,primary);snap=await context(a);assert.equal(snap.staffMfaState,'enforced');assert.equal(snap.staffMfaTransitionPending,false);assert.equal(snap.mfaSatisfied,true);assert.equal(await can(a,'product.moderate'),true);for(const p of ['product.publish','product.health_manage','refund.execute','payout.release','role.manage','system.configure'])assert.equal(await can(a,p),false,`moderator AAL2 leaked ${p}`);
   await expectNotAuthorizationDenied(a.rpc('admin_review_product_v3',{p_product_id:randomUUID(),p_approve:false,p_reason:'CI authorized moderator probe',p_ownership_checked:false,p_image_checked:false,p_scope_checked:false,p_origin_checked:false}),'moderator product endpoint');
   await challengeWithBadCode(a,primary);
 
@@ -80,9 +86,10 @@ async function roleScenario(role,slot,allowed,denied){
 
 try{
   await moderatorScenario();
-  await roleScenario('admin','mfa-admin',['admin.access','user.manage','refund.execute'],['role.manage','payout.release','system.configure','security.manage']);
-  const owner=await roleScenario('super_admin','mfa-super',['admin.access','role.manage','payout.release','system.configure','security.manage','payment.manage','user.erase','product.remove','mfa.self_manage'],[]);
+  await roleScenario('admin','mfa-admin',['admin.access','user.manage','refund.execute'],['product.publish','product.health_manage','role.manage','payout.release','system.configure','security.manage']);
+  const owner=await roleScenario('super_admin','mfa-super',['admin.access','product.publish','product.health_manage','role.manage','payout.release','system.configure','security.manage','payment.manage','user.erase','product.remove','mfa.self_manage'],[]);
   assert.ok(owner.snapshot.permissions.length>=77,'Super Admin does not receive the complete active capability set');
+  await verifyOwnerCatalogMedia(owner.client);
   console.log('staff-mfa-e2e: PASS');
 }finally{
   for(const slot of [...created].reverse())await control('delete',{slot}).catch(()=>undefined);

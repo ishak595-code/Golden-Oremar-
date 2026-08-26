@@ -1,0 +1,15 @@
+-- Historical production migration archive.
+--
+-- Production applied add_catalog_media_binary_verification_v1 at version 20260824194626.
+-- It introduced the first catalog binary-verification tables, scan tables, v1 verification RPCs,
+-- Super Admin media-health scan RPCs, and a 15-minute catalog media scan job.
+-- Five minutes later, production migration 20260824195156_simplify_catalog_media_to_manual_review_v1
+-- explicitly removed those transient v1 objects and replaced the surviving image/video verification
+-- helpers. The canonical binary-verification implementation is v2 in
+-- 20260824201700_enforce_catalog_media_binary_verification_v2.sql.
+--
+-- This source-control migration intentionally replays no DDL because every object created by the
+-- production v1 migration was dropped or replaced before the canonical v2 implementation. Keeping
+-- this exact production version in the migration chain reconciles repository history without
+-- resurrecting a superseded authorization/media subsystem during a fresh rebuild.
+select 1;
