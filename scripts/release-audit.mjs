@@ -31,18 +31,26 @@ function walkSource(directory){for(const entry of fs.readdirSync(directory,{with
 if(exists('src'))walkSource(path.join(root,'src'));
 
 const appShell=requireFile('src/App.tsx');
-if(appShell){const c=compact(appShell);
+if(appShell){
  forbidPattern(appShell,/aria-label="Üst menü"/,'Desktop top navigation must not return to the Android/iOS application shell.');
  forbidPattern(appShell,/aria-label="Menüyü aç"/,'Hamburger navigation must not return to the Android/iOS application shell.');
  requirePattern(appShell,/aria-label="Ana gezinme"/,'Persistent native bottom navigation contract is missing from the app shell.');
  if(!/useUnreadNotificationCount/.test(appShell)||!/badge=\{unreadCount\}/.test(appShell))failures.push('Header notification badge must remain bound to the live unread notification count.');
  if(!/cartItemCount/.test(appShell)||!/badge=\{cartItemCount\}/.test(appShell))failures.push('Cart badges must remain bound to the live total cart item count.');
  forbidPattern(appShell,/<BottomNavButton\s+icon=\{User\}[^>]*badge=/,'Account bottom navigation must not duplicate the notification unread count.');
- const voiceControl=/triggerVoiceSearch/.test(appShell)&&c.includes("onClick={searchQuery?()=>setSearchQuery(''):triggerVoiceSearch}")&&c.includes("aria-label={searchQuery?'Aramayıtemizle':'Sesliarama'}")&&/<Mic\s+aria-hidden="true"/.test(appShell);
- if(!voiceControl)failures.push('Voice-search control is missing from the application header.');
+ requirePattern(appShell,/processVoiceText/,'App shell must retain the canonical voice transcript adapter.');
+ requirePattern(appShell,/processVoiceText[\s\S]*openSearch\(value\)/,'Voice transcript must enter the same search route as typed catalog search.');
+ forbidPattern(appShell,/voiceDialogRef|Sesli arama<\/h2>/,'A second full-screen voice-search dialog must not return.');
  forbidPattern(appShell,/LegacyAdminEntry/,'App must load the canonical AdminPage directly, not the retired legacy wrapper.');
  requirePattern(appShell,/import\(['"]\.\/pages\/AdminPage['"]\)\.then\(module=>\(\{default:module\.AdminPage\}\)\)/,'App canonical admin lazy import is missing.');
  forbidPattern(appShell,/\bCapitor\b/,'Misspelled Capacitor runtime identifier detected.');
+}
+const catalogSearchInput=requireFile('src/features/catalog/CatalogSearchInput.tsx');
+if(catalogSearchInput){
+ requirePattern(catalogSearchInput,/aria-label="Ürün, üretici veya köy ara"/,'Canonical catalog searchbox accessible name is missing.');
+ requirePattern(catalogSearchInput,/onClick=\{onVoice\}/,'Canonical catalog search must expose the microphone action.');
+ requirePattern(catalogSearchInput,/aria-pressed=\{listening\}/,'Canonical catalog microphone must expose listening state.');
+ requirePattern(catalogSearchInput,/animate-pulse/,'Canonical catalog microphone must visibly expose active listening state.');
 }
 
 const homeStorefront=requireFile('src/features/home/HomeSection.tsx');
