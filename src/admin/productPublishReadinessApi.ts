@@ -6,6 +6,7 @@ export type PublishReadinessItem={productId:string;name:string;slug:string;produ
 export type PublishReadinessSnapshot={scannedAt:string;summary:{total:number;published:number;readyToPublish:number;missingRealMedia:number;mandatoryDataMissing:number;mediaReady:number;brandFallbackAllowed:number;mediaBlocked:number;ownerApprovalRequired:number};filteredTotal:number;limit:number;offset:number;items:PublishReadinessItem[]};
 
 const STATES=new Set<PublishReadinessState>(['all','published','ready','missing_media','data_missing','media_blocked','owner_required']);
+const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function record(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
 function integer(value:unknown,label:string){if(typeof value!=='number'||!Number.isSafeInteger(value)||value<0)throw new Error(`${label} doğrulanamadı.`);return value;}
 function text(value:unknown,label:string,max:number,optional=false){if(value==null&&optional)return null;if(typeof value!=='string')throw new Error(`${label} doğrulanamadı.`);const normalized=value.trim();if((!normalized&&!optional)||normalized.length>max||/[\u0000-\u001F\u007F]/.test(normalized))throw new Error(`${label} doğrulanamadı.`);return normalized||null;}
@@ -27,6 +28,15 @@ export async function getSuperAdminProductPublishReadiness(input:{query?:string;
  const{data,error}=await supabase.rpc('super_admin_product_publish_readiness_v1',{p_query:String(input.query||'').trim().slice(0,120)||null,p_state:state,p_limit:limit,p_offset:offset});
  if(error)throw error;
  return normalize(data);
+}
+
+export async function getSuperAdminProductPublishReadinessItem(productId:string){
+ const normalized=String(productId||'').trim().toLowerCase();
+ if(!UUID_RE.test(normalized))throw new Error('Ürün kimliği doğrulanamadı.');
+ const snapshot=await getSuperAdminProductPublishReadiness({query:normalized,limit:1,offset:0});
+ const item=snapshot.items[0];
+ if(snapshot.filteredTotal!==1||!item||item.productId.toLowerCase()!==normalized)throw new Error('Ürün yayın hazırlığı kaydı bulunamadı.');
+ return item;
 }
 
 export function publishReadinessErrorMessage(error:unknown){const message=String((error as {message?:unknown})?.message||'').trim();if(message.includes('permission_required:product.health_manage'))return'Ürün yayın hazırlığı yalnız yetkili Super Admin hesabına açıktır.';return message&&message.length<=300?message:'Ürün yayın hazırlığı yüklenemedi.';}
