@@ -16,7 +16,7 @@ export const CANONICAL_PERMISSION_KEYS = [
   'user.read','user.manage','user.suspend','user.restore','user.erase',
   'role.read','role.manage',
   'seller.read','seller.sensitive_read','seller.review','seller.approve','seller.reject','seller.request_information','seller.suspend','seller.restore',
-  'product.read','product.create','product.update','product.moderate','product.approve','product.reject','product.suspend','product.archive','product.remove',
+  'product.read','product.create','product.update','product.moderate','product.approve','product.reject','product.publish','product.health_manage','product.suspend','product.archive','product.remove',
   'review.read','review.moderate','review.publish','review.reject','review.remove',
   'report.read','report.moderate','message.moderate',
   'order.read','order.manage','order.cancel',
