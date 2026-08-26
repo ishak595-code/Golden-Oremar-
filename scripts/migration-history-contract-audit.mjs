@@ -117,7 +117,8 @@ const pinnedProductionTail=[
   '20260826223915_separate_official_store_admin_review_scope_v1.sql',
   '20260826224032_repair_catalog_brand_delete_policy_boundary_v1.sql',
   '20260826233501_add_atomic_super_admin_bulk_product_publication_v1.sql',
-  '20260826233642_align_atomic_bulk_publication_response_v2.sql'
+  '20260826233642_align_atomic_bulk_publication_response_v2.sql',
+  '20260826234521_separate_official_store_moderation_notifications_v1.sql'
 ];
 
 const retiredMisTimestamped=[
