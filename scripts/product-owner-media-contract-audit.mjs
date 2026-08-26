@@ -12,12 +12,18 @@ const ownerMigration=read('supabase/migrations/20260824190311_require_super_admi
 const binaryMigration=read('supabase/migrations/20260824201700_enforce_catalog_media_binary_verification_v2.sql');
 const publishStateMigration=read('supabase/migrations/20260826094433_harden_super_admin_product_publish_state_v2.sql');
 const officialMediaMigration=read('supabase/migrations/20260826101337_require_super_admin_official_catalog_media_v1.sql');
+const officialFallbackMigration=read('supabase/migrations/20260826114508_allow_official_store_brand_fallback_publication_v1.sql');
+const readinessContractMigration=read('supabase/migrations/20260826122833_canonicalize_publish_readiness_media_contract_v2.sql');
+const readinessSemanticsMigration=read('supabase/migrations/20260826123321_canonicalize_publish_readiness_media_block_semantics_v3.sql');
+const mediaHealthIsolationMigration=read('supabase/migrations/20260826123459_isolate_super_admin_catalog_media_health_definer_v3.sql');
 const historicalBinaryV1=read('supabase/migrations/20260824194626_add_catalog_media_binary_verification_v1.sql');
 const historicalManualV1=read('supabase/migrations/20260824195156_simplify_catalog_media_to_manual_review_v1.sql');
 const verifier=read('supabase/functions/catalog-media-verify/index.ts');
 const retiredVerifier=read('supabase/functions/verify-catalog-media/index.ts');
+const retiredOwnerPublisher=read('supabase/functions/catalog-owner-publish-maintenance/index.ts');
 const producerApi=read('src/features/producer-products/api.ts');
 const officialApi=read('src/admin/officialStoreProductApi.ts');
+const readinessApi=read('src/admin/productPublishReadinessApi.ts');
 const capabilities=read('src/admin/adminCapabilities.ts');
 const permissions=read('src/features/auth/permissions.ts');
 const healthApi=read('src/admin/catalogMediaHealthApi.ts');
@@ -53,6 +59,21 @@ requireText(officialMediaMigration,"coalesce(private.has_permission('product.pub
 requireText(officialMediaMigration,"'official-products'",'Official catalog Storage policy must be scoped to the official-products namespace.');
 for(const policy of ['storage_admin_public_assets_insert_v2','storage_admin_public_assets_update_v3','storage_admin_public_assets_delete_v3'])requireText(officialMediaMigration,policy,`Hardened official catalog Storage policy is missing ${policy}.`);
 
+requireText(officialFallbackMigration,"return product_store_kind='official'",'Zero-image publication fallback must be restricted to the official store.');
+requireText(officialFallbackMigration,'image_count between 1 and 10','Products that do have media must still obey the canonical image-count gate.');
+requireText(officialFallbackMigration,'primary_count=1','Products that do have media must still have exactly one primary image.');
+requireText(officialFallbackMigration,'and all_valid','Products that do have media must still use verified canonical paths.');
+
+for(const token of ["'mediaReady'","'brandFallbackAllowed'",'f.media_ok media_ready',"f.store_kind='official' and f.image_count=0 and f.media_ok"]){requireText(readinessContractMigration,token,`Canonical readiness contract is missing ${token}.`);}
+requireText(readinessSemanticsMigration,'(not f.media_ok) media_blocked','Media-blocked must mean the canonical media gate did not pass, including missing media for non-official sellers.');
+requirePattern(readinessSemanticsMigration,/image_count=0 and not c\.brand_fallback_allowed[\s\S]*primary_image_missing/,'Missing media must remain a blocking reason outside the official fallback.');
+for(const token of ['mediaReady','brandFallbackAllowed'])requireText(readinessApi,token,`Frontend readiness parser must validate canonical ${token}.`);
+
+requireText(mediaHealthIsolationMigration,'private.super_admin_catalog_media_health_v3','Privileged media-health scan must live in a private core.');
+requirePattern(mediaHealthIsolationMigration,/function private\.super_admin_catalog_media_health_v3\(\)[\s\S]*security definer/,'Private media-health core must retain the privileged read boundary.');
+requirePattern(mediaHealthIsolationMigration,/function public\.super_admin_catalog_media_health_v2\(\)[\s\S]*security invoker/,'Public media-health RPC must be a SECURITY INVOKER wrapper.');
+requireText(mediaHealthIsolationMigration,"private.has_permission('product.health_manage')",'Private media-health core must fail closed on product.health_manage.');
+
 requireText(verifier,"p_permission_key:'product.publish'",'Official catalog binary verification must require product.publish.');
 requireText(verifier,"p_permission_key:'admin.access'",'Official catalog binary verification must also require an active admin shell.');
 for(const token of ["'image/jpeg'","'image/png'","'image/webp'","'image/avif'"])requireText(verifier,token,`Canonical verifier is missing ${token}.`);
@@ -62,11 +83,16 @@ forbidText(verifier,"p_permission_key:'product.update'",'Official catalog verifi
 requireText(retiredVerifier,'410','Retired duplicate media verifier must return HTTP 410.');
 requireText(retiredVerifier,'catalog-media-verify','Retired verifier must point callers to the canonical endpoint.');
 
+requireText(retiredOwnerPublisher,'status: 410','Retired owner-publish maintenance endpoint must remain HTTP 410.');
+requireText(retiredOwnerPublisher,'endpoint_retired','Retired owner-publish maintenance endpoint must explicitly report retirement.');
+for(const forbidden of ['service_role','auth.admin','createUser','enroll','challenge','verify','product.publish','maintenance key','MAINTENANCE'])forbidText(retiredOwnerPublisher,forbidden,`Retired owner-publish endpoint must never regain privileged logic: ${forbidden}.`);
+
 for(const api of [producerApi,officialApi]){
  requireText(api,"functions.invoke('catalog-media-verify'",'Every catalog image upload path must invoke the canonical binary verifier.');
  requirePattern(api,/catch\(error\)[\s\S]*storage\.from\('catalog-public'\)\.remove\(uploaded\)/,'Catalog image upload must compensate by deleting newly uploaded objects after verification failure.');
 }
 requireText(officialApi,'admin/${userId}/official-products/${crypto.randomUUID()}','Official media paths must be randomized inside the acting owner namespace.');
+forbidText(officialApi,"if(input.publish&&!gallery.length)",'Official-store publication must not reintroduce a client-only image requirement that conflicts with the canonical brand fallback.');
 requireText(producerApi,'${normalizedProducerId}/products/${crypto.randomUUID()}','Producer media paths must be randomized inside the producer namespace.');
 
 requireText(capabilities,"'product-health':'product.health_manage'",'Product Health admin surface must require product.health_manage.');
