@@ -5,7 +5,7 @@ import{Haptics,ImpactStyle}from'@capacitor/haptics';
 import{Bell,CheckCircle,Grid,Heart,Home,ShoppingCart,User}from'lucide-react';
 import{useCustomerSession}from'./features/auth/useCustomerSession';
 import{useUnreadNotificationCount}from'./features/account/useUnreadNotificationCount';
-import{listFavoriteReferences as serverFavoriteReferences,toggleProductFavorite as serverToggleProductFavorite}from'./features/catalog/api';
+import{listFavoriteReferences as serverFavoriteReferences}from'./features/catalog/api';
 import CatalogSearchInput from'./features/catalog/CatalogSearchInput';
 import CatalogSearchOverlay from'./features/catalog/CatalogSearchOverlay';
 import{recognizeVoiceSearch,stopVoiceSearch as stopVoiceSearchAdapter,voiceSearchErrorMessage}from'./features/catalog/voiceSearchAdapter';
@@ -15,7 +15,7 @@ import{getCart as getServerCart,publicCatalogUrl as serverCatalogUrl,resolveDefa
 import{useDeviceTheme}from'./features/appearance/useDeviceTheme';
 import{useConnectivity}from'./features/resilience/useConnectivity';
 import{subscribeNativePushActions}from'./features/notifications/nativePush';
-import{buildProductUrl,buildProducerUrl,buildSearchUrl,parsePublicRoute,resolveAppActionTarget,shareOrCopy}from'./features/navigation/appUrl';
+import{buildProductUrl,buildProducerUrl,buildSearchUrl,parsePublicRoute,resolveAppActionTarget}from'./features/navigation/appUrl';
 import HomeSection from'./features/home/HomeSection';
 
 const AdminPage=React.lazy(()=>import('./pages/AdminPage').then(module=>({default:module.AdminPage})));
@@ -160,8 +160,6 @@ function AppContent(){
   try{const reference=product?.slug||String(product?.id||'');if(!reference)throw new Error('Ürün referansı bulunamadı.');const existing=cart.find((item:any)=>item.slug===product?.slug||String(item.id)===String(product?.id));let variantId=product?.variantId||existing?.variantId;let selectedOptions=existing?.selectedOptions||{};if(!variantId){const resolved=await resolveDefaultVariant(reference);variantId=resolved.variant.id;selectedOptions=resolved.variant.options||{};}const requested=Math.max(1,Math.min(99,Math.floor(Number(quantity)||1)));const nextQuantity=Math.min(99,Math.max(1,Number(existing?.quantity||0)+requested));applyServerCartSnapshot(await setServerCartItem({variantId,quantity:nextQuantity,selectedOptions}));if(!silent)showToast(`${product?.name||'Ürün'} sepetinize eklendi.`);}catch(error:any){const message=String(error?.message||'Ürün sepete eklenemedi.');showToast(message.includes('insufficient_stock')?'Bu ürün için yeterli stok kalmadı.':message);}
  },[currentUser,cart,applyServerCartSnapshot,navigateToTab,showToast]);
 
- const toggleFavorite=useCallback(async(product:any)=>{if(!currentUser){showToast('Favorileri kaydetmek için hesabınıza giriş yapın.');setAccountView('menu');navigateToTab('account');return;}if(Capacitor.isNativePlatform()){try{await Haptics.impact({style:ImpactStyle.Light});}catch{}}try{const result=await serverToggleProductFavorite(product?.slug||product?.legacyId||product?.id);const reference=String(result?.productReference||product?.legacyId||product?.id||'');setFavorites(previous=>result?.isFavorite?(previous.includes(reference)?previous:[...previous,reference]):previous.filter(item=>item!==reference));showToast(result?.isFavorite?`${product?.name||'Ürün'} favorilerinize eklendi.`:`${product?.name||'Ürün'} favorilerinizden çıkarıldı.`);}catch(error:any){showToast(String(error?.message||'Favori işlemi tamamlanamadı.'));}},[currentUser,navigateToTab,showToast]);
- const shareProduct=useCallback(async(product:any)=>{try{const reference=product?.slug||product?.legacyId||product?.id;const result=await shareOrCopy({title:String(product?.name||'Golden Oremar ürünü'),text:String(product?.shortDescription||product?.description||'').trim(),url:buildProductUrl(reference)});if(result==='copied')showToast('Ürün bağlantısı panoya kopyalandı.');else if(result==='shared')showToast('Ürün paylaşımı tamamlandı.');else showToast('Paylaşım iptal edildi.');}catch{showToast('Ürün bağlantısı paylaşılamadı.');}},[showToast]);
  const openGift=useCallback((product:any)=>{if(!currentUser){setGiftProduct(product);showToast('Hediye siparişi için hesabınıza giriş yapın.');setAccountView('menu');navigateToTab('account');return;}setGiftProduct(product);setShowGiftModal(true);},[currentUser,navigateToTab,showToast]);
 
  const handleNotificationAction=useCallback((actionUrl:unknown,metadata:Record<string,unknown>={})=>{const target=resolveAppActionTarget(actionUrl,metadata);if(target.kind==='product')openProduct(target.reference);else if(target.kind==='producer')openProducer(target.reference);else if(target.kind==='events')navigateToTab('events');else if(target.kind==='admin'){setAdminView(target.view);navigateToTab('admin');}else if(target.kind==='account'){setAccountView(target.view);pushRoute(tabUrl('account'),'account');}else{setAccountView('notifications');pushRoute(tabUrl('account'),'account');}void refreshUnreadCount();},[navigateToTab,openProduct,openProducer,pushRoute,refreshUnreadCount]);
@@ -196,7 +194,7 @@ function AppContent(){
   if(currentTab==='health')return<PublicHealthScreen onBack={goBack} authenticated={!!currentUser} locale={currentUser?.locale||'tr'} onLoginRequired={()=>{showToast('İçerikleri favoriye kaydetmek için hesabınıza giriş yapın.');setAccountView('menu');navigateToTab('account');}} onOpenProduct={slug=>openProduct(slug)}/>;
   if(currentTab==='contact')return<PublicContactScreen onBack={goBack} currentUser={currentUser} locale={currentUser?.locale||'tr'}/>;
   if(currentTab==='about')return<PublicInfoScreen page="about" locale={currentUser?.locale||'tr'} onBack={goBack}/>;
-  return<HomeSection searchQuery={searchQuery} setSearchQuery={setSearchQuery} onProductClick={product=>openProduct(product?.slug||product?.legacyId||product?.id)} onAddToCart={addToCart} onToggleFavorite={toggleFavorite} favorites={favorites} onShare={shareProduct} onGift={openGift}/>;
+  return<HomeSection onProductClick={product=>openProduct(product?.slug||product?.legacyId||product?.id)}/>;
  };
 
  if(currentTab==='admin'){if(!adminSession.checked)return<RouteLoading label="Yönetici yetkisi doğrulanıyor"/>;if(isAdminLoggedIn)return<React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor"/>}><AdminPage initialTab={adminView} onBack={goBack} onLogout={async()=>{await signOutCurrentSession();setCurrentUser(null);setAdminSession({checked:true,isAdmin:false,roles:[]});setCart([]);setCartItemCount(0);replaceWithHome();}}/></React.Suspense>;}
