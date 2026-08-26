@@ -10,6 +10,7 @@ const forbidPattern=(source,pattern,message)=>{if(pattern.test(source))failures.
 
 const v1=read('supabase/migrations/20260826233501_add_atomic_super_admin_bulk_product_publication_v1.sql');
 const v2=read('supabase/migrations/20260826233642_align_atomic_bulk_publication_response_v2.sql');
+const notificationBoundary=read('supabase/migrations/20260826234521_separate_official_store_moderation_notifications_v1.sql');
 const client=read('src/admin/productBulkModerationApi.ts');
 
 for(const migration of [v1,v2]){
@@ -37,6 +38,12 @@ requireText(v2,"'errorCode',null",'Atomic success response must retain the norma
 requireText(v2,"'error',null",'Atomic success response must retain the normalized error field.');
 requireText(v2,"'atomic',true",'Atomic response must identify the all-or-nothing transaction contract.');
 
+requireText(notificationBoundary,"producer_row.store_kind='producer'",'Producer moderation notifications must be limited to independent producer stores.');
+requireText(notificationBoundary,'producer_row.owner_user_id is not null','Producer moderation notifications must require a real owner recipient.');
+requirePattern(notificationBoundary,/if producer_row\.store_kind='producer' and producer_row\.owner_user_id is not null then[\s\S]*insert into public\.notifications/i,'Official-store moderation must not attempt a producer notification with a null recipient.');
+requireText(notificationBoundary,"insert into private.outbox_events",'Official-store publication must retain the canonical outbox event even when producer notification is skipped.');
+requireText(notificationBoundary,"insert into private.product_moderation_events",'Official-store publication must retain moderation audit evidence.');
+
 requirePattern(client,/input\.approve[\s\S]*super_admin_bulk_publish_products_atomic_v1/,'Admin bulk approval must route through the atomic publication RPC.');
 requirePattern(client,/super_admin_bulk_review_products_v1[\s\S]*p_approve:false/,'Admin bulk rejection may retain the detailed non-atomic moderation RPC.');
 forbidPattern(client,/super_admin_bulk_review_products_v1[^\n]*p_approve:input\.approve/,'Admin client must not route approval back through the partial-result bulk RPC.');
@@ -47,4 +54,4 @@ if(failures.length){
   for(const failure of failures)console.error(`- ${failure}`);
   process.exit(1);
 }
-console.log('Atomic bulk publication contract audit passed: Super Admin approval is explicit-set, capability/AAL2-gated, row-locked and all-or-nothing while rejection keeps detailed per-item results.');
+console.log('Atomic bulk publication contract audit passed: Super Admin approval is explicit-set, capability/AAL2-gated, row-locked and all-or-nothing; official-store moderation skips producer-owner notifications while retaining audit/outbox evidence.');
