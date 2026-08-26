@@ -18,6 +18,14 @@ const officialApi=read('src/admin/officialStoreProductApi.ts');
 const retiredPublisher=read('supabase/functions/catalog-owner-publish-maintenance/index.ts');
 const migration120207=read('supabase/migrations/20260826120207_align_product_review_media_with_canonical_integrity_v1.sql');
 const duplicateMigrationPath=path.join(root,'supabase/migrations/20260826130156_align_product_review_media_with_canonical_integrity_v1.sql');
+const brandingV1=read('supabase/migrations/20260826154938_harden_store_branding_asset_ownership_v1.sql');
+const brandingV2=read('supabase/migrations/20260826155021_separate_official_and_owner_store_branding_authority_v2.sql');
+const brandingApi=read('src/features/store-branding/storeBrandingApi.ts');
+const brandingEditor=read('src/features/store-branding/StoreBrandingEditor.tsx');
+const producerProfile=read('src/features/account/ProducerProfilePanel.tsx');
+const officialWorkspace=read('src/admin/AdminOfficialStoreWorkspace.tsx');
+const adminPage=read('src/pages/AdminPage.tsx');
+const mediaVerifier=read('supabase/functions/catalog-media-verify/index.ts');
 
 forbidText(app,'voiceDialogRef','Voice search must not restore a second full-screen dialog state.');
 forbidText(app,'Sesli arama</h2>','Voice search full-screen modal must stay removed.');
@@ -39,9 +47,30 @@ requireText(mediaHealthIsolation,'security invoker','Public catalog media health
 requireText(mediaHealthIsolation,'private.super_admin_catalog_media_health_v3','Privileged media health logic must live in the private core.');
 requireText(retiredPublisher,'status: 410','Owner publish maintenance endpoint must remain retired with HTTP 410.');
 for(const forbidden of ['service_role','createUser','auth.admin','product.publish','MAINTENANCE'])forbidText(retiredPublisher,forbidden,`Retired owner publisher contains forbidden privileged token: ${forbidden}`);
-
 requireText(migration120207,'private.product_media_integrity_ok_v1','Single-product moderation must use the canonical media integrity helper.');
 if(fs.existsSync(duplicateMigrationPath))failures.push('Duplicate 20260826130156 review-media migration must not exist.');
+
+for(const source of [brandingV1,brandingV2])requireText(source,'storage_catalog_brand_insert_owner_or_official_v1','Store branding migration must define the canonical immutable insert policy.');
+requireText(brandingV1,'private.catalog_media_binary_verified_path_v2','Store branding DB binding must require canonical binary verification.');
+requireText(brandingV1,'private.catalog_public_asset_is_referenced_v1(name)','Store branding cleanup must never delete a referenced catalog asset.');
+requireText(brandingV1,'set_store_branding_asset_v1','Store branding writes must use the atomic binding RPC.');
+requirePattern(brandingV2,/p\.store_kind<>'official' and p\.owner_user_id=\(select auth\.uid\(\)\)[\s\S]*p\.store_kind='official' and coalesce\(private\.has_permission\('product\.publish'\),false\)/,'Independent store ownership and official-store Super Admin authority must remain separate.');
+
+for(const token of ['1024','512','1500','600','1200','480','5*1024*1024'])requireText(brandingApi,token,`Store branding client is missing dimension or size contract token ${token}.`);
+for(const token of ["'image/jpeg'","'image/png'","'image/webp'",'crypto.randomUUID()','upsert:false',"functions.invoke('catalog-media-verify'","rpc('set_store_branding_asset_v1'"])requireText(brandingApi,token,`Store branding upload contract is missing ${token}.`);
+forbidText(brandingApi,"'image/avif'",'Store branding must not advertise AVIF while server-side dimension parsing is limited to JPEG, PNG and WebP.');
+requireText(brandingEditor,'Önerilen','Store branding editor must display recommended dimensions.');
+requireText(brandingEditor,'minimum','Store branding editor must display minimum dimensions.');
+requireText(brandingEditor,'orta yaklaşık %60 güvenli alanda','Cover editor must explain mobile safe-area cropping.');
+requireText(producerProfile,"../store-branding/StoreBrandingEditor",'Store owner profile must use the shared store-branding editor.');
+for(const forbidden of ['pendingAssets','uploadAsset(','imageTypes=new Set','function Asset('])forbidText(producerProfile,forbidden,`Producer profile must not keep the retired direct-brand-upload path: ${forbidden}`);
+requireText(officialWorkspace,"../features/store-branding/StoreBrandingEditor",'Super Admin official-store workspace must use the shared store-branding editor.');
+requireText(adminPage,'AdminOfficialStoreWorkspace','Official-store admin tab must route through the branding-aware workspace.');
+
+for(const token of ['BRAND_PATH_RE','BRAND_MAX_BYTES','brandDimensionsValid','jpegDimensions','pngDimensions','webpDimensions',"producer.store_kind!=='official'","producer.store_kind==='official'","p_permission_key:'product.publish'","kind==='logo'","kind==='cover'"])requireText(mediaVerifier,token,`Canonical media verifier is missing store-branding enforcement token ${token}.`);
+requireText(mediaVerifier,'width===height&&width>=512','Server must enforce square logo minimum dimensions.');
+requireText(mediaVerifier,'width>=1200&&height>=480','Server must enforce minimum cover dimensions.');
+requireText(mediaVerifier,'Math.abs(ratio-2.5)<=0.025','Server must enforce the 5:2 cover ratio.');
 
 if(failures.length){console.error('Task 3.5 certification contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
 console.log('Task 3.5 certification contract audit passed.');
