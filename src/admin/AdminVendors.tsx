@@ -3,6 +3,7 @@ import{BadgeCheck,CircleDollarSign,Eye,Loader2,MapPin,RefreshCw,Search,ShieldChe
 import{useCustomerSession}from'../features/auth/useCustomerSession';
 import{useAccessibleDialog}from'../features/accessibility/useAccessibleDialog';
 import{adminListProducers,adminSetProducerCommission,adminSetProducerOriginVerified,adminSetProducerStatus,adminSetProducerTrustBadge,basisPointsToPercent,producerAdminErrorMessage,type AdminProducer,type AdminProducerManagedStatus}from'./producerAdminApi';
+import{SuperAdminStoreDirectory}from'./SuperAdminStoreDirectory';
 
 type ActionState=
  |{type:'commission';producer:AdminProducer}
@@ -21,7 +22,11 @@ function verifiedBadge(){return<span className="inline-flex items-center gap-1.5
 export function AdminVendors({setActiveTab}:{setActiveTab?:(tab:string)=>void}){
  const{currentUser}=useCustomerSession();
  const roles=Array.isArray(currentUser?.roles)?currentUser.roles.map(String):[];
- const isSuperAdmin=roles.includes('super_admin');
+ return roles.includes('super_admin')?<SuperAdminStoreDirectory setActiveTab={setActiveTab}/>:<LegacyAdminVendors setActiveTab={setActiveTab}/>;
+}
+
+function LegacyAdminVendors({setActiveTab}:{setActiveTab?:(tab:string)=>void}){
+ const isSuperAdmin=false;
  const[producers,setProducers]=useState<AdminProducer[]>([]);const[loading,setLoading]=useState(true);const[busyId,setBusyId]=useState('');const[error,setError]=useState('');const[toast,setToast]=useState('');const[searchTerm,setSearchTerm]=useState('');const[statusFilter,setStatusFilter]=useState<'all'|AdminProducer['status']>('all');const[selected,setSelected]=useState<AdminProducer|null>(null);const[action,setAction]=useState<ActionState>(null);const[reason,setReason]=useState('');const[commissionPercent,setCommissionPercent]=useState(10);const[reviewDue,setReviewDue]=useState(nextYearDate());
  const detailRef=useAccessibleDialog<HTMLDivElement>(Boolean(selected)&&!action,()=>{if(!busyId)setSelected(null);});
  const actionRef=useAccessibleDialog<HTMLDivElement>(Boolean(action),()=>{if(!busyId)closeAction();});
