@@ -66,7 +66,7 @@ requireText(officialFallbackMigration,'and all_valid','Products that do have med
 
 for(const token of ["'mediaReady'","'brandFallbackAllowed'",'f.media_ok media_ready',"f.store_kind='official' and f.image_count=0 and f.media_ok"]){requireText(readinessContractMigration,token,`Canonical readiness contract is missing ${token}.`);}
 requireText(readinessSemanticsMigration,'(not f.media_ok) media_blocked','Media-blocked must mean the canonical media gate did not pass, including missing media for non-official sellers.');
-requirePattern(readinessSemanticsMigration,/image_count=0 and not c\.brand_fallback_allowed[\s\S]*primary_image_missing/,'Missing media must remain a blocking reason outside the official fallback.');
+requirePattern(readinessSemanticsMigration,/primary_image_missing[\s\S]*image_count=0 and not c\.brand_fallback_allowed/,'Missing media must remain a blocking reason outside the official fallback.');
 for(const token of ['mediaReady','brandFallbackAllowed'])requireText(readinessApi,token,`Frontend readiness parser must validate canonical ${token}.`);
 
 requireText(mediaHealthIsolationMigration,'private.super_admin_catalog_media_health_v3','Privileged media-health scan must live in a private core.');
