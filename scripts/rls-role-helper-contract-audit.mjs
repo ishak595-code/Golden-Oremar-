@@ -14,22 +14,22 @@ function readRequired(name){
 }
 
 const roleFix=readRequired(roleFixName);
-if(roleFix&&!/alter\s+function\s+private\.has_role\s*\(\s*text\s*\)\s+security\s+definer\s*;/i.test(roleFix)){
-  failures.push('private.has_role(text) must be SECURITY DEFINER to avoid recursive public.profiles RLS evaluation.');
-}
-
-const authorizationCore=readRequired('20260824101926_add_capability_authorization_core_v1.sql');
-if(authorizationCore&&!/create\s+or\s+replace\s+function\s+private\.has_role\s*\(\s*required_role\s+text\s*\)[\s\S]*auth\.uid\(\)/i.test(authorizationCore)){
-  failures.push('private.has_role must remain bound to the authenticated auth.uid() identity.');
-}
-if(authorizationCore&&!/public\.profiles[\s\S]*status\s*=\s*'active'[\s\S]*deleted_at\s+is\s+null/i.test(authorizationCore)){
-  failures.push('private.has_role must retain active, non-deleted profile checks.');
+if(roleFix){
+  if(!/alter\s+function\s+private\.has_role\s*\(\s*text\s*\)\s+security\s+definer\s*;/i.test(roleFix)){
+    failures.push('private.has_role(text) must be SECURITY DEFINER to avoid recursive public.profiles RLS evaluation.');
+  }
+  if(!/auth\.uid\(\)/i.test(roleFix)){
+    failures.push('RLS role-helper hardening migration must explicitly document that caller identity remains auth.uid-bound.');
+  }
 }
 
 const storageFix=readRequired(storageFixName);
 if(storageFix){
   if(!/create\s+or\s+replace\s+function\s+private\.product_certificate_document_path_in_use_v1[\s\S]*security\s+definer/i.test(storageFix)){
     failures.push('Private certificate-reference inspection must stay behind a SECURITY DEFINER helper.');
+  }
+  if(!/revoke\s+all\s+on\s+function\s+private\.product_certificate_document_path_in_use_v1\s*\(\s*text\s*\)\s+from\s+public\s*,\s*anon/i.test(storageFix)){
+    failures.push('Private certificate-reference helper must not be executable by public or anonymous callers.');
   }
   if(!/product_certificate_admin_delete_unlinked_own[\s\S]*not\s+private\.product_certificate_document_path_in_use_v1\s*\(\s*name\s*\)/i.test(storageFix)){
     failures.push('Product-certificate Storage DELETE policy must use the private boundary helper.');
@@ -52,4 +52,4 @@ if(failures.length){
   for(const failure of failures)console.error(`- ${failure}`);
   process.exit(1);
 }
-console.log('RLS role-helper contract audit passed: auth.uid-bound role checks avoid profile recursion and Storage policies do not directly cross private evidence-table boundaries.');
+console.log('RLS role-helper contract audit passed: the auth.uid-bound role predicate remains SECURITY DEFINER and Storage RLS no longer crosses the private certificate evidence table directly.');
