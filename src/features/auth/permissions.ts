@@ -35,7 +35,7 @@ export const CANONICAL_PERMISSION_KEYS = [
   'inventory.read','inventory.manage',
   'shipping.read','shipping.manage',
   'event.read','event.manage','event.moderate',
-  'storefront.read','storefront.manage','storefront.moderate',
+  'storefront.read','storefront.manage','storefront.moderate','storefront.lifecycle_manage',
 ] as const;
 
 export type PermissionKey = typeof CANONICAL_PERMISSION_KEYS[number];
