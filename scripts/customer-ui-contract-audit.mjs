@@ -48,8 +48,8 @@ expect(dockCss.includes('position: fixed')&&dockCss.includes('safe-area-inset-bo
 expect(compatibilityCss.includes('@supports not (color: color-mix'),'Premium surfaces must retain an older WebView/iOS 15 fallback.');
 
 for(const forbidden of ['HeroMetric','producerCount','originCount','label="Seçilmiş ürün"','label="Doğrulanmış üretici"','label="Üretim yöresi"'])expect(!home.includes(forbidden),`Home must not restore the metric-heavy hero marker: ${forbidden}`);
-expect(home.includes('data-video-reference-home="true"'),'Home must retain the approved video-reference storefront marker.');
-expect(home.includes('data-reference-layout="approved-recording-list-marketplace"'),'Home must retain the approved recording list-marketplace layout marker.');
+expect(home.includes('className="go-premium-home go-reference-home"'),'Home must retain the canonical premium reference storefront root.');
+expect(home.includes('data-reference-layout="search-category-product"'),'Home must retain the canonical search-category-product layout contract.');
 expect(home.includes('go-reference-product-list'),'Managed home collections must use the single-row product list.');
 expect(home.includes('<HomeProductLinkRow'),'Primary Home products must use the dedicated navigation-row component.');
 expect(!home.includes('<CatalogProductCard'),'Home must not render commerce cards.');

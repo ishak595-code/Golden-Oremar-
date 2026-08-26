@@ -14,7 +14,7 @@ if(seller){
  requirePattern(seller,/\['Fotoğraf ve video','Ürün bilgileri','Fiyat ve stok','Açıklama ve özellikler','Sağlık ve tarif','Önizleme','Gönder'\]/,'Seller product wizard must keep media-first guided step order.');
  requirePattern(seller,/ProductCardDetailsFields/,'Seller product wizard must keep health, nutrition, allergen and recipe fields inside the product flow.');
  requirePattern(seller,/accept="image\/jpeg,image\/png,image\/webp,image\/avif"/,'Seller product images must be selected as device files.');
- requirePattern(seller,/accept="video\/mp4,video\/webm,video\/quicktime"/,'Seller product video must be selected as a device file.');
+ requirePattern(seller,/accept="video\/mp4,video\/webm,video\/quicktime"/,'Seller product video must be selected as device files.');
  requirePattern(seller,/ProductPreview/,'Seller product flow must keep a customer-facing preview before submission.');
  requirePattern(seller,/Kaydet ve Super Admin incelemesine gönder/,'Seller product flow must submit through Super Admin review rather than publishing directly.');
  forbid(seller,/type=["']url["']|https?:\/\/|videoUrl|imageUrl/,'Seller product wizard must not reintroduce link-based product media fields.');
@@ -83,8 +83,9 @@ const moderation=file('src/admin/AdminProducts.tsx');
 if(moderation){
  requirePattern(moderation,/listPendingProductEditorialReviews/,'Product moderation must load the submitted health/content/recipe package.');
  requirePattern(moderation,/EditorialModerationSummary/,'Super Admin must see the full editorial package in the same product moderation dialog.');
- requirePattern(moderation,/autoApproveReady=automatedReady&&Boolean\(selectedEditorial\)/,'Product approval must stay blocked when the submitted editorial package is missing.');
- requirePattern(moderation,/Kartın tamamını onayla ve yayınla/,'Product and editorial moderation must remain one approval decision.');
+ requirePattern(moderation,/autoApproveReady=.*selectedReadiness\?\.readyToPublish&&selectedEditorial/,'Product approval must stay blocked when the submitted editorial package is missing and publish readiness is false.');
+ requirePattern(moderation,/adminReviewProduct\(selectedProduct\.id,reviewAction==='approve',reason,checklist\)/,'Product and editorial moderation must remain one server-authoritative approval decision.');
+ requirePattern(moderation,/Kartı onayla ve yayınla/,'Unified product and editorial approval must remain explicit in the moderation UI.');
 }
 
 const card=file('src/features/catalog/CatalogProductCard.tsx');
