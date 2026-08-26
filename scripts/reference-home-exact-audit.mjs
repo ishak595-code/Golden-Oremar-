@@ -7,7 +7,7 @@ const main=fs.readFileSync('src/main.tsx','utf8');
 const theme=fs.readFileSync('src/features/appearance/theme.ts','utf8');
 
 const checks=[
- ['approved recording list layout marker is present',home.includes('data-reference-layout="approved-recording-list-marketplace"')],
+ ['canonical search-category-product reference layout is present',home.includes('className="go-premium-home go-reference-home"')&&home.includes('data-reference-layout="search-category-product"')],
  ['home categories remain live and Super Admin ordered',home.includes('heroCategories.map')&&home.includes('category.productCount>0')],
  ['category previews are derived from live product images',home.includes('categoryPreviewImages')&&home.includes('products.filter(product=>product.categorySlug===category.id')],
  ['home collection order remains controlled by active homeSections',home.includes('homeSections.filter(section=>section.active)')],
