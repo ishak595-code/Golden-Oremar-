@@ -20,6 +20,7 @@ const migration120207=read('supabase/migrations/20260826120207_align_product_rev
 const duplicateMigrationPath=path.join(root,'supabase/migrations/20260826130156_align_product_review_media_with_canonical_integrity_v1.sql');
 const brandingV1=read('supabase/migrations/20260826154938_harden_store_branding_asset_ownership_v1.sql');
 const brandingV2=read('supabase/migrations/20260826155021_separate_official_and_owner_store_branding_authority_v2.sql');
+const brandingV3=read('supabase/migrations/20260826160122_minimize_store_branding_helper_execute_boundary_v3.sql');
 const brandingApi=read('src/features/store-branding/storeBrandingApi.ts');
 const brandingEditor=read('src/features/store-branding/StoreBrandingEditor.tsx');
 const producerProfile=read('src/features/account/ProducerProfilePanel.tsx');
@@ -55,6 +56,8 @@ requireText(brandingV1,'private.catalog_media_binary_verified_path_v2','Store br
 requireText(brandingV1,'private.catalog_public_asset_is_referenced_v1(name)','Store branding cleanup must never delete a referenced catalog asset.');
 requireText(brandingV1,'set_store_branding_asset_v1','Store branding writes must use the atomic binding RPC.');
 requirePattern(brandingV2,/p\.store_kind<>'official' and p\.owner_user_id=\(select auth\.uid\(\)\)[\s\S]*p\.store_kind='official' and coalesce\(private\.has_permission\('product\.publish'\),false\)/,'Independent store ownership and official-store Super Admin authority must remain separate.');
+requireText(brandingV3,'revoke all on function private.store_branding_can_edit_v1(uuid) from authenticated','Authenticated clients must not execute the internal branding authorization helper directly.');
+requireText(brandingV3,'revoke all on function private.store_branding_verified_path_v1(uuid,text,text) from authenticated','Authenticated clients must not execute the internal branding path verifier directly.');
 
 for(const token of ['1024','512','1500','600','1200','480','5*1024*1024'])requireText(brandingApi,token,`Store branding client is missing dimension or size contract token ${token}.`);
 for(const token of ["'image/jpeg'","'image/png'","'image/webp'",'crypto.randomUUID()','upsert:false',"functions.invoke('catalog-media-verify'","rpc('set_store_branding_asset_v1'"])requireText(brandingApi,token,`Store branding upload contract is missing ${token}.`);
