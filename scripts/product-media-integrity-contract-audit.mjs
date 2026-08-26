@@ -4,7 +4,7 @@ import path from 'node:path';
 const root=process.cwd();
 const read=(relative)=>fs.readFileSync(path.join(root,relative),'utf8');
 const migrationPath='supabase/migrations/20260824172652_harden_product_media_integrity_lifecycle_v1.sql';
-const driftMigrationPath='supabase/migrations/20260824173500_add_product_media_drift_quarantine_v1.sql';
+const driftMigrationPath='supabase/migrations/20260824173453_add_product_media_drift_quarantine_v1.sql';
 const migration=read(migrationPath);
 const driftMigration=read(driftMigrationPath);
 const producerApi=read('src/features/producer-products/api.ts');
