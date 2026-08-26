@@ -1,184 +1,42 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Grid2X2, Package, Search, Store } from 'lucide-react';
-import { catalogSuggestions, type CatalogSuggestion } from './api';
+import React,{useEffect,useMemo,useState}from'react';
+import{Clock3,Grid2X2,Mic,Package,Search,Store,Trash2,TrendingUp}from'lucide-react';
+import{catalogSuggestions,type CatalogSuggestion}from'./api';
+import{catalogSearchFacets,type CatalogSearchFacets}from'./catalogSearchExperienceApi';
 
-type Props = {
-  query: string;
-  open: boolean;
-  onQueryChange: (value: string) => void;
-  onProduct: (slug: string) => void;
-  onProducer: (id: string, slug: string, label: string) => void;
-  onCategory: (slug: string, label: string) => void;
-  onAllResults: (query: string) => void;
-  onRequestClose?: () => void;
-};
+const HISTORY_KEY='golden-oremar.catalog-search-history.v1';
+const HISTORY_LIMIT=8;
+type Props={query:string;open:boolean;onQueryChange:(value:string)=>void;onVoiceSearch:()=>void;onProduct:(slug:string)=>void;onProducer:(id:string,slug:string)=>void;onCategory:(slug:string,label:string)=>void;onAllResults:(query:string)=>void;};
+function icon(kind:CatalogSuggestion['kind']){if(kind==='producer')return<Store aria-hidden="true" className="h-4 w-4"/>;if(kind==='category')return<Grid2X2 aria-hidden="true" className="h-4 w-4"/>;return<Package aria-hidden="true" className="h-4 w-4"/>;}
+function label(kind:CatalogSuggestion['kind']){return kind==='producer'?'Üretici':kind==='category'?'Kategori':'Ürün';}
+function cleanQuery(value:unknown){return typeof value==='string'?value.trim().replace(/\s+/g,' ').slice(0,100):'';}
+function readHistory(){try{const parsed=JSON.parse(localStorage.getItem(HISTORY_KEY)||'[]');if(!Array.isArray(parsed))return[];const seen=new Set<string>();const result:string[]=[];for(const value of parsed){const item=cleanQuery(value);const key=item.toLocaleLowerCase('tr-TR');if(item&&!seen.has(key)){seen.add(key);result.push(item);}if(result.length>=HISTORY_LIMIT)break;}return result;}catch{return[];}}
+function writeHistory(values:string[]){try{localStorage.setItem(HISTORY_KEY,JSON.stringify(values.slice(0,HISTORY_LIMIT)));}catch{}}
 
-const SEARCH_INPUT_SELECTOR = 'input[aria-label="Ürün, üretici veya köy ara"]';
-const iconFor = (kind: CatalogSuggestion['kind']) =>
-  kind === 'product' ? Package : kind === 'producer' ? Store : Grid2X2;
-
-export default function CatalogSearchOverlay({
-  query,
-  open,
-  onQueryChange,
-  onProduct,
-  onProducer,
-  onCategory,
-  onAllResults,
-  onRequestClose,
-}: Props) {
-  const [items, setItems] = useState<CatalogSuggestion[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const requestId = useRef(0);
-
-  useEffect(() => {
-    const input = document.querySelector<HTMLInputElement>(SEARCH_INPUT_SELECTOR);
-    if (!input) return;
-    input.setAttribute('aria-controls', 'catalog-search-suggestions');
-    input.setAttribute('aria-expanded', String(open));
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || !open) return;
-      event.preventDefault();
-      onRequestClose?.();
-      input.blur();
-    };
-    input.addEventListener('keydown', handleKeyDown);
-    return () => input.removeEventListener('keydown', handleKeyDown);
-  }, [open, onRequestClose]);
-
-  useEffect(() => {
-    if (!open) {
-      requestId.current += 1;
-      setLoading(false);
-      return;
-    }
-    const normalized = query.trim();
-    if (!normalized) {
-      requestId.current += 1;
-      setItems([]);
-      setError('');
-      setLoading(false);
-      return;
-    }
-
-    const current = ++requestId.current;
-    const timer = window.setTimeout(async () => {
-      try {
-        setLoading(true);
-        setError('');
-        const next = await catalogSuggestions(normalized, 10);
-        if (requestId.current === current) setItems(next);
-      } catch (err: any) {
-        if (requestId.current === current) {
-          setItems([]);
-          setError(err?.message || 'Arama önerileri alınamadı.');
-        }
-      } finally {
-        if (requestId.current === current) setLoading(false);
-      }
-    }, 180);
-
-    return () => window.clearTimeout(timer);
-  }, [query, open]);
-
-  if (!open) return null;
-
-  function requestClose() {
-    onRequestClose?.();
-    document.querySelector<HTMLInputElement>(SEARCH_INPUT_SELECTOR)?.blur();
-  }
-
-  function choose(item: CatalogSuggestion) {
-    if (item.kind === 'product') {
-      onQueryChange(item.label);
-      onProduct(item.value);
-      return;
-    }
-    if (item.kind === 'producer') {
-      onQueryChange(item.label);
-      onProducer(item.id, item.value, item.label);
-      return;
-    }
-    onQueryChange('');
-    onCategory(item.value, '');
-  }
-
-  return (
-    <div
-      id="catalog-search-suggestions"
-      data-catalog-search-overlay="true"
-      className="absolute left-4 right-4 top-full z-[100] mx-auto mt-2 max-h-[70vh] max-w-7xl overflow-y-auto rounded-2xl border border-brand-gold/20 bg-white shadow-2xl dark:bg-gray-900"
-      role="region"
-      aria-label="Arama önerileri"
-      aria-busy={loading}
-      onKeyDown={event => {
-        if (event.key === 'Escape') {
-          event.preventDefault();
-          requestClose();
-        }
-      }}
-    >
-      {!query.trim() ? (
-        <div className="p-5 text-sm text-gray-600 dark:text-gray-300">
-          <div className="flex items-start gap-3">
-            <Search aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-brand-gold" />
-            <div>
-              <div className="font-bold text-brand-text">Ürün, üretici veya kategori arayın</div>
-              <p className="mt-1 text-gray-500">Öneriler Golden Oremar'ın canlı kataloğundan gelir.</p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="p-3">
-          <div className="sr-only" aria-live="polite" aria-atomic="true">
-            {loading ? 'Aranıyor' : error ? error : `${items.length} öneri bulundu`}
-          </div>
-
-          {loading ? <div role="status" className="p-4 text-sm text-gray-500">Aranıyor…</div> : null}
-          {error ? <div role="alert" className="m-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div> : null}
-
-          {!loading && !error && items.length === 0 ? (
-            <div className="p-4 text-sm text-gray-500">Bu ifadeyle eşleşen öneri bulunamadı.</div>
-          ) : null}
-
-          {items.length > 0 ? (
-            <div role="list" aria-label="Arama önerileri" className="space-y-1">
-              {items.map(item => {
-                const Icon = iconFor(item.kind);
-                const typeLabel = item.kind === 'product' ? 'Ürün' : item.kind === 'producer' ? 'Üretici' : 'Kategori';
-                return (
-                  <div key={`${item.kind}:${item.id}`} role="listitem">
-                    <button
-                      type="button"
-                      onMouseDown={event => event.preventDefault()}
-                      onClick={() => choose(item)}
-                      aria-label={`${item.label}, ${typeLabel}`}
-                      className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-brand-text transition-colors hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
-                    >
-                      <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-gold" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold">{item.label}</span>
-                        <span className="block text-xs text-gray-500">{typeLabel}</span>
-                      </span>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-
-          <button
-            type="button"
-            onMouseDown={event => event.preventDefault()}
-            onClick={() => onAllResults(query.trim())}
-            disabled={!query.trim()}
-            className="mt-2 min-h-12 w-full rounded-xl border border-brand-gold/30 px-4 text-left font-bold text-brand-gold hover:bg-brand-gold/10 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
-          >
-            “{query.trim()}” için tüm sonuçları göster
-          </button>
-        </div>
-      )}
-    </div>
-  );
+export default function CatalogSearchOverlay({query,open,onQueryChange,onVoiceSearch,onProduct,onProducer,onCategory,onAllResults}:Props){
+ const[suggestions,setSuggestions]=useState<CatalogSuggestion[]>([]);const[facets,setFacets]=useState<CatalogSearchFacets|null>(null);const[loading,setLoading]=useState(false);const[facetLoading,setFacetLoading]=useState(false);const[error,setError]=useState('');const[history,setHistory]=useState<string[]>(()=>readHistory());
+ const normalized=cleanQuery(query);
+ useEffect(()=>{if(!open)return;let active=true;const handle=window.setTimeout(async()=>{setFacetLoading(true);try{const next=await catalogSearchFacets({query:normalized||null});if(active)setFacets(next);}catch(nextError){console.error('Catalog search facets failed',nextError);if(active)setFacets(null);}finally{if(active)setFacetLoading(false);}},normalized?220:0);return()=>{active=false;window.clearTimeout(handle);};},[open,normalized]);
+ useEffect(()=>{if(!open){setSuggestions([]);setLoading(false);setError('');return;}if(!normalized){setSuggestions([]);setLoading(false);setError('');return;}let active=true;const handle=window.setTimeout(async()=>{setLoading(true);setError('');try{const next=await catalogSuggestions(normalized);if(active)setSuggestions(next);}catch(nextError:any){if(active){setSuggestions([]);setError(String(nextError?.message||'Arama önerileri yüklenemedi.'));}}finally{if(active)setLoading(false);}},180);return()=>{active=false;window.clearTimeout(handle);};},[open,normalized]);
+ const grouped=useMemo(()=>({products:suggestions.filter(item=>item.kind==='product'),producers:suggestions.filter(item=>item.kind==='producer'),categories:suggestions.filter(item=>item.kind==='category')}),[suggestions]);
+ if(!open)return null;
+ function remember(value:string){const next=cleanQuery(value);if(!next)return;const key=next.toLocaleLowerCase('tr-TR');const updated=[next,...history.filter(item=>item.toLocaleLowerCase('tr-TR')!==key)].slice(0,HISTORY_LIMIT);setHistory(updated);writeHistory(updated);}
+ function choose(item:CatalogSuggestion){remember(normalized||item.label);if(item.kind==='product')onProduct(item.value);else if(item.kind==='producer')onProducer(item.id,item.value);else onCategory(item.value,item.label);}
+ function submit(value:string){const next=cleanQuery(value);if(!next)return;remember(next);onAllResults(next);}
+ function clearHistory(){setHistory([]);writeHistory([]);}
+ return <div className="absolute left-0 right-0 top-full z-50 mx-auto max-h-[min(72vh,44rem)] max-w-2xl overflow-y-auto rounded-b-3xl border border-t-0 border-gray-200 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900" role="dialog" aria-label="Katalog arama merkezi">
+  <div className="border-b border-gray-100 p-3 dark:border-gray-800">
+   <button type="button" onMouseDown={event=>event.preventDefault()} onClick={onVoiceSearch} className="flex min-h-12 w-full items-center gap-3 rounded-2xl border border-brand-gold/30 bg-brand-gold/5 px-4 text-left transition hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-gold/15 text-brand-gold"><Mic aria-hidden="true" className="h-5 w-5"/></span><span><span className="block font-bold text-brand-green dark:text-brand-gold">Sesli ara</span><span className="block text-xs text-gray-500">Ürün, üretici, kategori veya köy söyleyin. Sepete ekleme komutlarını da anlayabilir.</span></span></button>
+   <p className="mt-2 px-1 text-[11px] leading-4 text-gray-400">Golden Oremar ham ses kaydı saklamaz. Ses tanıma özelliği tarayıcı veya işletim sisteminin sağladığı hizmet üzerinden çalışır.</p>
+  </div>
+  {!normalized?<div className="space-y-5 p-4">
+   {history.length?<section aria-labelledby="recent-searches-title"><div className="mb-2 flex items-center justify-between gap-3"><h3 id="recent-searches-title" className="flex items-center gap-2 text-sm font-bold"><Clock3 aria-hidden="true" className="h-4 w-4"/>Son aramalar</h3><button type="button" onMouseDown={event=>event.preventDefault()} onClick={clearHistory} className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-gray-500 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:hover:bg-gray-800"><Trash2 aria-hidden="true" className="h-3.5 w-3.5"/>Temizle</button></div><div className="flex flex-wrap gap-2">{history.map(item=><button key={item} type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>{onQueryChange(item);submit(item);}} className="min-h-10 rounded-full border px-3 text-sm font-semibold hover:border-brand-gold/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{item}</button>)}</div></section>:null}
+   <section aria-labelledby="discover-search-title"><h3 id="discover-search-title" className="flex items-center gap-2 text-sm font-bold"><TrendingUp aria-hidden="true" className="h-4 w-4"/>Katalogda keşfet</h3>{facetLoading?<div role="status" className="mt-3 text-sm text-gray-500">Katalog seçenekleri hazırlanıyor…</div>:facets&&facets.total>0?<div className="mt-3 space-y-4">{facets.categories.length?<div><div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Kategoriler</div><div className="flex flex-wrap gap-2">{facets.categories.slice(0,8).map(item=><button key={item.slug} type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>onCategory(item.slug,item.name)} className="min-h-10 rounded-full bg-gray-100 px-3 text-sm font-semibold hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:bg-gray-800">{item.name} <span className="text-xs text-gray-400">{item.count}</span></button>)}</div></div>:null}{facets.producers.length?<div><div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Üreticiler</div><div className="grid gap-2 sm:grid-cols-2">{facets.producers.slice(0,6).map(item=><button key={item.id} type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>onProducer(item.id,item.id)} className="flex min-h-11 items-center justify-between rounded-xl border px-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span className="truncate font-semibold">{item.name}</span><span className="ml-2 text-xs text-gray-400">{item.count}</span></button>)}</div></div>:null}<button type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>onAllResults('')} className="min-h-11 w-full rounded-xl border border-brand-gold/30 font-bold text-brand-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Tüm katalogu ve filtreleri aç</button></div>:<p className="mt-3 text-sm text-gray-500">Yayınlanan katalog ürünleri burada kategori, üretici ve konuma göre keşfedilebilir.</p>}</section>
+  </div>:<>
+   {loading?<div className="p-5 text-sm text-gray-500" role="status">Arama önerileri yükleniyor…</div>:null}
+   {error?<div className="p-5 text-sm text-red-700 dark:text-red-300" role="alert">{error}</div>:null}
+   {!loading&&!error&&suggestions.length===0?<div className="p-5 text-sm text-gray-500">Bu ifadeyle eşleşen hızlı öneri yok. Tüm sonuçlarda arayabilirsiniz.</div>:null}
+   {!loading&&!error&&suggestions.length>0?<div className="divide-y divide-gray-100 dark:divide-gray-800">{(['products','producers','categories']as const).map(group=>grouped[group].length?<section key={group} className="p-2"><h3 className="px-2 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">{group==='products'?'Ürünler':group==='producers'?'Üreticiler':'Kategoriler'}</h3>{grouped[group].map(item=><button key={`${item.kind}:${item.id}`} type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>choose(item)} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:hover:bg-gray-800"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gray-100 text-gray-500 dark:bg-gray-800">{icon(item.kind)}</span><span className="min-w-0 flex-1"><span className="block truncate font-semibold">{item.label}</span><span className="block text-xs text-gray-400">{label(item.kind)}</span></span></button>)}</section>:null)}</div>:null}
+   <div className="border-t border-gray-100 p-2 dark:border-gray-800"><button type="button" onMouseDown={event=>event.preventDefault()} onClick={()=>submit(normalized)} className="flex min-h-12 w-full items-center gap-3 rounded-xl px-3 text-left font-semibold text-brand-gold hover:bg-brand-gold/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><Search aria-hidden="true" className="h-5 w-5"/><span className="truncate">“{normalized}” için tüm sonuçları ve filtreleri göster</span></button></div>
+  </>}
+ </div>;
 }
