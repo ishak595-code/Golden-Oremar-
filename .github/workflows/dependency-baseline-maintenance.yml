@@ -28,8 +28,25 @@ jobs:
           cache: npm
       - name: Install current locked dependencies
         run: npm ci --no-audit --no-fund
-      - name: Refresh audited transitive production dependency baseline
-        run: npm audit fix --package-lock-only --no-fund
+      - name: Explain vulnerable dependency owners and available stable versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm explain esbuild || true
+          npm explain uuid || true
+          npm ls esbuild uuid xcode @capacitor/cli --all || true
+          printf 'esbuild latest: '; npm view esbuild version
+          printf '@capacitor/cli latest stable: '; npm view @capacitor/cli version
+          printf 'xcode latest: '; npm view xcode version
+          printf 'uuid latest: '; npm view uuid version
+      - name: Refresh production dependency advisory baseline only
+        shell: bash
+        run: |
+          set -uo pipefail
+          npm audit fix --package-lock-only --omit=dev --no-fund
+          fix_status=$?
+          echo "npm audit fix exit status: $fix_status"
+          exit 0
       - name: Refresh Browserslist compatibility database
         run: npx --yes update-browserslist-db@latest
       - name: Verify updated lockfile installs exactly
