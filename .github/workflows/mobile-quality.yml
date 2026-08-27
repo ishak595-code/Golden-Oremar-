@@ -127,7 +127,7 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - name: Audit production dependency vulnerabilities
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --omit=dev --audit-level=low
       - name: Release architecture audit
         run: npm run audit:release
       - name: Validate current native baseline and preserved OAuth
