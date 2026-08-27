@@ -382,7 +382,7 @@ jobs:
           fi
 
   publish-mobile-statuses:
-    if: ${{ always() }}
+    if: ${{ always() && github.event_name != 'pull_request' }}
     needs:
       - customer-e2e
       - verify-web-android
