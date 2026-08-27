@@ -79,7 +79,7 @@ try{
 
   const pub=client();
   const home=await pub.rpc('get_public_home_catalog_v3');assert.ifError(home.error);assert.ok(home.data&&Array.isArray(home.data.items));
-  const search=await pub.rpc('search_catalog_v3',{p_query:null,p_category_slug:null,p_producer_id:null,p_province:null,p_district:null,p_village:null,p_min_price_minor:null,p_max_price_minor:null,p_in_stock:false,p_featured:null,p_sort:'relevance',p_limit:100,p_offset:0});assert.ifError(search.error);assert.ok(search.data&&Array.isArray(search.data.items));
+  const search=await pub.rpc('search_catalog_v3',{p_query:null,p_category_slug:null,p_producer_id:null,p_province:null,p_district:null,p_village:null,p_min_price_minor:null,p_max_price_minor:null,p_in_stock:false,p_featured:null,p_sort:'relevance',p_limit:50,p_offset:0});assert.ifError(search.error);assert.ok(search.data&&Array.isArray(search.data.items));
   const facets=await pub.rpc('catalog_search_facets_v1',{p_query:null,p_category_slug:null,p_producer_id:null,p_province:null,p_district:null,p_village:null,p_min_price_minor:null,p_max_price_minor:null,p_in_stock:false,p_featured:null});assert.ifError(facets.error);
   const homeIds=new Set(home.data.items.map(x=>String(x?.id||'')));const searchIds=new Set(search.data.items.map(x=>String(x?.id||'')));for(const id of ids){assert.ok(homeIds.has(id),`home_missing:${id}`);assert.ok(searchIds.has(id),`search_missing:${id}`);}
   assert.equal(num(search.data.total,'searchTotal'),EXPECTED);assert.equal(num(facets.data?.total,'facetTotal'),EXPECTED);
