@@ -14,6 +14,7 @@ const notificationBoundary=read('supabase/migrations/20260826234521_separate_off
 const v3=read('supabase/migrations/20260826234917_fix_atomic_bulk_publication_audit_signature_v3.sql');
 const v4=read('supabase/migrations/20260826235432_activate_approved_products_and_add_official_catalog_recovery_v4.sql');
 const v5=read('supabase/migrations/20260827045601_expose_verified_official_brand_fallback_in_catalog_v5.sql');
+const v6=read('supabase/migrations/20260827050300_align_product_detail_official_brand_fallback_v6.sql');
 const client=read('src/admin/productBulkModerationApi.ts');
 
 for(const migration of [v1,v2,v3]){
@@ -66,10 +67,19 @@ requireText(v5,'private.search_catalog_v2','Search catalog must use the canonica
 requirePattern(v5,/revoke all on function private\.catalog_public_card_image_path_v1\(text,uuid\) from public,anon,authenticated,service_role/i,'Brand fallback helper must stay internal-only.');
 forbidPattern(v5,/store_kind='producer'[\s\S]*logo_path/i,'Independent producer cards must not silently receive official-store brand fallback semantics.');
 
+requireText(v6,'private.get_public_product_detail_v8','v6 must add a dedicated product-detail fallback layer without renaming the public RPC.');
+requireText(v6,'private.get_public_product_detail_v7(p_reference)','Product detail v8 must preserve every prior detail hardening layer.');
+requireText(v6,'private.catalog_public_card_image_path_v1(null,producer_id)','Product detail must reuse the same canonical verified official fallback resolver as Home/Search.');
+requireText(v6,"'source','official_brand_fallback'",'Product detail fallback must be explicitly marked as an official brand fallback.');
+requireText(v6,"'primary',true",'Product detail fallback must be a deterministic primary image.');
+requirePattern(v6,/revoke all on function private\.get_public_product_detail_v8\(text\) from public,anon,authenticated,service_role/i,'Product-detail v8 must remain internal-only.');
+requirePattern(v6,/api_public_bridge\.get_public_product_detail_v6[\s\S]*private\.get_public_product_detail_v8\(p_reference\)/,'Existing public product-detail v6 contract must bridge to the hardened v8 implementation.');
+forbidPattern(v6,/disable trigger|session_replication_role|data:|blob:/i,'Product-detail fallback must not bypass security or introduce ephemeral media.');
+
 requirePattern(client,/input\.approve[\s\S]*super_admin_bulk_publish_products_atomic_v1/,'Admin bulk approval must route through the atomic publication RPC.');
 requirePattern(client,/super_admin_bulk_review_products_v1[\s\S]*p_approve:false/,'Admin bulk rejection may retain detailed non-atomic results.');
 forbidPattern(client,/super_admin_bulk_review_products_v1[^\n]*p_approve:input\.approve/,'Admin approval must not return to the partial-result bulk RPC.');
 requireText(client,'Atomik toplu yayın için ürün seçimi gerekiyor.','Atomic publication must reject implicit all-products publication.');
 
 if(failures.length){console.error('Atomic bulk publication contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Atomic bulk publication contract audit passed: approval is active+atomic, recovery is exact-set/AAL2-gated and trigger-preserving, and official brand fallback is verified and public-surface consistent.');
+console.log('Atomic bulk publication contract audit passed: approval is active+atomic, recovery is exact-set/AAL2-gated and trigger-preserving, and verified official brand fallback is consistent across Home, Search and Product Detail.');
