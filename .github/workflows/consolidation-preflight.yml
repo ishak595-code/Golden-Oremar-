@@ -5,6 +5,9 @@ on:
     branches:
       - integration/full-consolidation-2026-08
       - release/store-readiness-2026-08
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -40,7 +43,7 @@ jobs:
         run: npm run build
 
   publish-status:
-    if: ${{ always() }}
+    if: ${{ always() && github.event_name != 'pull_request' }}
     needs: verify-consolidation
     runs-on: ubuntu-latest
     steps:
