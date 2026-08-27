@@ -21,7 +21,11 @@ export async function superAdminBulkReviewProducts(input:{approve:boolean;reason
  if(input.approve&&reason.length>2000)throw new Error('İnceleme notu en fazla 2000 karakter olabilir.');
  const ids=input.productIds?.filter(Boolean)||null;
  if(ids&&ids.length>500)throw new Error('Tek işlemde en fazla 500 ürün işlenebilir.');
- const{data,error}=await supabase.rpc('super_admin_bulk_review_products_v1',{p_product_ids:ids,p_approve:input.approve,p_reason:reason||null});
+ if(input.approve&&(!ids||ids.length===0))throw new Error('Atomik toplu yayın için ürün seçimi gerekiyor.');
+ const request=input.approve
+  ?supabase.rpc('super_admin_bulk_publish_products_atomic_v1',{p_product_ids:ids as string[],p_reason:reason||null})
+  :supabase.rpc('super_admin_bulk_review_products_v1',{p_product_ids:ids,p_approve:false,p_reason:reason||null});
+ const{data,error}=await request;
  if(error)throw error;
  return normalize(data);
 }
@@ -32,6 +36,10 @@ export function bulkModerationErrorMessage(error:unknown){
   ['permission_required:product.publish','Toplu ürün onayı ve reddi yalnız AAL2 Super Admin oturumuna açıktır.'],
   ['permission_required:product.approve','Toplu ürün onayı için owner onay yetkisi gerekiyor.'],
   ['permission_required:product.reject','Toplu ürün reddi için ret yetkisi gerekiyor.'],
+  ['product_ids_required','Atomik toplu yayın için en az bir ürün seçin.'],
+  ['duplicate_product_ids','Aynı ürün toplu yayın listesine birden fazla kez eklenemez.'],
+  ['bulk_product_set_mismatch','Seçilen ürünlerden biri artık yayınlanabilir durumda değil. Listeyi yenileyip tekrar deneyin.'],
+  ['product_not_reviewable','Seçilen ürünlerden biri artık inceleme durumunda değil. Listeyi yenileyip tekrar deneyin.'],
   ['product_rejection_reason_required','Toplu ret için en az 8 karakterlik gerekçe yazın.'],
   ['bulk_product_limit_exceeded','Tek toplu işlem en fazla 500 onay bekleyen ürünü işler.'],
  ];

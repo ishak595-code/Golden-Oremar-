@@ -115,13 +115,21 @@ const pinnedProductionTail=[
   '20260826173456_fix_super_admin_store_detail_website_v2.sql',
   '20260826223600_seal_direct_product_write_and_enforce_producer_scope_v1.sql',
   '20260826223915_separate_official_store_admin_review_scope_v1.sql',
-  '20260826224032_repair_catalog_brand_delete_policy_boundary_v1.sql'
+  '20260826224032_repair_catalog_brand_delete_policy_boundary_v1.sql',
+  '20260826233501_add_atomic_super_admin_bulk_product_publication_v1.sql',
+  '20260826233642_align_atomic_bulk_publication_response_v2.sql',
+  '20260826234521_separate_official_store_moderation_notifications_v1.sql',
+  '20260826234917_fix_atomic_bulk_publication_audit_signature_v3.sql',
+  '20260826235432_activate_approved_products_and_add_official_catalog_recovery_v4.sql',
+  '20260827045601_expose_verified_official_brand_fallback_in_catalog_v5.sql',
+  '20260827050300_align_product_detail_official_brand_fallback_v6.sql'
 ];
 
 const retiredMisTimestamped=[
   '20260820211030_strengthen_golden_oremar_legal_disclosures_2026.sql',
   '20260823210300_align_reference_storefront_v1.sql',
-  '20260824173500_add_product_media_drift_quarantine_v1.sql'
+  '20260824173500_add_product_media_drift_quarantine_v1.sql',
+  '20260827013000_add_atomic_super_admin_bulk_product_publication_v1.sql'
 ];
 
 if(!fs.existsSync(dir)){
