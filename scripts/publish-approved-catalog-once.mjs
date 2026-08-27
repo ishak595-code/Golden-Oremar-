@@ -19,7 +19,7 @@ if(!url||!key||!controlUrl||!oidc||!/^[0-9]{1,24}$/.test(runId))throw new Error(
 const password=`Publish-${randomBytes(20).toString('base64url')}!7`;
 const email=`goldenoremar+ci-e2e-${runId}-${slot}@gmail.com`;
 const out=path.resolve('e2e-artifacts');fs.mkdirSync(out,{recursive:true});
-const evidence={runId,startedAt:new Date().toISOString(),expected:EXPECTED,publicationMode:null,before:null,atomicResult:null,after:null,public:null,merchandising:null,publishedProductIds:[]};
+const evidence={runId,startedAt:new Date().toISOString(),expected:EXPECTED,publicationMode:null,before:null,atomicResult:null,activationResult:null,after:null,public:null,merchandising:null,publishedProductIds:[]};
 function client(){return createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}});}
 function b32(secret){const a='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';let bits='';for(const ch of String(secret).toUpperCase().replace(/=+$/,'').replace(/\s+/g,'')){const i=a.indexOf(ch);if(i<0)throw new Error('invalid_totp_secret');bits+=i.toString(2).padStart(5,'0');}const bytes=[];for(let i=0;i+8<=bits.length;i+=8)bytes.push(parseInt(bits.slice(i,i+8),2));return Buffer.from(bytes);}
 function totp(secret){const c=Math.floor(Date.now()/30000);const msg=Buffer.alloc(8);msg.writeBigUInt64BE(BigInt(c));const h=createHmac('sha1',b32(secret)).update(msg).digest();const o=h[h.length-1]&15;const n=((h[o]&0x7f)<<24)|((h[o+1]&255)<<16)|((h[o+2]&255)<<8)|(h[o+3]&255);return String(n%1000000).padStart(6,'0');}
@@ -44,24 +44,39 @@ try{
   const before=await ready(c);evidence.before=summarize(before,'before');
   assert.equal(evidence.before.total,EXPECTED);assert.equal(evidence.before.mandatoryMissing,0);assert.equal(evidence.before.mediaBlocked,0);assert.equal(before.items.length,EXPECTED);
   const ids=idsFrom(before);evidence.publishedProductIds=ids;
-  const unpublishedState=evidence.before.published===0&&evidence.before.ready===EXPECTED&&evidence.before.ownerApprovalRequired===EXPECTED;
-  const alreadyPublishedState=evidence.before.published===EXPECTED&&evidence.before.ready===0&&evidence.before.ownerApprovalRequired===0;
-  assert.ok(unpublishedState||alreadyPublishedState,'catalog_publication_state_must_be_all_review_or_all_published');
-  if(unpublishedState){
-    for(const item of before.items){assert.equal(item.status,'review');assert.equal(item.active,false);assert.equal(item.readyToPublish,true);assert.equal(item.mediaReady,true);assert.equal(item.mediaBlocked,false);if(item.missingRealMedia===true)assert.equal(item.brandFallbackAllowed,true);assert.deepEqual(item.reasons||[],[]);}
+  const allReviewReady=before.items.every(item=>item.status==='review'&&item.active===false&&item.readyToPublish===true&&item.mediaReady===true&&item.mediaBlocked===false&&(item.reasons||[]).length===0);
+  const allPublishedInactive=before.items.every(item=>item.status==='published'&&item.active===false);
+  const allPublishedActive=before.items.every(item=>item.status==='published'&&item.active===true&&item.published===true);
+  assert.ok(allReviewReady||allPublishedInactive||allPublishedActive,'catalog_publication_state_must_be_uniform');
+
+  if(allReviewReady){
     const{data,error}=await c.rpc('super_admin_bulk_publish_products_atomic_v1',{p_product_ids:ids,p_reason:'Kullanıcının açık onayıyla Golden Oremar resmi katalog final yayını.'});
     assert.ifError(error);assert.ok(data&&typeof data==='object'&&!Array.isArray(data),'atomic_publication_result_invalid');
-    evidence.atomicResult=data;evidence.publicationMode='atomic-write';
-    assert.equal(num(data.requestedCount,'atomicRequested'),EXPECTED);assert.equal(num(data.successCount,'atomicSuccess'),EXPECTED);assert.equal(num(data.failureCount,'atomicFailure'),0);assert.equal(bool(data.approved,'atomicApproved'),true);assert.equal(bool(data.atomic,'atomicFlag'),true);assert.ok(Array.isArray(data.results));assert.equal(data.results.length,EXPECTED);assert.ok(data.results.every(item=>item?.ok===true&&item?.approved===true));
-  }else{
-    evidence.publicationMode='verify-existing';
-    evidence.atomicResult={requestedCount:EXPECTED,successCount:EXPECTED,failureCount:0,approved:true,atomic:true,unchanged:true};
-    assert.ok(before.items.every(item=>item.published===true&&item.active===true&&item.status==='published'));
+    evidence.atomicResult=data;evidence.publicationMode='atomic-publish';
+    assert.equal(num(data.requestedCount,'atomicRequested'),EXPECTED);assert.equal(num(data.successCount,'atomicSuccess'),EXPECTED);assert.equal(num(data.failureCount,'atomicFailure'),0);assert.equal(bool(data.approved,'atomicApproved'),true);assert.equal(bool(data.atomic,'atomicFlag'),true);
   }
+
+  const afterPublish=await ready(c);
+  const recoveryIds=idsFrom(afterPublish);
+  assert.deepEqual(new Set(recoveryIds),new Set(ids));
+  const needsActivation=afterPublish.items.every(item=>item.status==='published'&&item.active===false);
+  const alreadyActive=afterPublish.items.every(item=>item.status==='published'&&item.active===true&&item.published===true);
+  assert.ok(needsActivation||alreadyActive,'catalog_activation_state_must_be_uniform');
+  if(needsActivation){
+    const{data,error}=await c.rpc('super_admin_activate_official_catalog_products_atomic_v1',{p_product_ids:ids,p_reason:'Kullanıcının açık onayıyla yayımlanmış resmi kataloğun final aktivasyonu.'});
+    assert.ifError(error);assert.ok(data&&typeof data==='object'&&!Array.isArray(data),'atomic_activation_result_invalid');
+    evidence.activationResult=data;evidence.publicationMode=evidence.publicationMode?'atomic-publish-and-activate':'atomic-recovery-activate';
+    assert.equal(num(data.requestedCount,'activationRequested'),EXPECTED);assert.equal(num(data.activatedCount,'activationCount'),EXPECTED);assert.equal(bool(data.atomic,'activationAtomic'),true);assert.equal(bool(data.active,'activationActive'),true);
+  }else if(!evidence.publicationMode){
+    evidence.publicationMode='verify-existing';
+    evidence.activationResult={requestedCount:EXPECTED,activatedCount:EXPECTED,atomic:true,active:true,unchanged:true};
+  }
+
   const after=await ready(c);evidence.after=summarize(after,'after');
   assert.equal(evidence.after.total,EXPECTED);assert.equal(evidence.after.published,EXPECTED);assert.equal(evidence.after.ready,0);assert.equal(evidence.after.mandatoryMissing,0);assert.equal(evidence.after.mediaBlocked,0);assert.equal(evidence.after.ownerApprovalRequired,0);assert.equal(after.items.length,EXPECTED);assert.ok(after.items.every(item=>item.published===true&&item.active===true&&item.status==='published'));
   assert.deepEqual(new Set(idsFrom(after)),new Set(ids));
   await c.auth.signOut();c=null;
+
   const pub=client();
   const home=await pub.rpc('get_public_home_catalog_v3');assert.ifError(home.error);assert.ok(home.data&&Array.isArray(home.data.items));
   const search=await pub.rpc('search_catalog_v3',{p_query:null,p_category_slug:null,p_producer_id:null,p_province:null,p_district:null,p_village:null,p_min_price_minor:null,p_max_price_minor:null,p_in_stock:false,p_featured:null,p_sort:'relevance',p_limit:100,p_offset:0});assert.ifError(search.error);assert.ok(search.data&&Array.isArray(search.data.items));
