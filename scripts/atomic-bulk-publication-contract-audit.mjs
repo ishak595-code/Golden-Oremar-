@@ -13,6 +13,7 @@ const v2=read('supabase/migrations/20260826233642_align_atomic_bulk_publication_
 const notificationBoundary=read('supabase/migrations/20260826234521_separate_official_store_moderation_notifications_v1.sql');
 const v3=read('supabase/migrations/20260826234917_fix_atomic_bulk_publication_audit_signature_v3.sql');
 const v4=read('supabase/migrations/20260826235432_activate_approved_products_and_add_official_catalog_recovery_v4.sql');
+const v5=read('supabase/migrations/20260827045601_expose_verified_official_brand_fallback_in_catalog_v5.sql');
 const client=read('src/admin/productBulkModerationApi.ts');
 
 for(const migration of [v1,v2,v3]){
@@ -55,10 +56,20 @@ for(const schema of ['private','public']){
 }
 forbidPattern(v4,/disable trigger|session_replication_role|alter table[^;]*disable/i,'Recovery must never bypass publication triggers.');
 
+requireText(v5,'private.catalog_public_card_image_path_v1','v5 must define one canonical public-card image resolver.');
+requireText(v5,"private.verified_public_storage_path_v1('catalog-public',p_product_image_path)",'Product images must remain verified before use.');
+requireText(v5,"producer_row.store_kind<>'official'",'Brand fallback must remain official-store only.');
+requireText(v5,"private.verified_public_storage_path_v1('catalog-public',producer_row.logo_path)",'Official logo fallback must be storage-verified.');
+requireText(v5,"private.verified_public_storage_path_v1('catalog-public',producer_row.cover_path)",'Official cover fallback must be storage-verified.');
+requireText(v5,'private.get_public_home_catalog_v2','Home catalog must use the canonical image resolver.');
+requireText(v5,'private.search_catalog_v2','Search catalog must use the canonical image resolver.');
+requirePattern(v5,/revoke all on function private\.catalog_public_card_image_path_v1\(text,uuid\) from public,anon,authenticated,service_role/i,'Brand fallback helper must stay internal-only.');
+forbidPattern(v5,/store_kind='producer'[\s\S]*logo_path/i,'Independent producer cards must not silently receive official-store brand fallback semantics.');
+
 requirePattern(client,/input\.approve[\s\S]*super_admin_bulk_publish_products_atomic_v1/,'Admin bulk approval must route through the atomic publication RPC.');
 requirePattern(client,/super_admin_bulk_review_products_v1[\s\S]*p_approve:false/,'Admin bulk rejection may retain detailed non-atomic results.');
 forbidPattern(client,/super_admin_bulk_review_products_v1[^\n]*p_approve:input\.approve/,'Admin approval must not return to the partial-result bulk RPC.');
 requireText(client,'Atomik toplu yayın için ürün seçimi gerekiyor.','Atomic publication must reject implicit all-products publication.');
 
 if(failures.length){console.error('Atomic bulk publication contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Atomic bulk publication contract audit passed: approval publishes active products, recovery is exact-set/AAL2-gated and trigger-preserving, and all publication writes remain all-or-nothing.');
+console.log('Atomic bulk publication contract audit passed: approval is active+atomic, recovery is exact-set/AAL2-gated and trigger-preserving, and official brand fallback is verified and public-surface consistent.');
