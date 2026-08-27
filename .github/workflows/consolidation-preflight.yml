@@ -31,7 +31,7 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - name: Audit production dependency vulnerabilities
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --omit=dev --audit-level=low
       - name: Run every contract and security audit
         run: npm run audit:all
       - name: TypeScript zero-error gate
