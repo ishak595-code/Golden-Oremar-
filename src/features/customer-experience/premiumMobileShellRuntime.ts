@@ -8,7 +8,7 @@ type ScrollDirection='up'|'down'|null;
 
 export function installPremiumMobileShellRuntime(){
  if(installed||typeof window==='undefined'||typeof document==='undefined')return;installed=true;
- const root=document.documentElement;let lastY=Math.max(0,window.scrollY);let compact=lastY>COMPACT_ENTER_Y;let ticking=false;let direction:ScrollDirection=null;let inputDirection:ScrollDirection=null;let directionAnchorY=lastY;let touchY:number|null=null;
+ const root=document.documentElement;let lastY=Math.max(0,window.scrollY);let compact=lastY>COMPACT_ENTER_Y;let ticking=false;let inputDirection:ScrollDirection=null;let directionAnchorY=lastY;let touchY:number|null=null;
  const apply=(next:boolean)=>{if(compact===next)return;compact=next;root.dataset.goHeaderCompact=next?'true':'false';};
  const setInputDirection=(next:Exclude<ScrollDirection,null>)=>{if(inputDirection===next)return;inputDirection=next;directionAnchorY=Math.max(0,window.scrollY);};
  root.dataset.goHeaderCompact=compact?'true':'false';
@@ -18,9 +18,9 @@ export function installPremiumMobileShellRuntime(){
  const onTouchEnd=()=>{touchY=null;};
  const onKeyDown=(event:KeyboardEvent)=>{if(event.key==='Home'||event.key==='PageUp'||event.key==='ArrowUp'||(event.key===' '&&event.shiftKey))setInputDirection('up');else if(event.key==='End'||event.key==='PageDown'||event.key==='ArrowDown'||(event.key===' '&&!event.shiftKey))setInputDirection('down');};
  const onScroll=()=>{if(ticking)return;ticking=true;requestAnimationFrame(()=>{const y=Math.max(0,window.scrollY);const delta=y-lastY;
-  if(y<EXPAND_TOP_Y){apply(false);direction='up';inputDirection=null;directionAnchorY=y;}
-  else if(delta>5){direction='down';if(!compact&&y>COMPACT_ENTER_Y){apply(true);inputDirection='down';directionAnchorY=y;}}
-  else if(delta<-7){direction='up';if(compact&&inputDirection==='up'&&directionAnchorY-y>=EXPAND_REVERSE_TRAVEL)apply(false);}
+  if(y<EXPAND_TOP_Y){apply(false);inputDirection=null;directionAnchorY=y;}
+  else if(delta>5){if(!compact&&y>COMPACT_ENTER_Y){apply(true);inputDirection='down';directionAnchorY=y;}}
+  else if(delta<-7){if(compact&&inputDirection==='up'&&directionAnchorY-y>=EXPAND_REVERSE_TRAVEL)apply(false);}
   lastY=y;ticking=false;
  });};
  const syncViewport=()=>{const viewport=window.visualViewport;root.style.setProperty('--go-visual-viewport-height',`${Math.round(viewport?.height||window.innerHeight)}px`);};
