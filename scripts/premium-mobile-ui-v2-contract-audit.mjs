@@ -1,0 +1,31 @@
+import fs from'node:fs';import path from'node:path';
+const root=process.cwd(),failures=[];
+const read=file=>fs.readFileSync(path.join(root,file),'utf8');const exists=file=>fs.existsSync(path.join(root,file));
+const main=read('src/main.tsx'),home=read('src/features/home/HomeSection.tsx'),search=read('src/features/catalog/CatalogSearchInput.tsx'),css=read('src/features/customer-experience/premiumMobileV2.css'),product=read('src/features/home/components/ProductCard.tsx'),image=read('src/features/home/components/PremiumImage.tsx'),runtime=read('src/features/customer-experience/premiumMobileShellRuntime.ts');
+function requireMatch(condition,message){if(!condition)failures.push(message);}
+requireMatch(main.includes("premiumMobileV2.css"),'Premium Mobile V2 stylesheet must be installed.');
+requireMatch(main.includes('installPremiumMobileShellRuntime'),'Adaptive mobile shell runtime must be installed.');
+for(const old of['referenceHomeExact.css','homeMerchandisingUpgrade.css','homeOneRowPremium.css']){requireMatch(!main.includes(old),`Superseded Home stylesheet import remains: ${old}`);requireMatch(!exists(`src/features/customer-experience/${old}`),`Superseded Home stylesheet file remains: ${old}`);}
+requireMatch(home.includes('useHomeExperience'),'Home must consume the bounded Home experience contract.');
+requireMatch(home.includes('IntersectionObserver'),'Deferred Home sections must remain viewport-driven.');
+requireMatch(!home.includes('useLiveHomeCatalog'),'Home must not restore the full-catalog client filter path.');
+requireMatch(!home.includes('sectionNarrative('),'Home section titles must remain server-owned rather than hardcoded narrative overrides.');
+requireMatch(search.includes('Mic'),'Voice search microphone must remain present.');
+requireMatch(search.includes('onVoice'),'Voice search callback must remain wired.');
+requireMatch(search.includes("aria-pressed={listening}"),'Voice listening state must be exposed accessibly.');
+for(const [token,value] of[['--go-space-1','4px'],['--go-space-2','8px'],['--go-space-3','12px'],['--go-space-4','16px'],['--go-space-5','20px'],['--go-space-6','24px'],['--go-space-7','32px'],['--go-space-8','40px'],['--go-space-9','48px']])requireMatch(css.includes(`${token}:${value}`),`Spacing token ${token}=${value} is missing.`);
+requireMatch(css.includes('--go-mobile-pad:20px'),'Canonical mobile horizontal padding must remain 20px.');
+requireMatch(css.includes('env(safe-area-inset-bottom'),'Bottom navigation must retain iOS/Android safe-area handling.');
+requireMatch(css.includes('@media(prefers-reduced-motion:reduce)'),'Reduced-motion support is required.');
+requireMatch(css.includes('min-height:44px'),'Minimum touch target contract is missing.');
+requireMatch(css.includes('-webkit-line-clamp:2'),'Product titles must support two readable lines.');
+requireMatch(css.includes('@media(max-width:350px)')&&css.includes('@media(max-width:520px)'),'Small-phone responsive guards are missing.');
+requireMatch(product.includes("storeKind==='official'"),'Product card must derive official-store trust from backend data.');
+requireMatch(product.includes('originVerified'),'Product card must derive origin verification from backend data.');
+requireMatch((product.match(/<ProductBadge/g)||[]).length<=2,'Product card may render at most two badge slots.');
+requireMatch(image.includes("loading={eager?'eager':'lazy'}"),'Product imagery must retain lazy loading with an explicit LCP eager path.');
+requireMatch(image.includes('onError'),'Image error fallback must remain implemented.');
+requireMatch(css.includes('object-fit:cover'),'Product/category imagery must remain ready for real photography.');
+requireMatch(runtime.includes('requestAnimationFrame'),'Adaptive header scroll work must stay animation-frame throttled.');
+requireMatch(runtime.includes("delta>5")&&runtime.includes("delta<-7"),'Adaptive header must retain scroll hysteresis to prevent flicker.');
+if(failures.length){console.error('Premium Mobile UI V2 contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}console.log('Premium Mobile UI V2 contract audit passed.');
