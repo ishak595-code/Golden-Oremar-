@@ -5,11 +5,9 @@ function formatMinor(value:number,currency:string,locale='tr-TR'){
 }
 
 type Props={priceMinor:number;currency:string;compareAtPriceMinor?:number|null;className?:string};
-export default function PriceDisplay({priceMinor,currency,compareAtPriceMinor,className=''}:Props){
- const hasCompare=typeof compareAtPriceMinor==='number'&&compareAtPriceMinor>priceMinor;
- const current=formatMinor(priceMinor,currency);const previous=hasCompare?formatMinor(compareAtPriceMinor!,currency):null;
- return<div className={`go-price-display ${className}`.trim()} aria-label={previous?`${current}; önceki fiyat ${previous}`:current}>
+export default function PriceDisplay({priceMinor,currency,className=''}:Props){
+ const current=formatMinor(priceMinor,currency);
+ return<div className={`go-price-display ${className}`.trim()} aria-label={current}>
   <strong>{current}</strong>
-  {previous?<span aria-hidden="true">Önce {previous}</span>:null}
  </div>;
 }
