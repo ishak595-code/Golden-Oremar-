@@ -1,64 +1,89 @@
-import React,{useMemo}from'react';
-import{ChevronRight,Clock3,Droplets,Fish,Gem,Leaf,Mountain,Sparkles,Star,Wheat}from'lucide-react';
-import{useLiveHomeCatalog,type LegacyHomeProduct}from'../catalog/useLiveHomeCatalog';
-import{usePublicStorefrontConfig}from'../storefront/usePublicStorefrontConfig';
+import React,{useEffect,useMemo,useRef,useState}from'react';
+import{AlertCircle,ArrowRight,RefreshCw}from'lucide-react';
+import{publicCatalogUrl}from'../catalog/api';
 import HomeEventsSpotlight from'./HomeEventsSpotlight';
+import{browserHomeLocale,type HomeSectionModel}from'./homeExperienceApi';
+import{useHomeExperience}from'./useHomeExperience';
+import CategoryCard from'./components/CategoryCard';
+import PremiumImage from'./components/PremiumImage';
+import ProductCard from'./components/ProductCard';
+import SectionHeader from'./components/SectionHeader';
 
-type Props={onProductClick:(product:LegacyHomeProduct)=>void;};
-type SectionNarrative={eyebrow:string;title:string;description:string};
-function safeText(value:unknown,max=300){return typeof value==='string'?value.trim().slice(0,max):'';}
-function safePrice(value:unknown){return typeof value==='number'&&Number.isFinite(value)&&value>=0?value:null;}
-function safeInteger(value:unknown){return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;}
-function money(value:number,currency:string|null){try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency:currency||'TRY',maximumFractionDigits:2}).format(value);}catch{return`${value.toLocaleString('tr-TR')} ₺`;}}
-function prefersReducedMotion(){return typeof window!=='undefined'&&window.matchMedia?.('(prefers-reduced-motion: reduce)').matches===true;}
-function CategoryGlyph({name}:{name:string}){const value=name.toLocaleLowerCase('tr-TR');if(value.includes('balık')||value.includes('et')||value.includes('yumurta'))return<Fish aria-hidden="true"/>;if(value.includes('süt')||value.includes('şarküteri'))return<Droplets aria-hidden="true"/>;if(value.includes('tahıl')||value.includes('un')||value.includes('buğday'))return<Wheat aria-hidden="true"/>;if(value.includes('dağ')||value.includes('yayla'))return<Mountain aria-hidden="true"/>;return<Leaf aria-hidden="true"/>;}
-function SectionGlyph({id}:{id:string}){if(id==='featured'||id==='best_sellers')return<Star aria-hidden="true"/>;if(id==='pre_order')return<Clock3 aria-hidden="true"/>;if(id==='seasonal')return<Leaf aria-hidden="true"/>;return<Sparkles aria-hidden="true"/>;}
-function navigateToCategories(){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','categories');const depth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(depth)&&depth>=0?depth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
-function compactOrigin(value:string|null|undefined){const origin=safeText(value,160);if(!origin)return'';return origin.split(',').slice(0,1).join(',').trim();}
-function productPitch(product:LegacyHomeProduct){const description=safeText(product.shortDescription||product.description,190);if(description)return description;if(product.producerOriginVerified&&product.origin)return`${compactOrigin(product.origin)} menşei doğrulanmış, kaynağı görünür bir seçim.`;if(product.producerVerified)return'Doğrulanmış mağazadan, temel ürün ve kaynak bilgileri görünür bir seçim.';if(product.is_featured)return'Golden Oremar vitrini için seçilmiş ürünlerden biri.';return'Kaynağı, fiyatı ve temel ürün bilgileri tek bakışta görünür.';}
-function productSignals(product:LegacyHomeProduct){const signals:string[]=[];const usefulTags=Array.isArray(product.tags)?product.tags.map(tag=>safeText(tag,46)).filter(Boolean).slice(0,1):[];signals.push(...usefulTags);if(product.unit)signals.push(safeText(product.unit,68));if(product.producerOriginVerified)signals.push('Menşe doğrulandı');if(product.handlingProfile?.requiresColdChain===true)signals.push('Soğuk zincir');else if(product.preOrder)signals.push('Ön sipariş');else if(product.stockMode==='seasonal')signals.push('Mevsimlik');else if(safeInteger(product.stock)!==null&&(product.stock as number)>0)signals.push('Stokta');const reviews=safeInteger(product.reviewCount);if(reviews!==null&&reviews>0&&typeof product.rating==='number'&&Number.isFinite(product.rating))signals.push(`${product.rating.toFixed(1)}/5 · ${reviews} değerlendirme`);return Array.from(new Set(signals.filter(Boolean))).slice(0,4);}
-function discountPercent(price:number|null,original:number|null){if(price===null||original===null||original<=price||original<=0)return null;return Math.max(1,Math.min(99,Math.round((1-price/original)*100)));}
-function seasonNarrative():SectionNarrative{const month=new Date().getMonth()+1;if(month>=3&&month<=5)return{eyebrow:'Mevsimin ritmi',title:'Baharın Taze Başlangıcı',description:'Mevsimlik ürünleri kaynağıyla keşfedin.'};if(month>=6&&month<=7)return{eyebrow:'Mevsimin ritmi',title:'Yazın Bereketi',description:'Yaz dönemindeki gerçek mevsimlik ürünleri keşfedin.'};if(month===8)return{eyebrow:'Mevsimin ritmi',title:'Yazın Son Hasadı',description:'Yaz sonu mevsimlik ürünlerini kaynağıyla keşfedin.'};if(month>=9&&month<=11)return{eyebrow:'Mevsimin ritmi',title:'Sonbaharın Kiler Seçkisi',description:'Sonbahar dönemindeki mevsimlik ürünleri keşfedin.'};return{eyebrow:'Mevsimin ritmi',title:'Kış Sofrasının Seçkisi',description:'Kış dönemindeki mevsimlik ürünleri keşfedin.'};}
-function sectionNarrative(id:string,configuredTitle:string,items:LegacyHomeProduct[]):SectionNarrative{if(id==='seasonal')return seasonNarrative();if(id==='featured')return{eyebrow:'Golden Oremar seçkisi',title:'Vitrinin İmza Seçkisi',description:'Editoryal olarak öne çıkarılmış gerçek ürünler.'};if(id==='best_sellers'){const hasRealReviews=items.some(item=>(item.reviewCount??0)>0);return hasRealReviews?{eyebrow:'Gerçek değerlendirmeler',title:'Topluluğun Öne Çıkardıkları',description:'Gerçek müşteri değerlendirmesi bulunan ürünler.'}:{eyebrow:'Özel vitrin',title:'Golden Oremar İmza Seçkileri',description:'Vitrin için editoryal olarak seçilmiş ürünler.'};}if(id==='pre_order')return{eyebrow:'Sizin için hazırlanır',title:'Özel Hazırlananlar',description:'Gerçekten ön siparişe açık ürünler.'};if(id==='natural')return{eyebrow:'Kaynağına yakın',title:'Doğal Seçimler',description:'Menşe ve üretici bilgisi görünür ürünler.'};if(id==='new_arrivals')return{eyebrow:'Yeni',title:'Yeni Keşifler',description:'Vitrine yeni eklenen ürünler.'};if(id==='offers')return{eyebrow:'Gerçek fiyat avantajı',title:'Bugünün Ayrıcalıkları',description:'Yalnız doğrulanabilir karşılaştırma fiyatı bulunan ürünler.'};return{eyebrow:'Golden Oremar',title:safeText(configuredTitle,160)||'Seçkiler',description:'Kaynağı ve temel bilgileri görünür ürünler.'};}
+type ProductReference={id:string;slug:string;legacyId?:string|null};
+type Props={onProductClick:(product:ProductReference)=>void};
+
+function navigateToCategories(categorySlug?:string){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','categories');if(categorySlug)url.searchParams.set('category',categorySlug);const depth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(depth)&&depth>=0?depth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
+function sourceEyebrow(section:HomeSectionModel){const labels:Record<HomeSectionModel['source']['kind'],string>={featured:'Golden Oremar',preorder:'Hazırlıkla sunulur',seasonal:'Mevsiminde',newest:'Yeni',offers:'Fiyat avantajı',curated:'Seçki',category:'Kategori seçkisi'};return labels[section.source.kind];}
+function eventAt(settings:any,placement:'after_hero'|'after_categories'|'before_products'){return settings?.enabled===true&&settings?.placement===placement?<HomeEventsSpotlight settings={settings}/>:null;}
 
 export default function HomeSection({onProductClick}:Props){
- const{staticContent,heroCategories,homeSections,eventSpotlight,salesReadiness,loading:storefrontLoading,error:storefrontError}=usePublicStorefrontConfig('tr');
- const{products,categories,loading:catalogLoading,error:catalogError}=useLiveHomeCatalog();
- const interfaceContent=staticContent?.interface??null;
- const categoriesTitle=interfaceContent?safeText(interfaceContent.categoriesTitle,200):'Kategoriler';
- const loading=storefrontLoading||catalogLoading,hasLoadError=Boolean(storefrontError||catalogError),salesPaused=salesReadiness?.status==='blocked_pending_business_identity';
- const quickCategories=useMemo(()=>{const liveById=new Map(categories.filter(category=>category.productCount>0).map(category=>[category.id,category]));const managed=heroCategories.map(config=>liveById.get(config.targetCategory)).filter((category):category is NonNullable<typeof category>=>Boolean(category));const managedIds=new Set(managed.map(category=>category.id));const fallback=categories.filter(category=>category.productCount>0&&!managedIds.has(category.id));return[...managed,...fallback].slice(0,10);},[categories,heroCategories]);
- const categoryPreviewImages=useMemo(()=>{const result=new Map<string,string[]>();for(const category of quickCategories){result.set(category.id,products.filter(product=>product.categorySlug===category.id&&Boolean(product.image)).map(product=>product.image).filter(Boolean).slice(0,3));}return result;},[products,quickCategories]);
- function sectionProducts(id:string){let source:LegacyHomeProduct[]=[];if(id==='featured')source=products.filter(product=>product.is_featured||product.homeSection==='featured');else if(id==='pre_order')source=products.filter(product=>product.preOrder||product.homeSection==='pre_order');else if(id==='seasonal')source=products.filter(product=>product.stockMode==='seasonal'||product.homeSection==='seasonal');else if(id==='best_sellers'){const assigned=products.filter(product=>product.homeSection==='best_sellers');const reviewed=[...products].filter(product=>(product.reviewCount??0)>0).sort((a,b)=>(b.reviewCount??0)-(a.reviewCount??0)||(b.rating??0)-(a.rating??0));source=reviewed.length?reviewed:assigned;}else if(id==='offers')source=products.filter(product=>product.homeSection==='offers'||(safePrice(product.originalPrice)!==null&&safePrice(product.price)!==null&&(product.originalPrice as number)>(product.price as number)));else source=products.filter(product=>product.homeSection===id);return Array.from(new Map(source.map(product=>[product.id,product])).values()).slice(0,7);}
- const offerProducts=sectionProducts('offers');
- const showCampaign=Boolean(interfaceContent)&&offerProducts.length>0;
- function chooseCategory(slug:string){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','categories');url.searchParams.set('category',slug);const depth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(depth)&&depth>=0?depth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
- function renderEvents(placement:'after_hero'|'after_categories'|'before_products'){return eventSpotlight?.enabled&&eventSpotlight.placement===placement?<HomeEventsSpotlight settings={eventSpotlight}/>:null;}
- const visibleSections=homeSections.filter(section=>section.active).map(section=>{const items=sectionProducts(section.id);return{...section,items,narrative:sectionNarrative(section.id,section.title,items)};}).filter(section=>section.items.length>0);
- const firstSection=visibleSections[0]??null;
- const remainingSections=visibleSections.slice(1);
+ const locale=browserHomeLocale();
+ const{experience,loading,error,retry,loadSection}=useHomeExperience(locale);
+ const orderedCategories=useMemo(()=>{
+  if(!experience)return[];
+  const bySlug=new Map(experience.categories.map(category=>[category.slug,category]));
+  const byId=new Map(experience.categories.map(category=>[category.id,category]));
+  const used=new Set<string>();
+  const managed=experience.categoryOrder.flatMap(config=>{const category=bySlug.get(config.targetCategory)||byId.get(config.targetCategory);if(!category||used.has(category.id))return[];used.add(category.id);return[{category,config}];});
+  const fallback=experience.categories.filter(category=>!used.has(category.id)).map(category=>({category,config:null}));
+  return[...managed,...fallback].slice(0,12);
+ },[experience]);
 
- return<div className="go-premium-home go-reference-home" data-reference-layout="search-category-product">
-  <section className="mx-auto max-w-7xl px-4 pt-3 sm:px-6 sm:pt-4" aria-labelledby="home-title">
-   <h1 id="home-title" className="sr-only">Golden Oremar ürünleri</h1>
-   {loading?<div role="status" aria-live="polite" className="mb-3 rounded-2xl border border-brand-border bg-brand-card px-4 py-3 text-center text-sm font-semibold text-brand-muted">Seçkiler hazırlanıyor…</div>:null}
-   {hasLoadError?<CustomerNotice>Mağazanın bir bölümü şu anda yenilenemiyor. Mevcut içerikleri incelemeye devam edebilirsiniz.</CustomerNotice>:null}
-   {salesPaused&&salesReadiness?<CustomerNotice>{safeText(salesReadiness.message,500)}</CustomerNotice>:null}
-   {quickCategories.length?<section className="go-reference-category-section" aria-labelledby="home-categories-title"><div className="mb-3 flex items-center justify-between gap-3"><h2 id="home-categories-title" className="text-lg font-black">{categoriesTitle}</h2><button type="button" onClick={navigateToCategories} className="min-h-11 rounded-xl px-3 text-sm font-bold text-brand-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Tümü</button></div><div className="go-reference-category-rail hide-scrollbar" role="list" aria-label="Kategoriler">{quickCategories.map(category=>{const previews=categoryPreviewImages.get(category.id)||[];return<button type="button" role="listitem" key={category.id} onClick={()=>chooseCategory(category.id)} className="go-reference-category-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span className="go-reference-category-card__top"><span className="go-reference-category-card__glyph"><CategoryGlyph name={category.name}/></span><span className="go-reference-category-card__previews" aria-hidden="true">{previews.map((image,index)=><span className="go-reference-category-card__preview" key={`${category.id}-${index}`}><img src={image} alt="" loading="lazy" decoding="async"/></span>)}</span></span><span className="go-reference-category-card__title">{category.name}</span><span className="go-reference-category-card__description">Keşfet</span></button>;})}</div></section>:null}
-  </section>
+ if(loading&&!experience)return<HomeLoading/>;
+ if(!experience)return<HomeError message={error||'Ana sayfa şu anda yüklenemiyor.'} onRetry={()=>void retry().catch(()=>undefined)}/>;
+ const salesBlocked=experience.salesReadiness.status==='blocked_pending_business_identity';
+ const initialSections=experience.sections.filter(section=>!section.deferred&&section.items.length>0);
+ const deferredSections=experience.sections.filter(section=>section.deferred);
 
-  {firstSection?<section className="mx-auto mt-5 max-w-7xl px-4 sm:px-6"><ProductSection section={firstSection} onProductClick={onProductClick}/></section>:null}
+ return<div className="go-premium-home-v2" data-home-contract-version={experience.version}>
+  <h1 className="sr-only">{experience.brand.name} ürünleri</h1>
+  <div className="go-home-content">
+   {error?<HomeNotice>{error}</HomeNotice>:null}
+   {salesBlocked?<HomeNotice>{experience.salesReadiness.message}</HomeNotice>:null}
 
-  {showCampaign&&interfaceContent?<section className="go-reference-campaign mx-auto mt-6 max-w-7xl px-4 sm:px-6" aria-label="Günün fırsatı"><button type="button" onClick={()=>document.getElementById('home-section-offers')?.scrollIntoView({behavior:prefersReducedMotion()?'auto':'smooth',block:'start'})} className="go-reference-campaign__surface"><span className="go-reference-campaign__eyebrow">Bugünün ayrıcalığı</span><span className="go-reference-campaign__title">{safeText(interfaceContent.heroTitle,300)}</span><span className="go-reference-campaign__subtitle">{safeText(interfaceContent.heroSubtitle,600)}</span></button></section>:null}
+   {orderedCategories.length?<section className="go-home-section go-home-categories" aria-labelledby="home-categories-title">
+    <SectionHeader id="home-categories-title" title={experience.interface.categoriesTitle} actionLabel="Tümü" onAction={()=>navigateToCategories()}/>
+    <div className="go-category-rail hide-scrollbar" role="list" aria-label={experience.interface.categoriesTitle}>
+     {orderedCategories.map(({category,config})=>{const image=category.imagePath||config?.image||null;return<div role="listitem" key={category.id}><CategoryCard name={config?.title||category.name} subtitle={config?.subtitle||null} imageUrl={image?publicCatalogUrl(image):null} onClick={()=>navigateToCategories(category.slug)}/></div>;})}
+    </div>
+   </section>:null}
 
-  <div className="mx-auto mt-6 max-w-7xl px-4 sm:px-6">{renderEvents('after_hero')}{renderEvents('after_categories')}{renderEvents('before_products')}</div>
+   {eventAt(experience.eventSpotlight,'after_categories')}
 
-  {remainingSections.length?<section className="mx-auto mt-7 max-w-7xl space-y-9 px-4 sm:px-6">{remainingSections.map(section=><ProductSection key={section.id} section={section} onProductClick={onProductClick}/>)}</section>:null}
+   {initialSections.map((section,index)=><ProductSection key={section.key} section={section} onProductClick={onProductClick} eagerFirst={index===0}/>) }
 
-  <section className="go-reference-discover mx-auto mb-28 mt-8 max-w-7xl px-4 sm:px-6"><button type="button" onClick={navigateToCategories} className="go-reference-discover__button">Tüm Ürünleri Keşfet <span aria-hidden="true">→</span></button></section>
+   {eventAt(experience.eventSpotlight,'after_hero')}
+
+   {experience.campaign?<CampaignCard campaign={experience.campaign}/>:null}
+
+   {eventAt(experience.eventSpotlight,'before_products')}
+
+   {deferredSections.map(section=><DeferredProductSection key={section.key} descriptor={section} loadSection={loadSection} onProductClick={onProductClick}/>) }
+
+   {experience.interface.footerText?<section className="go-brand-provenance" aria-label={`${experience.brand.name} hakkında`}><span>{experience.brand.name}</span><p>{experience.interface.footerText}</p></section>:null}
+
+   <button type="button" className="go-discover-all" onClick={()=>navigateToCategories()}><span>Tüm ürünleri keşfet</span><ArrowRight aria-hidden="true"/></button>
+  </div>
  </div>;
 }
 
-function ProductSection({section,onProductClick}:{section:{id:string;narrative:SectionNarrative;items:LegacyHomeProduct[]};onProductClick:(product:LegacyHomeProduct)=>void}){return<section id={`home-section-${section.id}`} className={`go-reference-product-section go-reference-product-section--${section.id}`} aria-labelledby={`home-section-title-${section.id}`}><div className="go-reference-section-intro"><span className="go-reference-section-eyebrow">{section.narrative.eyebrow}</span><div className="go-reference-section-heading"><span className="go-reference-section-heading__icon"><SectionGlyph id={section.id}/></span><h2 id={`home-section-title-${section.id}`}>{section.narrative.title}</h2></div><p className="go-reference-section-copy">{section.narrative.description}</p></div><div className="go-reference-product-list">{section.items.map(product=><HomeProductLinkRow key={product.id} product={product} onOpen={()=>onProductClick(product)}/>)}</div></section>;}
-function HomeProductLinkRow({product,onOpen}:{product:LegacyHomeProduct;onOpen:()=>void}){const price=safePrice(product.price),originalPrice=safePrice(product.originalPrice),discount=discountPercent(price,originalPrice),signals=productSignals(product),rubyVerified=product.producerVerified&&product.producerBadgeTone==='ruby';const origin=compactOrigin(product.origin);return<button type="button" onClick={onOpen} className="go-reference-product-row" aria-label={`${product.name} ürün detayını aç`}><span className="go-reference-product-row__media">{product.image?<img src={product.image} alt={`${product.name} ürün görseli`} loading="lazy" decoding="async"/>:<span className="go-reference-product-row__placeholder"><Leaf aria-hidden="true"/></span>}</span><span className="go-reference-product-row__body"><span className="go-reference-product-row__topline"><span className="go-reference-product-row__category">{safeText(product.category,120)}</span>{product.producerVerified?<span className={rubyVerified?'go-reference-product-row__ruby':'go-reference-product-row__verified'}><Gem aria-hidden="true"/>{rubyVerified?'Yakut':'Doğrulanmış'}</span>:null}</span><span className="go-reference-product-row__name">{product.name}</span><span className="go-reference-product-row__pitch">{productPitch(product)}</span>{signals.length?<span className="go-reference-product-row__signals" aria-label="Ürün hakkında önemli bilgiler">{signals.map(signal=><span key={signal}>{signal}</span>)}</span>:null}<span className="go-reference-product-row__producer">{safeText(product.producerName,120)}{origin?` · ${origin}`:''}</span></span><span className="go-reference-product-row__end">{discount!==null?<span className="go-reference-product-row__discount">%{discount} avantaj</span>:null}{price!==null?<><span className="go-reference-product-row__price">{money(price,product.currency)}</span>{originalPrice!==null&&originalPrice>price?<span className="go-reference-product-row__previous">{money(originalPrice,product.currency)}</span>:null}</>:null}<ChevronRight aria-hidden="true"/></span></button>;}
-function CustomerNotice({children}:{children:React.ReactNode}){return<div role="status" className="mb-4 rounded-2xl border border-amber-300/50 bg-amber-950/30 px-4 py-3 text-sm font-semibold text-amber-100">{children}</div>;}
+function ProductSection({section,onProductClick,eagerFirst=false}:{section:HomeSectionModel;onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean}){if(!section.items.length)return null;return<section className="go-home-section go-product-section-v2" aria-labelledby={`home-section-${section.key}`}>
+ <SectionHeader id={`home-section-${section.key}`} eyebrow={sourceEyebrow(section)} title={section.title} subtitle={section.subtitle}/>
+ <div className="go-product-grid-v2">{section.items.map((item,index)=><ProductCard key={item.id} item={item} eager={eagerFirst&&index===0} onClick={()=>onProductClick(item)}/>)}</div>
+ </section>;}
+
+function DeferredProductSection({descriptor,loadSection,onProductClick}:{descriptor:HomeSectionModel;loadSection:(key:string)=>Promise<HomeSectionModel|null>;onProductClick:(product:ProductReference)=>void}){
+ const hostRef=useRef<HTMLElement|null>(null);const[section,setSection]=useState<HomeSectionModel|null>(null);const[loading,setLoading]=useState(false);const[error,setError]=useState('');const requested=useRef(false);
+ const request=()=>{if(requested.current)return;requested.current=true;setLoading(true);setError('');void loadSection(descriptor.key).then(result=>setSection(result)).catch(err=>{requested.current=false;setError(err?.message||'Bölüm yenilenemedi.');}).finally(()=>setLoading(false));};
+ useEffect(()=>{const node=hostRef.current;if(!node)return;if(typeof IntersectionObserver==='undefined'){request();return;}const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){request();observer.disconnect();}},{rootMargin:'560px 0px'});observer.observe(node);return()=>observer.disconnect();},[descriptor.key,loadSection]);
+ return<section ref={hostRef} className="go-home-section go-product-section-v2 go-product-section-v2--deferred" aria-labelledby={`home-section-${descriptor.key}`}>
+  <SectionHeader id={`home-section-${descriptor.key}`} eyebrow={sourceEyebrow(descriptor)} title={descriptor.title} subtitle={descriptor.subtitle}/>
+  {section?.items.length?<div className="go-product-grid-v2">{section.items.map(item=><ProductCard key={item.id} item={item} onClick={()=>onProductClick(item)}/>)}</div>:loading?<ProductRowsSkeleton/>:error?<div className="go-inline-error" role="status"><AlertCircle aria-hidden="true"/><span>{error}</span><button type="button" onClick={request}>Yeniden dene</button></div>:<div className="go-section-reserved-space" aria-hidden="true"/>}
+ </section>;
+}
+
+function CampaignCard({campaign}:{campaign:{title:string;description:string|null;bannerPath:string|null}}){const banner=campaign.bannerPath?publicCatalogUrl(campaign.bannerPath):null;return<section className="go-home-section go-campaign-v2" aria-label={campaign.title}>{banner?<PremiumImage src={banner} alt="" className="go-campaign-v2__media"/>:null}<div className="go-campaign-v2__copy"><span>Kampanya</span><h2>{campaign.title}</h2>{campaign.description?<p>{campaign.description}</p>:null}</div></section>;}
+function HomeNotice({children}:{children:React.ReactNode}){return<div className="go-home-notice" role="status" aria-live="polite"><AlertCircle aria-hidden="true"/><span>{children}</span></div>;}
+function HomeError({message,onRetry}:{message:string;onRetry:()=>void}){return<div className="go-home-state" role="alert"><AlertCircle aria-hidden="true"/><h1>Ana sayfa yenilenemedi</h1><p>{message}</p><button type="button" onClick={onRetry}><RefreshCw aria-hidden="true"/>Yeniden dene</button></div>;}
+function ProductRowsSkeleton(){return<div className="go-product-grid-v2" role="status" aria-label="Ürünler yükleniyor">{[0,1,2].map(index=><div className="go-product-skeleton" key={index}><span/><div><i/><i/><i/></div></div>)}</div>;}
+function HomeLoading(){return<div className="go-premium-home-v2"><div className="go-home-content"><section className="go-home-section"><div className="go-heading-skeleton"/><div className="go-category-skeleton-rail">{[0,1,2].map(index=><div className="go-category-skeleton" key={index}/>)}</div></section><section className="go-home-section"><div className="go-heading-skeleton go-heading-skeleton--wide"/><ProductRowsSkeleton/></section></div></div>;}
