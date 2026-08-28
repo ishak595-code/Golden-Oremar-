@@ -6,6 +6,7 @@ const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const home=read('src/features/home/HomeSection.tsx');
 const productCard=read('src/features/home/components/ProductCard.tsx');
 const price=read('src/features/home/components/PriceDisplay.tsx');
+const catalog=read('src/features/catalog/api.ts');
 const css=read('src/features/customer-experience/premiumMobileV2.css');
 const narrativeCss=read('src/features/customer-experience/storefrontNarrativePremium.css');
 const main=read('src/main.tsx');
@@ -24,7 +25,7 @@ const checks=[
  ['Home cards never exceed two visible trust badges',productCard.includes('official?<ProductBadge')&&productCard.includes('official&&signal?<ProductBadge')],
  ['product titles remain a controlled two-line hierarchy',css.includes('.go-product-card-v2__title')&&css.includes('-webkit-line-clamp:2')],
  ['product cards remain premium and restrained without decorative shadow/glow dependence',css.includes('.go-product-card-v2__button')&&css.includes('box-shadow:none')],
- ['comparison pricing is shown only when catalog data supplies it',price.includes('compareAtPriceMinor')&&!price.includes('discountPercent')&&!price.includes('% indirim')],
+ ['compare-at data remains canonical while primary Home cards avoid strike-through promotion framing',catalog.includes('compareAtPriceMinor?:number|null')&&catalog.includes('optionalSafeInteger(value.variant.compareAtPriceMinor')&&!productCard.includes('compareAtPriceMinor')&&!price.includes('compareAtPriceMinor')&&!price.includes('discountPercent')&&!price.includes('% indirim')],
  ['superseded Home CSS layers remain absent from the entrypoint',removedLayers.every(name=>!main.includes(name))],
  ['narrative CSS cannot own Premium V2 product geometry',!narrativeCss.includes('.go-product-card-v2__button')&&!narrativeCss.includes('.go-product-grid-v2')],
  ['product detail retains category, store and origin navigation',connections.includes('product.categorySlug')&&connections.includes('buildProducerUrl')&&connections.includes('buildSearchUrl({query:origin})')],
