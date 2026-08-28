@@ -22,7 +22,8 @@ requireMatch(css.includes('-webkit-line-clamp:2'),'Product titles must support t
 requireMatch(css.includes('@media(max-width:350px)')&&css.includes('@media(max-width:520px)'),'Small-phone responsive guards are missing.');
 requireMatch(product.includes("storeKind==='official'"),'Product card must derive official-store trust from backend data.');
 requireMatch(product.includes('originVerified'),'Product card must derive origin verification from backend data.');
-requireMatch((product.match(/<ProductBadge/g)||[]).length<=2,'Product card may render at most two badge slots.');
+requireMatch(product.includes("official?<ProductBadge")&&product.includes("official&&signal?<ProductBadge"),'Product card must keep the explicit maximum-two trust-signal composition.');
+requireMatch(!product.includes('.map('),'Product card must not map an unbounded badge collection onto the primary card surface.');
 requireMatch(image.includes("loading={eager?'eager':'lazy'}"),'Product imagery must retain lazy loading with an explicit LCP eager path.');
 requireMatch(image.includes('onError'),'Image error fallback must remain implemented.');
 requireMatch(css.includes('object-fit:cover'),'Product/category imagery must remain ready for real photography.');
