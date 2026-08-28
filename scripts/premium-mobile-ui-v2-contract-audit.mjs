@@ -28,5 +28,7 @@ requireMatch(image.includes("loading={eager?'eager':'lazy'}"),'Product imagery m
 requireMatch(image.includes('onError'),'Image error fallback must remain implemented.');
 requireMatch(css.includes('object-fit:cover'),'Product/category imagery must remain ready for real photography.');
 requireMatch(runtime.includes('requestAnimationFrame'),'Adaptive header scroll work must stay animation-frame throttled.');
-requireMatch(runtime.includes("delta>5")&&runtime.includes("delta<-7"),'Adaptive header must retain scroll hysteresis to prevent flicker.');
+requireMatch(runtime.includes('COMPACT_ENTER_Y=104')&&runtime.includes('EXPAND_TOP_Y=40'),'Adaptive header must retain distinct enter/top hysteresis thresholds.');
+requireMatch(runtime.includes('EXPAND_REVERSE_TRAVEL=48')&&runtime.includes('directionAnchorY-y>=EXPAND_REVERSE_TRAVEL'),'Adaptive header must require meaningful reverse travel before expansion so self-induced layout shifts cannot flicker it.');
+requireMatch(runtime.includes("direction!=='down'")&&runtime.includes("direction!=='up'"),'Adaptive header must retain explicit scroll-direction state.');
 if(failures.length){console.error('Premium Mobile UI V2 contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}console.log('Premium Mobile UI V2 contract audit passed.');
