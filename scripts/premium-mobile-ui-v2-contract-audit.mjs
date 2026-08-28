@@ -1,7 +1,7 @@
 import fs from'node:fs';import path from'node:path';
 const root=process.cwd(),failures=[];
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');const exists=file=>fs.existsSync(path.join(root,file));
-const main=read('src/main.tsx'),home=read('src/features/home/HomeSection.tsx'),search=read('src/features/catalog/CatalogSearchInput.tsx'),css=read('src/features/customer-experience/premiumMobileV2.css'),product=read('src/features/home/components/ProductCard.tsx'),image=read('src/features/home/components/PremiumImage.tsx'),runtime=read('src/features/customer-experience/premiumMobileShellRuntime.ts'),readiness=read('supabase/migrations/20260828174048_derive_home_sales_readiness_from_live_controls_v3.sql'),readinessCopy=read('supabase/migrations/20260828174653_refine_public_home_sales_readiness_copy_v4.sql');
+const main=read('src/main.tsx'),home=read('src/features/home/HomeSection.tsx'),search=read('src/features/catalog/CatalogSearchInput.tsx'),css=read('src/features/customer-experience/premiumMobileV2.css'),product=read('src/features/home/components/ProductCard.tsx'),price=read('src/features/home/components/PriceDisplay.tsx'),image=read('src/features/home/components/PremiumImage.tsx'),runtime=read('src/features/customer-experience/premiumMobileShellRuntime.ts'),readiness=read('supabase/migrations/20260828174048_derive_home_sales_readiness_from_live_controls_v3.sql'),readinessCopy=read('supabase/migrations/20260828174653_refine_public_home_sales_readiness_copy_v4.sql');
 function requireMatch(condition,message){if(!condition)failures.push(message);}
 requireMatch(main.includes("premiumMobileV2.css"),'Premium Mobile V2 stylesheet must be installed.');
 requireMatch(main.includes('installPremiumMobileShellRuntime'),'Adaptive mobile shell runtime must be installed.');
@@ -29,6 +29,7 @@ requireMatch(product.includes("storeKind==='official'"),'Product card must deriv
 requireMatch(product.includes('originVerified'),'Product card must derive origin verification from backend data.');
 requireMatch(product.includes("official?<ProductBadge")&&product.includes("official&&signal?<ProductBadge"),'Product card must keep the explicit maximum-two trust-signal composition.');
 requireMatch(!product.includes('.map('),'Product card must not map an unbounded badge collection onto the primary card surface.');
+requireMatch(!product.includes('compareAtPriceMinor')&&!price.includes('compareAtPriceMinor'),'Primary Home cards must not restore compare-at/strike-through promotional framing; the canonical value remains available outside this presentation surface.');
 requireMatch(image.includes("loading={eager?'eager':'lazy'}"),'Product imagery must retain lazy loading with an explicit LCP eager path.');
 requireMatch(image.includes('onError'),'Image error fallback must remain implemented.');
 requireMatch(css.includes('object-fit:cover'),'Product/category imagery must remain ready for real photography.');
