@@ -19,7 +19,7 @@ export default function ProductCard({item,onClick,eager=false}:{item:CatalogItem
     <span className="go-product-card-v2__title">{item.name}</span>
     <span className="go-product-card-v2__source"><MapPin aria-hidden="true"/><span>{sourceLabel(item)}</span></span>
     <span className="go-product-card-v2__signals">{official?<ProductBadge tone="official" label="Resmi mağaza"/>:signal?<ProductBadge tone={signal.tone} label={signal.label}/>:null}{official&&signal?<ProductBadge tone={signal.tone} label={signal.label}/>:null}</span>
-    <span className="go-product-card-v2__footer"><PriceDisplay priceMinor={item.variant.priceMinor} compareAtPriceMinor={item.variant.compareAtPriceMinor} currency={item.currency}/><ChevronRight aria-hidden="true"/></span>
+    <span className="go-product-card-v2__footer"><PriceDisplay priceMinor={item.variant.priceMinor} currency={item.currency}/><ChevronRight aria-hidden="true"/></span>
    </span>
   </button>
  </article>;
