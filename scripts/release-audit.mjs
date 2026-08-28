@@ -46,11 +46,17 @@ if(appShell){
  forbidPattern(appShell,/\bCapitor\b/,'Misspelled Capacitor runtime identifier detected.');
 }
 const catalogSearchInput=requireFile('src/features/catalog/CatalogSearchInput.tsx');
+const premiumMobileCss=requireFile('src/features/customer-experience/premiumMobileV2.css');
 if(catalogSearchInput){
  requirePattern(catalogSearchInput,/aria-label="Ürün, üretici veya köy ara"/,'Canonical catalog searchbox accessible name is missing.');
  requirePattern(catalogSearchInput,/onClick=\{onVoice\}/,'Canonical catalog search must expose the microphone action.');
  requirePattern(catalogSearchInput,/aria-pressed=\{listening\}/,'Canonical catalog microphone must expose listening state.');
- requirePattern(catalogSearchInput,/animate-pulse/,'Canonical catalog microphone must visibly expose active listening state.');
+ requirePattern(catalogSearchInput,/aria-label=\{listening\?'Sesli arama dinleniyor'/,'Canonical catalog microphone must announce active listening state.');
+ requirePattern(catalogSearchInput,/role="status" aria-live="polite"/,'Voice search listening/processing feedback must remain screen-reader visible.');
+}
+if(premiumMobileCss){
+ requirePattern(premiumMobileCss,/\.go-search-bar__voice\[aria-pressed="true"\]/,'Canonical catalog microphone must visibly expose active listening state.');
+ requirePattern(premiumMobileCss,/\.go-search-bar\[data-processing="true"\]/,'Canonical catalog microphone must visibly expose processing state.');
 }
 
 const homeStorefront=requireFile('src/features/home/HomeSection.tsx');
@@ -65,13 +71,25 @@ if(homeStorefront){
   [/spotlightProduct/,'The retired duplicate standalone featured-product block must not return.'],
  ];
  for(const[re,label]of forbiddenHomeFallbacks)forbidPattern(homeStorefront,re,label);
- requirePattern(homeStorefront,/loading:\s*storefrontLoading/,'Home storefront must expose managed storefront loading separately from catalog loading.');
+ requirePattern(homeStorefront,/useHomeExperience\(locale\)/,'Home storefront must use the canonical bounded Home experience read model.');
+ requirePattern(homeStorefront,/loading&&!experience/,'Home loading must be driven by the canonical Home experience lifecycle.');
  requirePattern(homeStorefront,/salesReadiness\.message/,'Sales-readiness notice must use the validated storefront message.');
- requirePattern(homeStorefront,/interfaceContent\.categoriesTitle/,'Validated storefront category heading must drive the home category area.');
- requirePattern(homeStorefront,/heroCategories\.map\(config=>/,'Managed category targets must drive public home category order.');
- requirePattern(homeStorefront,/homeSections\.filter\(section=>section\.active\)\.map/,'Managed active product sections must drive public home section order.');
+ requirePattern(homeStorefront,/experience\.interface\.categoriesTitle/,'Validated storefront category heading must drive the home category area.');
+ requirePattern(homeStorefront,/experience\.categoryOrder\.flatMap/,'Managed category targets must drive public home category order.');
+ requirePattern(homeStorefront,/experience\.sections\.filter\(section=>!section\.deferred/,'Managed initial product sections must drive public home section order.');
+ requirePattern(homeStorefront,/experience\.sections\.filter\(section=>section\.deferred\)/,'Managed deferred product sections must remain server-owned and ordered.');
  requirePattern(homeStorefront,/eventSpotlight\.placement===placement/,'Managed event spotlight placement must drive the public home position.');
+ requirePattern(homeStorefront,/IntersectionObserver/,'Secondary Home sections must remain viewport-deferred.');
  forbidPattern(homeStorefront,/HeroMetric|producerCount|originCount/,'Metric-heavy product/producer/origin hero blocks must not return to the customer home.');
+ forbidPattern(homeStorefront,/useLiveHomeCatalog/,'Release Home must not restore the full-catalog client filtering path.');
+}
+
+const homeExperienceApi=requireFile('src/features/home/homeExperienceApi.ts');
+if(homeExperienceApi){
+ requirePattern(homeExperienceApi,/function normalizeExperience\(/,'Home experience payload must remain strictly normalized before rendering.');
+ requirePattern(homeExperienceApi,/function normalizeSection\(/,'Home section payloads must remain strictly normalized before rendering.');
+ requirePattern(homeExperienceApi,/get_public_home_experience_v1/,'Home release path must remain on the canonical composed Home RPC.');
+ requirePattern(homeExperienceApi,/get_public_home_section_v1/,'Deferred Home release path must remain on the canonical section RPC.');
 }
 
 const storefrontApi=requireFile('src/features/storefront/api.ts');
@@ -183,4 +201,4 @@ const indexHtml=requireFile('index.html');
 if(indexHtml){requirePattern(indexHtml,/<html lang="tr">/,'Document language must remain Turkish.');requirePattern(indexHtml,/name="viewport"[^>]*viewport-fit=cover/,'Safe-area viewport-fit=cover metadata is required.');requirePattern(indexHtml,/name="description"/,'Production meta description is required.');if(!/property="og:title"/.test(indexHtml)||!/name="twitter:title"/.test(indexHtml))failures.push('Public share metadata is incomplete.');}
 
 if(failures.length){console.error('Golden Oremar release audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar release audit passed: canonical Supabase runtime, compact customer storefront, Android/iOS app shell, native speech, seller lifecycle gates, fail-closed admin data, accounting currency truth, theme contrast, retired-runtime and native release metadata contracts are intact.');
+console.log('Golden Oremar release audit passed: canonical Supabase runtime, Premium Mobile V2 storefront, Android/iOS app shell, native speech, seller lifecycle gates, fail-closed admin data, accounting currency truth, theme contrast, retired-runtime and native release metadata contracts are intact.');
