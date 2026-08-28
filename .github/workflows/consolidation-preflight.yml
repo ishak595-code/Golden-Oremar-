@@ -5,6 +5,9 @@ on:
     branches:
       - integration/full-consolidation-2026-08
       - release/store-readiness-2026-08
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -31,7 +34,7 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
       - name: Audit production dependency vulnerabilities
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --omit=dev --audit-level=low
       - name: Run every contract and security audit
         run: npm run audit:all
       - name: TypeScript zero-error gate
@@ -40,7 +43,7 @@ jobs:
         run: npm run build
 
   publish-status:
-    if: ${{ always() }}
+    if: ${{ always() && github.event_name != 'pull_request' }}
     needs: verify-consolidation
     runs-on: ubuntu-latest
     steps:

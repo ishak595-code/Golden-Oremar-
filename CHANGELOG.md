@@ -59,3 +59,11 @@
 - Switched local development to Vite directly.
 - One-shot retirement CI passed dependency installation, legacy caller scan, changed-admin TypeScript gate and production build before committing the runtime removal.
 - Remaining work is intentionally not mislabeled as complete: legacy admin DataContext/Firestore surfaces still require staged Supabase migration, and mobile release hardware/signing checks remain separate release gates.
+
+## 2026-08-28 - dependency governance baseline
+
+- Added weekly Dependabot ownership for npm, GitHub Actions and Android Gradle dependencies, while keeping the Capacitor-managed Swift manifest under npm/Capacitor as the single source of truth.
+- Pinned production dependency auditing to `npm audit --omit=dev --audit-level=low` in both Mobile Quality and Consolidation Preflight.
+- Added regression audits that fail when build-only dependencies leak into the production graph, dependency governance is removed or weakened, or PR workflows regain write-only status publishing behavior.
+- Preserved full authenticated customer E2E, Android APK/AAB signature verification and iOS simulator/archive gates on dependency update PRs.
+- Account-level Vercel deployment quota/project visibility, GitHub branch protection, Supabase leaked-password protection and real Play upload signing remain tracked independently in issue #74 and are not represented as application-code completion.
