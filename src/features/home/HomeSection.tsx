@@ -30,7 +30,7 @@ export default function HomeSection({onProductClick}:Props){
 
  if(loading&&!experience)return<HomeLoading/>;
  if(!experience)return<HomeError message={error||'Ana sayfa şu anda yüklenemiyor.'} onRetry={()=>void retry().catch(()=>undefined)}/>;
- const salesBlocked=experience.salesReadiness.status==='blocked_pending_business_identity';
+ const salesBlocked=experience.salesReadiness.status!=='ready';
  const initialSections=experience.sections.filter(section=>!section.deferred&&section.items.length>0);
  const deferredSections=experience.sections.filter(section=>section.deferred);
  const eventSpotlight=experience.eventSpotlight;
