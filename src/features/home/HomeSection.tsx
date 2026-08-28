@@ -14,7 +14,6 @@ type Props={onProductClick:(product:ProductReference)=>void};
 
 function navigateToCategories(categorySlug?:string){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','categories');if(categorySlug)url.searchParams.set('category',categorySlug);const depth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(depth)&&depth>=0?depth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
 function sourceEyebrow(section:HomeSectionModel){const labels:Record<HomeSectionModel['source']['kind'],string>={featured:'Golden Oremar',preorder:'Hazırlıkla sunulur',seasonal:'Mevsiminde',newest:'Yeni',offers:'Fiyat avantajı',curated:'Seçki',category:'Kategori seçkisi'};return labels[section.source.kind];}
-function eventAt(settings:any,placement:'after_hero'|'after_categories'|'before_products'){return settings?.enabled===true&&settings?.placement===placement?<HomeEventsSpotlight settings={settings}/>:null;}
 
 export default function HomeSection({onProductClick}:Props){
  const locale=browserHomeLocale();
@@ -34,6 +33,8 @@ export default function HomeSection({onProductClick}:Props){
  const salesBlocked=experience.salesReadiness.status==='blocked_pending_business_identity';
  const initialSections=experience.sections.filter(section=>!section.deferred&&section.items.length>0);
  const deferredSections=experience.sections.filter(section=>section.deferred);
+ const eventSpotlight=experience.eventSpotlight;
+ function renderEvents(placement:'after_hero'|'after_categories'|'before_products'){return eventSpotlight?.enabled===true&&eventSpotlight.placement===placement?<HomeEventsSpotlight settings={eventSpotlight}/>:null;}
 
  return<div className="go-premium-home-v2" data-home-contract-version={experience.version}>
   <h1 className="sr-only">{experience.brand.name} ürünleri</h1>
@@ -48,15 +49,15 @@ export default function HomeSection({onProductClick}:Props){
     </div>
    </section>:null}
 
-   {eventAt(experience.eventSpotlight,'after_categories')}
+   {renderEvents('after_categories')}
 
    {initialSections.map((section,index)=><ProductSection key={section.key} section={section} onProductClick={onProductClick} eagerFirst={index===0}/>) }
 
-   {eventAt(experience.eventSpotlight,'after_hero')}
+   {renderEvents('after_hero')}
 
    {experience.campaign?<CampaignCard campaign={experience.campaign}/>:null}
 
-   {eventAt(experience.eventSpotlight,'before_products')}
+   {renderEvents('before_products')}
 
    {deferredSections.map(section=><DeferredProductSection key={section.key} descriptor={section} loadSection={loadSection} onProductClick={onProductClick}/>) }
 
