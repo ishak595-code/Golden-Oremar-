@@ -1,15 +1,17 @@
 import React,{useEffect,useRef,useState}from'react';
-import{LoaderCircle,Mic,Search,X}from'lucide-react';
+import{LoaderCircle,Mic,MicOff,Search,X}from'lucide-react';
 
 type Props={value:string;onChange:(value:string)=>void;onSubmit:(value:string)=>void;onVoice:()=>void;onFocus?:()=>void;onBlur?:()=>void;listening?:boolean;autoFocus?:boolean;};
 
 export default function CatalogSearchInput({value,onChange,onSubmit,onVoice,onFocus,onBlur,listening=false,autoFocus=false}:Props){
  const normalized=value.slice(0,100);const previousListening=useRef(listening);const[processing,setProcessing]=useState(false);
  useEffect(()=>{let timer:number|undefined;if(previousListening.current&&!listening){setProcessing(true);timer=window.setTimeout(()=>setProcessing(false),240);}previousListening.current=listening;return()=>{if(timer)window.clearTimeout(timer);};},[listening]);
- return<form role="search" onSubmit={event=>{event.preventDefault();const query=normalized.trim();if(query)onSubmit(query);}} className="go-search-bar" data-has-value={normalized?'true':'false'} data-processing={processing?'true':'false'}>
+ const voiceState=listening?'active':processing?'processing':'off';
+ const voiceLabel=listening?'Sesli arama aktif, durdurmak için dokunun':processing?'Sesli arama işleniyor':'Mikrofon kapalı, sesli aramayı başlat';
+ return<form role="search" onSubmit={event=>{event.preventDefault();const query=normalized.trim();if(query)onSubmit(query);}} className="go-search-bar" data-has-value={normalized?'true':'false'} data-processing={processing?'true':'false'} data-voice-state={voiceState}>
   <label className="go-search-bar__field"><span className="sr-only">Ürün, üretici veya köy ara</span><Search aria-hidden="true"/><input type="search" autoFocus={autoFocus} value={normalized} onChange={event=>onChange(event.target.value.slice(0,100))} onFocus={onFocus} onBlur={onBlur} placeholder="Ürün, üretici veya köy ara" aria-label="Ürün, üretici veya köy ara" enterKeyHint="search" autoComplete="off"/></label>
   {normalized?<button type="button" onClick={()=>onChange('')} aria-label="Aramayı temizle" className="go-search-bar__clear"><X aria-hidden="true"/></button>:null}
-  <button type="button" onClick={onVoice} aria-label={listening?'Sesli arama dinleniyor':processing?'Sesli arama işleniyor':'Sesli ara'} aria-pressed={listening} aria-busy={processing} className="go-search-bar__voice">{processing?<LoaderCircle aria-hidden="true" className="animate-spin"/>:<Mic aria-hidden="true"/>}</button>
-  <span className="sr-only" role="status" aria-live="polite">{listening?'Dinleniyor':processing?'Sesli arama işleniyor':''}</span>
+  <button type="button" onClick={onVoice} aria-label={voiceLabel} aria-pressed={listening} aria-busy={processing} className="go-search-bar__voice">{processing?<LoaderCircle aria-hidden="true" className="animate-spin"/>:listening?<Mic aria-hidden="true"/>:<MicOff aria-hidden="true"/>}</button>
+  <span className="sr-only" role="status" aria-live="polite">{listening?'Sesli arama aktif':processing?'Sesli arama işleniyor':'Mikrofon kapalı'}</span>
  </form>;
 }
