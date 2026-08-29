@@ -9,6 +9,7 @@ const forbid=(source,needle,message)=>requireMatch(!source.includes(needle),mess
 
 const detail=read('src/features/catalog/ProductDetailScreen.tsx');
 const category=read('src/features/catalog/CategoryDirectoryScreen.tsx');
+const searchResults=read('src/features/catalog/CatalogSearchResults.tsx');
 const favorites=read('src/features/account/FavoritesPanel.tsx');
 const cart=read('src/features/cart/CartCheckoutFlow.tsx');
 const customerE2e=read('scripts/customer-e2e.mjs');
@@ -32,6 +33,11 @@ for(const [needle,message] of [
  ['{loadMoreError}</p>','Category load-more alert must not print raw technical errors.'],
 ])forbid(category,needle,message);
 requireMatch(category.includes('mt-7 grid gap-5')&&category.includes('sm:gap-6'),'Category product grid breathing-room contract is missing.');
+
+forbid(searchResults,'setError(err?.message','Search results must not pass raw validation/API errors to customers.');
+forbid(searchResults,"count==null?'Sonuçlar doğrulanamadı'",'Search filter sheet must not expose validation terminology.');
+requireMatch(searchResults.includes("setError('Arama sonuçları şu anda gösterilemiyor. Lütfen yeniden deneyin.')"),'Search results need a stable customer-safe failure message.');
+requireMatch(searchResults.includes("count==null?'Sonuç sayısı alınamadı'"),'Search filter unavailable state must remain customer-readable.');
 
 for(const [needle,message] of [
  ['mağaza kimliği','Favorites copy must not expose store-identity implementation wording.'],
