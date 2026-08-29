@@ -18,6 +18,7 @@ const dockCss=read('src/features/customer-experience/productDetailCommerceDock.c
 const compatibilityCss=read('src/features/customer-experience/premiumCompatibility.css');
 const mobileCss=read('src/features/customer-experience/premiumMobileV2.css');
 const mobileRuntime=read('src/features/customer-experience/premiumMobileShellRuntime.ts');
+const customerCopy=read('src/features/customer-experience/customerCopy.ts');
 const home=read('src/features/home/HomeSection.tsx');
 const homeApi=read('src/features/home/homeExperienceApi.ts');
 const homeHook=read('src/features/home/useHomeExperience.ts');
@@ -61,14 +62,15 @@ expect(home.includes('className="go-premium-home-v2"'),'Home must use the Premiu
 expect(home.includes('useHomeExperience'),'Home must consume the canonical bounded Home experience contract.');
 expect(!home.includes('useLiveHomeCatalog'),'Home must not restore full-catalog client-side merchandising.');
 expect(!home.includes('usePublicStorefrontConfig'),'Home must not split composition ownership across a second storefront hook.');
-expect(!home.includes('sectionNarrative('),'Home must not override CMS section titles with frontend narrative copy.');
+expect(!home.includes('sectionNarrative('),'Home must not restore the retired frontend narrative helper.');
 expect(home.includes('experience.categoryOrder.flatMap'),'Super Admin category ordering must remain authoritative through the Home experience payload.');
 expect(home.includes('experience.sections.filter(section=>!section.deferred'),'Initial Home sections must be server-composed and explicitly bounded.');
 expect(home.includes('experience.sections.filter(section=>section.deferred'),'Secondary Home sections must remain server-described and deferred.');
 expect(home.includes('IntersectionObserver')&&home.includes("rootMargin:'560px 0px'"),'Deferred Home sections must load near the viewport rather than eagerly loading the whole catalog.');
 expect(home.includes('<CategoryCard')&&home.includes('<ProductCard'),'Home must use the reusable Premium Mobile category and product primitives.');
-expect(home.includes('title={section.title}')&&home.includes('subtitle={section.subtitle}'),'Home section copy must remain server/CMS owned.');
-for(const forbidden of ['Vitrinin İmza Seçkisi','Yazın Son Hasadı','Golden Oremar İmza Seçkileri','Editoryal olarak öne çıkarılmış gerçek ürünler'])expect(!home.includes(forbidden),`Home must not restore hardcoded presentation copy: ${forbidden}`);
+expect(home.includes('homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle)')&&customerCopy.includes('HOME_SECTION_COPY'),'Home presentation copy must be centralized and keyed from the authoritative server section source.');
+expect(customerCopy.includes("featured:{eyebrow:'Golden Oremar seçkisi'")&&customerCopy.includes("seasonal:{eyebrow:'Mevsiminde sunulur'"),'Central customer copy must keep featured and seasonal semantics explicitly distinct.');
+for(const forbidden of ['En Çok Satanlar','çok satan','en çok satan','müşterilerin favorisi','en sevilen','özel fırsat','Vitrinin İmza Seçkisi','Yazın Son Hasadı','Golden Oremar İmza Seçkileri','Editoryal olarak öne çıkarılmış gerçek ürünler'])expect(!customerCopy.toLocaleLowerCase('tr-TR').includes(forbidden.toLocaleLowerCase('tr-TR')),`Central customer copy must not fabricate merchandising evidence: ${forbidden}`);
 expect(home.includes("eventSpotlight?.enabled===true")&&home.includes('eventSpotlight.placement===placement'),'Event spotlight must stay dynamic and placement-managed.');
 expect(home.includes('HomeEventsSpotlight settings={eventSpotlight}'),'Home must pass the authoritative spotlight settings to the event showcase.');
 expect(home.indexOf('go-home-categories')<home.indexOf('experience.campaign'),'Category discovery must remain before an optional backend campaign surface.');
@@ -80,7 +82,7 @@ expect(!/Sepete Ekle|Hemen Ön Sipariş Ver|quantity/.test(homeProductCard),'Pri
 expect(homeProductCard.includes("storeKind==='official'")&&homeProductCard.includes('originVerified'),'Home trust signals must derive from real backend store/origin state.');
 expect(homeProductCard.includes("official?<ProductBadge")&&homeProductCard.includes("official&&signal?<ProductBadge"),'Home product cards must retain the explicit maximum-two trust signal composition.');
 expect(premiumImage.includes("loading={eager?'eager':'lazy'}")&&premiumImage.includes('onError'),'Home image primitive must retain lazy/eager loading and an error fallback.');
-expect(searchInput.includes('Mic')&&searchInput.includes('onVoice')&&searchInput.includes('aria-pressed={listening}'),'Voice search must remain present, wired and accessibly stateful.');
+expect(searchInput.includes('Mic')&&searchInput.includes('MicOff')&&searchInput.includes('onVoice')&&searchInput.includes('aria-pressed={listening}'),'Voice search must remain present, visibly stateful and accessibly wired.');
 for(const marker of ['--go-space-1:4px','--go-space-2:8px','--go-space-3:12px','--go-space-4:16px','--go-space-5:20px','--go-space-6:24px','--go-space-7:32px','--go-space-8:40px','--go-space-9:48px','--go-mobile-pad:20px'])expect(mobileCss.includes(marker),`Premium Mobile design token is missing: ${marker}`);
 expect(mobileCss.includes('scroll-snap-type:x mandatory')&&mobileCss.includes('.go-category-rail'),'Category discovery must retain horizontal snap and a partially visible next item.');
 expect(mobileCss.includes('-webkit-line-clamp:2'),'Product names must support two readable lines before controlled ellipsis.');
@@ -126,4 +128,4 @@ for(const forbidden of ['Şafak Horozu','Keklik Çağrısı','Dağ Kuşları'])e
 for(const marker of ['Oremar Kristali','Dağ Esintisi','Şafak İmzası','Zümrüt Yankı','Şampanya Çanı'])expect(sounds.includes(marker),`Premium sonic identity is missing refined option: ${marker}`);
 
 if(failures.length){console.error('Golden Oremar customer UI contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar customer UI contract audit passed: Premium Mobile V2 Home composition, adaptive voice-enabled shell, bounded product discovery, native-safe navigation, product detail, focused account settings and refined premium notification sounds are locked in.');
+console.log('Golden Oremar customer UI contract audit passed: Premium Mobile V2 Home composition, centralized evidence-safe customer copy, adaptive voice-enabled shell, bounded product discovery, native-safe navigation, product detail, focused account settings and refined premium notification sounds are locked in.');
