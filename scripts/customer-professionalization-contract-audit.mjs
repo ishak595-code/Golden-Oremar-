@@ -25,13 +25,17 @@ const accessibilityE2e=read('scripts/product-card-accessibility-e2e.mjs');
 const titleIndex=detail.indexOf('<h1');
 const priceIndex=detail.indexOf('priceReady?',titleIndex);
 const shortDescriptionIndex=detail.indexOf('detail.shortDescription',titleIndex);
-const variantIndex=detail.indexOf('<fieldset className="mt-5"',titleIndex);
+const variantIndex=detail.indexOf('Paket / seçenek',titleIndex);
 const producerIndex=detail.indexOf('detail?.producer',Math.max(0,variantIndex));
 requireMatch(titleIndex>=0&&priceIndex>titleIndex,'Product detail title/price hierarchy is missing.');
 requireMatch(shortDescriptionIndex<0||priceIndex<shortDescriptionIndex,'Product detail price must remain above short description.');
-requireMatch(variantIndex>priceIndex,'Variant selection must remain after the primary price block.');
-requireMatch(producerIndex<0||variantIndex<producerIndex,'Variant selection must remain before secondary producer content.');
+requireMatch(variantIndex>priceIndex,'Optional multi-variant selection must remain after the primary price block.');
+requireMatch(producerIndex<0||variantIndex<producerIndex,'Optional multi-variant selection must remain before secondary producer content.');
+requireMatch(detail.includes('detail.variants.length>1')&&detail.includes('<select value={variantId}'),'Single-variant products must not render a redundant option selector; multi-variant products need one compact select.');
+forbid(detail,'<fieldset className="mt-5"','Product detail must not return to radio-style option marking.');
+requireMatch(detail.includes('aria-label="Miktarı azalt"')&&detail.includes('aria-label="Miktarı artır"'),'Product detail quantity decrease/increase controls must remain available.');
 requireMatch(detail.includes('product-detail-commerce-dock'),'State-aware product commerce dock is missing.');
+forbid(detail,'product-detail-commerce-summary','Product detail purchase dock must not repeat price or quantity summary above fixed actions.');
 requireMatch(detail.includes("setStatus('Sepete eklendi.')")&&detail.includes('Sepete Git'),'Compact add-to-cart success action is missing.');
 requireMatch(detail.includes('kategorisini aç')&&detail.includes('buildSearchUrl'),'Product detail category must remain a real navigable customer link.');
 requireMatch(detail.includes("if(currency==='TRY')return`${amount} TL`"),'Product detail TRY prices must use customer-facing TL notation.');
@@ -46,13 +50,14 @@ requireMatch(detail.includes('<span>Hediye Et</span>')&&detail.includes("preorde
 
 forbid(home,'salesReadiness.message','Home storefront must not expose internal sales-readiness explanations.');
 forbid(home,'salesBlocked','Home storefront must not render an internal checkout-readiness banner.');
-requireMatch(homeProductCard.includes('aria-labelledby={spokenId}')&&homeProductCard.includes('className="sr-only">{accessibleLabel}</span>'),'Home product cards must bind their focusable control to a deterministic full spoken label.');
+requireMatch(homeProductCard.includes('<a href={buildProductUrl(item.slug)}')&&homeProductCard.includes('aria-labelledby={spokenId}')&&homeProductCard.includes('className="sr-only">{accessibleLabel}</span>'),'Home product rows must be real links with one deterministic full spoken label.');
 requireMatch(homeProductCard.includes('data-product-id={item.id}')&&homeProductCard.includes('data-product-reference={item.slug}'),'Every Home product row must expose stable internal identity/reference markers.');
+requireMatch(homeProductCard.includes("!item.imagePath.startsWith('brand/official-store/')"),'Official-store brand imagery must not masquerade as a product photo in Home rows.');
 requireMatch(homeProductCard.includes('compareAtPrice:compareMinor!==null?compareMinor/100:null')&&!/<PriceDisplay[^>]*compareAtPrice/.test(homeProductCard),'Home product cards must keep real compare pricing in the spoken contract without adding promotional compare pricing to the visible discovery card.');
 requireMatch(homePrice.includes("normalized==='TRY'")&&homePrice.includes('TL`'),'Home TRY prices must use TL notation.');
-requireMatch(accessibilityE2e.includes("getByRole('button',{name:label,exact:true})")&&accessibilityE2e.includes('ARIA_NAME_MISSING_COMPARE_PRICE'),'Runtime accessibility must resolve the actual role/name and compare-price contract.');
+requireMatch(accessibilityE2e.includes("role:'link'")&&accessibilityE2e.includes('ARIA_NAME_MISSING_COMPARE_PRICE'),'Runtime accessibility must resolve Home as a link and preserve the compare-price spoken contract.');
 requireMatch(searchInput.includes('aria-label="Ürün, üretici veya köy ara"')&&!searchInput.includes('role="search"'),'Search must expose one searchbox name without duplicate landmark narration.');
-requireMatch(searchInput.includes('Mic')&&!searchInput.includes('MicOff')&&!searchInput.includes("'Mikrofon kapalı'"),'Voice search must avoid redundant microphone-off UI and announcements.');
+requireMatch(searchInput.includes('aria-label="Mikrofon"')&&searchInput.includes('Mic')&&!searchInput.includes('MicOff')&&!searchInput.includes('Sesli aramayı başlat')&&!searchInput.includes('Mikrofon kapalı'),'Voice search must expose one concise Mikrofon name without redundant off/start narration.');
 
 for(const [needle,message] of [
  ['sunucudan doğrulanamadı','Category screen must not expose server-validation wording.'],
