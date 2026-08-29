@@ -38,12 +38,15 @@ forbid(css,/\.go-product-card-v2__button\s*\{[^}]*grid-template-columns\s*:\s*1f
 requireText(home,'<ProductCard','Managed Home products must render through the reusable Premium Mobile ProductCard.');
 requireText(product,'go-product-card-v2__title','Home rows must render the product title as the primary decision signal.');
 requireText(product,'go-product-card-v2__source','Home rows must render producer/location source context.');
-requireText(product,'go-product-card-v2__signals','Home rows must render bounded verified trust signals.');
+requireText(product,'go-product-card-v2__signals','Home rows must render one bounded verified trust signal.');
 requireText(product,'<PriceDisplay','Home rows must render canonical price permanently.');
 requireText(product,'data-product-id={item.id}','Home rows must expose a stable product identity marker.');
 requireText(product,'data-product-reference={item.slug}','Home rows must expose a stable navigable product reference.');
-requireText(product,"official?<ProductBadge",'Official-store trust must remain backend-derived.');
-requireText(product,"official&&signal?<ProductBadge",'Rows must retain the explicit maximum-two trust-signal composition.');
+requireText(product,'<a href={buildProductUrl(item.slug)}','The entire Home product row must be a real navigable product link.');
+requireText(product,"const official=item.producer.storeKind==='official'",'Official-store trust must remain backend-derived.');
+requireText(product,'const visualSignal=signal??','Rows must select one strongest concise truth-backed trust signal.');
+requireText(product,'<ProductBadge tone={visualSignal.tone} label={visualSignal.label}/>','Rows must render at most one primary trust badge.');
+requireText(product,"!item.imagePath.startsWith('brand/official-store/')",'Official-store brand imagery must not masquerade as a product photo.');
 forbid(product,/\.map\([^)]*badge|badges\.map/,'Home rows must not map an unbounded badge collection into the primary surface.');
 forbid(product,/Sepete Ekle|Hemen Ön Sipariş Ver|ShoppingCart/,'Home discovery rows must not restore inline commerce controls.');
 requireText(catalog,'compareAtPriceMinor?:number|null','Canonical catalog data must preserve a real compare-at price when supplied.');
@@ -58,4 +61,4 @@ requireText(image,'onError','Product imagery must keep a resilient error fallbac
 requirePattern(product,/sourceLabel\(item\)/,'Product source copy must remain data-derived rather than hardcoded.');
 
 if(failures.length){console.error('Golden Oremar premium Home product hierarchy audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar premium Home product hierarchy audit passed: each product owns one compact horizontal list row with real image, product identity, source, bounded trust signals and a canonical end-aligned price.');
+console.log('Golden Oremar premium Home product hierarchy audit passed: each product owns one compact horizontal link row with truthful product-photo state, source, one bounded trust signal and a canonical end-aligned price.');
