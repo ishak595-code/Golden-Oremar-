@@ -12,6 +12,7 @@ const category=read('src/features/catalog/CategoryDirectoryScreen.tsx');
 const searchResults=read('src/features/catalog/CatalogSearchResults.tsx');
 const favorites=read('src/features/account/FavoritesPanel.tsx');
 const cart=read('src/features/cart/CartCheckoutFlow.tsx');
+const payments=read('src/features/account/PaymentsPanel.tsx');
 const premiumCss=read('src/features/customer-experience/premiumMobileV2.css');
 const customerE2e=read('scripts/customer-e2e.mjs');
 
@@ -58,6 +59,7 @@ for(const [needle,message] of [
 ])forbid(cart,needle,message);
 requireMatch(cart.includes('space-y-6')&&cart.includes('sm:p-6'),'Checkout density reduction contract is missing.');
 requireMatch(cart.includes('Aynı ödeme işlemi ikinci kez tahsil edilmez.'),'Checkout duplicate-charge safety copy must remain customer-readable.');
+for(const needle of['metadata','veritabanı','Super Admin','iki harfli ISO'])forbid(payments,needle,`Payments customer copy must not expose technical wording: ${needle}.`);
 
 requireMatch(premiumCss.includes('.go-home-content{width:min(100%,1280px);margin:0 auto;padding:var(--go-space-5) var(--go-mobile-pad) var(--go-space-9);}'),'Home content needs the calmer premium outer rhythm.');
 requireMatch(premiumCss.includes('.go-home-section{margin-top:var(--go-space-8);}'),'Home sections need the calmer 40px vertical rhythm.');
@@ -120,7 +122,6 @@ const technicalCopyPatterns=[
  [/\brpc\b/iu,'RPC'],
  [/\bsistem\s+hatas/iu,'sistem hatası'],
  [/\bISO\b/u,'ISO standardı'],
- [/metadata/iu,'metadata'],
  [/merchant\s+yapılandır/iu,'merchant yapılandırması'],
  [/FCM\/APNs/iu,'FCM/APNs altyapı dili'],
  [/\bprivate\s+(?:alan|depolama)/iu,'private depolama dili'],
