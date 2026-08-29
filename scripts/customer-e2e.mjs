@@ -92,7 +92,8 @@ async function verifyCatalogFiltering(page){
  await sort.selectOption('price_asc');
  const sorted=await sortRequest;
  if(!sorted.ok())throw new Error(`CATALOG_SORT_REQUEST_FAILED:${sorted.status()}`);
- if(await sort.inputValue()!=='price_asc')throw new Error('CATALOG_SORT_STATE_STALE');
+ const sortValue=await sort.inputValue();
+ if(sortValue!=='price_asc')throw new Error('CATALOG_SORT_STATE_STALE');
  await page.locator('#category-products article').first().waitFor({state:'visible',timeout:12000});
  mark('catalog_sort_backend_roundtrip',true);
  const stock=page.getByRole('checkbox',{name:'Sadece stokta'});
@@ -160,10 +161,16 @@ async function verifyProductCommerceJourney(page){
  mark('buy_now_to_cart',true);
  await page.getByText(productName,{exact:true}).first().waitFor({state:'visible',timeout:10000});
  mark('cart_roundtrip',true);
- const paymentUnavailable=page.getByText(/Şu anda tahsilata hazır iyzico yöntemi yok/);
- if(await visible(paymentUnavailable,8000)){mark('payment_fail_closed_without_provider_secrets',true);report.blockers.push('REAL_IYZICO_PROVIDER_SECRETS_REQUIRED');}else mark('payment_provider_ready',true);
+ const paymentUnavailable=page.getByText('Ödeme şu anda kullanılamıyor. Sepetiniz korunur ve daha sonra yeniden deneyebilirsiniz.',{exact:true});
  const checkoutButton=page.getByRole('button',{name:/Güvenli Ödemeye Geç|Kayıtlı Kartla Öde/});
- if(await visible(checkoutButton,3000))mark('checkout_action_present',true);
+ if(await visible(paymentUnavailable,4000)){
+  mark('payment_fail_closed_without_provider_secrets',true);
+  report.blockers.push('REAL_IYZICO_PROVIDER_SECRETS_REQUIRED');
+ }else{
+  if(!(await visible(checkoutButton,4000)))throw new Error('PAYMENT_READINESS_STATE_INDETERMINATE');
+  mark('payment_provider_ready',true);
+  mark('checkout_action_present',true);
+ }
  await shot(page,'06-cart-checkout');
 }
 
