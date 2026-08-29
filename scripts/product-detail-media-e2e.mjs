@@ -43,7 +43,7 @@ try{
   const favorite=page.getByRole('button',{name:/Favorilere (ekle|çıkar)/}).first();
   const share=page.getByRole('button',{name:'Ürünü paylaş',exact:true});
   const gallery=page.locator('section[aria-label="Ürün görselleri"]').first();
-  const mainImage=gallery.locator(':scope > div:first-child > img').first();
+  const mainImage=gallery.locator('img[data-product-primary-image="true"]').first();
   const infoSection=gallery.locator('xpath=following-sibling::section[1]');
   const toolbar=back.locator('..');
 
@@ -75,6 +75,20 @@ try{
   const overflow=await page.evaluate(()=>({viewport:window.innerWidth,scrollWidth:document.documentElement.scrollWidth}));
   assert(overflow.scrollWidth<=overflow.viewport+1,`PRODUCT_DETAIL_HORIZONTAL_OVERFLOW:${width}:${overflow.scrollWidth}`);
 
+  await page.getByRole('button',{name:`${fixture.name} görselini büyüt`,exact:true}).click();
+  const viewer=page.getByRole('dialog',{name:fixture.name,exact:true});
+  await viewer.waitFor({state:'visible',timeout:5000});
+  const viewerImage=viewer.locator('img').first();
+  await viewerImage.waitFor({state:'visible',timeout:5000});
+  const viewerState=await viewerImage.evaluate(image=>({objectFit:getComputedStyle(image).objectFit,alt:image.getAttribute('alt')||''}));
+  assert(viewerState.objectFit==='contain',`PRODUCT_DETAIL_VIEWER_MUST_CONTAIN:${width}:${viewerState.objectFit}`);
+  assert(viewerState.alt.includes(fixture.name),`PRODUCT_DETAIL_VIEWER_ALT_MISSING_PRODUCT_NAME:${width}`);
+  const close=viewer.getByRole('button',{name:'Görseli kapat',exact:true});
+  const closeBox=await close.boundingBox();
+  assert(closeBox&&closeBox.width>=44&&closeBox.height>=44,`PRODUCT_DETAIL_VIEWER_CLOSE_TARGET_TOO_SMALL:${width}`);
+  await close.click();
+  await viewer.waitFor({state:'hidden',timeout:5000});
+
   const metrics={
    width,
    toolbarBottom:Math.round(toolbarBox.y+toolbarBox.height),
@@ -86,6 +100,7 @@ try{
    naturalWidth:imageState.naturalWidth,
    naturalHeight:imageState.naturalHeight,
    scrollWidth:overflow.scrollWidth,
+   viewerOpened:true,
    consoleErrors,
   };
   results.push(metrics);
@@ -93,7 +108,7 @@ try{
   await context.close();
  }
  fs.writeFileSync(path.join(out,'product-detail-media-report.json'),JSON.stringify({fixture,results,checkedAt:new Date().toISOString()},null,2));
- console.log(`Product detail media geometry passed at ${widths.join(', ')}px for ${fixture.name}.`);
+ console.log(`Product detail media geometry and viewer passed at ${widths.join(', ')}px for ${fixture.name}.`);
 }finally{
  await browser.close();
 }
