@@ -7,12 +7,5 @@ function formatMinor(value:number,currency:string,locale='tr-TR'){
  try{return new Intl.NumberFormat(locale,{style:'currency',currency:normalized,minimumFractionDigits:2,maximumFractionDigits:2}).format(value/100);}catch{return`${amount} ${normalized}`;}
 }
 
-type Props={priceMinor:number;currency:string;compareAtPriceMinor?:number|null;className?:string};
-export default function PriceDisplay({priceMinor,currency,compareAtPriceMinor=null,className=''}:Props){
- const current=formatMinor(priceMinor,currency);
- const compare=typeof compareAtPriceMinor==='number'&&Number.isSafeInteger(compareAtPriceMinor)&&compareAtPriceMinor>priceMinor?formatMinor(compareAtPriceMinor,currency):null;
- return<div className={`go-price-display ${className}`.trim()} aria-hidden="true">
-  <strong>{current}</strong>
-  {compare?<span>Önce {compare}</span>:null}
- </div>;
-}
+type Props={priceMinor:number;currency:string;className?:string};
+export default function PriceDisplay({priceMinor,currency,className=''}:Props){return<div className={`go-price-display ${className}`.trim()} aria-hidden="true"><strong>{formatMinor(priceMinor,currency)}</strong></div>;}
