@@ -58,7 +58,7 @@ requireMatch(homeProductCard.includes('compareAtPrice:compareMinor!==null?compar
 requireMatch(homePrice.includes("normalized==='TRY'")&&homePrice.includes('TL`'),'Home TRY prices must use TL notation.');
 requireMatch(accessibilityE2e.includes("role:'link'")&&accessibilityE2e.includes('ARIA_NAME_MISSING_COMPARE_PRICE'),'Runtime accessibility must resolve Home as a link and preserve the compare-price spoken contract.');
 requireMatch(searchInput.includes('aria-label="Ürün, üretici veya köy ara"')&&!searchInput.includes('role="search"'),'Search must expose one searchbox name without duplicate landmark narration.');
-requireMatch(searchInput.includes('aria-label="Sesli mikrofon"')&&searchInput.includes('Mic')&&!searchInput.includes('MicOff')&&!searchInput.includes('Sesli aramayı başlat')&&!searchInput.includes('Mikrofon kapalı'),'Voice search must expose one concise Sesli mikrofon name without redundant off/start narration.');
+requireMatch(searchInput.includes("aria-label={listening?'Sesli arama dinleniyor':'Sesli mikrofon'}")&&searchInput.includes('aria-pressed={listening}')&&searchInput.includes('role="status" aria-live="polite"')&&searchInput.includes('Mic')&&!searchInput.includes('MicOff')&&!searchInput.includes('Mikrofon kapalı'),'Voice search must expose idle Sesli mikrofon, active listening state, and no artificial off copy.');
 
 for(const [needle,message] of [
  ['sunucudan doğrulanamadı','Category screen must not expose server-validation wording.'],
