@@ -63,6 +63,8 @@ jobs:
         run: node scripts/product-card-accessibility-e2e.mjs
       - name: Verify 320-430px Premium Mobile viewports
         run: node scripts/premium-mobile-viewport-e2e.mjs
+      - name: Verify product-detail media geometry
+        run: node scripts/product-detail-media-e2e.mjs
       - name: Upload Premium Mobile viewport evidence
         if: always()
         uses: actions/upload-artifact@v7
