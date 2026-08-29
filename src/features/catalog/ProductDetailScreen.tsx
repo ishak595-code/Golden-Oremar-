@@ -1,11 +1,12 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
-import{ArrowLeft,CheckCircle2,ChevronRight,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,PackageCheck,Plus,QrCode,Share2,ShoppingCart,Star,Store,Truck}from'lucide-react';
+import{ArrowLeft,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,PackageCheck,Plus,QrCode,Share2,ShoppingCart,Star,Store,Truck,X,ZoomIn}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProductFavorite}from'./api';
 import ProductSafetyPanel from'../content/ProductSafetyPanel';
 import{getProductSafety}from'../content/productSafetyApi';
 import ProducerQuestionComposer from'../account/ProducerQuestionComposer';
 import{setCartItem}from'../cart/api';
 import{buildProductUrl,buildSearchUrl,copyText,shareOrCopy}from'../navigation/appUrl';
+import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 
 type Props={
  reference:string;
@@ -35,6 +36,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const[variantId,setVariantId]=useState('');
  const[quantity,setQuantity]=useState(1);
  const[selectedImagePath,setSelectedImagePath]=useState('');
+ const[imageViewerOpen,setImageViewerOpen]=useState(false);
  const[loading,setLoading]=useState(true);
  const[busy,setBusy]=useState(false);
  const[shareBusy,setShareBusy]=useState(false);
@@ -43,11 +45,12 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const[favoriteOverride,setFavoriteOverride]=useState<boolean|null>(null);
  const[questionOpen,setQuestionOpen]=useState(false);
  const requestId=useRef(0);
+ const imageViewerDialogRef=useAccessibleDialog<HTMLDivElement>(imageViewerOpen,()=>setImageViewerOpen(false));
 
  async function load(){
   const current=++requestId.current;
   try{
-   setLoading(true);setError('');setStatus('');setFavoriteOverride(null);setQuestionOpen(false);setDetail(null);setReviews(null);
+   setLoading(true);setError('');setStatus('');setFavoriteOverride(null);setQuestionOpen(false);setImageViewerOpen(false);setDetail(null);setReviews(null);
    const product=await getProductDetail(reference);
    if(requestId.current!==current)return;
    setDetail(product);
@@ -71,6 +74,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const variant=useMemo(()=>Array.isArray(detail?.variants)?detail.variants.find((item:any)=>item?.id===variantId)||null:null,[detail,variantId]);
  const images=Array.isArray(detail?.images)?detail.images:[];
  const selectedImage=images.find((item:any)=>item?.path===selectedImagePath)||images.find((item:any)=>item?.primary===true)||images[0]||null;
+ const selectedImageIndex=Math.max(0,images.findIndex((item:any)=>item?.path===selectedImage?.path));
+ const selectedImageUrl=selectedImage?.path?publicCatalogUrl(selectedImage.path):'';
  const activeBadges=Array.isArray(detail?.trustBadges)?detail.trustBadges.filter((badge:any)=>badge&&typeof badge==='object'&&badge.active===true&&safeText(badge.label,120)):[];
  const hasTraceability=detail?.traceability?.hasReleasedBatches===true;
  const tracked=detail?.stockMode==='tracked'||detail?.stockMode==='seasonal';
@@ -90,6 +95,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const variantName=safeText(variant?.name,240)||'Seçili seçenek';
  const purchaseReady=variant?.available===true&&variantReference!==null&&priceReady&&stockReady&&!soldOut;
  useEffect(()=>{setQuantity(current=>Math.max(1,Math.min(current,maxQuantity)));},[variantId,maxQuantity]);
+ useEffect(()=>{if(!imageViewerOpen||images.length<2)return;const onKeyDown=(event:KeyboardEvent)=>{if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;event.preventDefault();const delta=event.key==='ArrowLeft'?-1:1;const next=(selectedImageIndex+delta+images.length)%images.length;setSelectedImagePath(safeText(images[next]?.path,1200));};document.addEventListener('keydown',onKeyDown,true);return()=>document.removeEventListener('keydown',onKeyDown,true);},[imageViewerOpen,images,selectedImageIndex]);
 
  const favoriteReference=String(detail?.legacyId||detail?.id||'');
  const isFavorite=favoriteOverride??favoriteReferences.includes(favoriteReference);
@@ -98,6 +104,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const averageRating=firstRating(reviews?.summary?.averageRating,detail?.reviewSummary?.averageRating);
 
  function purchaseIssueMessage(){if(soldOut)return'Bu ürün şu anda stokta yok.';if(!priceReady)return'Fiyat bilgisi şu anda gösterilemiyor.';if(!stockReady)return'Stok bilgisi yenileniyor.';return'Bu seçenek şu anda satın alınamıyor.';}
+ function moveImage(delta:number){if(images.length<2)return;const next=(selectedImageIndex+delta+images.length)%images.length;setSelectedImagePath(safeText(images[next]?.path,1200));}
  async function addToCart(){
   if(!authenticated){onLoginRequired();return;}
   if(!purchaseReady||!variantReference){setError(purchaseIssueMessage());return;}
@@ -156,8 +163,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
   <div className="grid gap-6 lg:grid-cols-2">
    <section aria-label="Ürün görselleri">
-    <div className="overflow-hidden rounded-3xl border border-brand-border bg-gray-100 dark:bg-gray-800">{selectedImage?.path&&publicCatalogUrl(selectedImage.path)?<img src={publicCatalogUrl(selectedImage.path)} alt={safeText(selectedImage.alt,300)||detailName} loading="eager" decoding="async" fetchPriority="high" className="aspect-square h-full w-full object-cover"/>:<div role="img" aria-label={`${detailName} için görsel henüz eklenmedi`} className="grid aspect-square place-items-center text-brand-muted">Ürün görseli yakında</div>}</div>
-    {images.length>1?<div className="hide-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">{images.slice(0,12).map((image:any,index:number)=>{const src=publicCatalogUrl(image?.path);return src?<button type="button" key={`${safeText(image.path,1200)}:${index}`} onClick={()=>setSelectedImagePath(safeText(image.path,1200))} aria-label={`${detailName} görseli ${index+1}`} aria-pressed={selectedImage?.path===image.path} className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border ${selectedImage?.path===image.path?'border-brand-gold ring-2 ring-brand-gold/30':'border-brand-border'}`}><img src={src} alt="" className="h-full w-full object-cover"/></button>:null;})}</div>:null}
+    <div className="overflow-hidden rounded-3xl border border-brand-border bg-gray-100 dark:bg-gray-800">{selectedImageUrl?<button type="button" onClick={()=>setImageViewerOpen(true)} aria-label={`${detailName} görselini büyüt`} className="group relative block w-full cursor-zoom-in"><img data-product-primary-image="true" src={selectedImageUrl} alt={safeText(selectedImage.alt,300)||detailName} loading="eager" decoding="async" fetchPriority="high" className="aspect-square h-full w-full object-contain p-2"/><span aria-hidden="true" className="absolute bottom-3 right-3 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand-border bg-brand-card/95 px-3 text-xs font-black text-brand-text shadow-lg backdrop-blur"><ZoomIn className="h-4 w-4"/>Büyüt</span></button>:<div role="img" aria-label={`${detailName} için görsel henüz eklenmedi`} className="grid aspect-square place-items-center text-brand-muted">Ürün görseli yakında</div>}</div>
+    {images.length>1?<div className="hide-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">{images.slice(0,12).map((image:any,index:number)=>{const src=publicCatalogUrl(image?.path);return src?<button type="button" key={`${safeText(image.path,1200)}:${index}`} onClick={()=>setSelectedImagePath(safeText(image.path,1200))} aria-label={`${detailName} görseli ${index+1}`} aria-pressed={selectedImage?.path===image.path} className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-brand-card ${selectedImage?.path===image.path?'border-brand-gold ring-2 ring-brand-gold/30':'border-brand-border'}`}><img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain p-1"/></button>:null;})}</div>:null}
    </section>
 
    <section>
@@ -196,6 +203,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    {Array.isArray(detail.certifications)&&detail.certifications.length?<Accordion title="Sertifikalar"><Certifications items={detail.certifications}/></Accordion>:null}
    <Accordion title="Müşteri Yorumları"><Reviews reviews={reviews} reviewCount={reviewCount} averageRating={averageRating}/></Accordion>
   </div>
+
+  {imageViewerOpen&&selectedImageUrl?<div className="fixed inset-0 z-[120] flex bg-black/90 p-2 sm:p-5"><div ref={imageViewerDialogRef} role="dialog" aria-modal="true" aria-labelledby="product-image-viewer-title" tabIndex={-1} className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-black/95 text-white outline-none"><div className="flex min-h-14 items-center gap-3 border-b border-white/15 px-3 sm:px-4"><h2 id="product-image-viewer-title" className="min-w-0 flex-1 truncate text-sm font-black">{detailName}</h2>{images.length>1?<span className="text-xs font-bold text-white/70">{selectedImageIndex+1} / {images.length}</span>:null}<button type="button" onClick={()=>setImageViewerOpen(false)} aria-label="Görseli kapat" className="grid min-h-11 min-w-11 place-items-center rounded-full border border-white/20 bg-white/10"><X aria-hidden="true" className="h-5 w-5"/></button></div><div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2 sm:p-4" style={{touchAction:'pinch-zoom'}}>{images.length>1?<button type="button" onClick={()=>moveImage(-1)} aria-label="Önceki ürün görseli" className="absolute left-2 z-10 grid min-h-11 min-w-11 place-items-center rounded-full border border-white/20 bg-black/55 sm:left-4"><ChevronLeft aria-hidden="true" className="h-6 w-6"/></button>:null}<img src={selectedImageUrl} alt={safeText(selectedImage.alt,300)||detailName} className="max-h-full max-w-full object-contain" decoding="async"/>{images.length>1?<button type="button" onClick={()=>moveImage(1)} aria-label="Sonraki ürün görseli" className="absolute right-2 z-10 grid min-h-11 min-w-11 place-items-center rounded-full border border-white/20 bg-black/55 sm:right-4"><ChevronRight aria-hidden="true" className="h-6 w-6"/></button>:null}</div></div></div>:null}
  </article>;
 }
 
