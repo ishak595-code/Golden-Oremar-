@@ -11,7 +11,23 @@ if(!fs.existsSync(path.join(root,'index.html'))){console.error(`[native-feature-
 const textFiles=[];function walk(directory){for(const entry of fs.readdirSync(directory,{withFileTypes:true})){const full=path.join(directory,entry.name);if(entry.isDirectory()){walk(full);continue;}if(/\.(?:js|mjs|html|css|json|webmanifest)$/i.test(entry.name))textFiles.push(full);}}walk(root);
 if(textFiles.length<2){console.error(`[native-feature-runtime] ${platform} synced bundle is unexpectedly empty.`);process.exit(1);}
 const bundle=textFiles.map(file=>fs.readFileSync(file,'utf8')).join('\n');
-const required=[['premium-theme','Yakut Prestige'],['premium-notification-sound','golden-oremar:notification-sound:v1'],['faq-live-rpc','list_public_faq_v1'],['product-safety-live-rpc','get_public_product_safety_v3'],['search-accessibility-overlay','catalog-search-suggestions'],['search-accessibility-expanded','aria-expanded'],['native-app-update-banner','Yeni sürüm var'],['canonical-reference-home','go-reference-home'],['canonical-home-layout','search-category-product'],['live-product-recommendations','live-product-recommendations'],['cold-chain-card-state','Soğuk Zincir']];
+const required=[
+ ['premium-theme','Yakut Prestige'],
+ ['premium-notification-sound','golden-oremar:notification-sound:v1'],
+ ['faq-live-rpc','list_public_faq_v1'],
+ ['product-safety-live-rpc','get_public_product_safety_v3'],
+ ['search-accessibility-overlay','catalog-search-suggestions'],
+ ['search-accessibility-expanded','aria-expanded'],
+ ['native-app-update-banner','Yeni sürüm var'],
+ ['premium-mobile-home-root','go-premium-home-v2'],
+ ['canonical-home-composition-rpc','get_public_home_experience_v1'],
+ ['canonical-deferred-home-rpc','get_public_home_section_v1'],
+ ['premium-mobile-product-card','go-product-card-v2'],
+ ['premium-mobile-category-rail','go-category-rail'],
+ ['voice-search-listening-state','Sesli arama dinleniyor'],
+ ['live-product-recommendations','live-product-recommendations'],
+ ['cold-chain-card-state','Soğuk Zincir'],
+];
 const missing=required.filter(([,marker])=>!bundle.includes(marker));
 if(missing.length){console.error(`[native-feature-runtime] ${platform} synced bundle is missing consolidated feature markers:`);for(const[label,marker]of missing)console.error(`- ${label}: ${marker}`);process.exit(1);}
-console.log(`Native feature runtime check passed for ${platform}: premium theme/sound, FAQ, product safety, search accessibility, app updates, canonical reference storefront, live recommendations and cold-chain card UX are present in the synced native shell assets (${textFiles.length} text assets checked).`);
+console.log(`Native feature runtime check passed for ${platform}: Premium Mobile V2 Home, server-composed/deferred storefront data, voice-search state, premium product/category presentation, theme/sound, FAQ, product safety, search accessibility, app updates, live recommendations and cold-chain UX are present in the synced native shell assets (${textFiles.length} text assets checked).`);

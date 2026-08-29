@@ -1,0 +1,169 @@
+/* Golden Oremar Premium Mobile UI V2
+   One authoritative mobile-commerce presentation layer. Business data remains server-owned. */
+:root{
+ --go-space-1:4px;--go-space-2:8px;--go-space-3:12px;--go-space-4:16px;--go-space-5:20px;--go-space-6:24px;--go-space-7:32px;--go-space-8:40px;--go-space-9:48px;
+ --go-mobile-pad:20px;--go-radius-sm:12px;--go-radius-md:16px;--go-radius-lg:20px;--go-radius-xl:24px;
+ --go-forest-950:#06130e;--go-forest-900:#0a1b14;--go-forest-850:#0d2118;--go-forest-800:#10271d;--go-forest-750:#143025;--go-forest-700:#183a2b;
+ --go-ivory:#f5f0e6;--go-ivory-soft:#e8e1d4;--go-muted:#b3c0b9;--go-muted-2:#8ea096;--go-border:#29453a;--go-border-soft:#1f372e;
+ --go-gold:#d3b45a;--go-gold-strong:#e0c46e;--go-ruby:#743044;--go-ruby-border:#985168;
+ --go-ease:cubic-bezier(.2,.7,.2,1);--go-nav-height:64px;
+}
+
+:root[data-app-tab="home"] body,
+:root[data-app-tab="home"] #root,
+:root[data-app-tab="home"] #root>.min-h-screen{background:var(--go-forest-950)!important;color:var(--go-ivory)!important;}
+
+/* Shell and safe-area ownership */
+#root>.min-h-screen{padding-bottom:calc(var(--go-nav-height) + 28px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))!important;}
+:root[data-native-keyboard="open"] #root>.min-h-screen{padding-bottom:var(--go-space-6)!important;}
+
+:root[data-app-tab="home"] header{
+ border-color:var(--go-border-soft)!important;background:rgb(6 19 14 / .975)!important;box-shadow:0 1px 0 rgb(255 255 255 / .025)!important;
+ backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important;transition:background-color 180ms var(--go-ease),box-shadow 180ms var(--go-ease)!important;contain:layout paint style;
+}
+:root[data-app-tab="home"] header>div:last-child{padding-inline:var(--go-mobile-pad)!important;}
+:root[data-app-tab="home"] header>div:last-child>div{min-height:72px!important;gap:var(--go-space-3)!important;transition:min-height 220ms var(--go-ease),gap 220ms var(--go-ease)!important;}
+:root[data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"]{border:0!important;background:transparent!important;border-radius:var(--go-radius-sm)!important;transition:opacity 180ms var(--go-ease),transform 180ms var(--go-ease)!important;}
+:root[data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"] img{width:44px!important;height:44px!important;transition:width 220ms var(--go-ease),height 220ms var(--go-ease)!important;}
+:root[data-app-tab="home"] header button[aria-label^="Bildirimler"],
+:root[data-app-tab="home"] header button[aria-label^="Sepetim"]{min-width:44px!important;min-height:44px!important;border:0!important;background:transparent!important;color:var(--go-muted)!important;transition:color 160ms var(--go-ease),background-color 160ms var(--go-ease),transform 120ms var(--go-ease)!important;}
+:root[data-app-tab="home"] header button[aria-label^="Bildirimler"]:active,
+:root[data-app-tab="home"] header button[aria-label^="Sepetim"]:active{transform:scale(.94);background:var(--go-forest-750)!important;}
+:root[data-app-tab="home"] header button[aria-label^="Bildirimler,"]{color:var(--go-ivory)!important;}
+
+:root[data-go-header-compact="true"][data-app-tab="home"] header{box-shadow:0 8px 24px rgb(0 0 0 / .18)!important;}
+:root[data-go-header-compact="true"][data-app-tab="home"] header>div:last-child>div{min-height:58px!important;gap:var(--go-space-2)!important;}
+:root[data-go-header-compact="true"][data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"] img{width:36px!important;height:36px!important;}
+
+/* Search / voice is a first-class interaction, not decoration. */
+.go-search-bar{position:relative;width:100%;}
+.go-search-bar__field{position:relative;display:block;}
+.go-search-bar__field>svg{position:absolute;z-index:2;left:14px;top:50%;width:18px;height:18px;transform:translateY(-50%);color:var(--go-muted-2);pointer-events:none;}
+.go-search-bar input{width:100%;min-height:52px;border:1px solid var(--go-border)!important;border-radius:var(--go-radius-md)!important;background:var(--go-forest-800)!important;color:var(--go-ivory)!important;padding:0 52px 0 42px!important;font:600 15px/1.2 var(--font-sans)!important;outline:0!important;box-shadow:none!important;transition:min-height 220ms var(--go-ease),background-color 160ms var(--go-ease),border-color 160ms var(--go-ease)!important;}
+.go-search-bar[data-has-value="true"] input{padding-right:92px!important;}
+.go-search-bar input::placeholder{color:var(--go-muted-2)!important;opacity:1;}
+.go-search-bar input:focus{border-color:#496c5e!important;background:var(--go-forest-750)!important;box-shadow:0 0 0 3px rgb(211 180 90 / .10)!important;}
+.go-search-bar__clear,.go-search-bar__voice{position:absolute;z-index:3;top:50%;display:grid;width:44px;height:44px;place-items:center;transform:translateY(-50%);border:0;border-radius:12px;background:transparent;color:var(--go-muted);transition:background-color 150ms var(--go-ease),color 150ms var(--go-ease),transform 120ms var(--go-ease);}
+.go-search-bar__clear{right:44px}.go-search-bar__voice{right:2px}.go-search-bar__clear svg,.go-search-bar__voice svg{width:19px;height:19px;}
+.go-search-bar__clear:active,.go-search-bar__voice:active{transform:translateY(-50%) scale(.92);background:var(--go-forest-700);}
+.go-search-bar__voice[aria-pressed="true"],.go-search-bar[data-processing="true"] .go-search-bar__voice{color:var(--go-gold-strong);background:rgb(211 180 90 / .10);}
+.go-search-bar__voice[aria-pressed="true"]::after{content:"";position:absolute;width:28px;height:28px;border:1px solid rgb(211 180 90 / .45);border-radius:999px;animation:go-voice-breathe 1.3s ease-in-out infinite;}
+@keyframes go-voice-breathe{0%,100%{opacity:.35;transform:scale(.88)}50%{opacity:.75;transform:scale(1.05)}}
+:root[data-go-header-compact="true"][data-app-tab="home"] .go-search-bar input{min-height:44px!important;}
+
+/* Home rhythm */
+.go-premium-home-v2{min-height:100vh;overflow-x:clip;background:var(--go-forest-950);color:var(--go-ivory);}
+.go-home-content{width:min(100%,1280px);margin:0 auto;padding:var(--go-space-4) var(--go-mobile-pad) var(--go-space-8);}
+.go-home-section{margin-top:var(--go-space-7);}
+.go-home-section:first-of-type{margin-top:0;}
+.go-section-header{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--go-space-4);margin-bottom:var(--go-space-4);}
+.go-section-header__copy{min-width:0;max-width:46rem;}
+.go-section-header__eyebrow{display:block;margin-bottom:var(--go-space-1);color:var(--go-gold);font:800 11px/1.2 var(--font-sans);letter-spacing:.12em;text-transform:uppercase;}
+.go-section-header h2{margin:0;color:var(--go-ivory);font-family:var(--font-serif);font-size:clamp(24px,6.4vw,34px);font-weight:700;line-height:1.08;letter-spacing:-.018em;overflow-wrap:anywhere;}
+.go-section-header p{margin:var(--go-space-2) 0 0;color:var(--go-muted);font:500 14px/1.5 var(--font-sans);max-width:42rem;}
+.go-section-header__action{display:inline-flex;min-height:44px;flex:0 0 auto;align-items:center;gap:var(--go-space-1);border:0;background:transparent;color:var(--go-gold-strong);padding:0 var(--go-space-2);font:750 14px/1 var(--font-sans);border-radius:var(--go-radius-sm);}
+.go-section-header__action svg{width:16px;height:16px;}
+.go-section-header__action:active{background:rgb(211 180 90 / .08);}
+
+/* Category discovery rail */
+.go-category-rail{display:grid;grid-auto-flow:column;grid-auto-columns:clamp(148px,42vw,184px);gap:var(--go-space-3);overflow-x:auto;overscroll-behavior-inline:contain;scroll-snap-type:x mandatory;scroll-padding-inline:1px;padding:1px var(--go-space-5) var(--go-space-2) 1px;-webkit-overflow-scrolling:touch;}
+.go-category-rail>[role="listitem"]{scroll-snap-align:start;min-width:0;}
+.go-category-card{display:flex;width:100%;min-height:164px;flex-direction:column;overflow:hidden;border:1px solid var(--go-border-soft);border-radius:var(--go-radius-lg);background:var(--go-forest-850);color:var(--go-ivory);text-align:left;padding:0;box-shadow:none;transition:transform 160ms var(--go-ease),border-color 160ms var(--go-ease),background-color 160ms var(--go-ease);}
+.go-category-card:active{transform:scale(.985);background:var(--go-forest-800);border-color:var(--go-border);}
+.go-category-card__media{display:block;height:98px;overflow:hidden;background:var(--go-forest-800);}
+.go-category-card__image,.go-category-card__image img{width:100%;height:100%;}
+.go-category-card__image img{object-fit:cover;}
+.go-category-card__icon{display:grid;width:100%;height:100%;place-items:center;color:var(--go-gold);}
+.go-category-card__icon svg{width:28px;height:28px;stroke-width:1.6;}
+.go-category-card__copy{display:flex;min-width:0;flex:1;flex-direction:column;justify-content:center;gap:var(--go-space-1);padding:var(--go-space-3);}
+.go-category-card__copy strong{display:-webkit-box;overflow:hidden;color:var(--go-ivory);font:750 15px/1.25 var(--font-sans);-webkit-box-orient:vertical;-webkit-line-clamp:2;}
+.go-category-card__copy span{display:-webkit-box;overflow:hidden;color:var(--go-muted);font:500 12px/1.3 var(--font-sans);-webkit-box-orient:vertical;-webkit-line-clamp:1;}
+
+/* Product card: product, source, one/two trust signals, price. */
+.go-product-grid-v2{display:grid;grid-template-columns:1fr;gap:var(--go-space-3);}
+.go-product-card-v2{min-width:0;}
+.go-product-card-v2__button{display:grid;width:100%;grid-template-columns:104px minmax(0,1fr);gap:var(--go-space-4);align-items:stretch;overflow:hidden;border:1px solid var(--go-border-soft);border-radius:var(--go-radius-lg);background:var(--go-forest-850);color:var(--go-ivory);padding:var(--go-space-3);text-align:left;box-shadow:none;transition:transform 150ms var(--go-ease),background-color 160ms var(--go-ease),border-color 160ms var(--go-ease);}
+.go-product-card-v2__button:active{transform:scale(.992);background:var(--go-forest-800);border-color:var(--go-border);}
+.go-product-card-v2__media{width:104px;aspect-ratio:1/1.08;align-self:center;border-radius:var(--go-radius-md);overflow:hidden;background:var(--go-forest-800);}
+.go-product-card-v2__media img{width:100%;height:100%;object-fit:cover;}
+.go-product-card-v2__content{display:flex;min-width:0;flex-direction:column;justify-content:center;gap:var(--go-space-2);}
+.go-product-card-v2__title{display:-webkit-box;overflow:hidden;color:var(--go-ivory);font-family:var(--font-serif);font-size:18px;font-weight:700;line-height:1.2;letter-spacing:-.01em;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere;}
+.go-product-card-v2__source{display:flex;min-width:0;align-items:center;gap:6px;color:var(--go-muted);font:600 12px/1.3 var(--font-sans);}
+.go-product-card-v2__source svg{width:13px;height:13px;flex:0 0 auto;color:var(--go-muted-2);}
+.go-product-card-v2__source span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.go-product-card-v2__signals{display:flex;min-height:24px;min-width:0;flex-wrap:nowrap;gap:6px;overflow:hidden;align-items:center;}
+.go-product-badge{display:inline-flex;min-width:0;max-width:58%;height:24px;align-items:center;gap:5px;overflow:hidden;border:1px solid var(--go-border);border-radius:999px;background:var(--go-forest-800);color:var(--go-ivory-soft);padding:0 8px;font:700 11px/1 var(--font-sans);white-space:nowrap;}
+.go-product-badge svg{width:12px;height:12px;flex:0 0 auto;stroke-width:1.9;}
+.go-product-badge span{overflow:hidden;text-overflow:ellipsis;}
+.go-product-badge[data-tone="official"]{border-color:var(--go-ruby-border);background:rgb(116 48 68 / .32);color:#f1dce3;}
+.go-product-badge[data-tone="verified"]{color:#d9e8df;}.go-product-badge[data-tone="seasonal"]{color:#d8e3c6}.go-product-badge[data-tone="preorder"]{color:#eadcae}.go-product-badge[data-tone="cold"]{color:#d4e5e8;}
+.go-product-card-v2__footer{display:flex;min-width:0;align-items:flex-end;justify-content:space-between;gap:var(--go-space-3);margin-top:auto;}
+.go-product-card-v2__footer>svg{width:18px;height:18px;flex:0 0 auto;color:var(--go-muted-2);}
+.go-price-display{display:flex;min-width:0;align-items:baseline;gap:var(--go-space-2);flex-wrap:wrap;}
+.go-price-display strong{color:var(--go-ivory);font:800 17px/1.1 var(--font-sans);letter-spacing:-.015em;white-space:nowrap;}
+.go-price-display>span{color:var(--go-muted-2);font:600 11px/1 var(--font-sans);text-decoration:line-through;white-space:nowrap;}
+
+/* Image state: real photos can replace placeholders without component changes. */
+.go-premium-image{position:relative;display:block;overflow:hidden;background:var(--go-forest-800);}
+.go-premium-image img{display:block;opacity:0;transition:opacity 220ms var(--go-ease);}
+.go-premium-image[data-loaded="true"] img{opacity:1;}
+.go-premium-image__skeleton{position:absolute;inset:0;background:var(--go-forest-750);animation:go-skeleton 1.25s ease-in-out infinite alternate;}
+.go-premium-image__fallback{display:grid;width:100%;height:100%;min-height:72px;place-items:center;color:var(--go-muted-2);}
+.go-premium-image__fallback svg{width:24px;height:24px;stroke-width:1.5;}
+@keyframes go-skeleton{from{opacity:.5}to{opacity:.9}}
+
+/* Campaign and provenance stay factual and server-driven. */
+.go-campaign-v2{display:grid;overflow:hidden;border:1px solid var(--go-border);border-radius:var(--go-radius-xl);background:var(--go-forest-800);}
+.go-campaign-v2__media{width:100%;aspect-ratio:16/7;}.go-campaign-v2__media img{width:100%;height:100%;object-fit:cover;}
+.go-campaign-v2__copy{padding:var(--go-space-5);}.go-campaign-v2__copy>span{color:var(--go-gold);font:800 11px/1 var(--font-sans);letter-spacing:.12em;text-transform:uppercase;}.go-campaign-v2__copy h2{margin:var(--go-space-2) 0 0;color:var(--go-ivory);font-family:var(--font-serif);font-size:26px;line-height:1.1;}.go-campaign-v2__copy p{margin:var(--go-space-2) 0 0;color:var(--go-muted);font:500 14px/1.5 var(--font-sans);}
+.go-brand-provenance{margin-top:var(--go-space-8);border-top:1px solid var(--go-border-soft);padding-top:var(--go-space-6);}.go-brand-provenance>span{color:var(--go-gold);font:800 11px/1 var(--font-sans);letter-spacing:.12em;text-transform:uppercase}.go-brand-provenance p{max-width:46rem;margin:var(--go-space-2) 0 0;color:var(--go-muted);font:500 14px/1.6 var(--font-sans);}
+.go-discover-all{display:flex;width:100%;min-height:48px;align-items:center;justify-content:center;gap:var(--go-space-2);margin-top:var(--go-space-7);border:1px solid var(--go-border);border-radius:var(--go-radius-md);background:var(--go-forest-800);color:var(--go-ivory);font:750 14px/1 var(--font-sans);}.go-discover-all svg{width:17px;height:17px;color:var(--go-gold)}.go-discover-all:active{background:var(--go-forest-750)}
+
+/* Loading, empty and recoverable error surfaces */
+.go-home-notice,.go-inline-error{display:flex;align-items:center;gap:var(--go-space-2);border:1px solid var(--go-border);border-radius:var(--go-radius-md);background:var(--go-forest-800);color:var(--go-muted);padding:var(--go-space-3) var(--go-space-4);font:600 13px/1.4 var(--font-sans);}.go-home-notice svg,.go-inline-error svg{width:17px;height:17px;flex:0 0 auto;color:var(--go-gold)}.go-inline-error button{margin-left:auto;min-height:44px;border:0;background:transparent;color:var(--go-gold-strong);font-weight:750;}
+.go-home-state{display:flex;min-height:calc(var(--go-visual-viewport-height,100vh) - 130px);flex-direction:column;align-items:center;justify-content:center;padding:var(--go-space-7) var(--go-mobile-pad);background:var(--go-forest-950);color:var(--go-ivory);text-align:center}.go-home-state>svg{width:32px;height:32px;color:var(--go-gold)}.go-home-state h1{margin:var(--go-space-4) 0 0;font-size:28px}.go-home-state p{max-width:32rem;margin:var(--go-space-2) 0 0;color:var(--go-muted);line-height:1.5}.go-home-state button{display:inline-flex;min-height:48px;align-items:center;gap:8px;margin-top:var(--go-space-5);border:1px solid var(--go-border);border-radius:var(--go-radius-md);background:var(--go-forest-800);color:var(--go-ivory);padding:0 var(--go-space-4);font-weight:750}.go-home-state button svg{width:17px;height:17px}
+.go-heading-skeleton{width:44%;height:28px;border-radius:10px;background:var(--go-forest-800);animation:go-skeleton 1.25s ease-in-out infinite alternate}.go-heading-skeleton--wide{width:62%}.go-category-skeleton-rail{display:flex;gap:var(--go-space-3);overflow:hidden;margin-top:var(--go-space-4)}.go-category-skeleton{width:42vw;max-width:184px;height:164px;flex:0 0 auto;border-radius:var(--go-radius-lg);background:var(--go-forest-800);animation:go-skeleton 1.25s ease-in-out infinite alternate}.go-product-skeleton{display:grid;grid-template-columns:104px 1fr;gap:var(--go-space-4);height:138px;border:1px solid var(--go-border-soft);border-radius:var(--go-radius-lg);background:var(--go-forest-850);padding:var(--go-space-3)}.go-product-skeleton>span{border-radius:var(--go-radius-md);background:var(--go-forest-750);animation:go-skeleton 1.25s ease-in-out infinite alternate}.go-product-skeleton>div{display:flex;flex-direction:column;justify-content:center;gap:10px}.go-product-skeleton i{display:block;height:12px;border-radius:8px;background:var(--go-forest-750);animation:go-skeleton 1.25s ease-in-out infinite alternate}.go-product-skeleton i:nth-child(2){width:72%}.go-product-skeleton i:nth-child(3){width:45%}.go-section-reserved-space{height:136px;border:1px solid transparent;}
+
+/* Refined native bottom navigation. */
+nav[aria-label="Ana gezinme"]{height:var(--go-nav-height)!important;max-width:680px!important;bottom:calc(8px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)))!important;left:calc(12px + var(--safe-area-inset-left,env(safe-area-inset-left,0px)))!important;right:calc(12px + var(--safe-area-inset-right,env(safe-area-inset-right,0px)))!important;border:1px solid var(--go-border-soft)!important;border-radius:22px!important;background:rgb(13 33 24 / .98)!important;box-shadow:0 10px 30px rgb(0 0 0 / .24)!important;backdrop-filter:blur(10px)!important;-webkit-backdrop-filter:blur(10px)!important;padding:0 4px!important;}
+nav[aria-label="Ana gezinme"] button{min-height:44px!important;border-radius:14px!important;color:var(--go-muted-2)!important;transition:color 150ms var(--go-ease),transform 120ms var(--go-ease),background-color 150ms var(--go-ease)!important;}
+nav[aria-label="Ana gezinme"] button:active{transform:scale(.95);background:var(--go-forest-750)!important;}
+nav[aria-label="Ana gezinme"] button[aria-current="page"]{color:var(--go-gold-strong)!important;background:transparent!important;}
+nav[aria-label="Ana gezinme"] button svg{width:22px!important;height:22px!important;stroke-width:1.9!important;}nav[aria-label="Ana gezinme"] button>span:last-child{font-size:10px!important;font-weight:700!important;letter-spacing:0!important;}
+
+/* Phone width discipline: 320, 360, 375, 390, 412, 430 all remain single-column and overflow-safe. */
+@media(max-width:520px){
+ :root[data-app-tab="home"] header>div:last-child{padding-inline:var(--go-mobile-pad)!important;}
+ :root[data-app-tab="home"] header>div:last-child>div{display:grid!important;grid-template-columns:44px minmax(0,1fr) auto;grid-template-rows:52px 52px;column-gap:var(--go-space-2)!important;row-gap:var(--go-space-2)!important;align-items:center;padding-block:var(--go-space-2);}
+ :root[data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"]{grid-column:1;grid-row:1;}
+ :root[data-app-tab="home"] header>div:last-child>div>div:nth-child(2){grid-column:1/-1;grid-row:2;min-width:0;width:100%;}
+ :root[data-app-tab="home"] header>div:last-child>div>div:last-child{grid-column:3;grid-row:1;justify-self:end;}
+ :root[data-go-header-compact="true"][data-app-tab="home"] header>div:last-child>div{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:44px;min-height:60px!important;padding-block:var(--go-space-2);}
+ :root[data-go-header-compact="true"][data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"]{display:none!important;}
+ :root[data-go-header-compact="true"][data-app-tab="home"] header>div:last-child>div>div:nth-child(2){grid-column:1;grid-row:1;}
+ :root[data-go-header-compact="true"][data-app-tab="home"] header>div:last-child>div>div:last-child{grid-column:2;grid-row:1;}
+ .go-home-content{padding-top:var(--go-space-4);}
+ .go-product-card-v2__button{grid-template-columns:96px minmax(0,1fr);gap:var(--go-space-3);}
+ .go-product-card-v2__media{width:96px;}
+ .go-product-card-v2__title{font-size:17px;}
+ .go-price-display strong{font-size:16px;}
+}
+@media(max-width:350px){
+ :root{--go-mobile-pad:16px;}
+ :root[data-app-tab="home"] header>div:last-child>div>div:last-child{gap:0!important;}
+ .go-category-rail{grid-auto-columns:148px;}
+ .go-product-card-v2__button{grid-template-columns:88px minmax(0,1fr);gap:var(--go-space-3);padding:10px;}
+ .go-product-card-v2__media{width:88px;}
+ .go-product-card-v2__title{font-size:16px;}
+ .go-product-card-v2__source{font-size:11px;}
+ .go-product-badge{max-width:62%;padding-inline:6px;font-size:10px;}
+ .go-price-display strong{font-size:15px;}
+ nav[aria-label="Ana gezinme"]{left:calc(8px + var(--safe-area-inset-left,env(safe-area-inset-left,0px)))!important;right:calc(8px + var(--safe-area-inset-right,env(safe-area-inset-right,0px)))!important;}
+ nav[aria-label="Ana gezinme"] button>span:last-child{font-size:9px!important;}
+}
+@media(min-width:700px){.go-product-grid-v2{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--go-space-4)}.go-home-content{padding-inline:var(--go-space-6)}.go-category-rail{grid-auto-columns:184px}}
+@media(min-width:1100px){.go-product-grid-v2{grid-template-columns:repeat(3,minmax(0,1fr));}}
+
+@media(pointer:coarse){:root[data-app-tab="home"] header,nav[aria-label="Ana gezinme"]{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}.go-category-card:hover,.go-product-card-v2__button:hover{transform:none}}
+@media(hover:hover){.go-category-card:hover,.go-product-card-v2__button:hover{border-color:var(--go-border);background:var(--go-forest-800)}}
+@media(prefers-reduced-motion:reduce){.go-category-card,.go-product-card-v2__button,.go-premium-image img,.go-search-bar input,.go-search-bar__clear,.go-search-bar__voice,:root[data-app-tab="home"] header>div:last-child>div,:root[data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"] img{transition:none!important}.go-premium-image__skeleton,.go-heading-skeleton,.go-category-skeleton,.go-product-skeleton>span,.go-product-skeleton i,.go-search-bar__voice::after{animation:none!important}}

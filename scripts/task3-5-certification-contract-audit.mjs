@@ -10,6 +10,7 @@ const requirePattern=(source,pattern,message)=>{if(!pattern.test(source))failure
 
 const app=read('src/App.tsx');
 const searchInput=read('src/features/catalog/CatalogSearchInput.tsx');
+const premiumMobileCss=read('src/features/customer-experience/premiumMobileV2.css');
 const readinessApi=read('src/admin/productPublishReadinessApi.ts');
 const readinessV3=read('supabase/migrations/20260826123321_canonicalize_publish_readiness_media_block_semantics_v3.sql');
 const readinessV5=read('supabase/migrations/20260826124438_make_exact_product_id_readiness_exclusive_v5.sql');
@@ -33,7 +34,10 @@ forbidText(app,'Sesli arama</h2>','Voice search full-screen modal must stay remo
 requireText(app,'processVoiceText','Recognized voice text must enter the canonical search adapter.');
 requirePattern(app,/processVoiceText[\s\S]*openSearch\(value\)/,'Voice transcript must use the same openSearch route as typed search.');
 requireText(searchInput,'aria-pressed={listening}','Search input microphone must expose listening state accessibly.');
-requireText(searchInput,'animate-pulse','Search input microphone must visibly expose active listening state.');
+requireText(searchInput,"listening?'Sesli arama dinleniyor'",'Search input microphone must announce the active listening state.');
+requireText(searchInput,'role="status" aria-live="polite"','Search input microphone must expose listening and processing feedback to assistive technology.');
+requireText(premiumMobileCss,'.go-search-bar__voice[aria-pressed="true"]','Search input microphone must visibly expose active listening state without relying on novelty pulse utilities.');
+requireText(premiumMobileCss,'.go-search-bar[data-processing="true"]','Search input microphone must visibly expose processing state.');
 
 for(const field of ['mediaReady','brandFallbackAllowed'])requireText(readinessApi,field,`Readiness frontend contract is missing ${field}.`);
 requireText(readinessApi,'getSuperAdminProductPublishReadinessItem','Single-product readiness must use a dedicated exact-ID client helper.');
