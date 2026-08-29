@@ -17,9 +17,9 @@ requireMatch(readinessCopy.includes('Katalog görüntülenebilir; ödeme ile sip
 requireMatch(!readinessCopy.includes('provider credential'),'Public readiness copy must not expose provider credential terminology.');
 requireMatch(search.includes('Mic')&&!search.includes('MicOff'),'Voice search must use one microphone icon without a redundant idle-off glyph.');
 requireMatch(search.includes('onVoice'),'Voice search callback must remain wired.');
-requireMatch(search.includes("aria-pressed={listening}"),'Voice listening state must be exposed accessibly.');
+requireMatch(search.includes('aria-label="Sesli mikrofon"')&&search.includes('aria-pressed={listening?true:undefined}'),'Voice listening state must be exposed through one concise Sesli mikrofon control.');
 requireMatch(!search.includes('role="search"')&&search.includes('aria-label="Ürün, üretici veya köy ara"'),'Search must expose one searchbox name without a duplicate search landmark label.');
-requireMatch(!search.includes("'Mikrofon kapalı'")&&!search.includes('Mikrofon kapalı, sesli aramayı başlat'),'Idle voice search must not announce an artificial microphone-off state.');
+requireMatch(!search.includes("'Mikrofon kapalı'")&&!search.includes('Mikrofon kapalı, sesli aramayı başlat')&&!search.includes('Sesli aramayı başlat'),'Idle voice search must not announce artificial microphone-off or start-instruction text.');
 for(const [token,value] of[['--go-space-1','4px'],['--go-space-2','8px'],['--go-space-3','12px'],['--go-space-4','16px'],['--go-space-5','20px'],['--go-space-6','24px'],['--go-space-7','32px'],['--go-space-8','40px'],['--go-space-9','48px']])requireMatch(css.includes(`${token}:${value}`),`Spacing token ${token}=${value} is missing.`);
 requireMatch(css.includes('--go-mobile-pad:20px'),'Canonical mobile horizontal padding must remain 20px.');
 requireMatch(css.includes('env(safe-area-inset-bottom'),'Bottom navigation must retain iOS/Android safe-area handling.');
@@ -31,12 +31,14 @@ requireMatch(css.includes('.go-product-grid-v2{display:grid;width:100%;max-width
 requireMatch(!css.includes('grid-template-columns:repeat(2,minmax(0,1fr))')&&!css.includes('grid-template-columns:repeat(3,minmax(0,1fr))'),'Home product rows must not regress into multi-column cards.');
 requireMatch(product.includes("storeKind==='official'"),'Product card must derive official-store trust from backend data.');
 requireMatch(product.includes('originVerified'),'Product card must derive origin verification from backend data.');
-requireMatch(product.includes("official?<ProductBadge")&&product.includes("official&&signal?<ProductBadge"),'Product card must keep the explicit maximum-two trust-signal composition.');
+requireMatch(product.includes('const visualSignal=signal??')&&product.includes('<ProductBadge tone={visualSignal.tone} label={visualSignal.label}/>'),'Product card must keep one strongest truth-backed visible trust signal.');
+requireMatch(product.includes('<a href={buildProductUrl(item.slug)}'),'Every Home product row must remain a real product link.');
 requireMatch(product.includes('data-product-id={item.id}')&&product.includes('data-product-reference={item.slug}'),'Every Home product row must retain stable product identity and route reference markers.');
+requireMatch(product.includes("!item.imagePath.startsWith('brand/official-store/')"),'Official-store brand imagery must not masquerade as a product photo.');
 requireMatch(!product.includes('.map('),'Product card must not map an unbounded badge collection onto the primary card surface.');
 requireMatch(product.includes('compareAtPriceMinor')&&product.includes('buildProductCardAccessibilityLabel')&&product.includes('compareAtPrice:compareMinor!==null?compareMinor/100:null')&&!product.includes('line-through')&&!price.includes('compareAtPriceMinor'),'Primary Home cards may expose canonical compare-at data to accessibility, but must not restore visible strike-through promotional framing.');
 requireMatch(image.includes("loading={eager?'eager':'lazy'}"),'Product imagery must retain lazy loading with an explicit LCP eager path.');
-requireMatch(image.includes('onError'),'Image error fallback must remain implemented.');
+requireMatch(image.includes('onError')&&image.includes('Fotoğraf yakında'),'Image error fallback must remain honest about missing product photography.');
 requireMatch(css.includes('object-fit:cover'),'Product/category imagery must remain ready for real photography.');
 requireMatch(runtime.includes('requestAnimationFrame'),'Adaptive header scroll work must stay animation-frame throttled.');
 requireMatch(runtime.includes('COMPACT_ENTER_Y=104')&&runtime.includes('EXPAND_TOP_Y=40'),'Adaptive header must retain distinct enter/top hysteresis thresholds.');
