@@ -43,12 +43,14 @@ forbid(product,/\.map\([^)]*badge|badges\.map/,'Home cards must not map an unbou
 forbid(product,/Sepete Ekle|Hemen Ön Sipariş Ver|ShoppingCart/,'Home discovery cards must not restore inline commerce controls.');
 requireText(catalog,'compareAtPriceMinor?:number|null','Canonical catalog data must preserve a real compare-at price when supplied.');
 requireText(catalog,"compareAtPriceMinor:optionalSafeInteger(value.variant.compareAtPriceMinor,'Karşılaştırma fiyatı')",'Catalog validation must continue validating real compare-at price data.');
-forbid(product,/compareAtPriceMinor/,'Primary Home cards must not pass compare-at pricing into the premium discovery surface.');
+requireText(product,'compareAtPrice:compareMinor!==null?compareMinor/100:null','Real compare-at data must remain available to the product card spoken label when present.');
+forbid(product,/<PriceDisplay[^>]*compareAtPrice/,'Primary Home cards must not pass compare-at pricing into the visible premium discovery surface.');
 forbid(price,/compareAtPriceMinor|line-through|<del\b/,'Primary Home PriceDisplay must remain a single current-price hierarchy rather than promotional strike-through framing.');
 requireText(price,'Intl.NumberFormat','Price rendering must remain locale/currency aware from minor units.');
+requireText(price,"normalized==='TRY'",'TRY price rendering must use the customer-facing TL notation path.');
 requireText(image,"loading={eager?'eager':'lazy'}",'Product imagery must keep the LCP eager path and lazy loading elsewhere.');
 requireText(image,'onError','Product imagery must keep a resilient error fallback.');
 requirePattern(product,/sourceLabel\(item\)/,'Product source copy must remain data-derived rather than hardcoded.');
 
 if(failures.length){console.error('Golden Oremar premium Home product hierarchy audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar premium Home product hierarchy audit passed: each product keeps a stable horizontal mobile composition with image, two-line title, source, bounded real trust signals and one canonical current price while compare-at data remains preserved in the catalog model.');
+console.log('Golden Oremar premium Home product hierarchy audit passed: each product keeps a stable horizontal mobile composition with image, two-line title, source, bounded real trust signals and one canonical current price while real compare-at data remains available to accessibility without promotional visual clutter.');
