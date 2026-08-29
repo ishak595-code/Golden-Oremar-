@@ -10,6 +10,7 @@ const forbid=(source,needle,message)=>requireMatch(!source.includes(needle),mess
 const detail=read('src/features/catalog/ProductDetailScreen.tsx');
 const category=read('src/features/catalog/CategoryDirectoryScreen.tsx');
 const searchResults=read('src/features/catalog/CatalogSearchResults.tsx');
+const searchInput=read('src/features/catalog/CatalogSearchInput.tsx');
 const favorites=read('src/features/account/FavoritesPanel.tsx');
 const cart=read('src/features/cart/CartCheckoutFlow.tsx');
 const payments=read('src/features/account/PaymentsPanel.tsx');
@@ -36,14 +37,22 @@ requireMatch(detail.includes('kategorisini aç')&&detail.includes('buildSearchUr
 requireMatch(detail.includes("if(currency==='TRY')return`${amount} TL`"),'Product detail TRY prices must use customer-facing TL notation.');
 requireMatch(detail.includes('compareAtPriceReady')&&detail.includes('Önce {money(compareAtPriceMinor,currency)}'),'Product detail must surface a real compare price when it exists.');
 forbid(detail,'line-clamp-3','Product detail short copy must not return to artificial three-line truncation.');
-requireMatch(productDockCss.includes('minmax(0,1.35fr) minmax(0,.9fr)'),'Product detail purchase dock must preserve primary/secondary action hierarchy.');
+requireMatch(productDockCss.includes('minmax(0,.82fr) minmax(0,1fr) minmax(0,1.16fr)'),'Product detail purchase dock must preserve the three-action Gift / Cart / Buy hierarchy.');
+const giftIndex=detail.indexOf('product-detail-commerce-gift');
+const cartIndex=detail.indexOf('product-detail-commerce-cart');
+const buyIndex=detail.indexOf('product-detail-commerce-buy');
+requireMatch(giftIndex>=0&&cartIndex>giftIndex&&buyIndex>cartIndex,'Product detail fixed actions must remain ordered Hediye Et, Sepete Ekle, Hemen Satın Al.');
+requireMatch(detail.includes('<span>Hediye Et</span>')&&detail.includes("preorder?'Ön Sipariş':'Sepete Ekle'")&&detail.includes('<span>Hemen Satın Al</span>'),'Product detail fixed action labels are incomplete.');
 
 forbid(home,'salesReadiness.message','Home storefront must not expose internal sales-readiness explanations.');
 forbid(home,'salesBlocked','Home storefront must not render an internal checkout-readiness banner.');
 requireMatch(homeProductCard.includes('aria-labelledby={spokenId}')&&homeProductCard.includes('className="sr-only">{accessibleLabel}</span>'),'Home product cards must bind their focusable control to a deterministic full spoken label.');
+requireMatch(homeProductCard.includes('data-product-id={item.id}')&&homeProductCard.includes('data-product-reference={item.slug}'),'Every Home product row must expose stable internal identity/reference markers.');
 requireMatch(homeProductCard.includes('compareAtPrice:compareMinor!==null?compareMinor/100:null')&&!/<PriceDisplay[^>]*compareAtPrice/.test(homeProductCard),'Home product cards must keep real compare pricing in the spoken contract without adding promotional compare pricing to the visible discovery card.');
 requireMatch(homePrice.includes("normalized==='TRY'")&&homePrice.includes('TL`'),'Home TRY prices must use TL notation.');
 requireMatch(accessibilityE2e.includes("getByRole('button',{name:label,exact:true})")&&accessibilityE2e.includes('ARIA_NAME_MISSING_COMPARE_PRICE'),'Runtime accessibility must resolve the actual role/name and compare-price contract.');
+requireMatch(searchInput.includes('aria-label="Ürün, üretici veya köy ara"')&&!searchInput.includes('role="search"'),'Search must expose one searchbox name without duplicate landmark narration.');
+requireMatch(searchInput.includes('Mic')&&!searchInput.includes('MicOff')&&!searchInput.includes("'Mikrofon kapalı'"),'Voice search must avoid redundant microphone-off UI and announcements.');
 
 for(const [needle,message] of [
  ['sunucudan doğrulanamadı','Category screen must not expose server-validation wording.'],
@@ -79,8 +88,9 @@ for(const needle of['metadata','veritabanı','Super Admin','iki harfli ISO'])for
 
 requireMatch(premiumCss.includes('.go-home-content{width:min(100%,1280px);margin:0 auto;padding:var(--go-space-5) var(--go-mobile-pad) var(--go-space-9);}'),'Home content needs the calmer premium outer rhythm.');
 requireMatch(premiumCss.includes('.go-home-section{margin-top:var(--go-space-8);}'),'Home sections need the calmer 40px vertical rhythm.');
-requireMatch(premiumCss.includes('.go-product-grid-v2{display:grid;grid-template-columns:1fr;gap:var(--go-space-4);}'),'Home product grid needs 16px mobile breathing room.');
-requireMatch(premiumCss.includes('min-height:148px')&&premiumCss.includes('padding:var(--go-space-4);text-align:left'),'Home product cards need the expanded premium inner spacing.');
+requireMatch(premiumCss.includes('.go-product-grid-v2{display:grid;width:100%;max-width:860px;grid-template-columns:1fr;gap:0'),'Home products must remain one product per full-width list row.');
+requireMatch(!premiumCss.includes('grid-template-columns:repeat(2,minmax(0,1fr))')&&!premiumCss.includes('grid-template-columns:repeat(3,minmax(0,1fr))'),'Home products must not regress into multi-column card grids.');
+requireMatch(premiumCss.includes('min-height:116px')&&premiumCss.includes('padding:var(--go-space-3) 0;text-align:left'),'Home product rows need compact but touch-safe list spacing.');
 requireMatch(premiumCss.includes('.go-category-card{display:flex;width:100%;min-height:172px')&&premiumCss.includes('.go-category-card__copy{')&&premiumCss.includes('padding:var(--go-space-4);'),'Home category cards need the expanded premium spacing contract.');
 requireMatch(premiumCss.includes('font:500 14px/1.65 var(--font-sans)'),'Home section support copy needs relaxed readable line height.');
 
