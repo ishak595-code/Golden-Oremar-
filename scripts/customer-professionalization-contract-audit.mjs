@@ -13,8 +13,13 @@ const searchResults=read('src/features/catalog/CatalogSearchResults.tsx');
 const favorites=read('src/features/account/FavoritesPanel.tsx');
 const cart=read('src/features/cart/CartCheckoutFlow.tsx');
 const payments=read('src/features/account/PaymentsPanel.tsx');
+const home=read('src/features/home/HomeSection.tsx');
+const homeProductCard=read('src/features/home/components/ProductCard.tsx');
+const homePrice=read('src/features/home/components/PriceDisplay.tsx');
 const premiumCss=read('src/features/customer-experience/premiumMobileV2.css');
+const productDockCss=read('src/features/customer-experience/productDetailCommerceDock.css');
 const customerE2e=read('scripts/customer-e2e.mjs');
+const accessibilityE2e=read('scripts/product-card-accessibility-e2e.mjs');
 
 const titleIndex=detail.indexOf('<h1');
 const priceIndex=detail.indexOf('priceReady?',titleIndex);
@@ -27,7 +32,18 @@ requireMatch(variantIndex>priceIndex,'Variant selection must remain after the pr
 requireMatch(producerIndex<0||variantIndex<producerIndex,'Variant selection must remain before secondary producer content.');
 requireMatch(detail.includes('product-detail-commerce-dock'),'State-aware product commerce dock is missing.');
 requireMatch(detail.includes("setStatus('Sepete eklendi.')")&&detail.includes('Sepete Git'),'Compact add-to-cart success action is missing.');
+requireMatch(detail.includes('kategorisini aç')&&detail.includes('buildSearchUrl'),'Product detail category must remain a real navigable customer link.');
+requireMatch(detail.includes("if(currency==='TRY')return`${amount} TL`"),'Product detail TRY prices must use customer-facing TL notation.');
+requireMatch(detail.includes('compareAtPriceReady')&&detail.includes('Önce {money(compareAtPriceMinor,currency)}'),'Product detail must surface a real compare price when it exists.');
 forbid(detail,'line-clamp-3','Product detail short copy must not return to artificial three-line truncation.');
+requireMatch(productDockCss.includes('minmax(0,1.35fr) minmax(0,.9fr)'),'Product detail purchase dock must preserve primary/secondary action hierarchy.');
+
+forbid(home,'salesReadiness.message','Home storefront must not expose internal sales-readiness explanations.');
+forbid(home,'salesBlocked','Home storefront must not render an internal checkout-readiness banner.');
+requireMatch(homeProductCard.includes('aria-labelledby={spokenId}')&&homeProductCard.includes('className="sr-only">{accessibleLabel}</span>'),'Home product cards must bind their focusable control to a deterministic full spoken label.');
+requireMatch(homeProductCard.includes('compareAtPrice:')&&homeProductCard.includes('compareAtPriceMinor={compareAtPriceMinor}'),'Home product cards must include real compare pricing in visual and spoken contracts when present.');
+requireMatch(homePrice.includes("normalized==='TRY'")&&homePrice.includes('TL`'),'Home TRY prices must use TL notation.');
+requireMatch(accessibilityE2e.includes("getByRole('button',{name:label,exact:true})")&&accessibilityE2e.includes('ARIA_NAME_MISSING_COMPARE_PRICE'),'Runtime accessibility must resolve the actual role/name and compare-price contract.');
 
 for(const [needle,message] of [
  ['sunucudan doğrulanamadı','Category screen must not expose server-validation wording.'],
