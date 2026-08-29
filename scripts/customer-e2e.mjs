@@ -82,7 +82,29 @@ async function openPublicProductFromHome(page){
  if(await visible(page.getByText('Ürün görseli yakında',{exact:true}),1000))throw new Error('PUBLISHED_PRODUCT_MEDIA_PLACEHOLDER_EXPOSED');
  return true;
 }
-async function verifyPublicSections(page){await page.goto(`${baseUrl}/?tab=health`,{waitUntil:'networkidle',timeout:30000});await page.getByRole('heading',{name:'Sağlık & Tarifler'}).waitFor({state:'visible',timeout:12000});await page.getByRole('tab',{name:/Tarifler/}).click();await page.getByRole('tabpanel').waitFor({state:'visible',timeout:12000});mark('health_and_recipes',true);await shot(page,'07-health-recipes');await page.goto(`${baseUrl}/?tab=events`,{waitUntil:'networkidle',timeout:30000});await page.getByRole('heading',{name:'Etkinlikler',exact:true}).waitFor({state:'visible',timeout:12000});mark('events',true);await shot(page,'08-events');await page.goto(`${baseUrl}/?tab=categories`,{waitUntil:'networkidle',timeout:30000});await page.getByText(/Kategori/).first().waitFor({state:'visible',timeout:12000});mark('categories',true);}
+async function verifyCatalogFiltering(page){
+ await page.goto(`${baseUrl}/?tab=categories`,{waitUntil:'networkidle',timeout:30000});
+ await page.getByRole('heading',{name:'Lezzetleri kendi ritminizde keşfedin',exact:true}).waitFor({state:'visible',timeout:12000});
+ await page.locator('#category-products article').first().waitFor({state:'visible',timeout:12000});
+ mark('catalog_product_list',true);
+ const sort=page.getByLabel('Ürünleri sırala');
+ const sortRequest=page.waitForResponse(response=>response.request().method()==='POST'&&response.url().includes('/rest/v1/rpc/search_catalog_v3')&&(response.request().postData()||'').includes('"p_sort":"price_asc"'),{timeout:15000});
+ await sort.selectOption('price_asc');
+ const sorted=await sortRequest;
+ if(!sorted.ok())throw new Error(`CATALOG_SORT_REQUEST_FAILED:${sorted.status()}`);
+ if(await sort.inputValue()!=='price_asc')throw new Error('CATALOG_SORT_STATE_STALE');
+ await page.locator('#category-products article').first().waitFor({state:'visible',timeout:12000});
+ mark('catalog_sort_backend_roundtrip',true);
+ const stock=page.getByRole('checkbox',{name:'Sadece stokta'});
+ const stockRequest=page.waitForResponse(response=>response.request().method()==='POST'&&response.url().includes('/rest/v1/rpc/search_catalog_v3')&&(response.request().postData()||'').includes('"p_in_stock":true'),{timeout:15000});
+ await stock.check();
+ const stocked=await stockRequest;
+ if(!stocked.ok())throw new Error(`CATALOG_STOCK_FILTER_REQUEST_FAILED:${stocked.status()}`);
+ if(!(await stock.isChecked()))throw new Error('CATALOG_STOCK_FILTER_STATE_STALE');
+ mark('catalog_stock_filter_backend_roundtrip',true);
+ await shot(page,'09-category-filtering');
+}
+async function verifyPublicSections(page){await page.goto(`${baseUrl}/?tab=health`,{waitUntil:'networkidle',timeout:30000});await page.getByRole('heading',{name:'Sağlık & Tarifler'}).waitFor({state:'visible',timeout:12000});await page.getByRole('tab',{name:/Tarifler/}).click();await page.getByRole('tabpanel').waitFor({state:'visible',timeout:12000});mark('health_and_recipes',true);await shot(page,'07-health-recipes');await page.goto(`${baseUrl}/?tab=events`,{waitUntil:'networkidle',timeout:30000});await page.getByRole('heading',{name:'Etkinlikler',exact:true}).waitFor({state:'visible',timeout:12000});mark('events',true);await shot(page,'08-events');await verifyCatalogFiltering(page);mark('categories',true);}
 async function inspectRegistrationUi(page){await page.goto(`${baseUrl}/?tab=account`,{waitUntil:'networkidle',timeout:45000});await assertGlobalHomeHeaderHidden(page,'account_global_header_hidden');const registerTab=page.getByRole('tab',{name:'Hesap Aç'});await registerTab.waitFor({state:'visible',timeout:12000});await registerTab.click();await page.locator('#auth-display-name').fill(displayName);await page.locator('#auth-phone').fill(phone);await page.locator('#auth-email').fill(email);await page.locator('#auth-password').fill(authSecret);await page.locator('#auth-confirm-password').fill(authSecret);await page.getByRole('button',{name:'Hesap Oluştur',exact:true}).waitFor({state:'visible',timeout:5000});mark('registration_ui_accessible',true);mark('registration_contract_guarded',true);await shot(page,'00-registration-ui');}
 async function provisionAndLogin(page){await inspectRegistrationUi(page);const provisioned=await ciControl('provision',{password:authSecret,displayName,phone});if(provisioned.provisioned!==true||provisioned.emailConfirmed!==true)throw new Error('OIDC_E2E_PROVISIONING_NOT_CONFIRMED');mark('oidc_disposable_user_provisioned',true);await page.getByRole('tab',{name:'Giriş Yap'}).click();await page.locator('#auth-email').fill(email);await page.locator('#auth-password').fill(authSecret);await page.getByRole('button',{name:'Giriş Yap',exact:true}).click();const accountReady=page.getByRole('button',{name:'Profilimi Düzenle'});await accountReady.waitFor({state:'visible',timeout:20000});mark('login_via_real_ui',true);mark('registration_and_login',true);return accountReady;}
 async function verifyAuthenticatedNonCommerceAccount(page){
@@ -103,14 +125,26 @@ async function verifyProductCommerceJourney(page){
  await page.getByText(/Ürün bağlantısı kopyalandı|Paylaşım menüsü açıldı|Ürün bağlantısı panoya kopyalandı|Ürün paylaşımı tamamlandı/).waitFor({state:'visible',timeout:10000});
  mark('share',true);
  await page.getByRole('button',{name:/Sepete Ekle|Ön Siparişe Ekle/}).click();
- await page.getByText(/adet ürün sepetinize eklendi/).waitFor({state:'visible',timeout:10000});
+ await page.getByText('Sepete eklendi.',{exact:true}).waitFor({state:'visible',timeout:10000});
  mark('cart_add',true);
  await shot(page,'04-product-actions');
+ await page.getByRole('button',{name:'Sepete Git',exact:true}).click();
+ await page.getByRole('heading',{name:'Sepetim'}).waitFor({state:'visible',timeout:15000});
+ await assertGlobalHomeHeaderHidden(page,'cart_global_header_hidden');
+ await page.getByText(productName,{exact:true}).first().waitFor({state:'visible',timeout:10000});
+ mark('cart_add_roundtrip',true);
+ const increase=page.getByRole('button',{name:`${productName} adet artır`});
+ if(await visible(increase,3000)){await increase.click();await page.waitForTimeout(250);mark('cart_quantity_update',true);}
  await page.goto(`${baseUrl}/?tab=account&view=favorites`,{waitUntil:'networkidle',timeout:30000});
  await assertGlobalHomeHeaderHidden(page,'favorites_global_header_hidden');
  await page.getByRole('heading',{name:'Favorilerim'}).waitFor({state:'visible',timeout:12000});
  await page.getByText(productName,{exact:true}).first().waitFor({state:'visible',timeout:12000});
  mark('favorite_roundtrip',true);
+ const removeFavorite=page.getByRole('button',{name:`${productName} ürününü favorilerden çıkar`});
+ await removeFavorite.waitFor({state:'visible',timeout:10000});
+ await removeFavorite.click();
+ await page.getByText(`${productName} favorilerinizden çıkarıldı.`,{exact:true}).waitFor({state:'visible',timeout:10000});
+ mark('favorite_remove_roundtrip',true);
  await page.goto(`${baseUrl}/?tab=product-detail&product=${productSlug}`,{waitUntil:'networkidle',timeout:30000});
  await page.getByRole('heading',{name:productName,exact:true}).waitFor({state:'visible',timeout:12000});
  await page.getByRole('button',{name:/Hediye olarak gönder|Hediye et/}).click();
@@ -122,7 +156,7 @@ async function verifyProductCommerceJourney(page){
  if(!(await visible(buyNow,3000)))throw new Error('BUY_NOW_ACTION_MISSING');
  await buyNow.click();
  await page.getByRole('heading',{name:'Sepetim'}).waitFor({state:'visible',timeout:15000});
- await assertGlobalHomeHeaderHidden(page,'cart_global_header_hidden');
+ await assertGlobalHomeHeaderHidden(page,'cart_global_header_hidden_after_buy_now');
  mark('buy_now_to_cart',true);
  await page.getByText(productName,{exact:true}).first().waitFor({state:'visible',timeout:10000});
  mark('cart_roundtrip',true);
