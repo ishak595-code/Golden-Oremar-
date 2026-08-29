@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
-import{ArrowLeft,CheckCircle2,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,PackageCheck,Plus,QrCode,Share2,ShoppingCart,Star,Store,Truck}from'lucide-react';
+import{ArrowLeft,CheckCircle2,ChevronRight,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,PackageCheck,Plus,QrCode,Share2,ShoppingCart,Star,Store,Truck}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProductFavorite}from'./api';
 import ProductSafetyPanel from'../content/ProductSafetyPanel';
 import{getProductSafety}from'../content/productSafetyApi';
@@ -17,6 +17,7 @@ type Props={
  onCartChanged?:()=>Promise<void>|void;
  onGift:(reference:string)=>void;
  onProducer:(id:string,slug:string,name:string)=>void;
+ onCategory:(slug:string,name:string)=>void;
 };
 
 function safeText(value:unknown,max=1000){return typeof value==='string'?value.trim().slice(0,max):'';}
@@ -27,7 +28,7 @@ function safeReference(value:unknown,max=220){const reference=safeText(value,max
 function firstInteger(...values:unknown[]){for(const value of values){const parsed=safeInteger(value);if(parsed!==null)return parsed;}return null;}
 function firstRating(...values:unknown[]){for(const value of values){const parsed=safeRating(value);if(parsed!==null)return parsed;}return null;}
 
-export default function ProductDetailScreen({reference,authenticated,favoriteReferences=[],onFavoriteChanged,onBack,onLoginRequired,onCartChanged,onGift,onProducer}:Props){
+export default function ProductDetailScreen({reference,authenticated,favoriteReferences=[],onFavoriteChanged,onBack,onLoginRequired,onCartChanged,onGift,onProducer,onCategory}:Props){
  const[detail,setDetail]=useState<any>(null);
  const[safetyContent,setSafetyContent]=useState<any>(null);
  const[reviews,setReviews]=useState<any>(null);
@@ -80,7 +81,9 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const preorder=detail?.stockMode==='preorder';
  const currency=safeCurrency(detail?.currency);
  const priceMinor=safeInteger(variant?.priceMinor);
+ const compareAtPriceMinor=safeInteger(variant?.compareAtPriceMinor);
  const priceReady=currency!==null&&priceMinor!==null;
+ const compareAtPriceReady=currency!==null&&priceMinor!==null&&compareAtPriceMinor!==null&&compareAtPriceMinor>priceMinor;
  const totalPriceMinor=priceMinor!==null&&Number.isSafeInteger(priceMinor*quantity)?priceMinor*quantity:null;
  const totalPriceReady=currency!==null&&totalPriceMinor!==null;
  const variantReference=safeReference(variant?.id,160);
@@ -131,6 +134,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  if(!detail)return null;
 
  const detailName=safeText(detail.name,300)||'Ürün';
+ const categoryName=safeText(detail?.category?.name,160);
+ const categorySlug=safeReference(detail?.category?.slug,220);
  const producerLocation=safeText(detail?.producer?.locationLabel,240)||safeText(detail?.origin,240);
  const producerId=safeReference(detail?.producer?.id,160);
  const productId=safeReference(detail?.id,160);
@@ -154,10 +159,10 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    </section>
 
    <section>
-    {safeText(detail.category?.name,160)?<div className="text-xs font-black uppercase tracking-[0.14em] text-brand-gold">{safeText(detail.category.name,160)}</div>:null}
-    <h1 className="mt-1 text-3xl font-black leading-tight text-brand-green dark:text-brand-gold">{detailName}</h1>
+    {categoryName?categorySlug?<button type="button" onClick={()=>onCategory(categorySlug,categoryName)} aria-label={`${categoryName} kategorisini aç`} className="group inline-flex min-h-9 items-center gap-1 rounded-full border border-brand-gold/35 bg-brand-gold/5 px-3 text-xs font-black uppercase tracking-[0.12em] text-brand-gold transition hover:border-brand-gold hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span>{categoryName}</span><ChevronRight aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"/></button>:<div className="text-xs font-black uppercase tracking-[0.14em] text-brand-gold">{categoryName}</div>:null}
+    <h1 className="mt-2 text-3xl font-black leading-tight text-brand-green dark:text-brand-gold">{detailName}</h1>
 
-    <div className="mt-3 rounded-2xl bg-gray-50 p-4 dark:bg-gray-800"><div className="flex items-end justify-between gap-3"><div>{priceReady?<div className="text-2xl font-black text-brand-green dark:text-brand-gold">{money(priceMinor,currency)}</div>:<div className="font-bold text-brand-muted">Fiyat şu anda gösterilemiyor</div>}{preorder?<div className="mt-1 text-xs font-bold text-brand-green">Ön siparişe açık</div>:null}</div><div className={`text-sm font-bold ${soldOut?'text-red-700 dark:text-red-300':'text-brand-muted'}`}>{soldOut?'Stokta yok':tracked&&variantStock!==null?variantStock<=5?`${variantStock} adet kaldı`:'Stokta':'Satışta'}</div></div></div>
+    <div className="mt-3 rounded-2xl bg-gray-50 p-4 dark:bg-gray-800"><div className="flex items-end justify-between gap-3"><div>{priceReady?<div><div className="text-2xl font-black text-brand-green dark:text-brand-gold">{money(priceMinor,currency)}</div>{compareAtPriceReady?<div className="mt-1 text-sm font-semibold text-brand-muted line-through">Önce {money(compareAtPriceMinor,currency)}</div>:null}</div>:<div className="font-bold text-brand-muted">Fiyat şu anda gösterilemiyor</div>}{preorder?<div className="mt-1 text-xs font-bold text-brand-green">Ön siparişe açık</div>:null}</div><div className={`text-sm font-bold ${soldOut?'text-red-700 dark:text-red-300':'text-brand-muted'}`}>{soldOut?'Stokta yok':tracked&&variantStock!==null?variantStock<=5?`${variantStock} adet kaldı`:'Stokta':'Satışta'}</div></div></div>
 
     {safeText(detail.shortDescription,1000)?<p className="mt-3 leading-6 text-brand-muted">{safeText(detail.shortDescription,1000)}</p>:null}
 
@@ -167,7 +172,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
     <div className="product-detail-commerce-dock" aria-label="Satın alma seçenekleri">
      <div className="product-detail-commerce-summary" aria-live="polite"><div className="min-w-0"><div className="truncate text-xs font-bold text-brand-muted">{variantName} · {quantity} adet</div><div className="text-xs font-semibold text-brand-muted">Toplam</div></div><strong className="shrink-0 text-lg text-brand-green dark:text-brand-gold">{totalPriceReady?money(totalPriceMinor,currency):'Fiyat bilgisi yok'}</strong></div>
-     <div className="product-detail-commerce-actions grid gap-2 sm:grid-cols-2"><button type="button" onClick={()=>void addToCart()} disabled={busy||!purchaseReady} className="min-h-12 rounded-full bg-brand-green px-4 font-black text-brand-on-green disabled:opacity-50"><ShoppingCart aria-hidden="true" className="mr-2 inline h-5 w-5"/>{busy?'İşleniyor…':purchaseReady?(preorder?'Ön Siparişe Ekle':'Sepete Ekle'):purchaseIssueMessage()}</button><button type="button" onClick={()=>void buyNow()} disabled={busy||!purchaseReady} className="min-h-12 rounded-full border-2 border-brand-green bg-brand-card px-4 font-black text-brand-green disabled:opacity-50">Hemen Satın Al</button></div>
+     <div className="product-detail-commerce-actions grid gap-2"><button type="button" onClick={()=>void addToCart()} disabled={busy||!purchaseReady} className="product-detail-commerce-primary min-h-12 rounded-full bg-brand-green px-4 font-black text-brand-on-green disabled:opacity-50"><ShoppingCart aria-hidden="true" className="mr-2 inline h-5 w-5"/>{busy?'İşleniyor…':purchaseReady?(preorder?'Ön Siparişe Ekle':'Sepete Ekle'):purchaseIssueMessage()}</button><button type="button" onClick={()=>void buyNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-secondary min-h-12 rounded-full border-2 border-brand-green bg-brand-card px-4 font-black text-brand-green disabled:opacity-50">Hemen Satın Al</button></div>
     </div>
     <button type="button" onClick={()=>authenticated?onGift(detail.slug||detail.id):onLoginRequired()} disabled={busy||!purchaseReady} className="mt-3 min-h-11 w-full rounded-full border border-brand-border font-bold disabled:opacity-50"><Gift aria-hidden="true" className="mr-2 inline h-4 w-4 text-brand-gold"/>Hediye olarak gönder</button>
 
@@ -177,7 +182,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
     {questionOpen&&producerId&&productId?<ProducerQuestionComposer className="mt-3" context={{kind:'product',producerId,productId,productName:detailName}} onCancel={()=>setQuestionOpen(false)} onStarted={()=>{setQuestionOpen(false);setStatus('Sorunuz üreticiye gönderildi. Yanıtı Hesabım > Mesajlarım bölümünden takip edebilirsiniz.');}}/>:null}
 
     {activeBadges.length?<div className="mt-4 flex flex-wrap gap-2">{activeBadges.slice(0,6).map((badge:any)=><span key={safeText(badge.key,80)||safeText(badge.label,120)} className="inline-flex items-center gap-1 rounded-full bg-green-50 px-3 py-1.5 text-xs font-bold text-green-800 dark:bg-green-950/30 dark:text-green-200"><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5"/>{safeText(badge.label,120)}</span>)}</div>:null}
-
     {reviewCount!==null&&reviewCount>0?<div className="mt-4 flex items-center gap-2 text-sm"><Star aria-hidden="true" className="h-5 w-5 fill-brand-gold text-brand-gold"/><strong>{averageRating!==null?averageRating.toFixed(1):'-'}</strong><span className="text-brand-muted">{reviewCount} yorum</span></div>:null}
    </section>
   </div>
@@ -220,7 +224,7 @@ function Reviews({reviews,reviewCount,averageRating}:{reviews:any;reviewCount:nu
 function normalizeFeatures(value:any):string[]{if(Array.isArray(value))return value.flatMap(item=>typeof item==='string'&&item.trim()?[item.trim().slice(0,500)]:item&&typeof item==='object'&&!Array.isArray(item)?Object.entries(item).map(([key,val])=>`${labelKey(key)}: ${formatValue(val)}`):[]).filter(Boolean).slice(0,24);if(value&&typeof value==='object'&&!Array.isArray(value))return Object.entries(value).map(([key,val])=>`${labelKey(key)}: ${formatValue(val)}`).filter(item=>!item.endsWith(': ')).slice(0,24);return[];}
 function labelKey(value:string){return value.replace(/[_-]+/g,' ').replace(/\b\w/g,char=>char.toUpperCase()).slice(0,120);}
 function formatValue(value:any){if(Array.isArray(value))return value.slice(0,20).map(item=>safeText(String(item),120)).filter(Boolean).join(', ');if(value===true)return'Evet';if(value===false)return'Hayır';if(value==null)return'';if(typeof value==='object')return'Ayrıntılı bilgi';return safeText(String(value),500);}
-function money(minor:number|null,currency:string|null){if(minor===null||currency===null)return'Fiyat bilgisi yok';try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency}).format(minor/100);}catch{return'Fiyat bilgisi yok';}}
+function money(minor:number|null,currency:string|null){if(minor===null||currency===null)return'Fiyat bilgisi yok';const amount=(minor/100).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2});if(currency==='TRY')return`${amount} TL`;try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency,minimumFractionDigits:2,maximumFractionDigits:2}).format(minor/100);}catch{return`${amount} ${currency}`;}}
 function formatWeight(grams:number|null){if(grams===null||!Number.isFinite(grams)||grams<=0)return'';return grams>=1000?`${(grams/1000).toLocaleString('tr-TR',{maximumFractionDigits:2})} kg`:`${grams.toLocaleString('tr-TR')} g`;}
 function dateOnly(value?:string|null){const raw=safeText(value,80);if(!raw)return'';const date=/^\d{4}-\d{2}-\d{2}$/.test(raw)?new Date(`${raw}T12:00:00`):new Date(raw);if(Number.isNaN(date.getTime()))return'';try{return new Intl.DateTimeFormat('tr-TR',{dateStyle:'medium'}).format(date);}catch{return'';}}
 function safeUrl(value?:string|null){const raw=safeText(value,1200);if(!raw)return'';try{const url=new URL(raw);return url.protocol==='https:'?url.toString():'';}catch{return'';}}
