@@ -8,6 +8,7 @@ const driftMigrationPath='supabase/migrations/20260824173453_add_product_media_d
 const migration=read(migrationPath);
 const driftMigration=read(driftMigrationPath);
 const producerApi=read('src/features/producer-products/api.ts');
+const producerManager=read('src/features/producer-products/ProducerProductManager.tsx');
 const customerE2E=read('scripts/customer-e2e.mjs');
 const mediaFallback=read('src/features/catalog/installCatalogMediaFallback.ts');
 const mainEntry=read('src/main.tsx');
@@ -41,8 +42,11 @@ requireText(driftMigration,"'*/5 * * * *'",'Media-integrity drift monitor must r
 requireMatch(driftMigration,/revoke all on function private\.quarantine_invalid_published_product_media_v1\(\) from public,anon,authenticated,service_role/i,'Drift quarantine function must not be a client/service-role callable API.');
 
 requireMatch(producerApi,/uploadProducerProductImages[\s\S]*files\.length>10/,'Producer upload must cap the gallery at ten files.');
-requireMatch(producerApi,/image\/jpeg[\s\S]*image\/png[\s\S]*image\/webp[\s\S]*image\/avif/,'Producer upload must use the canonical image MIME allowlist.');
-requireMatch(producerApi,/file\.size>10\*1024\*1024/,'Producer client must reject images above 10 MB before upload.');
+requireMatch(producerApi,/PRODUCT_IMAGE_TYPES=new Set\(\['image\/jpeg','image\/png','image\/webp','image\/avif'\]\)/,'Producer upload must use the canonical image MIME allowlist.');
+requireMatch(producerApi,/export async function validateProducerProductImageFile[\s\S]*file\.size<=0\|\|file\.size>10\*1024\*1024/,'Producer image validator must reject images above 10 MB before upload.');
+requireMatch(producerApi,/validateProducerProductImageFile[\s\S]*width<MIN_PRODUCT_IMAGE_EDGE\|\|height<MIN_PRODUCT_IMAGE_EDGE/,'Producer image validator must reject images below the minimum pixel dimensions.');
+requireMatch(producerApi,/uploadProducerProductImages[\s\S]*await validateProducerProductImageFile\(file\)[\s\S]*storage\.from\('catalog-public'\)\.upload/,'Producer upload must run the shared image validator before every Storage upload.');
+requireMatch(producerManager,/async function selectImages[\s\S]*await validateProducerProductImageFile\(file\)[\s\S]*accepted\.push\(file\)/,'Producer media picker must validate each image before accepting it into the wizard.');
 requireMatch(producerApi,/\$\{normalizedProducerId\}\/products\/\$\{crypto\.randomUUID\(\)\}/,'Producer uploads must use randomized producer-owned catalog paths.');
 requireMatch(producerApi,/upsert:false/,'Product media uploads must remain immutable and non-overwriting.');
 requireMatch(producerApi,/if\(uploaded\.length\).*\.remove\(uploaded\)/s,'Partial upload failures must clean up newly uploaded orphan objects.');

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Grid2X2, Package, Search, Store } from 'lucide-react';
 import { catalogSuggestions, type CatalogSuggestion } from './api';
+import { CUSTOMER_COPY } from '../customer-experience/customerCopy';
 
 type Props = {
   query: string;
@@ -124,8 +125,8 @@ export default function CatalogSearchOverlay({
           <div className="flex items-start gap-3">
             <Search aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-brand-gold" />
             <div>
-              <div className="font-bold text-brand-text">Ürün, üretici veya kategori arayın</div>
-              <p className="mt-1 text-gray-500">Öneriler Golden Oremar'ın canlı kataloğundan gelir.</p>
+              <div className="font-bold text-brand-text">{CUSTOMER_COPY.search.overlayTitle}</div>
+              <p className="mt-1 text-gray-500">{CUSTOMER_COPY.search.overlayBody}</p>
             </div>
           </div>
         </div>
@@ -135,11 +136,11 @@ export default function CatalogSearchOverlay({
             {loading ? 'Aranıyor' : error ? error : `${items.length} öneri bulundu`}
           </div>
 
-          {loading ? <div role="status" className="p-4 text-sm text-gray-500">Aranıyor…</div> : null}
+          {loading ? <div role="status" className="p-4 text-sm text-gray-500">{CUSTOMER_COPY.search.searching}</div> : null}
           {error ? <div role="alert" className="m-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div> : null}
 
           {!loading && !error && items.length === 0 ? (
-            <div className="p-4 text-sm text-gray-500">Bu ifadeyle eşleşen öneri bulunamadı.</div>
+            <div className="p-4 text-sm text-gray-500">{CUSTOMER_COPY.search.noSuggestion}</div>
           ) : null}
 
           {items.length > 0 ? (
@@ -175,7 +176,7 @@ export default function CatalogSearchOverlay({
             disabled={!query.trim()}
             className="mt-2 min-h-12 w-full rounded-xl border border-brand-gold/30 px-4 text-left font-bold text-brand-gold hover:bg-brand-gold/10 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
           >
-            “{query.trim()}” için tüm sonuçları göster
+            {CUSTOMER_COPY.search.allResults(query.trim())}
           </button>
         </div>
       )}

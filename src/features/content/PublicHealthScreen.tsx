@@ -14,7 +14,7 @@ type Props = {
 
 const tabs: { key: ContentType; label: string; icon: any; description: string }[] = [
   { key: 'health_guide', label: 'Rehberler', icon: BookOpen, description: 'Saklama, kullanım ve gıda güvenliği rehberleri' },
-  { key: 'product_health', label: 'Ürün Bilgileri', icon: Leaf, description: 'Ürün bazlı doğrulanmış güvenlik ve kullanım bilgileri' },
+  { key: 'product_health', label: 'Ürün Bilgileri', icon: Leaf, description: 'Ürün bazlı güvenlik ve kullanım bilgileri' },
   { key: 'recipe', label: 'Tarifler', icon: Utensils, description: 'Golden Oremar ürünleriyle yayınlanmış tarifler' },
 ];
 
@@ -49,10 +49,10 @@ export default function PublicHealthScreen({ onBack, authenticated, locale = 'tr
     try {
       setLoading(true); setError('');
       const result = await listPublicContent(type, locale, 50, 0);
-      if (!result || typeof result !== 'object' || Array.isArray(result) || !Array.isArray(result.items)) throw new Error('İçerik listesi sunucudan doğrulanamadı.');
+      if (!result || typeof result !== 'object' || Array.isArray(result) || !Array.isArray(result.items)) throw new Error('INVALID_CONTENT_LIST');
       setItems(previous => ({ ...previous, [type]: result.items }));
       setTotals(previous => ({ ...previous, [type]: verifiedTotal(result.total) }));
-    } catch (err: any) { setError(err?.message || 'İçerikler yüklenemedi.'); }
+    } catch { setError('İçerikler şu anda yüklenemedi. Lütfen yeniden deneyin.'); }
     finally { setLoading(false); }
   }
 
@@ -91,16 +91,16 @@ export default function PublicHealthScreen({ onBack, authenticated, locale = 'tr
   async function open(reference: string) {
     if (detailLoading) return;
     const normalized = String(reference || '').trim();
-    if (!normalized) { setError('İçerik referansı doğrulanamadı.'); return; }
+    if (!normalized) { setError('Bu içerik şu anda açılamıyor.'); return; }
     const requestId = ++detailRequestId.current;
     try {
       setDetailLoading(true); setOpeningReference(normalized); setError(''); setStatus('');
       const next = await getPublicContentEntry(normalized, locale);
       if (requestId !== detailRequestId.current) return;
-      if (!next || typeof next !== 'object' || Array.isArray(next)) throw new Error('İçerik detayı sunucudan doğrulanamadı.');
+      if (!next || typeof next !== 'object' || Array.isArray(next)) throw new Error('INVALID_CONTENT_DETAIL');
       setDetail(next);
-    } catch (err: any) {
-      if (requestId === detailRequestId.current) setError(err?.message || 'İçerik açılamadı.');
+    } catch {
+      if (requestId === detailRequestId.current) setError('İçerik şu anda açılamadı. Lütfen yeniden deneyin.');
     } finally {
       if (requestId === detailRequestId.current) { setDetailLoading(false); setOpeningReference(''); }
     }
@@ -116,12 +116,12 @@ export default function PublicHealthScreen({ onBack, authenticated, locale = 'tr
     if (!authenticated) { onLoginRequired(); return; }
     const key = String(item?.slug || item?.id || '').trim();
     const title = String(item?.title || 'İçerik').trim();
-    if (!key) { setError('Favori için içerik referansı doğrulanamadı.'); return; }
+    if (!key) { setError('Bu içerik şu anda favoriye eklenemiyor.'); return; }
     if (favoriteBusy) return;
     try {
       setFavoriteBusy(key); setError(''); setStatus('');
       const result = await toggleContentFavorite(key);
-      if (!result || typeof result !== 'object' || Array.isArray(result) || typeof result.isFavorite !== 'boolean') throw new Error('Favori sonucu sunucudan doğrulanamadı.');
+      if (!result || typeof result !== 'object' || Array.isArray(result) || typeof result.isFavorite !== 'boolean') throw new Error('INVALID_FAVORITE_RESULT');
       setFavorites(previous => {
         const next = new Set(previous);
         const resultKey = String(result.slug || key);
@@ -130,7 +130,7 @@ export default function PublicHealthScreen({ onBack, authenticated, locale = 'tr
         return next;
       });
       setStatus(result.isFavorite ? `${title} favorilerinize eklendi.` : `${title} favorilerinizden çıkarıldı.`);
-    } catch (err: any) { setError(err?.message || 'Favori işlemi tamamlanamadı.'); }
+    } catch { setError('Favori işlemi şu anda tamamlanamadı. Lütfen yeniden deneyin.'); }
     finally { setFavoriteBusy(null); }
   }
 
@@ -161,7 +161,7 @@ export default function PublicHealthScreen({ onBack, authenticated, locale = 'tr
             const favoriteKey = String(item?.slug || item?.id || '').trim();
             const busy = favoriteBusy === favoriteKey;
             const opening = openingReference === String(item?.slug || '');
-            const title = String(item?.title || 'Başlık doğrulanamadı');
+            const title = String(item?.title || 'Başlık yok');
             return <article key={String(item?.id || item?.slug)} aria-busy={busy || opening} className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
               {image ? <button type="button" disabled={detailLoading || !item?.slug} onClick={() => void open(item.slug)} aria-label={`${title} içeriğini aç`} className="block w-full disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-gold"><img src={image} alt="" loading="lazy" decoding="async" className="aspect-[16/9] w-full object-cover" /></button> : null}
               <div className="p-4">
@@ -183,7 +183,7 @@ export default function PublicHealthScreen({ onBack, authenticated, locale = 'tr
 
 function ContentLoadingDialog({ onClose }: { onClose: () => void }) {
   const dialogRef = useAccessibleDialog<HTMLDivElement>(true, onClose);
-  return <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"><div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="content-loading-title" tabIndex={-1} className="w-full max-w-sm rounded-2xl bg-white p-5 text-center text-brand-text shadow-xl outline-none dark:bg-gray-900"><h2 id="content-loading-title" className="font-bold">İçerik yükleniyor</h2><div role="status" aria-live="polite" className="mt-2 text-sm text-gray-500">Yayınlanmış içerik güvenli kaynaktan alınıyor…</div></div></div>;
+  return <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4"><div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="content-loading-title" tabIndex={-1} className="w-full max-w-sm rounded-2xl bg-white p-5 text-center text-brand-text shadow-xl outline-none dark:bg-gray-900"><h2 id="content-loading-title" className="font-bold">İçerik yükleniyor</h2><div role="status" aria-live="polite" className="mt-2 text-sm text-gray-500">İçerik hazırlanıyor…</div></div></div>;
 }
 
 function ContentDialog({ detail, onClose, onOpenProduct }: { detail: any; onClose: () => void; onOpenProduct?: (slug: string) => void }) {
@@ -196,7 +196,7 @@ function ContentDialog({ detail, onClose, onOpenProduct }: { detail: any; onClos
     <div className="p-5 sm:p-7">
       {detail?.summary ? <p className="mb-5 text-lg leading-7 text-gray-600 dark:text-gray-300">{String(detail.summary)}</p> : null}
       {detail?.type === 'product_health' ? <ProductSafetyPanel safety={detail.safety} summary={detail.summary} heading="Saklama, kullanım ve güvenlik" className="mb-5" /> : null}
-      {detail?.sanitizedHtml ? <div className="prose max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: detail.sanitizedHtml }} /> : <div className="whitespace-pre-wrap leading-7 text-gray-700 dark:text-gray-300">{String(detail?.markdown || 'İçerik metni doğrulanamadı.')}</div>}
+      {detail?.sanitizedHtml ? <div className="prose max-w-none dark:prose-invert" dangerouslySetInnerHTML={{ __html: detail.sanitizedHtml }} /> : <div className="whitespace-pre-wrap leading-7 text-gray-700 dark:text-gray-300">{String(detail?.markdown || 'İçerik metni şu anda gösterilemiyor.')}</div>}
       {detail?.type !== 'recipe' ? <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100">Bu içerik genel ürün kullanımı ve gıda güvenliği bilgisidir; tanı veya tedavi önerisi değildir.</div> : null}
       {detail?.relatedProduct?.slug ? <button type="button" onClick={() => { onClose(); onOpenProduct?.(String(detail.relatedProduct.slug)); }} className="mt-5 min-h-11 rounded-xl bg-brand-green px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">İlgili ürünü aç</button> : null}
     </div>

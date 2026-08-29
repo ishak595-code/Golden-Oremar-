@@ -8,6 +8,7 @@ on:
     branches:
       - main
       - integration/full-consolidation-2026-08
+      - release/ux-professionalization-2026-08
 
 permissions:
   contents: read
@@ -19,7 +20,7 @@ concurrency:
 jobs:
   viewport-e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
       VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
       VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
@@ -33,8 +34,12 @@ jobs:
           cache: npm
       - name: Install locked application dependencies
         run: npm ci --no-audit --no-fund
+      - name: Run full repository audit
+        run: npm run audit:all
       - name: Audit Premium Mobile architecture
         run: node scripts/premium-mobile-ui-v2-contract-audit.mjs
+      - name: Audit customer professionalization contracts
+        run: node scripts/customer-professionalization-contract-audit.mjs
       - name: TypeScript zero-error gate
         run: npx tsc --noEmit
       - name: Build production application
@@ -54,13 +59,17 @@ jobs:
           done
           cat /tmp/golden-oremar-premium-mobile-preview.log
           exit 1
+      - name: Verify product-card runtime accessibility
+        run: node scripts/product-card-accessibility-e2e.mjs
       - name: Verify 320-430px Premium Mobile viewports
         run: node scripts/premium-mobile-viewport-e2e.mjs
+      - name: Verify product-detail media geometry
+        run: node scripts/product-detail-media-e2e.mjs
       - name: Upload Premium Mobile viewport evidence
         if: always()
         uses: actions/upload-artifact@v7
         with:
           name: golden-oremar-premium-mobile-${{ github.sha }}
-          path: e2e-artifacts/premium-mobile-*
+          path: e2e-artifacts/*
           if-no-files-found: error
           retention-days: 14

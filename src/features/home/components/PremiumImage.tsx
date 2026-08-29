@@ -10,6 +10,6 @@ export default function PremiumImage({src,alt,className='',eager=false,aspectCla
  const usable=typeof src==='string'&&src.trim().length>0&&!failed;
  return<div className={`go-premium-image ${aspectClassName} ${className}`.trim()} data-loaded={loaded?'true':'false'} data-failed={!usable?'true':'false'}>
   {!loaded&&usable?<span className="go-premium-image__skeleton" aria-hidden="true"/>:null}
-  {usable?<img src={src!} alt={alt} loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'auto'} decoding="async" onLoad={()=>setLoaded(true)} onError={()=>{setFailed(true);setLoaded(false);}}/>:<span className="go-premium-image__fallback" role="img" aria-label={`${alt} görseli kullanılamıyor`}><ImageOff aria-hidden="true"/></span>}
+  {usable?<img src={src!} alt={alt} loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'auto'} decoding="async" onLoad={()=>setLoaded(true)} onError={()=>{setFailed(true);setLoaded(false);}}/>:<span className="go-premium-image__fallback" role="img" aria-label={`${alt} henüz eklenmedi`}><span className="flex flex-col items-center gap-1 text-center text-[9px] font-semibold leading-tight text-brand-muted"><ImageOff aria-hidden="true"/><span aria-hidden="true">Fotoğraf yakında</span></span></span>}
  </div>;
 }

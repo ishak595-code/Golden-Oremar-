@@ -73,7 +73,7 @@ if(homeStorefront){
  for(const[re,label]of forbiddenHomeFallbacks)forbidPattern(homeStorefront,re,label);
  requirePattern(homeStorefront,/useHomeExperience\(locale\)/,'Home storefront must use the canonical bounded Home experience read model.');
  requirePattern(homeStorefront,/loading&&!experience/,'Home loading must be driven by the canonical Home experience lifecycle.');
- requirePattern(homeStorefront,/salesReadiness\.message/,'Sales-readiness notice must use the validated storefront message.');
+ forbidPattern(homeStorefront,/salesReadiness/,'Customer Home must not render internal sales-readiness status messaging.');
  requirePattern(homeStorefront,/experience\.interface\.categoriesTitle/,'Validated storefront category heading must drive the home category area.');
  requirePattern(homeStorefront,/experience\.categoryOrder\.flatMap/,'Managed category targets must drive public home category order.');
  requirePattern(homeStorefront,/experience\.sections\.filter\(section=>!section\.deferred/,'Managed initial product sections must drive public home section order.');

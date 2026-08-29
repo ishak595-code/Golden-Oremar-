@@ -68,8 +68,8 @@ export default function ProfilePanel({ overview, onChanged }: {
       }
       await onChanged();
       setMessage('Profil fotoğrafınız güncellendi.');
-    } catch (err: unknown) {
-      setError(err instanceof Error && err.message ? err.message : 'Profil fotoğrafı güncellenemedi.');
+    } catch {
+      setError('Profil fotoğrafı şu anda güncellenemedi. Lütfen yeniden deneyin.');
     } finally {
       setAvatarBusy(false);
     }
@@ -85,9 +85,9 @@ export default function ProfilePanel({ overview, onChanged }: {
       setAvatarConfirmOpen(false);
       await onChanged();
       setMessage('Profil fotoğrafınız kaldırıldı.');
-    } catch (err: unknown) {
+    } catch {
       setAvatarConfirmOpen(false);
-      setError(err instanceof Error && err.message ? err.message : 'Profil fotoğrafı kaldırılamadı.');
+      setError('Profil fotoğrafı şu anda kaldırılamadı. Lütfen yeniden deneyin.');
     } finally {
       setAvatarBusy(false);
     }
@@ -122,7 +122,7 @@ export default function ProfilePanel({ overview, onChanged }: {
       return;
     }
     if (!PROFILE_LOCALES.has(locale)) {
-      setError('Uygulama dili doğrulanamadı. Lütfen desteklenen bir dil seçin.');
+      setError('Bu dil seçeneği kullanılamıyor. Lütfen listeden başka bir dil seçin.');
       return;
     }
     try {
@@ -137,8 +137,8 @@ export default function ProfilePanel({ overview, onChanged }: {
       setDisplayName(normalizedName);
       setPhone(normalizedPhone);
       setMessage('Profil bilgileriniz güncellendi.');
-    } catch (err: unknown) {
-      setError(err instanceof Error && err.message ? err.message : 'Profil güncellenemedi.');
+    } catch {
+      setError('Profil bilgileriniz şu anda güncellenemedi. Lütfen yeniden deneyin.');
     } finally {
       setSaving(false);
     }
@@ -167,13 +167,13 @@ export default function ProfilePanel({ overview, onChanged }: {
             </label>
             {p.avatar_path ? <button type="button" disabled={avatarBusy} onClick={() => { setError(''); setMessage(''); setAvatarConfirmOpen(true); }} className="min-h-11 rounded-xl border border-red-300 px-4 font-semibold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Fotoğrafı kaldır</button> : null}
           </div>
-          <p className="text-center text-xs text-gray-500">JPEG, PNG, WebP veya AVIF; en fazla 5 MB. Dosya private alanda tutulur.</p>
+          <p className="text-center text-xs text-gray-500">JPEG, PNG, WebP veya AVIF; en fazla 5 MB. Fotoğrafınız yalnız hesabınız için güvenli şekilde saklanır.</p>
         </div>
 
         <label className="block">
           <span className="text-sm font-semibold">E-posta</span>
           <input value={p.email} readOnly autoComplete="email" className="mt-1 min-h-11 w-full rounded-xl border bg-gray-100 px-3 text-gray-700 dark:bg-gray-800 dark:text-gray-200" />
-          <span className="mt-1 block text-xs text-gray-500">E-posta kimlik hesabınızdan gelir; burada doğrudan değiştirilemez.</span>
+          <span className="mt-1 block text-xs text-gray-500">Hesap e-postanız burada görüntülenir ancak bu ekrandan değiştirilemez.</span>
         </label>
 
         <label className="block">
@@ -202,7 +202,7 @@ export default function ProfilePanel({ overview, onChanged }: {
           <input disabled={saving} type="checkbox" checked={marketingConsent} onChange={e => setMarketingConsent(e.target.checked)} className="mt-1 h-5 w-5" />
           <span>
             <span className="block font-semibold">Kampanya ve pazarlama iletişimi</span>
-            <span className="block text-sm text-gray-500">Kapattığınızda kampanya push tercihi de backend tarafından kapatılır.</span>
+            <span className="block text-sm text-gray-500">Kapattığınızda kampanya bildirimleri de durdurulur.</span>
           </span>
         </label>
 
@@ -214,7 +214,7 @@ export default function ProfilePanel({ overview, onChanged }: {
       {avatarConfirmOpen ? <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-4">
         <div ref={avatarConfirmRef} role="alertdialog" aria-modal="true" aria-labelledby="avatar-remove-title" aria-describedby="avatar-remove-description" tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white p-5 text-brand-text shadow-xl outline-none dark:bg-gray-900">
           <h3 id="avatar-remove-title" className="text-lg font-bold">Profil fotoğrafını kaldırmak istiyor musunuz?</h3>
-          <p id="avatar-remove-description" className="mt-2 text-sm text-gray-600 dark:text-gray-300">Profil fotoğrafı hesabınızdan ve size ait private depolama yolundan kaldırılacak. Yeni bir fotoğrafı daha sonra tekrar ekleyebilirsiniz.</p>
+          <p id="avatar-remove-description" className="mt-2 text-sm text-gray-600 dark:text-gray-300">Profil fotoğrafınız hesabınızdan kaldırılacak. Daha sonra yeni bir fotoğraf ekleyebilirsiniz.</p>
           <div aria-live="polite" className="sr-only">{avatarBusy ? 'Profil fotoğrafı kaldırılıyor.' : ''}</div>
           <div className="mt-5 grid grid-cols-2 gap-3">
             <button type="button" disabled={avatarBusy} onClick={() => setAvatarConfirmOpen(false)} className="min-h-11 rounded-xl border font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Vazgeç</button>
