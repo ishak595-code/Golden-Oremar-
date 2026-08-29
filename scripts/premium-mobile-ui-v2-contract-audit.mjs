@@ -17,7 +17,7 @@ requireMatch(readinessCopy.includes('Katalog görüntülenebilir; ödeme ile sip
 requireMatch(!readinessCopy.includes('provider credential'),'Public readiness copy must not expose provider credential terminology.');
 requireMatch(search.includes('Mic')&&!search.includes('MicOff'),'Voice search must use one microphone icon without a redundant idle-off glyph.');
 requireMatch(search.includes('onVoice'),'Voice search callback must remain wired.');
-requireMatch(search.includes('aria-label="Sesli mikrofon"')&&search.includes('aria-pressed={listening?true:undefined}'),'Voice listening state must be exposed through one concise Sesli mikrofon control.');
+requireMatch(search.includes("aria-label={listening?'Sesli arama dinleniyor':'Sesli mikrofon'}")&&search.includes('aria-pressed={listening}')&&search.includes('role="status" aria-live="polite"'),'Voice search must expose idle Sesli mikrofon plus active listening/processing state without idle-off narration.');
 requireMatch(!search.includes('role="search"')&&search.includes('aria-label="Ürün, üretici veya köy ara"'),'Search must expose one searchbox name without a duplicate search landmark label.');
 requireMatch(!search.includes("'Mikrofon kapalı'")&&!search.includes('Mikrofon kapalı, sesli aramayı başlat')&&!search.includes('Sesli aramayı başlat'),'Idle voice search must not announce artificial microphone-off or start-instruction text.');
 for(const [token,value] of[['--go-space-1','4px'],['--go-space-2','8px'],['--go-space-3','12px'],['--go-space-4','16px'],['--go-space-5','20px'],['--go-space-6','24px'],['--go-space-7','32px'],['--go-space-8','40px'],['--go-space-9','48px']])requireMatch(css.includes(`${token}:${value}`),`Spacing token ${token}=${value} is missing.`);
