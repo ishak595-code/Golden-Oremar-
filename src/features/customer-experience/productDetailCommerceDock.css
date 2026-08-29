@@ -1,14 +1,14 @@
-/* Product detail intentionally replaces the primary tab bar with the two purchase actions,
-   matching the approved mobile reference while respecting native safe-area insets. */
+/* Product detail intentionally replaces the primary tab bar with a purchase dock that
+   reflects the active variant, quantity and computed total while respecting safe areas. */
 :root[data-app-tab="product-detail"] nav[aria-label="Ana gezinme"] {
   display: none !important;
 }
 
 :root[data-app-tab="product-detail"] #root > .min-h-screen {
-  padding-bottom: 6.75rem !important;
+  padding-bottom: 9.75rem !important;
 }
 
-:root[data-app-tab="product-detail"] main article section:nth-of-type(2) > .mt-4.grid.gap-2.sm\:grid-cols-2 {
+:root[data-app-tab="product-detail"] .product-detail-commerce-dock {
   position: fixed;
   z-index: 75;
   left: calc(.75rem + var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
@@ -16,23 +16,40 @@
   bottom: calc(.7rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   max-width: 44rem;
   margin: 0 auto;
-  grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important;
-  gap: .55rem !important;
-  padding: .55rem;
+  display: grid;
+  gap: .5rem;
+  padding: .6rem;
   border: 1px solid color-mix(in srgb, var(--border-main) 74%, transparent);
   border-radius: 1.2rem;
-  background: color-mix(in srgb, var(--bg-card) 94%, transparent);
+  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
   box-shadow: 0 18px 45px rgb(5 24 16 / .22);
   backdrop-filter: blur(18px);
 }
 
-:root[data-app-tab="product-detail"] main article section:nth-of-type(2) > .mt-4.grid.gap-2.sm\:grid-cols-2 > button {
+:root[data-app-tab="product-detail"] .product-detail-commerce-summary {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: 0 .25rem;
+}
+
+:root[data-app-tab="product-detail"] .product-detail-commerce-actions {
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr) !important;
+  gap: .55rem !important;
+}
+
+:root[data-app-tab="product-detail"] .product-detail-commerce-actions > button {
   min-height: 3.25rem !important;
   border-radius: .85rem !important;
 }
 
 @media (max-width: 420px) {
-  :root[data-app-tab="product-detail"] main article section:nth-of-type(2) > .mt-4.grid.gap-2.sm\:grid-cols-2 {
+  :root[data-app-tab="product-detail"] #root > .min-h-screen {
+    padding-bottom: 9.25rem !important;
+  }
+
+  :root[data-app-tab="product-detail"] .product-detail-commerce-dock {
     left: calc(.45rem + var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
     right: calc(.45rem + var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
     bottom: calc(.45rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
