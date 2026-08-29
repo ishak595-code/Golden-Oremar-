@@ -10,6 +10,6 @@ export default function CatalogSearchInput({value,onChange,onSubmit,onVoice,onFo
  return<form onSubmit={event=>{event.preventDefault();const query=normalized.trim();if(query)onSubmit(query);}} className="go-search-bar" data-has-value={normalized?'true':'false'} data-processing={processing?'true':'false'} data-voice-state={voiceState}>
   <div className="go-search-bar__field"><Search aria-hidden="true"/><input type="search" autoFocus={autoFocus} value={normalized} onChange={event=>onChange(event.target.value.slice(0,100))} onFocus={onFocus} onBlur={onBlur} placeholder="Ürün, üretici veya köy ara" aria-label="Ürün, üretici veya köy ara" enterKeyHint="search" autoComplete="off"/></div>
   {normalized?<button type="button" onClick={()=>onChange('')} aria-label="Aramayı temizle" className="go-search-bar__clear"><X aria-hidden="true"/></button>:null}
-  <button type="button" onClick={onVoice} aria-label="Mikrofon" aria-pressed={listening?true:undefined} aria-busy={processing?true:undefined} disabled={processing} className="go-search-bar__voice">{processing?<LoaderCircle aria-hidden="true" className="animate-spin"/>:<Mic aria-hidden="true"/>}</button>
+  <button type="button" onClick={onVoice} aria-label="Sesli mikrofon" aria-pressed={listening?true:undefined} aria-busy={processing?true:undefined} disabled={processing} className="go-search-bar__voice">{processing?<LoaderCircle aria-hidden="true" className="animate-spin"/>:<Mic aria-hidden="true"/>}</button>
  </form>;
 }
