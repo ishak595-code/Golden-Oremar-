@@ -43,7 +43,7 @@ try{
   const favorite=page.getByRole('button',{name:/Favorilere (ekle|çıkar)/}).first();
   const share=page.getByRole('button',{name:'Ürünü paylaş',exact:true});
   const gallery=page.locator('section[aria-label="Ürün görselleri"]').first();
-  const mainImage=gallery.locator('> div:first-child > img').first();
+  const mainImage=gallery.locator(':scope > div:first-child > img').first();
   const infoSection=gallery.locator('xpath=following-sibling::section[1]');
   const toolbar=back.locator('..');
 
