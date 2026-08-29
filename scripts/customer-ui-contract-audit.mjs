@@ -80,13 +80,15 @@ expect(categoryCard.includes('go-category-card')&&categoryCard.includes('Premium
 expect(!categoryCard.includes('Keşfet'),'Category cards must not repeat a redundant discovery label when the whole card is actionable.');
 expect(homeProductCard.includes('go-product-card-v2')&&homeProductCard.includes('PriceDisplay'),'Home products must use the Premium Mobile product row and canonical minor-unit price display.');
 expect(homeProductCard.includes('data-product-id={item.id}')&&homeProductCard.includes('data-product-reference={item.slug}'),'Home product rows must retain stable product identity/reference markers.');
+expect(homeProductCard.includes('<a href={buildProductUrl(item.slug)}')&&homeProductCard.includes('aria-labelledby={spokenId}'),'Home product rows must expose true link semantics while preserving one deterministic spoken label.');
 expect(!/Sepete Ekle|Hemen Ön Sipariş Ver|quantity/.test(homeProductCard),'Primary Home product rows must remain discovery-focused rather than embedding purchase controls.');
 expect(homeProductCard.includes("storeKind==='official'")&&homeProductCard.includes('originVerified'),'Home trust signals must derive from real backend store/origin state.');
-expect(homeProductCard.includes("official?<ProductBadge")&&homeProductCard.includes("official&&signal?<ProductBadge"),'Home product rows must retain the explicit maximum-two trust signal composition.');
-expect(premiumImage.includes("loading={eager?'eager':'lazy'}")&&premiumImage.includes('onError'),'Home image primitive must retain lazy/eager loading and an error fallback.');
-expect(searchInput.includes('Mic')&&!searchInput.includes('MicOff')&&searchInput.includes('onVoice')&&searchInput.includes('aria-pressed={listening}'),'Voice search must remain present as one microphone control without a redundant idle-off icon.');
+expect(homeProductCard.includes('visualSignal=signal??')&&homeProductCard.includes('<ProductBadge tone={visualSignal.tone} label={visualSignal.label}/>'),'Home product rows must keep one concise truth-backed visible trust signal.');
+expect(homeProductCard.includes("!item.imagePath.startsWith('brand/official-store/')"),'Official-store branding must not masquerade as a product photo in Home rows.');
+expect(premiumImage.includes("loading={eager?'eager':'lazy'}")&&premiumImage.includes('onError')&&premiumImage.includes('Fotoğraf yakında'),'Home image primitive must retain lazy/eager loading and an honest missing-product-photo fallback.');
+expect(searchInput.includes('Mic')&&!searchInput.includes('MicOff')&&searchInput.includes('onVoice')&&searchInput.includes('aria-label="Mikrofon"')&&searchInput.includes('aria-pressed={listening?true:undefined}'),'Voice search must remain one concise Mikrofon control without idle state narration.');
 expect(searchInput.includes('aria-label="Ürün, üretici veya köy ara"')&&!searchInput.includes('role="search"'),'Search must expose one searchbox accessible name without duplicate search-landmark narration.');
-expect(!searchInput.includes("'Mikrofon kapalı'")&&!searchInput.includes('Mikrofon kapalı, sesli aramayı başlat'),'Voice search must not announce a fake idle microphone-off status.');
+expect(!searchInput.includes("'Mikrofon kapalı'")&&!searchInput.includes('Mikrofon kapalı, sesli aramayı başlat')&&!searchInput.includes('Sesli aramayı başlat'),'Voice search must not announce redundant microphone state or start instructions.');
 for(const marker of ['--go-space-1:4px','--go-space-2:8px','--go-space-3:12px','--go-space-4:16px','--go-space-5:20px','--go-space-6:24px','--go-space-7:32px','--go-space-8:40px','--go-space-9:48px','--go-mobile-pad:20px'])expect(mobileCss.includes(marker),`Premium Mobile design token is missing: ${marker}`);
 expect(mobileCss.includes('scroll-snap-type:x mandatory')&&mobileCss.includes('.go-category-rail'),'Category discovery must retain horizontal snap and a partially visible next item.');
 expect(mobileCss.includes('.go-product-grid-v2{display:grid;width:100%;max-width:860px;grid-template-columns:1fr;gap:0'),'Home product presentation must remain a single compact list.');
@@ -118,6 +120,9 @@ expect(card.includes('text-brand-on-green')&&card.includes('text-brand-on-gold')
 
 for(const marker of ['aria-label="Geri"','Favorilere ekle','Ürünü paylaş','customer-disclosure','Ürün Hikâyesi','Gıda Güvenliği & Kullanım','Müşteri Yorumları'])expect(detail.includes(marker),`Product detail is missing customer navigation/disclosure marker: ${marker}`);
 expect(detail.includes('<details className="customer-disclosure">'),'Long product information must remain collapsed by default.');
+expect(detail.includes('aria-label="Miktarı azalt"')&&detail.includes('aria-label="Miktarı artır"'),'Product-detail quantity decrease/increase controls must remain available.');
+expect(!detail.includes('<fieldset className="mt-5"')&&detail.includes('detail.variants.length>1')&&detail.includes('<select value={variantId}'),'Product detail must hide redundant single-option marking and use a compact selector only for true multi-variant products.');
+expect(!detail.includes('product-detail-commerce-summary'),'Fixed purchase dock must not repeat the primary price or quantity summary.');
 const giftAction=detail.indexOf('product-detail-commerce-gift'),cartAction=detail.indexOf('product-detail-commerce-cart'),buyAction=detail.indexOf('product-detail-commerce-buy');
 expect(giftAction>=0&&cartAction>giftAction&&buyAction>cartAction,'Product-detail fixed purchase actions must stay ordered Gift, Cart, Buy.');
 expect(detail.includes('<span>Hediye Et</span>')&&detail.includes('<span>Hemen Satın Al</span>'),'Product-detail fixed dock must expose concise customer action labels.');
@@ -137,4 +142,4 @@ for(const forbidden of ['Şafak Horozu','Keklik Çağrısı','Dağ Kuşları'])e
 for(const marker of ['Oremar Kristali','Dağ Esintisi','Şafak İmzası','Zümrüt Yankı','Şampanya Çanı'])expect(sounds.includes(marker),`Premium sonic identity is missing refined option: ${marker}`);
 
 if(failures.length){console.error('Golden Oremar customer UI contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar customer UI contract audit passed: Premium Mobile V2 Home composition, centralized evidence-safe customer copy, adaptive voice-enabled shell, bounded product discovery, native-safe navigation, product detail, focused account settings and refined premium notification sounds are locked in.');
+console.log('Golden Oremar customer UI contract audit passed: Premium Mobile V2 Home composition, concise link-based product discovery, single-name microphone accessibility, native-safe navigation, clean product detail controls, focused account settings and refined premium notification sounds are locked in.');
