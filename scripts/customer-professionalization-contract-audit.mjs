@@ -58,6 +58,42 @@ for(const [needle,message] of [
 requireMatch(cart.includes('space-y-6')&&cart.includes('sm:p-6'),'Checkout density reduction contract is missing.');
 requireMatch(cart.includes('Aynı ödeme işlemi ikinci kez tahsil edilmez.'),'Checkout duplicate-charge safety copy must remain customer-readable.');
 
+const customerRoots=[
+ 'src/App.tsx','src/ErrorBoundary.tsx','src/pages',
+ 'src/features/account','src/features/addresses','src/features/app-update','src/features/appearance','src/features/auth',
+ 'src/features/cart','src/features/catalog','src/features/content','src/features/engagement','src/features/events',
+ 'src/features/gifts','src/features/health','src/features/home','src/features/navigation','src/features/payments',
+ 'src/features/resilience','src/features/reviews','src/features/search','src/features/support',
+];
+function collectTsx(target){
+ const absolute=path.join(root,target);
+ if(!fs.existsSync(absolute))return[];
+ const stat=fs.statSync(absolute);
+ if(stat.isFile())return target.endsWith('.tsx')?[target]:[];
+ return fs.readdirSync(absolute,{withFileTypes:true}).flatMap(entry=>collectTsx(path.join(target,entry.name)));
+}
+function stripComments(source){return source.replace(/\/\*[\s\S]*?\*\//g,'').replace(/(^|[^:])\/\/.*$/gm,'$1');}
+const technicalCopyPatterns=[
+ [/\bbackend\b/iu,'backend'],
+ [/veritaban/iu,'veritabanı'],
+ [/sunucudan\s+doğrulan/iu,'sunucudan doğrulama'],
+ [/sunucu\s+hatas/iu,'sunucu hatası'],
+ [/\bsuper\s+admin\b/iu,'Super Admin'],
+ [/\bservice[- ]?role\b/iu,'service role'],
+ [/provider\s+credential/iu,'provider credential'],
+ [/\bapi\s+(?:hatas|yanıt|cevap|istek)/iu,'API iç dili'],
+ [/\brpc\b/iu,'RPC'],
+ [/\bsistem\s+hatas/iu,'sistem hatası'],
+];
+const customerFiles=[...new Set(customerRoots.flatMap(collectTsx))].sort();
+requireMatch(customerFiles.length>0,'Customer-facing TSX surface scan found no files.');
+for(const file of customerFiles){
+ const source=stripComments(read(file));
+ for(const [pattern,label] of technicalCopyPatterns){
+  if(pattern.test(source))failures.push(`${file} customer surface still contains technical wording: ${label}.`);
+ }
+}
+
 requireMatch(customerE2e.includes("getByText('Sepete eklendi.',{exact:true})"),'Customer E2E must verify the current add-to-cart success message.');
 requireMatch(customerE2e.includes("getByRole('button',{name:'Sepete Git',exact:true})"),'Customer E2E must verify direct cart navigation.');
 requireMatch(customerE2e.includes('catalog_sort_backend_roundtrip')&&customerE2e.includes('catalog_stock_filter_backend_roundtrip'),'Customer E2E must verify real catalog filter RPC roundtrips.');
@@ -68,4 +104,4 @@ if(failures.length){
  for(const failure of failures)console.error(`- ${failure}`);
  process.exit(1);
 }
-console.log('Customer professionalization contract audit passed.');
+console.log(`Customer professionalization contract audit passed across ${customerFiles.length} customer TSX surfaces.`);
