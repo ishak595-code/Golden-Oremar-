@@ -8,23 +8,8 @@
   padding-bottom: 9.75rem !important;
 }
 
-/* The detail gallery is a neutral square canvas. Product photography must remain
-   fully visible here: collection-card cropping is useful for grids, but cropping
-   the primary product asset on the decision page can hide packaging or product
-   details. The aria-label selector is a stable semantic contract, not DOM-order
-   coupling. */
-:root[data-app-tab="product-detail"] section[aria-label="Ürün görselleri"] > div:first-child > img {
-  object-fit: contain !important;
-  padding: clamp(.35rem, 1.8vw, .75rem);
-}
-
 :root[data-app-tab="product-detail"] section[aria-label="Ürün görselleri"] .hide-scrollbar button {
   background: var(--bg-card);
-}
-
-:root[data-app-tab="product-detail"] section[aria-label="Ürün görselleri"] .hide-scrollbar button img {
-  object-fit: contain !important;
-  padding: .2rem;
 }
 
 :root[data-app-tab="product-detail"] .product-detail-commerce-dock {
