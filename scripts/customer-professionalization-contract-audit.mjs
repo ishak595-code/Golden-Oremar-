@@ -41,7 +41,7 @@ requireMatch(productDockCss.includes('minmax(0,1.35fr) minmax(0,.9fr)'),'Product
 forbid(home,'salesReadiness.message','Home storefront must not expose internal sales-readiness explanations.');
 forbid(home,'salesBlocked','Home storefront must not render an internal checkout-readiness banner.');
 requireMatch(homeProductCard.includes('aria-labelledby={spokenId}')&&homeProductCard.includes('className="sr-only">{accessibleLabel}</span>'),'Home product cards must bind their focusable control to a deterministic full spoken label.');
-requireMatch(homeProductCard.includes('compareAtPrice:')&&homeProductCard.includes('compareAtPriceMinor={compareAtPriceMinor}'),'Home product cards must include real compare pricing in visual and spoken contracts when present.');
+requireMatch(homeProductCard.includes('compareAtPrice:compareMinor!==null?compareMinor/100:null')&&!/<PriceDisplay[^>]*compareAtPrice/.test(homeProductCard),'Home product cards must keep real compare pricing in the spoken contract without adding promotional compare pricing to the visible discovery card.');
 requireMatch(homePrice.includes("normalized==='TRY'")&&homePrice.includes('TL`'),'Home TRY prices must use TL notation.');
 requireMatch(accessibilityE2e.includes("getByRole('button',{name:label,exact:true})")&&accessibilityE2e.includes('ARIA_NAME_MISSING_COMPARE_PRICE'),'Runtime accessibility must resolve the actual role/name and compare-price contract.');
 
