@@ -49,6 +49,7 @@ expect(main.includes('<ProductRecommendationsRail />'),'Live product recommendat
 expect(routeState.includes('const tab=currentTab();')&&routeState.includes('dataset.appTab=tab'),'Route-state tracker must expose the active tab to the document.');
 expect(routeState.includes("patch('pushState')")&&routeState.includes("patch('replaceState')"),'Route-state tracker must react to in-app history navigation.');
 expect(app.includes("{currentTab==='home'?<header"),'Global storefront header must be rendered only on Home in the React shell.');
+expect(app.includes("setSearchQuery(value);openSearch(value);")&&app.includes("recognizeVoiceSearch({language:'tr-TR'})"),'Voice search must write the final transcript into search state and immediately run the search.');
 expect(shellCss.includes(':root:not([data-app-tab="home"]) #root > .min-h-screen > header'),'CSS must retain defense-in-depth hiding for the global storefront header outside Home.');
 expect(shellCss.includes('.customer-disclosure'),'Collapsed long-form customer information styling must exist.');
 expect(premiumCss.includes('.go-product-card__media'),'Premium product-card visual contract must remain available outside Home.');
@@ -86,7 +87,7 @@ expect(homeProductCard.includes("storeKind==='official'")&&homeProductCard.inclu
 expect(homeProductCard.includes('visualSignal=signal??')&&homeProductCard.includes('<ProductBadge tone={visualSignal.tone} label={visualSignal.label}/>'),'Home product rows must keep one concise truth-backed visible trust signal.');
 expect(homeProductCard.includes("!item.imagePath.startsWith('brand/official-store/')"),'Official-store branding must not masquerade as a product photo in Home rows.');
 expect(premiumImage.includes("loading={eager?'eager':'lazy'}")&&premiumImage.includes('onError')&&premiumImage.includes('Fotoğraf yakında'),'Home image primitive must retain lazy/eager loading and an honest missing-product-photo fallback.');
-expect(searchInput.includes('Mic')&&!searchInput.includes('MicOff')&&searchInput.includes('onVoice')&&searchInput.includes('aria-label="Mikrofon"')&&searchInput.includes('aria-pressed={listening?true:undefined}'),'Voice search must remain one concise Mikrofon control without idle state narration.');
+expect(searchInput.includes('Mic')&&!searchInput.includes('MicOff')&&searchInput.includes('onVoice')&&searchInput.includes('aria-label="Sesli mikrofon"')&&searchInput.includes('aria-pressed={listening?true:undefined}'),'Voice search must remain one concise Sesli mikrofon control without idle state narration.');
 expect(searchInput.includes('aria-label="Ürün, üretici veya köy ara"')&&!searchInput.includes('role="search"'),'Search must expose one searchbox accessible name without duplicate search-landmark narration.');
 expect(!searchInput.includes("'Mikrofon kapalı'")&&!searchInput.includes('Mikrofon kapalı, sesli aramayı başlat')&&!searchInput.includes('Sesli aramayı başlat'),'Voice search must not announce redundant microphone state or start instructions.');
 for(const marker of ['--go-space-1:4px','--go-space-2:8px','--go-space-3:12px','--go-space-4:16px','--go-space-5:20px','--go-space-6:24px','--go-space-7:32px','--go-space-8:40px','--go-space-9:48px','--go-mobile-pad:20px'])expect(mobileCss.includes(marker),`Premium Mobile design token is missing: ${marker}`);
@@ -142,4 +143,4 @@ for(const forbidden of ['Şafak Horozu','Keklik Çağrısı','Dağ Kuşları'])e
 for(const marker of ['Oremar Kristali','Dağ Esintisi','Şafak İmzası','Zümrüt Yankı','Şampanya Çanı'])expect(sounds.includes(marker),`Premium sonic identity is missing refined option: ${marker}`);
 
 if(failures.length){console.error('Golden Oremar customer UI contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar customer UI contract audit passed: Premium Mobile V2 Home composition, concise link-based product discovery, single-name microphone accessibility, native-safe navigation, clean product detail controls, focused account settings and refined premium notification sounds are locked in.');
+console.log('Golden Oremar customer UI contract audit passed: Premium Mobile V2 Home composition, concise link-based product discovery, automatic single-name voice search, native-safe navigation, clean product detail controls, focused account settings and refined premium notification sounds are locked in.');
