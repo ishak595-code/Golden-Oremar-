@@ -2,7 +2,7 @@
 
 Bu dosya `release/ux-professionalization-2026-08` çalışmasının kalıcı ilerleme kaydıdır. Yeniden başlanırsa önce bu dosya okunmalıdır.
 
-- [ ] Madde 1: Arama kutusu mikrofon ikonunu gerçek izin/dinleme durumuna bağla; kapalı durumda açıkça kapalı ikon kullan.
+- [x] Madde 1: Arama kutusu mikrofon ikonunu gerçek izin/dinleme durumuna bağla; kapalı durumda açıkça kapalı ikon kullan. Doğrulama: Consolidation Preflight run `33254826377` success (`audit:all`, `tsc --noEmit`, production build).
 - [ ] Madde 2: Ana sayfa, kategori, ürün listesi ve boş durum dahil müşteri metinlerini sıcak, güven veren ve doğrulanabilir pazarlama diline geçir; metinleri tek merkezden yönet.
 - [ ] Madde 3: Ana sayfa/kategori/arama ürün kartlarında erişilebilir alt metin ve tek-duyuş aria etiketi sağla; gerçek runtime erişilebilirlik davranışını doğrula.
 - [ ] Madde 4: Ürün detay bilgi hiyerarşisini düzelt; fiyatı başlık yakınına taşı, satın alma aksiyonlarını ikincil öğelerden önce konumlandır, tekrarlayan teknik satırı kaldır. `shortDescription` veri olarak uzun/tekrarlıysa zorla kısaltma yapmadan ayrıca not et.
