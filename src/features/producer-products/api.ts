@@ -7,7 +7,7 @@ const TRUST_BADGE_STATUSES=new Set(['none','active','revoked']);
 const PRODUCT_STATUSES=new Set(['draft','review','published','rejected','archived']);
 const MODERATION_DECISIONS=new Set(['approved','rejected','resubmitted','change_approved','change_rejected']);
 const PRODUCT_IMAGE_TYPES=new Set(['image/jpeg','image/png','image/webp','image/avif']);
-const MIN_PRODUCT_IMAGE_EDGE=1200,MAX_PRODUCT_IMAGE_PIXELS=25_000_000,MAX_PRODUCT_IMAGE_BYTES=10*1024*1024;
+const MIN_PRODUCT_IMAGE_EDGE=1200,MAX_PRODUCT_IMAGE_PIXELS=25_000_000;
 
 function unwrap<T>(data:T|null,error:any):T{if(error)throw error;return data as T;}
 function isRecord(value:unknown):value is Record<string,any>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
@@ -45,7 +45,7 @@ async function productImageDimensions(file:File){
  });
 }
 
-export async function validateProducerProductImageFile(file:File){if(!(file instanceof File))throw new Error('Ürün görsel dosyası doğrulanamadı.');if(!PRODUCT_IMAGE_TYPES.has(file.type))throw new Error('Ürün görselleri JPEG, PNG, WebP veya AVIF olmalıdır.');if(file.size<=0||file.size>MAX_PRODUCT_IMAGE_BYTES)throw new Error('Her ürün görseli en fazla 10 MB olabilir.');const{width,height}=await productImageDimensions(file);if(width<MIN_PRODUCT_IMAGE_EDGE||height<MIN_PRODUCT_IMAGE_EDGE)throw new Error(`Ürün görselleri en az ${MIN_PRODUCT_IMAGE_EDGE} x ${MIN_PRODUCT_IMAGE_EDGE} piksel olmalıdır. Bu görsel ${width} x ${height} piksel.`);if(width*height>MAX_PRODUCT_IMAGE_PIXELS)throw new Error(`Ürün görselleri en fazla ${(MAX_PRODUCT_IMAGE_PIXELS/1_000_000).toFixed(0)} megapiksel olabilir. Bu görsel ${(width*height/1_000_000).toFixed(1)} megapiksel.`);return{width,height};}
+export async function validateProducerProductImageFile(file:File){if(!(file instanceof File))throw new Error('Ürün görsel dosyası doğrulanamadı.');if(!PRODUCT_IMAGE_TYPES.has(file.type))throw new Error('Ürün görselleri JPEG, PNG, WebP veya AVIF olmalıdır.');if(file.size<=0||file.size>10*1024*1024)throw new Error('Her ürün görseli en fazla 10 MB olabilir.');const{width,height}=await productImageDimensions(file);if(width<MIN_PRODUCT_IMAGE_EDGE||height<MIN_PRODUCT_IMAGE_EDGE)throw new Error(`Ürün görselleri en az ${MIN_PRODUCT_IMAGE_EDGE} x ${MIN_PRODUCT_IMAGE_EDGE} piksel olmalıdır. Bu görsel ${width} x ${height} piksel.`);if(width*height>MAX_PRODUCT_IMAGE_PIXELS)throw new Error(`Ürün görselleri en fazla ${(MAX_PRODUCT_IMAGE_PIXELS/1_000_000).toFixed(0)} megapiksel olabilir. Bu görsel ${(width*height/1_000_000).toFixed(1)} megapiksel.`);return{width,height};}
 
 export async function listMyProducerProducts(){const{data,error}=await supabase.rpc('list_my_producer_products_v3');const rows=unwrap<unknown>(data,error);if(!Array.isArray(rows)||rows.length>5000)throw new Error('Satıcı ürün listesi sunucudan doğrulanamadı.');return rows.map(normalizeProduct);}
 export async function listProductCategories(){const{data,error}=await supabase.rpc('list_public_categories_v2');const rows=unwrap<unknown>(data,error);if(!Array.isArray(rows)||rows.length>500)throw new Error('Kategori listesi sunucudan doğrulanamadı.');return rows.map((value,index)=>{if(!isRecord(value))throw new Error(`${index+1}. kategori doğrulanamadı.`);return{...value,id:requiredText(value.id,'Kategori kimliği',160),slug:requiredText(value.slug,'Kategori bağlantısı',220),name:requiredText(value.name,'Kategori adı',240)};});}
