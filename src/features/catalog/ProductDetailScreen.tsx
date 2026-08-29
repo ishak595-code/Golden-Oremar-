@@ -5,7 +5,7 @@ import ProductSafetyPanel from'../content/ProductSafetyPanel';
 import{getProductSafety}from'../content/productSafetyApi';
 import ProducerQuestionComposer from'../account/ProducerQuestionComposer';
 import{setCartItem}from'../cart/api';
-import{buildProductUrl,copyText,shareOrCopy}from'../navigation/appUrl';
+import{buildProductUrl,buildSearchUrl,copyText,shareOrCopy}from'../navigation/appUrl';
 
 type Props={
  reference:string;
@@ -17,7 +17,7 @@ type Props={
  onCartChanged?:()=>Promise<void>|void;
  onGift:(reference:string)=>void;
  onProducer:(id:string,slug:string,name:string)=>void;
- onCategory:(slug:string,name:string)=>void;
+ onCategory?:(slug:string,name:string)=>void;
 };
 
 function safeText(value:unknown,max=1000){return typeof value==='string'?value.trim().slice(0,max):'';}
@@ -105,7 +105,9 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
   catch{setError('Ürün sepete eklenemedi. Lütfen tekrar deneyin.');}
   finally{setBusy(false);}
  }
- function navigateToCart(){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','cart');const currentDepth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(currentDepth)&&currentDepth>=0?currentDepth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'cart'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));}
+ function pushInternalRoute(url:string,tab:string){const currentDepth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(currentDepth)&&currentDepth>=0?currentDepth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab};window.history.pushState(state,'',url);window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
+ function navigateToCart(){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','cart');pushInternalRoute(url.toString(),'cart');}
+ function navigateToCategory(slug:string){pushInternalRoute(buildSearchUrl({query:'',categorySlug:slug,producerId:null}),'search-results');}
  async function buyNow(){
   if(!authenticated){onLoginRequired();return;}
   if(!purchaseReady||!variantReference){setError(purchaseIssueMessage());return;}
@@ -159,7 +161,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    </section>
 
    <section>
-    {categoryName?categorySlug?<button type="button" onClick={()=>onCategory(categorySlug,categoryName)} aria-label={`${categoryName} kategorisini aç`} className="group inline-flex min-h-9 items-center gap-1 rounded-full border border-brand-gold/35 bg-brand-gold/5 px-3 text-xs font-black uppercase tracking-[0.12em] text-brand-gold transition hover:border-brand-gold hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span>{categoryName}</span><ChevronRight aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"/></button>:<div className="text-xs font-black uppercase tracking-[0.14em] text-brand-gold">{categoryName}</div>:null}
+    {categoryName?categorySlug?<button type="button" onClick={()=>onCategory?onCategory(categorySlug,categoryName):navigateToCategory(categorySlug)} aria-label={`${categoryName} kategorisini aç`} className="group inline-flex min-h-9 items-center gap-1 rounded-full border border-brand-gold/35 bg-brand-gold/5 px-3 text-xs font-black uppercase tracking-[0.12em] text-brand-gold transition hover:border-brand-gold hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span>{categoryName}</span><ChevronRight aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"/></button>:<div className="text-xs font-black uppercase tracking-[0.14em] text-brand-gold">{categoryName}</div>:null}
     <h1 className="mt-2 text-3xl font-black leading-tight text-brand-green dark:text-brand-gold">{detailName}</h1>
 
     <div className="mt-3 rounded-2xl bg-gray-50 p-4 dark:bg-gray-800"><div className="flex items-end justify-between gap-3"><div>{priceReady?<div><div className="text-2xl font-black text-brand-green dark:text-brand-gold">{money(priceMinor,currency)}</div>{compareAtPriceReady?<div className="mt-1 text-sm font-semibold text-brand-muted line-through">Önce {money(compareAtPriceMinor,currency)}</div>:null}</div>:<div className="font-bold text-brand-muted">Fiyat şu anda gösterilemiyor</div>}{preorder?<div className="mt-1 text-xs font-bold text-brand-green">Ön siparişe açık</div>:null}</div><div className={`text-sm font-bold ${soldOut?'text-red-700 dark:text-red-300':'text-brand-muted'}`}>{soldOut?'Stokta yok':tracked&&variantStock!==null?variantStock<=5?`${variantStock} adet kaldı`:'Stokta':'Satışta'}</div></div></div>
