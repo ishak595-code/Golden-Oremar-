@@ -14,9 +14,15 @@ Bu dosya `release/ux-professionalization-2026-08` çalışmasının kalıcı ile
 
 Canlı `public.products` doğrulamasında 42 aktif ürün vardır. Teknik `üretici ve lot belgesi kontrol edilerek listelenir` kalıntısı aktif ürünlerde `0`, `public.catalog_product_cards` görünümünde de `0` olarak doğrulandı. Aktif ürünlerin 27 tanesinde `short_description`, `description` ile aynıdır; ancak kısa açıklamalar 55-140 karakter aralığında ve müşteri özeti olarak zaten kısadır. Bu 27 kayıt sırf alanlar eşit diye mekanik olarak yeniden yazılmadı. Önceki kaynak düzeltmesinde teknik kalıbı taşıyan 15 aktif ürün müşteri diline çevrildi.
 
-## Kapsam dışı, bilinçli durum
+## Ürün detay medya kalite sözleşmesi
 
-Ürün fotoğrafları ve logo görünümü bilinçli olarak placeholder/eksik bırakılmıştır. Bu çalışma bunları sorun olarak raporlamaz, düzeltmez ve bunlara yönelik audit/uyarı eklemez.
+Ürün fotoğrafı artık ürün detay UX kapsamındadır. Mobilde geri/favori/paylaş araç çubuğunun altında ayrı kare galeri alanı başlar; kategori bilgisi galeri alanının altında yer alır ve fotoğrafın üzerine bindirilmez. Ana fotoğraf ve küçük galeri görselleri `contain` davranışıyla kesilmeden gösterilir. Ana görsele dokunulduğunda erişilebilir tam ekran görüntüleyici açılır; Escape ile kapanır, birden fazla görselde önceki/sonraki kontrolleri ve klavye okları çalışır.
+
+Yeni üretici ürün fotoğraflarında JPEG, PNG, WebP ve AVIF kabul edilir; dosya başına üst sınır 10 MB, çözünürlük alt sınırı 1200 x 1200 piksel ve toplam piksel üst sınırı 25 MP'dir. Üreticiye 1:1 oranında 2048 x 2048 piksel ana görsel önerilir. Dikey veya yatay fotoğraf yüklenebilir ancak müşteri detay ekranında ürün kesilmez. Üretici yükleme adımı ve önizleme, müşteri detayındaki kare `contain` davranışıyla eşleştirilmiştir. Sunucu tarafındaki `catalog-media-verify` gerçek dosya tipi, uzantı, dosya boyutu, sahiplik/yetki ve checksum doğrulamasını korur; istemci tarafındaki çözünürlük kontrolü bu güvenlik doğrulamasının yerine geçmez.
+
+`Premium Mobile UI V2` akışı gerçek canlı katalog ürünüyle 320/360/375/390/412/430 px genişliklerde ürün detay medya geometrisini doğrular: geri/favori/paylaş dokunma hedefleri en az 44 x 44, ana görsel araç çubuğunun altında, bilgi/kategori bölümü galerinin altında, ana görsel kare `contain`, ürün adı alt metinde mevcut, yatay taşma yok ve tam ekran görüntüleyici açılıp kapanabiliyor olmalıdır. Nihai run kimliği son doğrulama tamamlandıktan sonra bu kayda eklenmelidir.
+
+Marka logo/kapak görsellerinin mevcut ayrı boyut ve binary doğrulama sözleşmesi korunur; ürün detay çalışması bu marka sözleşmesini değiştirmez.
 
 ## Doğrulama standardı
 
