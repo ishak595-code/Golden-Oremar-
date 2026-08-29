@@ -30,7 +30,6 @@ export default function HomeSection({onProductClick}:Props){
 
  if(loading&&!experience)return<HomeLoading/>;
  if(!experience)return<HomeError message={error||CUSTOMER_COPY.home.loadErrorFallback} onRetry={()=>void retry().catch(()=>undefined)}/>;
- const salesBlocked=experience.salesReadiness.status!=='ready';
  const initialSections=experience.sections.filter(section=>!section.deferred&&section.items.length>0);
  const deferredSections=experience.sections.filter(section=>section.deferred);
  const eventSpotlight=experience.eventSpotlight;
@@ -39,9 +38,6 @@ export default function HomeSection({onProductClick}:Props){
  return<div className="go-premium-home-v2" data-home-contract-version={experience.version}>
   <h1 className="sr-only">{experience.brand.name} ürünleri</h1>
   <div className="go-home-content">
-   {error?<HomeNotice>{error}</HomeNotice>:null}
-   {salesBlocked?<HomeNotice>{experience.salesReadiness.message}</HomeNotice>:null}
-
    {orderedCategories.length?<section className="go-home-section go-home-categories" aria-labelledby="home-categories-title" data-server-heading={experience.interface.categoriesTitle}>
     <SectionHeader id="home-categories-title" title={CUSTOMER_COPY.home.categoriesTitle} subtitle={CUSTOMER_COPY.home.categoriesSubtitle} actionLabel={CUSTOMER_COPY.home.categoriesAction} onAction={()=>navigateToCategories()}/>
     <div className="go-category-rail hide-scrollbar" role="list" aria-label={CUSTOMER_COPY.home.categoriesTitle}>
@@ -85,7 +81,6 @@ function DeferredProductSection({descriptor,loadSection,onProductClick}:{descrip
 }
 
 function CampaignCard({campaign}:{campaign:{title:string;description:string|null;bannerPath:string|null}}){const banner=campaign.bannerPath?publicCatalogUrl(campaign.bannerPath):null;return<section className="go-home-section go-campaign-v2" aria-label={campaign.title}>{banner?<PremiumImage src={banner} alt="" className="go-campaign-v2__media"/>:null}<div className="go-campaign-v2__copy"><span>Kampanya</span><h2>{campaign.title}</h2>{campaign.description?<p>{campaign.description}</p>:null}</div></section>;}
-function HomeNotice({children}:{children:React.ReactNode}){return<div className="go-home-notice" role="status" aria-live="polite"><AlertCircle aria-hidden="true"/><span>{children}</span></div>;}
 function HomeError({message,onRetry}:{message:string;onRetry:()=>void}){return<div className="go-home-state" role="alert"><AlertCircle aria-hidden="true"/><h1>{CUSTOMER_COPY.home.loadErrorTitle}</h1><p>{message}</p><button type="button" onClick={onRetry}><RefreshCw aria-hidden="true"/>{CUSTOMER_COPY.home.retry}</button></div>;}
 function ProductRowsSkeleton(){return<div className="go-product-grid-v2" role="status" aria-label="Ürünler yükleniyor">{[0,1,2].map(index=><div className="go-product-skeleton" key={index}><span/><div><i/><i/><i/></div></div>)}</div>;}
 function HomeLoading(){return<div className="go-premium-home-v2"><div className="go-home-content"><section className="go-home-section"><div className="go-heading-skeleton"/><div className="go-category-skeleton-rail">{[0,1,2].map(index=><div className="go-category-skeleton" key={index}/>)}</div></section><section className="go-home-section"><div className="go-heading-skeleton go-heading-skeleton--wide"/><ProductRowsSkeleton/></section></div></div>;}
