@@ -33,6 +33,7 @@ requireMatch(variantIndex>priceIndex,'Optional multi-variant selection must rema
 requireMatch(producerIndex<0||variantIndex<producerIndex,'Optional multi-variant selection must remain before secondary producer content.');
 requireMatch(detail.includes('detail.variants.length>1')&&detail.includes('<select value={variantId}'),'Single-variant products must not render a redundant option selector; multi-variant products need one compact select.');
 forbid(detail,'<fieldset className="mt-5"','Product detail must not return to radio-style option marking.');
+forbid(detail,'const itemPrice=','Product detail variant selector must not repeat the primary price.');
 requireMatch(detail.includes('aria-label="Miktarı azalt"')&&detail.includes('aria-label="Miktarı artır"'),'Product detail quantity decrease/increase controls must remain available.');
 requireMatch(detail.includes('product-detail-commerce-dock'),'State-aware product commerce dock is missing.');
 forbid(detail,'product-detail-commerce-summary','Product detail purchase dock must not repeat price or quantity summary above fixed actions.');
@@ -57,7 +58,7 @@ requireMatch(homeProductCard.includes('compareAtPrice:compareMinor!==null?compar
 requireMatch(homePrice.includes("normalized==='TRY'")&&homePrice.includes('TL`'),'Home TRY prices must use TL notation.');
 requireMatch(accessibilityE2e.includes("role:'link'")&&accessibilityE2e.includes('ARIA_NAME_MISSING_COMPARE_PRICE'),'Runtime accessibility must resolve Home as a link and preserve the compare-price spoken contract.');
 requireMatch(searchInput.includes('aria-label="Ürün, üretici veya köy ara"')&&!searchInput.includes('role="search"'),'Search must expose one searchbox name without duplicate landmark narration.');
-requireMatch(searchInput.includes('aria-label="Mikrofon"')&&searchInput.includes('Mic')&&!searchInput.includes('MicOff')&&!searchInput.includes('Sesli aramayı başlat')&&!searchInput.includes('Mikrofon kapalı'),'Voice search must expose one concise Mikrofon name without redundant off/start narration.');
+requireMatch(searchInput.includes('aria-label="Sesli mikrofon"')&&searchInput.includes('Mic')&&!searchInput.includes('MicOff')&&!searchInput.includes('Sesli aramayı başlat')&&!searchInput.includes('Mikrofon kapalı'),'Voice search must expose one concise Sesli mikrofon name without redundant off/start narration.');
 
 for(const [needle,message] of [
  ['sunucudan doğrulanamadı','Category screen must not expose server-validation wording.'],
