@@ -2,6 +2,7 @@ import React from'react';
 import{ChevronRight,MapPin}from'lucide-react';
 import type{CatalogItem}from'../../catalog/api';
 import{productHandlingLabel}from'../../catalog/productHandlingApi';
+import{buildProductCardAccessibilityLabel}from'../../accessibility/productCardAccessibility';
 import PremiumImage from'./PremiumImage';
 import PriceDisplay from'./PriceDisplay';
 import ProductBadge from'./ProductBadge';
@@ -12,9 +13,10 @@ function strongestSignal(item:CatalogItem){if(item.producer.originVerified)retur
 export default function ProductCard({item,onClick,eager=false}:{item:CatalogItem;onClick:()=>void;eager?:boolean}){
  const signal=strongestSignal(item);
  const official=item.producer.storeKind==='official';
- return<article className="go-product-card-v2">
-  <button type="button" onClick={onClick} className="go-product-card-v2__button" aria-label={`${item.name}, ${item.producer.name}, ürün detayını aç`}>
-   <PremiumImage src={item.imagePath} alt={item.name} eager={eager} className="go-product-card-v2__media"/>
+ const accessibleLabel=buildProductCardAccessibilityLabel({name:item.name,price:item.variant.priceMinor/100,currency:item.currency,statuses:[official?'Resmi mağaza':null,signal?.label]});
+ return<article className="go-product-card-v2" aria-label={accessibleLabel}>
+  <button type="button" onClick={onClick} className="go-product-card-v2__button" aria-label={accessibleLabel}>
+   <PremiumImage src={item.imagePath} alt={`${item.name} ürün görseli`} eager={eager} className="go-product-card-v2__media"/>
    <span className="go-product-card-v2__content">
     <span className="go-product-card-v2__title">{item.name}</span>
     <span className="go-product-card-v2__source"><MapPin aria-hidden="true"/><span>{sourceLabel(item)}</span></span>
