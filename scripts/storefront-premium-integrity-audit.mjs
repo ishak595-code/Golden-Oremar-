@@ -4,6 +4,10 @@ import path from 'node:path';
 const root=process.cwd();
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const home=read('src/features/home/HomeSection.tsx');
+const customerCopy=read('src/features/customer-experience/customerCopy.ts');
+const categoryDirectory=read('src/features/catalog/CategoryDirectoryScreen.tsx');
+const searchOverlay=read('src/features/catalog/CatalogSearchOverlay.tsx');
+const searchResults=read('src/features/catalog/CatalogSearchResults.tsx');
 const productCard=read('src/features/home/components/ProductCard.tsx');
 const price=read('src/features/home/components/PriceDisplay.tsx');
 const catalog=read('src/features/catalog/api.ts');
@@ -14,8 +18,12 @@ const recs=read('src/features/catalog/ProductRecommendationsRail.tsx');
 const connections=read('src/features/catalog/ProductDetailConnections.tsx');
 const removedLayers=['referenceHomeExact.css','homeMerchandisingUpgrade.css','homeOneRowPremium.css'];
 
+const forbiddenMarketingClaims=['En Çok Satanlar','çok satan','en çok satan','müşterilerin favorisi','en sevilen','özel fırsat','Yazın Son Hasadı','Sonbaharın Kiler Seçkisi','Kış Sofrasının Seçkisi'];
 const checks=[
- ['Home editorial titles and subtitles remain server-owned',home.includes('title={section.title}')&&home.includes('subtitle={section.subtitle}')],
+ ['Home editorial presentation copy is centralized while server source semantics remain authoritative',home.includes("from'../customer-experience/customerCopy'")&&home.includes('homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle)')&&home.includes('experience.sections.filter(section=>!section.deferred')&&home.includes('experience.sections.filter(section=>section.deferred')],
+ ['customer-facing discovery copy is managed from one presentation module',categoryDirectory.includes("from'../customer-experience/customerCopy'")&&searchOverlay.includes("from '../customer-experience/customerCopy'")&&searchResults.includes("from'../customer-experience/customerCopy'")&&customerCopy.includes('HOME_SECTION_COPY')],
+ ['marketing copy cannot fabricate bestseller, popularity or seasonal-campaign claims',forbiddenMarketingClaims.every(value=>!customerCopy.toLocaleLowerCase('tr-TR').includes(value.toLocaleLowerCase('tr-TR')))],
+ ['seasonal language is scoped to the verified seasonal source kind',customerCopy.includes("seasonal:{eyebrow:'Mevsiminde sunulur'")&&home.includes('section.source.kind')],
  ['Home categories remain server-owned and managed',home.includes('experience.categoryOrder.flatMap')&&home.includes('category.imagePath||config?.image||null')],
  ['false best-seller or fabricated seasonal campaign wording is absent',!home.includes('En Çok Satanlar')&&!home.includes("title:'Yazın Son Hasadı'")&&!home.includes("title:'Sonbaharın Kiler Seçkisi'")&&!home.includes("title:'Kış Sofrasının Seçkisi'")],
  ['Home products render through the single Premium Mobile V2 card primitive',home.includes('<ProductCard')&&productCard.includes('className="go-product-card-v2"')],
