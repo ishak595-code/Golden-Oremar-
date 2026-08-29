@@ -15,9 +15,11 @@ requireMatch(readiness.includes('commercial_checkout_legal_readiness_v1()')&&rea
 requireMatch(readiness.includes('salesReadiness',readiness.indexOf('get_public_storefront_config_v1'))&&readiness.includes('readiness:=private.home_sales_readiness_v1()'),'Public storefront readiness must be computed live instead of trusting persisted launch copy.');
 requireMatch(readinessCopy.includes('Katalog görüntülenebilir; ödeme ile sipariş tamamlama şu anda kullanıma kapalıdır.'),'Blocked payment readiness must retain concise customer-safe backend copy for non-Home guarded flows.');
 requireMatch(!readinessCopy.includes('provider credential'),'Public readiness copy must not expose provider credential terminology.');
-requireMatch(search.includes('Mic'),'Voice search microphone must remain present.');
+requireMatch(search.includes('Mic')&&!search.includes('MicOff'),'Voice search must use one microphone icon without a redundant idle-off glyph.');
 requireMatch(search.includes('onVoice'),'Voice search callback must remain wired.');
 requireMatch(search.includes("aria-pressed={listening}"),'Voice listening state must be exposed accessibly.');
+requireMatch(!search.includes('role="search"')&&search.includes('aria-label="Ürün, üretici veya köy ara"'),'Search must expose one searchbox name without a duplicate search landmark label.');
+requireMatch(!search.includes("'Mikrofon kapalı'")&&!search.includes('Mikrofon kapalı, sesli aramayı başlat'),'Idle voice search must not announce an artificial microphone-off state.');
 for(const [token,value] of[['--go-space-1','4px'],['--go-space-2','8px'],['--go-space-3','12px'],['--go-space-4','16px'],['--go-space-5','20px'],['--go-space-6','24px'],['--go-space-7','32px'],['--go-space-8','40px'],['--go-space-9','48px']])requireMatch(css.includes(`${token}:${value}`),`Spacing token ${token}=${value} is missing.`);
 requireMatch(css.includes('--go-mobile-pad:20px'),'Canonical mobile horizontal padding must remain 20px.');
 requireMatch(css.includes('env(safe-area-inset-bottom'),'Bottom navigation must retain iOS/Android safe-area handling.');
@@ -25,9 +27,12 @@ requireMatch(css.includes('@media(prefers-reduced-motion:reduce)'),'Reduced-moti
 requireMatch(css.includes('min-height:44px'),'Minimum touch target contract is missing.');
 requireMatch(css.includes('-webkit-line-clamp:2'),'Product titles must support two readable lines.');
 requireMatch(css.includes('@media(max-width:350px)')&&css.includes('@media(max-width:520px)'),'Small-phone responsive guards are missing.');
+requireMatch(css.includes('.go-product-grid-v2{display:grid;width:100%;max-width:860px;grid-template-columns:1fr;gap:0'),'Home products must remain a single compact list instead of returning to card-grid columns.');
+requireMatch(!css.includes('grid-template-columns:repeat(2,minmax(0,1fr))')&&!css.includes('grid-template-columns:repeat(3,minmax(0,1fr))'),'Home product rows must not regress into multi-column cards.');
 requireMatch(product.includes("storeKind==='official'"),'Product card must derive official-store trust from backend data.');
 requireMatch(product.includes('originVerified'),'Product card must derive origin verification from backend data.');
 requireMatch(product.includes("official?<ProductBadge")&&product.includes("official&&signal?<ProductBadge"),'Product card must keep the explicit maximum-two trust-signal composition.');
+requireMatch(product.includes('data-product-id={item.id}')&&product.includes('data-product-reference={item.slug}'),'Every Home product row must retain stable product identity and route reference markers.');
 requireMatch(!product.includes('.map('),'Product card must not map an unbounded badge collection onto the primary card surface.');
 requireMatch(product.includes('compareAtPriceMinor')&&product.includes('buildProductCardAccessibilityLabel')&&product.includes('compareAtPrice:compareMinor!==null?compareMinor/100:null')&&!product.includes('line-through')&&!price.includes('compareAtPriceMinor'),'Primary Home cards may expose canonical compare-at data to accessibility, but must not restore visible strike-through promotional framing.');
 requireMatch(image.includes("loading={eager?'eager':'lazy'}"),'Product imagery must retain lazy loading with an explicit LCP eager path.');
