@@ -10,11 +10,11 @@ requireMatch(home.includes('useHomeExperience'),'Home must consume the bounded H
 requireMatch(home.includes('IntersectionObserver'),'Deferred Home sections must remain viewport-driven.');
 requireMatch(!home.includes('useLiveHomeCatalog'),'Home must not restore the full-catalog client filter path.');
 requireMatch(!home.includes('sectionNarrative('),'Home section titles must remain server-owned rather than hardcoded narrative overrides.');
-requireMatch(home.includes("experience.salesReadiness.status!=='ready'"),'Every non-ready sales state must remain visible to the customer instead of failing only at checkout.');
+requireMatch(!home.includes('salesReadiness'),'Customer Home must not render internal sales-readiness state or operational status messaging.');
 requireMatch(readiness.includes('commercial_checkout_legal_readiness_v1()')&&readiness.includes('get_checkout_payment_readiness_v3()'),'Home sales readiness must derive from canonical legal and payment controls.');
 requireMatch(readiness.includes('salesReadiness',readiness.indexOf('get_public_storefront_config_v1'))&&readiness.includes('readiness:=private.home_sales_readiness_v1()'),'Public storefront readiness must be computed live instead of trusting persisted launch copy.');
-requireMatch(readinessCopy.includes('Katalog görüntülenebilir; ödeme ile sipariş tamamlama şu anda kullanıma kapalıdır.'),'Blocked payment readiness must expose concise customer-safe copy.');
-requireMatch(!readinessCopy.includes('provider credential'),'Public Home readiness copy must not expose provider credential terminology.');
+requireMatch(readinessCopy.includes('Katalog görüntülenebilir; ödeme ile sipariş tamamlama şu anda kullanıma kapalıdır.'),'Blocked payment readiness must retain concise customer-safe backend copy for non-Home guarded flows.');
+requireMatch(!readinessCopy.includes('provider credential'),'Public readiness copy must not expose provider credential terminology.');
 requireMatch(search.includes('Mic'),'Voice search microphone must remain present.');
 requireMatch(search.includes('onVoice'),'Voice search callback must remain wired.');
 requireMatch(search.includes("aria-pressed={listening}"),'Voice listening state must be exposed accessibly.');
@@ -29,7 +29,7 @@ requireMatch(product.includes("storeKind==='official'"),'Product card must deriv
 requireMatch(product.includes('originVerified'),'Product card must derive origin verification from backend data.');
 requireMatch(product.includes("official?<ProductBadge")&&product.includes("official&&signal?<ProductBadge"),'Product card must keep the explicit maximum-two trust-signal composition.');
 requireMatch(!product.includes('.map('),'Product card must not map an unbounded badge collection onto the primary card surface.');
-requireMatch(!product.includes('compareAtPriceMinor')&&!price.includes('compareAtPriceMinor'),'Primary Home cards must not restore compare-at/strike-through promotional framing; the canonical value remains available outside this presentation surface.');
+requireMatch(product.includes('compareAtPriceMinor')&&product.includes('buildProductCardAccessibilityLabel')&&product.includes('compareAtPrice:compareMinor!==null?compareMinor/100:null')&&!product.includes('line-through')&&!price.includes('compareAtPriceMinor'),'Primary Home cards may expose canonical compare-at data to accessibility, but must not restore visible strike-through promotional framing.');
 requireMatch(image.includes("loading={eager?'eager':'lazy'}"),'Product imagery must retain lazy loading with an explicit LCP eager path.');
 requireMatch(image.includes('onError'),'Image error fallback must remain implemented.');
 requireMatch(css.includes('object-fit:cover'),'Product/category imagery must remain ready for real photography.');
