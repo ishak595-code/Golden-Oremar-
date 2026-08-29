@@ -14,8 +14,8 @@ export default function ProductCard({item,onClick,eager=false}:{item:CatalogItem
  const spokenId=useId();
  const signal=strongestSignal(item);
  const official=item.producer.storeKind==='official';
- const compareAtPriceMinor=typeof item.variant.compareAtPriceMinor==='number'&&Number.isSafeInteger(item.variant.compareAtPriceMinor)?item.variant.compareAtPriceMinor:null;
- const accessibleLabel=buildProductCardAccessibilityLabel({name:item.name,price:item.variant.priceMinor/100,currency:item.currency,compareAtPrice:compareAtPriceMinor!==null?compareAtPriceMinor/100:null,statuses:[official?'Resmi mağaza':null,signal?.label]});
+ const compareMinor=typeof item.variant.compareAtPriceMinor==='number'&&Number.isSafeInteger(item.variant.compareAtPriceMinor)?item.variant.compareAtPriceMinor:null;
+ const accessibleLabel=buildProductCardAccessibilityLabel({name:item.name,price:item.variant.priceMinor/100,currency:item.currency,compareAtPrice:compareMinor!==null?compareMinor/100:null,statuses:[official?'Resmi mağaza':null,signal?.label]});
  return<article className="go-product-card-v2" aria-labelledby={spokenId}>
   <span id={spokenId} className="sr-only">{accessibleLabel}</span>
   <button type="button" onClick={onClick} className="go-product-card-v2__button" aria-labelledby={spokenId}>
@@ -24,7 +24,7 @@ export default function ProductCard({item,onClick,eager=false}:{item:CatalogItem
     <span className="go-product-card-v2__title">{item.name}</span>
     <span className="go-product-card-v2__source"><MapPin aria-hidden="true"/><span>{sourceLabel(item)}</span></span>
     <span className="go-product-card-v2__signals">{official?<ProductBadge tone="official" label="Resmi mağaza"/>:signal?<ProductBadge tone={signal.tone} label={signal.label}/>:null}{official&&signal?<ProductBadge tone={signal.tone} label={signal.label}/>:null}</span>
-    <span className="go-product-card-v2__footer"><PriceDisplay priceMinor={item.variant.priceMinor} compareAtPriceMinor={compareAtPriceMinor} currency={item.currency}/><ChevronRight aria-hidden="true"/></span>
+    <span className="go-product-card-v2__footer"><PriceDisplay priceMinor={item.variant.priceMinor} currency={item.currency}/><ChevronRight aria-hidden="true"/></span>
    </span>
   </button>
  </article>;
