@@ -29,7 +29,7 @@ const checks=[
  ['prestige surface hierarchy remains tonal rather than decorative',css.includes('--go-forest-950:')&&css.includes('--go-forest-850:')&&css.includes('--go-forest-800:')&&css.includes('--go-ivory:')&&css.includes('--go-gold:')],
  ['category discovery remains a snapping horizontal rail with a visible continuation cue',css.includes('.go-category-rail')&&css.includes('scroll-snap-type:x mandatory')&&css.includes('grid-auto-columns:clamp(148px,42vw,184px)')],
  ['product titles remain readable for two lines',css.includes('.go-product-card-v2__title')&&css.includes('-webkit-line-clamp:2')&&css.includes('overflow-wrap:anywhere')],
- ['product photography contract is fixed-aspect and cover-ready',css.includes('.go-product-card-v2__media')&&css.includes('aspect-ratio:1/1.08')&&css.includes('.go-product-card-v2__media img')&&css.includes('object-fit:cover')],
+ ['product photography contract is compact-square and cover-ready',css.includes('.go-product-card-v2__media{width:88px;height:88px')&&css.includes('.go-product-card-v2__media img')&&css.includes('object-fit:cover')],
  ['Home bottom spacing remains native safe-area aware',css.includes('var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px))')&&css.includes('--go-nav-height:64px')],
  ['motion accessibility remains first-class',css.includes('@media (prefers-reduced-motion:reduce)')||css.includes('@media(prefers-reduced-motion:reduce)')],
  ['adaptive header runtime remains installed',main.includes('installPremiumMobileShellRuntime();')&&runtime.includes('requestAnimationFrame')],
