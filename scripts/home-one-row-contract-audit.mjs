@@ -20,31 +20,36 @@ requireText(main,"import './features/customer-experience/premiumMobileV2.css';",
 for(const retired of ['homeOneRowPremium.css','homeMerchandisingUpgrade.css','referenceHomeExact.css']){if(fs.existsSync(path.join(root,'src/features/customer-experience',retired)))failures.push(`Retired overlapping Home CSS must stay absent: ${retired}`);}
 
 requireText(css,'.go-product-card-v2__button','Premium Home product surface contract is missing.');
-requireText(css,'grid-template-columns:104px minmax(0,1fr)','Default mobile product cards must preserve a stable horizontal image/content composition.');
-requireText(css,'grid-template-columns:96px minmax(0,1fr)','Compact phone product cards must preserve a stable horizontal image/content composition.');
-requireText(css,'grid-template-columns:88px minmax(0,1fr)','320px-class product cards must preserve a stable horizontal image/content composition.');
+requireText(css,'.go-product-grid-v2{display:grid;width:100%;max-width:860px;grid-template-columns:1fr;gap:0','Home products must render as one full-width list rather than detached cards.');
+requireText(css,'grid-template-columns:88px minmax(0,1fr)','Default product rows must preserve a compact horizontal image/content composition.');
+requireText(css,'grid-template-columns:82px minmax(0,1fr)','Compact phone product rows must preserve a horizontal image/content composition.');
+requireText(css,'grid-template-columns:74px minmax(0,1fr)','320px-class product rows must preserve a horizontal image/content composition.');
 requireText(css,'.go-product-card-v2__title','Premium product title styling is missing.');
 requireText(css,'-webkit-line-clamp:2','Product titles must remain readable for two lines before controlled ellipsis.');
 requireText(css,'.go-product-card-v2__source','Product source styling must remain visible.');
 requireText(css,'.go-product-card-v2__signals','Product trust-signal styling must remain visible.');
 requireText(css,'.go-price-display','Canonical product price styling must remain visible.');
+requireText(css,'justify-content:flex-end','Product price must remain visually anchored at the end of the row.');
 requireText(css,'[data-tone="official"]','Official-store badge styling must remain restrained and distinct.');
 requireText(css,'object-fit:cover','Product imagery must remain ready for real photography without layout changes.');
-forbid(css,/\.go-product-card-v2__button\s*\{[^}]*grid-template-columns\s*:\s*1fr\s*;/s,'Primary mobile product cards must not collapse into an unstructured single-column card.');
+forbid(css,/\.go-product-grid-v2\s*\{[^}]*grid-template-columns\s*:\s*repeat\(/s,'Home products must not return to a multi-column card grid.');
+forbid(css,/\.go-product-card-v2__button\s*\{[^}]*grid-template-columns\s*:\s*1fr\s*;/s,'Primary mobile product rows must not collapse into an unstructured single-column card.');
 
 requireText(home,'<ProductCard','Managed Home products must render through the reusable Premium Mobile ProductCard.');
-requireText(product,'go-product-card-v2__title','Home cards must render the product title as the primary decision signal.');
-requireText(product,'go-product-card-v2__source','Home cards must render producer/location source context.');
-requireText(product,'go-product-card-v2__signals','Home cards must render bounded verified trust signals.');
-requireText(product,'<PriceDisplay','Home cards must render canonical price permanently.');
+requireText(product,'go-product-card-v2__title','Home rows must render the product title as the primary decision signal.');
+requireText(product,'go-product-card-v2__source','Home rows must render producer/location source context.');
+requireText(product,'go-product-card-v2__signals','Home rows must render bounded verified trust signals.');
+requireText(product,'<PriceDisplay','Home rows must render canonical price permanently.');
+requireText(product,'data-product-id={item.id}','Home rows must expose a stable product identity marker.');
+requireText(product,'data-product-reference={item.slug}','Home rows must expose a stable navigable product reference.');
 requireText(product,"official?<ProductBadge",'Official-store trust must remain backend-derived.');
-requireText(product,"official&&signal?<ProductBadge",'Cards must retain the explicit maximum-two trust-signal composition.');
-forbid(product,/\.map\([^)]*badge|badges\.map/,'Home cards must not map an unbounded badge collection into the primary surface.');
-forbid(product,/Sepete Ekle|Hemen Ön Sipariş Ver|ShoppingCart/,'Home discovery cards must not restore inline commerce controls.');
+requireText(product,"official&&signal?<ProductBadge",'Rows must retain the explicit maximum-two trust-signal composition.');
+forbid(product,/\.map\([^)]*badge|badges\.map/,'Home rows must not map an unbounded badge collection into the primary surface.');
+forbid(product,/Sepete Ekle|Hemen Ön Sipariş Ver|ShoppingCart/,'Home discovery rows must not restore inline commerce controls.');
 requireText(catalog,'compareAtPriceMinor?:number|null','Canonical catalog data must preserve a real compare-at price when supplied.');
 requireText(catalog,"compareAtPriceMinor:optionalSafeInteger(value.variant.compareAtPriceMinor,'Karşılaştırma fiyatı')",'Catalog validation must continue validating real compare-at price data.');
-requireText(product,'compareAtPrice:compareMinor!==null?compareMinor/100:null','Real compare-at data must remain available to the product card spoken label when present.');
-forbid(product,/<PriceDisplay[^>]*compareAtPrice/,'Primary Home cards must not pass compare-at pricing into the visible premium discovery surface.');
+requireText(product,'compareAtPrice:compareMinor!==null?compareMinor/100:null','Real compare-at data must remain available to the product row spoken label when present.');
+forbid(product,/<PriceDisplay[^>]*compareAtPrice/,'Primary Home rows must not pass compare-at pricing into the visible premium discovery surface.');
 forbid(price,/compareAtPriceMinor|line-through|<del\b/,'Primary Home PriceDisplay must remain a single current-price hierarchy rather than promotional strike-through framing.');
 requireText(price,'Intl.NumberFormat','Price rendering must remain locale/currency aware from minor units.');
 requireText(price,"normalized==='TRY'",'TRY price rendering must use the customer-facing TL notation path.');
@@ -53,4 +58,4 @@ requireText(image,'onError','Product imagery must keep a resilient error fallbac
 requirePattern(product,/sourceLabel\(item\)/,'Product source copy must remain data-derived rather than hardcoded.');
 
 if(failures.length){console.error('Golden Oremar premium Home product hierarchy audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar premium Home product hierarchy audit passed: each product keeps a stable horizontal mobile composition with image, two-line title, source, bounded real trust signals and one canonical current price while real compare-at data remains available to accessibility without promotional visual clutter.');
+console.log('Golden Oremar premium Home product hierarchy audit passed: each product owns one compact horizontal list row with real image, product identity, source, bounded trust signals and a canonical end-aligned price.');
