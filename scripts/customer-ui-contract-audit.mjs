@@ -55,6 +55,7 @@ expect(premiumCss.includes('.go-product-card__media'),'Premium product-card visu
 expect(densityCss.includes('.go-product-card--compact')&&densityCss.includes('@media(max-width:360px)'),'Compact card variant must remain available for screens that intentionally use it.');
 expect(dockCss.includes(':root[data-app-tab="product-detail"] nav[aria-label="Ana gezinme"]'),'Product detail must replace the global bottom tab bar.');
 expect(dockCss.includes('position: fixed')&&dockCss.includes('safe-area-inset-bottom'),'Product detail purchase actions must remain fixed and native safe-area aware.');
+expect(dockCss.includes('minmax(0,.82fr) minmax(0,1fr) minmax(0,1.16fr)'),'Product detail fixed dock must retain three visible action columns.');
 expect(compatibilityCss.includes('@supports not (color: color-mix'),'Premium surfaces must retain an older WebView/iOS 15 fallback.');
 
 for(const forbidden of ['HeroMetric','producerCount','originCount','label="Seçilmiş ürün"','label="Doğrulanmış üretici"','label="Üretim yöresi"'])expect(!home.includes(forbidden),`Home must not restore the metric-heavy hero marker: ${forbidden}`);
@@ -77,14 +78,19 @@ expect(home.indexOf('go-home-categories')<home.indexOf('experience.campaign'),'C
 expect(home.includes('experience.campaign?<CampaignCard'),'Campaign presentation must be gated by a real backend campaign result.');
 expect(categoryCard.includes('go-category-card')&&categoryCard.includes('PremiumImage'),'Managed categories must use the reusable photo-ready premium category card.');
 expect(!categoryCard.includes('Keşfet'),'Category cards must not repeat a redundant discovery label when the whole card is actionable.');
-expect(homeProductCard.includes('go-product-card-v2')&&homeProductCard.includes('PriceDisplay'),'Home products must use the Premium Mobile product card and canonical minor-unit price display.');
-expect(!/Sepete Ekle|Hemen Ön Sipariş Ver|quantity/.test(homeProductCard),'Primary Home product cards must remain discovery-focused rather than embedding purchase controls.');
+expect(homeProductCard.includes('go-product-card-v2')&&homeProductCard.includes('PriceDisplay'),'Home products must use the Premium Mobile product row and canonical minor-unit price display.');
+expect(homeProductCard.includes('data-product-id={item.id}')&&homeProductCard.includes('data-product-reference={item.slug}'),'Home product rows must retain stable product identity/reference markers.');
+expect(!/Sepete Ekle|Hemen Ön Sipariş Ver|quantity/.test(homeProductCard),'Primary Home product rows must remain discovery-focused rather than embedding purchase controls.');
 expect(homeProductCard.includes("storeKind==='official'")&&homeProductCard.includes('originVerified'),'Home trust signals must derive from real backend store/origin state.');
-expect(homeProductCard.includes("official?<ProductBadge")&&homeProductCard.includes("official&&signal?<ProductBadge"),'Home product cards must retain the explicit maximum-two trust signal composition.');
+expect(homeProductCard.includes("official?<ProductBadge")&&homeProductCard.includes("official&&signal?<ProductBadge"),'Home product rows must retain the explicit maximum-two trust signal composition.');
 expect(premiumImage.includes("loading={eager?'eager':'lazy'}")&&premiumImage.includes('onError'),'Home image primitive must retain lazy/eager loading and an error fallback.');
-expect(searchInput.includes('Mic')&&searchInput.includes('MicOff')&&searchInput.includes('onVoice')&&searchInput.includes('aria-pressed={listening}'),'Voice search must remain present, visibly stateful and accessibly wired.');
+expect(searchInput.includes('Mic')&&!searchInput.includes('MicOff')&&searchInput.includes('onVoice')&&searchInput.includes('aria-pressed={listening}'),'Voice search must remain present as one microphone control without a redundant idle-off icon.');
+expect(searchInput.includes('aria-label="Ürün, üretici veya köy ara"')&&!searchInput.includes('role="search"'),'Search must expose one searchbox accessible name without duplicate search-landmark narration.');
+expect(!searchInput.includes("'Mikrofon kapalı'")&&!searchInput.includes('Mikrofon kapalı, sesli aramayı başlat'),'Voice search must not announce a fake idle microphone-off status.');
 for(const marker of ['--go-space-1:4px','--go-space-2:8px','--go-space-3:12px','--go-space-4:16px','--go-space-5:20px','--go-space-6:24px','--go-space-7:32px','--go-space-8:40px','--go-space-9:48px','--go-mobile-pad:20px'])expect(mobileCss.includes(marker),`Premium Mobile design token is missing: ${marker}`);
 expect(mobileCss.includes('scroll-snap-type:x mandatory')&&mobileCss.includes('.go-category-rail'),'Category discovery must retain horizontal snap and a partially visible next item.');
+expect(mobileCss.includes('.go-product-grid-v2{display:grid;width:100%;max-width:860px;grid-template-columns:1fr;gap:0'),'Home product presentation must remain a single compact list.');
+expect(!mobileCss.includes('grid-template-columns:repeat(2,minmax(0,1fr))')&&!mobileCss.includes('grid-template-columns:repeat(3,minmax(0,1fr))'),'Home products must not return to multi-column cards.');
 expect(mobileCss.includes('-webkit-line-clamp:2'),'Product names must support two readable lines before controlled ellipsis.');
 expect(mobileCss.includes('object-fit:cover'),'Image surfaces must remain ready for real product/category photography.');
 expect(mobileCss.includes('env(safe-area-inset-bottom'),'Bottom navigation must remain native safe-area aware.');
@@ -112,6 +118,9 @@ expect(card.includes('text-brand-on-green')&&card.includes('text-brand-on-gold')
 
 for(const marker of ['aria-label="Geri"','Favorilere ekle','Ürünü paylaş','customer-disclosure','Ürün Hikâyesi','Gıda Güvenliği & Kullanım','Müşteri Yorumları'])expect(detail.includes(marker),`Product detail is missing customer navigation/disclosure marker: ${marker}`);
 expect(detail.includes('<details className="customer-disclosure">'),'Long product information must remain collapsed by default.');
+const giftAction=detail.indexOf('product-detail-commerce-gift'),cartAction=detail.indexOf('product-detail-commerce-cart'),buyAction=detail.indexOf('product-detail-commerce-buy');
+expect(giftAction>=0&&cartAction>giftAction&&buyAction>cartAction,'Product-detail fixed purchase actions must stay ordered Gift, Cart, Buy.');
+expect(detail.includes('<span>Hediye Et</span>')&&detail.includes('<span>Hemen Satın Al</span>'),'Product-detail fixed dock must expose concise customer action labels.');
 expect(recommendations.includes('useLiveHomeCatalog'),'Product recommendations must come from the live catalog.');
 expect(recommendations.includes('item.categorySlug===current.categorySlug'),'Product recommendations must prioritize the current live category.');
 expect(recommendations.includes('item.id!==current.id'),'Product recommendations must exclude the product already being viewed.');
