@@ -30,6 +30,7 @@ export const CUSTOMER_COPY={
   allProductsSubtitle:'Katalogdaki tüm ürünlere birlikte göz atın.',
   loadingCategories:'Kategoriler hazırlanıyor…',
   loadingProducts:'Ürünler hazırlanıyor…',
+  productSummary:(shown:number,total:number|null,loading:boolean)=>loading?'Ürünler hazırlanıyor…':total===null?`${shown} ürün listelendi`:`${shown} / ${total} ürün listelendi`,
   emptyTitle:'Bu seçimde henüz bir ürün görünmüyor',
   emptyBody:'Filtreyi değiştirerek ya da başka bir kategoriye göz atarak devam edebilirsiniz.',
   retry:'Tekrar dene',
