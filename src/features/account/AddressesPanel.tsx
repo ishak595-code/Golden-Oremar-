@@ -42,7 +42,7 @@ function validateAddress(address: Address) {
   if (label.length < 1 || label.length > 60) return 'Adres etiketi 1 ile 60 karakter arasında olmalıdır.';
   if (recipient.length < 2 || recipient.length > 120) return 'Alıcı adı 2 ile 120 karakter arasında olmalıdır.';
   if (!/^[+()0-9 .\-]{10,40}$/.test(phone) || phoneDigits.length < 10 || phoneDigits.length > 15) return 'Teslimat telefonu 10 ile 15 rakam içermelidir.';
-  if (!/^[A-Z]{2}$/.test(country)) return 'Ülke kodu iki harfli ISO kodu olmalıdır.';
+  if (!/^[A-Z]{2}$/.test(country)) return 'Ülke kodunu iki harfle girin. Örneğin Türkiye için TR.';
   if (province.length < 2 || province.length > 120) return 'İl veya bölge bilgisi 2 ile 120 karakter arasında olmalıdır.';
   if (district.length < 2 || district.length > 120) return 'İlçe veya şehir bilgisi 2 ile 120 karakter arasında olmalıdır.';
   if (neighborhood.length > 160) return 'Mahalle veya köy bilgisi en fazla 160 karakter olabilir.';
@@ -115,8 +115,8 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
       setFormError('');
       await onChanged();
       setStatus(wasEditing ? 'Adres güncellendi.' : 'Yeni adres kaydedildi.');
-    } catch (err: unknown) {
-      setFormError(err instanceof Error && err.message ? err.message : 'Adres kaydedilemedi.');
+    } catch {
+      setFormError('Adres şu anda kaydedilemedi. Bilgilerinizi kontrol edip yeniden deneyin.');
     } finally {
       setSaving(false);
     }
@@ -132,8 +132,8 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
       setDeleteCandidate(null);
       await onChanged();
       setStatus('Adres silindi.');
-    } catch (err: unknown) {
-      setError(err instanceof Error && err.message ? err.message : 'Adres silinemedi.');
+    } catch {
+      setError('Adres şu anda silinemedi. Lütfen yeniden deneyin.');
     } finally {
       setDeleteBusy(false);
     }
@@ -143,7 +143,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
     <Panel title="Adreslerim" description="Türkiye veya yurt dışındaki teslimat adreslerinizi ekleyin ve varsayılan adresinizi seçin.">
       {error ? <ErrorState message={error} /> : null}
       {status ? <div role="status" aria-live="polite" className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{status}</div> : null}
-      {!addressContractValid ? <ErrorState message="Kayıtlı adreslerden en az birinin kimliği doğrulanamadı. Adres düzenleme ve silme işlemleri güvenlik amacıyla kapatıldı." /> : null}
+      {!addressContractValid ? <ErrorState message="Kayıtlı adreslerden biri şu anda kullanılamıyor. Düzenleme ve silme işlemleri güvenlik amacıyla geçici olarak kapatıldı." /> : null}
       <button type="button" onClick={startCreate} className="mb-4 min-h-11 rounded-xl bg-brand-green px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
         Yeni adres ekle
       </button>
@@ -181,7 +181,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 id="address-dialog-title" className="text-lg font-bold">{editing.id ? 'Adresi düzenle' : 'Yeni adres'}</h3>
-                <p id="address-dialog-description" className="mt-1 text-sm text-gray-500">Teslimat için gerekli alanları eksiksiz girin. Ülke kodunu TR, CH, DE gibi iki harfli ISO koduyla yazın.</p>
+                <p id="address-dialog-description" className="mt-1 text-sm text-gray-500">Teslimat için gerekli alanları eksiksiz girin. Ülke kodunu TR, CH, DE gibi iki harfle yazın.</p>
               </div>
               <button type="button" disabled={saving} onClick={closeEditor} aria-label="Adres penceresini kapat" className="grid min-h-11 min-w-11 place-items-center rounded-xl border disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
                 <X aria-hidden="true" className="h-5 w-5" />
