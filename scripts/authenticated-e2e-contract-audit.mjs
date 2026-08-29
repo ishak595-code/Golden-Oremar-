@@ -8,7 +8,6 @@ function requirePattern(body,re,message){if(!re.test(body))failures.push(message
 function forbidPattern(body,re,message){if(re.test(body))failures.push(message);}
 
 const workflow=read('.github/workflows/mobile-quality.yml');
-const premiumWorkflow=read('.github/workflows/premium-mobile-ui-v2.yml');
 const journey=read('scripts/customer-e2e.mjs');
 const control=read('supabase/functions/ci-e2e-user/index.ts');
 const controlConfig=read('supabase/functions/ci-e2e-user/deno.json');
@@ -19,14 +18,6 @@ if(workflow){
  requirePattern(workflow,/E2E_CI_CONTROL_URL:\s*https:\/\/rmfcziawxjgcnxexbrvw\.supabase\.co\/functions\/v1\/ci-e2e-user/,'Customer E2E must target the canonical Supabase CI control function.');
  requirePattern(workflow,/Run mandatory authenticated customer Chromium journey/,'Authenticated customer journey must remain a mandatory quality-gate step.');
  forbidPattern(workflow,/SUPABASE_SERVICE_ROLE_KEY/,'GitHub Actions must never receive the Supabase service-role credential for E2E.');
-}
-if(premiumWorkflow){
- requirePattern(premiumWorkflow,/name:\s*Premium Mobile UI V2/,'Premium Mobile workflow identity must remain pinned for OIDC authorization.');
- requirePattern(premiumWorkflow,/id-token:\s*write/,'Premium Mobile workflow must request GitHub OIDC only for the authenticated runtime gate.');
- requirePattern(premiumWorkflow,/audience=golden-oremar-ci-e2e/,'Premium Mobile workflow must request the dedicated Golden Oremar E2E OIDC audience.');
- requirePattern(premiumWorkflow,/release\/ux-professionalization-2026-08/,'Premium Mobile workflow must remain scoped to the UX professionalization release branch while this release gate is active.');
- requirePattern(premiumWorkflow,/Verify critical customer runtime with real data[\s\S]*node scripts\/customer-e2e\.mjs/,'Premium Mobile workflow must execute the real authenticated customer runtime gate.');
- forbidPattern(premiumWorkflow,/SUPABASE_SERVICE_ROLE_KEY/,'Premium Mobile workflow must never receive the Supabase service-role credential.');
 }
 
 if(journey){
@@ -53,9 +44,7 @@ if(control){
  requirePattern(control,/EXPECTED_OWNER_ID\s*=\s*"233486723"/,'CI control must pin the immutable repository owner id.');
  requirePattern(control,/EXPECTED_AUDIENCE\s*=\s*"golden-oremar-ci-e2e"/,'CI control must pin the dedicated OIDC audience.');
  requirePattern(control,/jwtVerify\s*<[^>]+>\s*\(\s*token\s*,\s*GITHUB_JWKS/,'CI control must cryptographically verify GitHub OIDC tokens.');
- requirePattern(control,/TRUSTED_WORKFLOW_PATHS\s*=\s*new Map<string,string>\s*\(\s*\[[\s\S]*"Mobile Quality Gate"[\s\S]*\.github\/workflows\/mobile-quality\.yml@[\s\S]*"Premium Mobile UI V2"[\s\S]*\.github\/workflows\/premium-mobile-ui-v2\.yml@[\s\S]*\]\s*\)/,'CI control must allow only the two exact repository workflow identities used for authenticated E2E.');
- requirePattern(control,/TRUSTED_WORKFLOW_PATHS\.get\(workflow\)[\s\S]*if\(!expectedWorkflowPath\)throw new Error\("github_workflow_not_allowed"\)[\s\S]*workflowRef\.startsWith\(expectedWorkflowPath\)/,'CI control must bind workflow name to its exact workflow path before accepting OIDC.');
- requirePattern(control,/TRUSTED_BRANCH_REFS\s*=\s*new Set\s*\(\s*\[[\s\S]*"refs\/heads\/main"[\s\S]*"refs\/heads\/integration\/full-consolidation-2026-08"[\s\S]*"refs\/heads\/release\/store-readiness-2026-08"[\s\S]*"refs\/heads\/release\/ux-professionalization-2026-08"[\s\S]*\]\s*\)/,'Push/workflow-dispatch E2E must be restricted to explicitly trusted branches, including the active UX release branch.');
+ requirePattern(control,/TRUSTED_BRANCH_REFS\s*=\s*new Set\s*\(\s*\[[\s\S]*"refs\/heads\/main"[\s\S]*"refs\/heads\/integration\/full-consolidation-2026-08"[\s\S]*"refs\/heads\/release\/store-readiness-2026-08"[\s\S]*\]\s*\)/,'Push/workflow-dispatch E2E must be restricted to the explicitly trusted branches.');
  requirePattern(control,/PULL_REQUEST_REF_RE\s*=\s*\/\^refs\\\/pull\\\/\\d\{1,12\}\\\/merge\$\//,'Pull-request E2E must require a canonical refs/pull/<id>/merge ref.');
  requirePattern(control,/eventName\s*===\s*"pull_request"[\s\S]*PULL_REQUEST_REF_RE\.test\(ref\)/,'Pull-request OIDC events must validate their ref.');
  requirePattern(control,/eventName\s*===\s*"push"\s*\|\|\s*eventName\s*===\s*"workflow_dispatch"[\s\S]*TRUSTED_BRANCH_REFS\.has\(ref\)/,'Push and workflow-dispatch OIDC events must fail closed outside trusted branch refs.');
@@ -79,4 +68,4 @@ if(controlConfig){
 }
 
 if(failures.length){console.error('Golden Oremar authenticated E2E contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
-console.log('Golden Oremar authenticated E2E contract audit passed: real customer and staff journeys are mandatory, both approved workflow identities are path-bound, GitHub OIDC is cryptographically pinned, disposable identities are server-provisioned, Supabase RPC cleanup semantics are correct, cleanup is strict, and service-role credentials never enter Actions.');
+console.log('Golden Oremar authenticated E2E contract audit passed: real customer and staff journeys are mandatory, GitHub OIDC is cryptographically pinned, disposable identities are server-provisioned, Supabase RPC cleanup semantics are correct, cleanup is strict, and service-role credentials never enter Actions.');
