@@ -12,6 +12,7 @@ const category=read('src/features/catalog/CategoryDirectoryScreen.tsx');
 const searchResults=read('src/features/catalog/CatalogSearchResults.tsx');
 const favorites=read('src/features/account/FavoritesPanel.tsx');
 const cart=read('src/features/cart/CartCheckoutFlow.tsx');
+const premiumCss=read('src/features/customer-experience/premiumMobileV2.css');
 const customerE2e=read('scripts/customer-e2e.mjs');
 
 const titleIndex=detail.indexOf('<h1');
@@ -57,6 +58,29 @@ for(const [needle,message] of [
 ])forbid(cart,needle,message);
 requireMatch(cart.includes('space-y-6')&&cart.includes('sm:p-6'),'Checkout density reduction contract is missing.');
 requireMatch(cart.includes('Aynı ödeme işlemi ikinci kez tahsil edilmez.'),'Checkout duplicate-charge safety copy must remain customer-readable.');
+
+requireMatch(premiumCss.includes('.go-home-content{width:min(100%,1280px);margin:0 auto;padding:var(--go-space-5) var(--go-mobile-pad) var(--go-space-9);}'),'Home content needs the calmer premium outer rhythm.');
+requireMatch(premiumCss.includes('.go-home-section{margin-top:var(--go-space-8);}'),'Home sections need the calmer 40px vertical rhythm.');
+requireMatch(premiumCss.includes('.go-product-grid-v2{display:grid;grid-template-columns:1fr;gap:var(--go-space-4);}'),'Home product grid needs 16px mobile breathing room.');
+requireMatch(premiumCss.includes('min-height:148px')&&premiumCss.includes('padding:var(--go-space-4);text-align:left'),'Home product cards need the expanded premium inner spacing.');
+requireMatch(premiumCss.includes('.go-category-card{display:flex;width:100%;min-height:172px')&&premiumCss.includes('.go-category-card__copy{')&&premiumCss.includes('padding:var(--go-space-4);'),'Home category cards need the expanded premium spacing contract.');
+requireMatch(premiumCss.includes('font:500 14px/1.65 var(--font-sans)'),'Home section support copy needs relaxed readable line height.');
+
+function hexToken(source,name){const match=source.match(new RegExp(`--${name}:(#[0-9a-fA-F]{6})`));return match?.[1]?.toUpperCase()||'';}
+function channel(value){const normalized=value/255;return normalized<=.04045?normalized/12.92:((normalized+.055)/1.055)**2.4;}
+function luminance(hex){const value=hex.replace('#','');const r=channel(parseInt(value.slice(0,2),16)),g=channel(parseInt(value.slice(2,4),16)),b=channel(parseInt(value.slice(4,6),16));return.2126*r+.7152*g+.0722*b;}
+function contrast(a,b){const x=luminance(a),y=luminance(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);}
+const homePalette={background:hexToken(premiumCss,'go-forest-950'),card:hexToken(premiumCss,'go-forest-850'),text:hexToken(premiumCss,'go-ivory'),muted:hexToken(premiumCss,'go-muted'),muted2:hexToken(premiumCss,'go-muted-2'),gold:hexToken(premiumCss,'go-gold'),goldStrong:hexToken(premiumCss,'go-gold-strong')};
+for(const [name,value]of Object.entries(homePalette))requireMatch(/^#[0-9A-F]{6}$/.test(value),`Premium Home palette token is invalid: ${name}.`);
+if(Object.values(homePalette).every(Boolean)){
+ requireMatch(contrast(homePalette.text,homePalette.background)>=4.5,'Premium Home primary text contrast is below WCAG AA.');
+ requireMatch(contrast(homePalette.muted,homePalette.background)>=4.5,'Premium Home muted text contrast is below WCAG AA.');
+ requireMatch(contrast(homePalette.muted2,homePalette.background)>=4.5,'Premium Home secondary text contrast is below WCAG AA.');
+ requireMatch(contrast(homePalette.gold,homePalette.background)>=4.5,'Premium Home gold accent contrast is below WCAG AA.');
+ requireMatch(contrast(homePalette.goldStrong,homePalette.background)>=4.5,'Premium Home strong gold accent contrast is below WCAG AA.');
+ requireMatch(contrast(homePalette.text,homePalette.card)>=4.5,'Premium Home card text contrast is below WCAG AA.');
+ requireMatch(contrast(homePalette.muted,homePalette.card)>=4.5,'Premium Home card muted contrast is below WCAG AA.');
+}
 
 const customerRoots=[
  'src/App.tsx','src/ErrorBoundary.tsx','src/pages',
@@ -104,4 +128,4 @@ if(failures.length){
  for(const failure of failures)console.error(`- ${failure}`);
  process.exit(1);
 }
-console.log(`Customer professionalization contract audit passed across ${customerFiles.length} customer TSX surfaces.`);
+console.log(`Customer professionalization contract audit passed across ${customerFiles.length} customer TSX surfaces with Premium Home WCAG AA contrast and spacing contracts.`);
