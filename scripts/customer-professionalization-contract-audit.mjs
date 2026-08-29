@@ -89,6 +89,12 @@ const customerRoots=[
  'src/features/gifts','src/features/health','src/features/home','src/features/navigation','src/features/payments',
  'src/features/resilience','src/features/reviews','src/features/search','src/features/support',
 ];
+const nonCustomerSurfaces=new Set([
+ 'src/features/account/SellerPanel.tsx',
+ 'src/features/account/ProducerProfilePanel.tsx',
+ 'src/features/auth/StaffMfaGate.tsx',
+ 'src/features/content/ProductHealthEditorForm.tsx',
+]);
 function collectTsx(target){
  const absolute=path.join(root,target);
  if(!fs.existsSync(absolute))return[];
@@ -97,6 +103,11 @@ function collectTsx(target){
  return fs.readdirSync(absolute,{withFileTypes:true}).flatMap(entry=>collectTsx(path.join(target,entry.name)));
 }
 function stripComments(source){return source.replace(/\/\*[\s\S]*?\*\//g,'').replace(/(^|[^:])\/\/.*$/gm,'$1');}
+function textLiterals(source){
+ const clean=stripComments(source),values=[];
+ for(const pattern of[/'((?:\\.|[^'\\])*)'/gs,/"((?:\\.|[^"\\])*)"/gs,/`((?:\\.|[^`\\])*)`/gs])for(const match of clean.matchAll(pattern))values.push(match[1]);
+ return values.join('\n');
+}
 const technicalCopyPatterns=[
  [/\bbackend\b/iu,'backend'],
  [/veritaban/iu,'veritabanı'],
@@ -108,13 +119,18 @@ const technicalCopyPatterns=[
  [/\bapi\s+(?:hatas|yanıt|cevap|istek)/iu,'API iç dili'],
  [/\brpc\b/iu,'RPC'],
  [/\bsistem\s+hatas/iu,'sistem hatası'],
+ [/\bISO\b/u,'ISO standardı'],
+ [/metadata/iu,'metadata'],
+ [/merchant\s+yapılandır/iu,'merchant yapılandırması'],
+ [/FCM\/APNs/iu,'FCM/APNs altyapı dili'],
+ [/\bprivate\s+(?:alan|depolama)/iu,'private depolama dili'],
 ];
-const customerFiles=[...new Set(customerRoots.flatMap(collectTsx))].sort();
+const customerFiles=[...new Set(customerRoots.flatMap(collectTsx))].filter(file=>!nonCustomerSurfaces.has(file)).sort();
 requireMatch(customerFiles.length>0,'Customer-facing TSX surface scan found no files.');
 for(const file of customerFiles){
- const source=stripComments(read(file));
+ const literals=textLiterals(read(file));
  for(const [pattern,label] of technicalCopyPatterns){
-  if(pattern.test(source))failures.push(`${file} customer surface still contains technical wording: ${label}.`);
+  if(pattern.test(literals))failures.push(`${file} customer copy still contains technical wording: ${label}.`);
  }
 }
 
