@@ -1,4 +1,4 @@
-import React,{useId}from'react';
+import{useId}from'react';
 import{BadgeCheck,ChevronRight,MapPin,Star}from'lucide-react';
 import type{CatalogItem}from'../../catalog/api';
 import{productHandlingLabel}from'../../catalog/productHandlingApi';
