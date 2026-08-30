@@ -24,6 +24,7 @@ const audits=[
  'dependency-update-governance-audit.mjs',
  'dynamic-data-contract-audit.mjs',
  'home-commerce-migration-tail-contract-audit.mjs',
+ 'home-data-contract-audit.mjs',
  'message-commerce-contract-audit.mjs',
  'migration-history-contract-audit.mjs',
  'mobile-platform-contract-audit.mjs',
