@@ -33,10 +33,13 @@ forbidText(app,'voiceDialogRef','Voice search must not restore a second full-scr
 forbidText(app,'Sesli arama</h2>','Voice search full-screen modal must stay removed.');
 requireText(app,'processVoiceText','Recognized voice text must enter the canonical search adapter.');
 requirePattern(app,/processVoiceText[\s\S]*openSearch\(value\)/,'Voice transcript must use the same openSearch route as typed search.');
-requireText(searchInput,'aria-pressed={listening}','Search input microphone must expose listening state accessibly.');
-requireText(searchInput,"listening?'Sesli arama dinleniyor'",'Search input microphone must announce the active listening state.');
+requireText(searchInput,'aria-label="Sesli mikrofon"','Search input microphone must keep one stable accessible name.');
+forbidText(searchInput,'aria-pressed=','Search input microphone must not expose toggle off/on semantics that TalkBack announces as kapalı/açık.');
+requireText(searchInput,"data-listening={listening?'true':'false'}",'Search input microphone must expose listening state for visual styling.');
+requireText(searchInput,'Sesli arama dinleniyor.','Search input microphone must announce active listening through its live region.');
 requireText(searchInput,'role="status" aria-live="polite"','Search input microphone must expose listening and processing feedback to assistive technology.');
-requireText(premiumMobileCss,'.go-search-bar__voice[aria-pressed="true"]','Search input microphone must visibly expose active listening state without relying on novelty pulse utilities.');
+requireText(premiumMobileCss,'.go-search-bar__voice[data-listening="true"]','Search input microphone must visibly expose active listening state without toggle semantics.');
+forbidText(premiumMobileCss,'.go-search-bar__voice[aria-pressed="true"]','Search input microphone styling must not depend on aria-pressed.');
 requireText(premiumMobileCss,'.go-search-bar[data-processing="true"]','Search input microphone must visibly expose processing state.');
 
 for(const field of ['mediaReady','brandFallbackAllowed'])requireText(readinessApi,field,`Readiness frontend contract is missing ${field}.`);
