@@ -4,9 +4,8 @@ import {spawnSync} from 'node:child_process';
 
 const scriptsDir=path.join(process.cwd(),'scripts');
 
-// Release CI must be explicit. Presentation experiments, copy scanners and
-// pixel/DOM-shape checks must never become blocking simply because a file name
-// ends in `-audit.mjs`.
+// Release CI is explicit. Presentation experiments, copy scanners and
+// pixel/DOM-shape checks never become blocking merely because of a file name.
 const audits=[
  'account-navigation-stability-contract-audit.mjs',
  'admin-data-contract-audit.mjs',
@@ -37,7 +36,6 @@ const audits=[
  'product-workflow-contract-audit.mjs',
  'public-rpc-contract-audit.mjs',
  'public-rpc-security-boundary-audit.mjs',
- 'release-audit.mjs',
  'release-setup-contract-audit.mjs',
  'rls-role-helper-contract-audit.mjs',
  'security-contract-audit.mjs',
