@@ -9,14 +9,14 @@ const categoryDirectory=read('src/features/catalog/CategoryDirectoryScreen.tsx')
 const searchOverlay=read('src/features/catalog/CatalogSearchOverlay.tsx');
 const searchResults=read('src/features/catalog/CatalogSearchResults.tsx');
 const productCard=read('src/features/home/components/ProductCard.tsx');
+const productCss=read('src/features/home/components/ProductCard.css');
 const price=read('src/features/home/components/PriceDisplay.tsx');
 const catalog=read('src/features/catalog/api.ts');
-const css=read('src/features/customer-experience/premiumMobileV2.css');
 const narrativeCss=read('src/features/customer-experience/storefrontNarrativePremium.css');
 const main=read('src/main.tsx');
 const recs=read('src/features/catalog/ProductRecommendationsRail.tsx');
 const connections=read('src/features/catalog/ProductDetailConnections.tsx');
-const removedLayers=['referenceHomeExact.css','homeMerchandisingUpgrade.css','homeOneRowPremium.css'];
+const removedLayers=['referenceHomeExact.css','homeMerchandisingUpgrade.css','homeOneRowPremium.css','homeProductRowLock.css'];
 
 const forbiddenMarketingClaims=['En Çok Satanlar','çok satan','en çok satan','müşterilerin favorisi','en sevilen','özel fırsat','Yazın Son Hasadı','Sonbaharın Kiler Seçkisi','Kış Sofrasının Seçkisi'];
 const checks=[
@@ -26,16 +26,18 @@ const checks=[
  ['seasonal language is scoped to the verified seasonal source kind',customerCopy.includes("seasonal:{eyebrow:'Mevsiminde sunulur'")&&home.includes('section.source.kind')],
  ['Home categories remain server-owned and managed',home.includes('experience.categoryOrder.flatMap')&&home.includes('category.imagePath||config?.image||null')],
  ['false best-seller or fabricated seasonal campaign wording is absent',!home.includes('En Çok Satanlar')&&!home.includes("title:'Yazın Son Hasadı'")&&!home.includes("title:'Sonbaharın Kiler Seçkisi'")&&!home.includes("title:'Kış Sofrasının Seçkisi'")],
- ['Home products render through the single Premium Mobile V2 card primitive',home.includes('<ProductCard')&&productCard.includes('className="go-product-card-v2"')],
- ['Home cards expose product, source, trust and price hierarchy',productCard.includes('go-product-card-v2__title')&&productCard.includes('go-product-card-v2__source')&&productCard.includes('go-product-card-v2__signals')&&productCard.includes('<PriceDisplay')],
+ ['Home products render through the single marketplace ProductCard primitive',home.includes('<ProductCard')&&productCard.includes('className="go-product-card-v2"')&&productCard.includes("import'./ProductCard.css';")],
+ ['Home rows expose product, optional social proof, price, source and trust hierarchy',productCard.includes('go-product-card-v2__title')&&productCard.includes('go-product-card-v2__rating')&&productCard.includes('go-product-card-v2__price')&&productCard.includes('go-product-card-v2__source')&&productCard.includes('go-product-card-v2__trust')&&productCard.includes('<PriceDisplay')],
+ ['social proof is rendered only from real catalog aggregates',productCard.includes('item.reviewCount<1')&&productCard.includes('item.averageRating.toLocaleString')&&catalog.includes('averageRating:number;reviewCount:number')],
  ['trust signals are derived from real catalog fields only',productCard.includes('item.producer.originVerified')&&productCard.includes('item.handlingProfile.requiresColdChain')&&productCard.includes("item.stockMode==='preorder'")&&productCard.includes("item.stockMode==='seasonal'")],
  ['official-store status remains backend-derived',productCard.includes("item.producer.storeKind==='official'")],
- ['Home cards render at most one strongest visible trust signal',productCard.includes('const visualSignal=signal??')&&productCard.includes('<ProductBadge tone={visualSignal.tone} label={visualSignal.label}/>')&&!productCard.includes('official&&signal?<ProductBadge')],
- ['product titles remain a controlled two-line hierarchy',css.includes('.go-product-card-v2__title')&&css.includes('-webkit-line-clamp:2')],
- ['product cards remain premium and restrained without decorative shadow/glow dependence',css.includes('.go-product-card-v2__button')&&css.includes('box-shadow:none')],
- ['compare-at data remains canonical and accessibility-only on primary Home cards',catalog.includes('compareAtPriceMinor?:number|null')&&catalog.includes('optionalSafeInteger(value.variant.compareAtPriceMinor')&&productCard.includes('compareAtPriceMinor')&&productCard.includes('buildProductCardAccessibilityLabel')&&productCard.includes('compareAtPrice:compareMinor!==null?compareMinor/100:null')&&!productCard.includes('line-through')&&!price.includes('compareAtPriceMinor')&&!price.includes('discountPercent')&&!price.includes('% indirim')],
- ['superseded Home CSS layers remain absent from the entrypoint',removedLayers.every(name=>!main.includes(name))],
- ['narrative CSS cannot own Premium V2 product geometry',!narrativeCss.includes('.go-product-card-v2__button')&&!narrativeCss.includes('.go-product-grid-v2')],
+ ['Home rows render one strongest visible trust signal without promotional pill UI',productCard.includes('const visualSignal=signal??')&&productCard.includes('go-product-card-v2__trust')&&!productCard.includes('ProductBadge')&&!productCard.includes('official&&signal?<ProductBadge')],
+ ['product titles remain a controlled two-line hierarchy',productCss.includes('.go-product-card-v2__title')&&productCss.includes('-webkit-line-clamp:2')],
+ ['product rows remain premium and restrained without decorative shadow/glow dependence',productCss.includes('.go-product-card-v2__button[data-product-link="true"]')&&productCss.includes('box-shadow:none')],
+ ['product rows remain a single-column marketplace list',productCss.includes('.go-product-grid-v2')&&productCss.includes('grid-template-columns:minmax(0,1fr)')&&!productCss.includes('grid-template-columns:repeat(2')&&!productCss.includes('grid-template-columns:repeat(3')],
+ ['compare-at data remains canonical and accessibility-only on primary Home rows',catalog.includes('compareAtPriceMinor?:number|null')&&catalog.includes('optionalSafeInteger(value.variant.compareAtPriceMinor')&&productCard.includes('compareAtPriceMinor')&&productCard.includes('buildProductCardAccessibilityLabel')&&productCard.includes('compareAtPrice:compareMinor!==null?compareMinor/100:null')&&!productCard.includes('line-through')&&!price.includes('compareAtPriceMinor')&&!price.includes('discountPercent')&&!price.includes('% indirim')],
+ ['superseded Home CSS layers remain absent from the entrypoint and component directory',removedLayers.every(name=>!main.includes(name)&&!fs.existsSync(path.join(root,'src/features/home/components',name)))],
+ ['narrative CSS cannot own marketplace product geometry',!narrativeCss.includes('.go-product-card-v2__button')&&!narrativeCss.includes('.go-product-grid-v2')],
  ['product detail retains category, store and origin navigation',connections.includes('product.categorySlug')&&connections.includes('buildProducerUrl')&&connections.includes('buildSearchUrl({query:origin})')],
  ['recommendations retain same-category and same-store context',recs.includes('Aynı kategoriden')&&recs.includes('Aynı mağazadan')],
  ['connected discovery components remain mounted',main.includes('<ProductDetailConnections />')&&main.includes('<ProductRecommendationsRail />')],
