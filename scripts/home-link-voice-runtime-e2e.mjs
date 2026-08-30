@@ -17,13 +17,7 @@ try{
  const voice=page.getByRole('button',{name:'Sesli mikrofon',exact:true});
  if(await voice.count()!==1)throw new Error(`VOICE_ACCESSIBLE_NAME_COUNT:${await voice.count()}`);
  await voice.waitFor({state:'visible',timeout:15000});
- const voiceState=await voice.evaluate(element=>({
-  tag:element.tagName,
-  label:element.getAttribute('aria-label'),
-  pressed:element.getAttribute('aria-pressed'),
-  listening:element.getAttribute('data-listening'),
-  busy:element.getAttribute('aria-busy'),
- }));
+ const voiceState=await voice.evaluate(element=>({tag:element.tagName,label:element.getAttribute('aria-label'),pressed:element.getAttribute('aria-pressed'),listening:element.getAttribute('data-listening'),busy:element.getAttribute('aria-busy')}));
  if(voiceState.pressed!==null)throw new Error(`VOICE_TOGGLE_STATE_LEAK:${JSON.stringify(voiceState)}`);
  if(voiceState.label!=='Sesli mikrofon')throw new Error(`VOICE_LABEL_REGRESSION:${voiceState.label}`);
  if(await page.getByText(/Mikrofon kapalı/i).count()!==0)throw new Error('VOICE_OFF_COPY_VISIBLE');
@@ -36,26 +30,26 @@ try{
   const media=element.querySelector('.go-product-card-v2__media');
   const body=element.querySelector('.go-product-card-v2__body');
   const title=element.querySelector('.go-product-card-v2__title');
-  const trailing=element.querySelector('.go-product-card-v2__trailing');
+  const rating=element.querySelector('.go-product-card-v2__rating');
+  const price=element.querySelector('.go-product-card-v2__price strong');
+  const meta=element.querySelector('.go-product-card-v2__meta');
+  const chevron=element.querySelector('.go-product-card-v2__chevron');
   const mediaRect=media?.getBoundingClientRect();
   const bodyRect=body?.getBoundingClientRect();
-  const trailingRect=trailing?.getBoundingClientRect();
+  const chevronRect=chevron?.getBoundingClientRect();
   const style=getComputedStyle(element);
   const titleStyle=title?getComputedStyle(title):null;
   return{
-   tag:element.tagName,
-   href:element.getAttribute('href')||'',
+   tag:element.tagName,href:element.getAttribute('href')||'',
    left:rect.left,right:rect.right,top:rect.top,bottom:rect.bottom,width:rect.width,height:rect.height,
    parentLeft:parent?.left??null,parentRight:parent?.right??null,parentTop:parent?.top??null,parentBottom:parent?.bottom??null,
    display:style.display,gridTemplateColumns:style.gridTemplateColumns,
-   mediaInsideLink:Boolean(media&&element.contains(media)),
-   mediaLeft:mediaRect?.left??null,mediaRight:mediaRect?.right??null,mediaTop:mediaRect?.top??null,mediaBottom:mediaRect?.bottom??null,
-   mediaWidth:mediaRect?.width??null,mediaHeight:mediaRect?.height??null,
-   bodyLeft:bodyRect?.left??null,bodyRight:bodyRect?.right??null,
-   trailingLeft:trailingRect?.left??null,trailingRight:trailingRect?.right??null,
+   mediaInsideLink:Boolean(media&&element.contains(media)),mediaLeft:mediaRect?.left??null,mediaRight:mediaRect?.right??null,mediaTop:mediaRect?.top??null,mediaBottom:mediaRect?.bottom??null,mediaWidth:mediaRect?.width??null,mediaHeight:mediaRect?.height??null,
+   bodyLeft:bodyRect?.left??null,bodyRight:bodyRect?.right??null,chevronLeft:chevronRect?.left??null,chevronRight:chevronRect?.right??null,
    titleFontSize:titleStyle?Number.parseFloat(titleStyle.fontSize):null,
+   ratingText:(rating?.textContent||'').trim(),priceText:(price?.textContent||'').trim(),metaText:(meta?.textContent||'').trim(),
    badgeCount:element.querySelectorAll('.go-product-badge').length,
-   priceText:(element.querySelector('.go-product-card-v2__trailing .go-price-display strong')?.textContent||'').trim(),
+   oldTrailingCount:element.querySelectorAll('.go-product-card-v2__trailing').length,
    nestedInteractiveCount:element.querySelectorAll('a,button,input,select,textarea').length,
   };
  });
@@ -63,15 +57,16 @@ try{
  if(rowMeta.parentLeft===null)throw new Error('HOME_PRODUCT_LINK_PARENT_MISSING');
  if(Math.abs(rowMeta.left-rowMeta.parentLeft)>2||Math.abs(rowMeta.right-rowMeta.parentRight)>2||Math.abs(rowMeta.top-rowMeta.parentTop)>2||Math.abs(rowMeta.bottom-rowMeta.parentBottom)>2)throw new Error(`HOME_PRODUCT_LINK_GEOMETRY:${JSON.stringify(rowMeta)}`);
  if(rowMeta.width<340)throw new Error(`HOME_PRODUCT_LINK_NOT_FULL_WIDTH:${rowMeta.width}`);
- if(rowMeta.height>96||rowMeta.height<80)throw new Error(`HOME_PRODUCT_ROW_DENSITY_REGRESSION:${JSON.stringify(rowMeta)}`);
+ if(rowMeta.height>124||rowMeta.height<94)throw new Error(`HOME_PRODUCT_ROW_DENSITY_REGRESSION:${JSON.stringify(rowMeta)}`);
  if(rowMeta.display!=='grid')throw new Error(`HOME_PRODUCT_ROW_NOT_GRID:${JSON.stringify(rowMeta)}`);
  if(!rowMeta.mediaInsideLink||rowMeta.mediaLeft===null)throw new Error(`HOME_PRODUCT_MEDIA_NOT_INSIDE_LINK:${JSON.stringify(rowMeta)}`);
  if(rowMeta.mediaLeft<rowMeta.left-1||rowMeta.mediaRight>rowMeta.right+1||rowMeta.mediaTop<rowMeta.top-1||rowMeta.mediaBottom>rowMeta.bottom+1)throw new Error(`HOME_PRODUCT_MEDIA_OUTSIDE_ROW:${JSON.stringify(rowMeta)}`);
- if(rowMeta.mediaWidth>72||rowMeta.mediaHeight>72||rowMeta.mediaWidth<58||rowMeta.mediaHeight<58)throw new Error(`HOME_PRODUCT_THUMBNAIL_DENSITY_REGRESSION:${JSON.stringify(rowMeta)}`);
+ if(rowMeta.mediaWidth>82||rowMeta.mediaHeight>82||rowMeta.mediaWidth<68||rowMeta.mediaHeight<68)throw new Error(`HOME_PRODUCT_THUMBNAIL_DENSITY_REGRESSION:${JSON.stringify(rowMeta)}`);
  if(rowMeta.titleFontSize===null||rowMeta.titleFontSize>16.5||rowMeta.titleFontSize<14)throw new Error(`HOME_PRODUCT_TITLE_SCALE_REGRESSION:${JSON.stringify(rowMeta)}`);
- if(rowMeta.badgeCount!==0)throw new Error(`HOME_PRODUCT_PROMO_PILL_REGRESSION:${JSON.stringify(rowMeta)}`);
- if(!rowMeta.priceText)throw new Error(`HOME_PRODUCT_TRAILING_PRICE_MISSING:${JSON.stringify(rowMeta)}`);
- if(rowMeta.bodyLeft===null||rowMeta.trailingLeft===null||rowMeta.bodyRight>rowMeta.trailingLeft+1||rowMeta.trailingRight>rowMeta.right+1)throw new Error(`HOME_PRODUCT_COLUMN_OVERLAP:${JSON.stringify(rowMeta)}`);
+ if(rowMeta.badgeCount!==0||rowMeta.oldTrailingCount!==0)throw new Error(`HOME_PRODUCT_LEGACY_CARD_UI_REGRESSION:${JSON.stringify(rowMeta)}`);
+ if(!rowMeta.priceText)throw new Error(`HOME_PRODUCT_PRICE_MISSING:${JSON.stringify(rowMeta)}`);
+ if(!rowMeta.metaText)throw new Error(`HOME_PRODUCT_META_MISSING:${JSON.stringify(rowMeta)}`);
+ if(rowMeta.bodyLeft===null||rowMeta.bodyRight===null||rowMeta.chevronLeft===null||rowMeta.chevronRight===null||rowMeta.bodyRight>rowMeta.chevronLeft+1||rowMeta.chevronRight>rowMeta.right+1)throw new Error(`HOME_PRODUCT_COLUMN_OVERLAP:${JSON.stringify(rowMeta)}`);
  if(rowMeta.nestedInteractiveCount!==0)throw new Error(`HOME_PRODUCT_NESTED_INTERACTIVE:${JSON.stringify(rowMeta)}`);
 
  const allRows=page.locator('.go-product-card-v2__button[data-product-link="true"]');
@@ -83,9 +78,10 @@ try{
   const mediaRect=media?.getBoundingClientRect();
   const title=element.querySelector('.go-product-card-v2__title');
   const titleSize=title?Number.parseFloat(getComputedStyle(title).fontSize):999;
-  const trailing=element.querySelector('.go-product-card-v2__trailing')?.getBoundingClientRect();
   const body=element.querySelector('.go-product-card-v2__body')?.getBoundingClientRect();
-  return element.tagName!=='A'||rect.height>96||rect.height<80||!media||!element.contains(media)||!mediaRect||mediaRect.width>72||mediaRect.height>72||mediaRect.right>rect.right+1||mediaRect.bottom>rect.bottom+1||titleSize>16.5||element.querySelectorAll('.go-product-badge').length!==0||!trailing||!body||body.right>trailing.left+1;
+  const chevron=element.querySelector('.go-product-card-v2__chevron')?.getBoundingClientRect();
+  const price=(element.querySelector('.go-product-card-v2__price strong')?.textContent||'').trim();
+  return element.tagName!=='A'||rect.height>124||rect.height<94||!media||!element.contains(media)||!mediaRect||mediaRect.width>82||mediaRect.height>82||mediaRect.width<68||mediaRect.height<68||mediaRect.right>rect.right+1||mediaRect.bottom>rect.bottom+1||titleSize>16.5||element.querySelectorAll('.go-product-badge,.go-product-card-v2__trailing').length!==0||!price||!body||!chevron||body.right>chevron.left+1;
  }).length);
  if(invalidRows!==0)throw new Error(`HOME_PRODUCT_ROW_SET_REGRESSION:${invalidRows}/${rowCount}`);
 
@@ -95,7 +91,7 @@ try{
  const result={baseUrl,voice:voiceState,row:rowMeta,rowCount,invalidRows,navigatedToProductDetail:true,pageErrors:errors};
  if(errors.length)throw new Error(`RUNTIME_ERRORS:${errors.join(' | ').slice(0,2000)}`);
  fs.writeFileSync(path.join(out,'home-link-voice-runtime-report.json'),JSON.stringify(result,null,2));
- console.log('Home voice and premium marketplace-list runtime contract passed.');
+ console.log('Home voice and reference marketplace-list runtime contract passed.');
 }finally{
  await context.close();
  await browser.close();
