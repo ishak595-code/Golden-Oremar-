@@ -1,25 +1,64 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import {spawnSync} from 'node:child_process';
 
 const scriptsDir=path.join(process.cwd(),'scripts');
-const nonBlockingPresentationAudits=new Set([
- 'customer-professionalization-contract-audit.mjs',
- 'customer-ui-contract-audit.mjs',
-]);
-const allAudits=fs.readdirSync(scriptsDir)
- .filter(name=>name.endsWith('-audit.mjs'))
- .sort((a,b)=>a.localeCompare(b));
-const audits=allAudits.filter(name=>!nonBlockingPresentationAudits.has(name));
-const presentationAudits=allAudits.filter(name=>nonBlockingPresentationAudits.has(name));
 
-if(!audits.length){console.error('No blocking *-audit.mjs scripts found.');process.exit(1);}
-console.log(`Running ${audits.length} blocking Golden Oremar audit scripts...`);
-if(presentationAudits.length)console.log(`Non-blocking presentation source audits: ${presentationAudits.join(', ')}. Customer wording and accessibility behavior are verified by Chromium runtime tests.`);
+// Release CI is explicit. Presentation experiments, copy scanners and
+// pixel/DOM-shape checks never become blocking merely because of a file name.
+const audits=[
+ 'account-navigation-stability-contract-audit.mjs',
+ 'admin-data-contract-audit.mjs',
+ 'admin-user-role-contract-audit.mjs',
+ 'api-public-bridge-contract-audit.mjs',
+ 'app-update-contract-audit.mjs',
+ 'atomic-bulk-publication-contract-audit.mjs',
+ 'authenticated-e2e-contract-audit.mjs',
+ 'authorization-contract-audit.mjs',
+ 'ci-e2e-garbage-collection-contract-audit.mjs',
+ 'customer-event-contract-audit.mjs',
+ 'customer-return-contract-audit.mjs',
+ 'customer-review-contract-audit.mjs',
+ 'dependency-runtime-boundary-audit.mjs',
+ 'dependency-update-governance-audit.mjs',
+ 'dynamic-data-contract-audit.mjs',
+ 'home-commerce-migration-tail-contract-audit.mjs',
+ 'home-data-contract-audit.mjs',
+ 'message-commerce-contract-audit.mjs',
+ 'migration-history-contract-audit.mjs',
+ 'mobile-platform-contract-audit.mjs',
+ 'payment-contract-audit.mjs',
+ 'producer-account-contract-audit.mjs',
+ 'product-certificate-link-contract-audit.mjs',
+ 'product-media-integrity-contract-audit.mjs',
+ 'product-owner-governance-contract-audit.mjs',
+ 'product-owner-media-contract-audit.mjs',
+ 'product-workflow-contract-audit.mjs',
+ 'public-rpc-contract-audit.mjs',
+ 'public-rpc-security-boundary-audit.mjs',
+ 'release-setup-contract-audit.mjs',
+ 'rls-role-helper-contract-audit.mjs',
+ 'security-contract-audit.mjs',
+ 'staff-mfa-contract-audit.mjs',
+ 'startup-performance-audit.mjs',
+ 'store-follow-simulation-contract-audit.mjs',
+ 'store-readiness-contract-audit.mjs',
+ 'vercel-runtime-config-audit.mjs',
+];
+
+for(const name of audits){
+ const file=path.join(scriptsDir,name);
+ if(!fs.existsSync(file)){
+  console.error(`Required core audit is missing: ${name}`);
+  process.exit(1);
+ }
+}
+
+console.log(`Running ${audits.length} explicit Golden Oremar core audits...`);
 for(const name of audits){
  console.log(`\n=== ${name} ===`);
  const result=spawnSync(process.execPath,[path.join(scriptsDir,name)],{stdio:'inherit',env:process.env});
  if(result.error){console.error(result.error);process.exit(1);}
  if(result.status!==0){console.error(`Audit failed: ${name}`);process.exit(result.status||1);}
 }
-console.log(`\nAll ${audits.length} blocking Golden Oremar audit scripts passed.`);
+console.log(`\nAll ${audits.length} explicit Golden Oremar core audits passed.`);
