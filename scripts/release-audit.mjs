@@ -50,12 +50,14 @@ const premiumMobileCss=requireFile('src/features/customer-experience/premiumMobi
 if(catalogSearchInput){
  requirePattern(catalogSearchInput,/aria-label="Ürün, üretici veya köy ara"/,'Canonical catalog searchbox accessible name is missing.');
  requirePattern(catalogSearchInput,/onClick=\{onVoice\}/,'Canonical catalog search must expose the microphone action.');
- requirePattern(catalogSearchInput,/aria-pressed=\{listening\}/,'Canonical catalog microphone must expose listening state.');
- requirePattern(catalogSearchInput,/aria-label=\{listening\?'Sesli arama dinleniyor'/,'Canonical catalog microphone must announce active listening state.');
+ requirePattern(catalogSearchInput,/aria-label="Sesli mikrofon"/,'Canonical catalog microphone must keep one stable accessible name.');
+ forbidPattern(catalogSearchInput,/aria-pressed=/,'Canonical catalog microphone must not expose toggle semantics that TalkBack announces as kapalı/açık.');
+ requirePattern(catalogSearchInput,/data-listening=\{listening\?'true':'false'\}/,'Canonical catalog microphone must expose listening state for visual styling without toggle semantics.');
+ requirePattern(catalogSearchInput,/Sesli arama dinleniyor\./,'Canonical catalog microphone must announce active listening through the live status region.');
  requirePattern(catalogSearchInput,/role="status" aria-live="polite"/,'Voice search listening/processing feedback must remain screen-reader visible.');
 }
 if(premiumMobileCss){
- requirePattern(premiumMobileCss,/\.go-search-bar__voice\[aria-pressed="true"\]/,'Canonical catalog microphone must visibly expose active listening state.');
+ requirePattern(premiumMobileCss,/\.go-search-bar__voice\[data-listening="true"\]/,'Canonical catalog microphone must visibly expose active listening state without aria-pressed.');
  requirePattern(premiumMobileCss,/\.go-search-bar\[data-processing="true"\]/,'Canonical catalog microphone must visibly expose processing state.');
 }
 
