@@ -1,11 +1,11 @@
 import fs from'node:fs';import path from'node:path';
 const root=process.cwd(),failures=[];
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');const exists=file=>fs.existsSync(path.join(root,file));
-const main=read('src/main.tsx'),home=read('src/features/home/HomeSection.tsx'),search=read('src/features/catalog/CatalogSearchInput.tsx'),css=read('src/features/customer-experience/premiumMobileV2.css'),product=read('src/features/home/components/ProductCard.tsx'),price=read('src/features/home/components/PriceDisplay.tsx'),image=read('src/features/home/components/PremiumImage.tsx'),runtime=read('src/features/customer-experience/premiumMobileShellRuntime.ts'),readiness=read('supabase/migrations/20260828174048_derive_home_sales_readiness_from_live_controls_v3.sql'),readinessCopy=read('supabase/migrations/20260828174653_refine_public_home_sales_readiness_copy_v4.sql');
+const main=read('src/main.tsx'),home=read('src/features/home/HomeSection.tsx'),search=read('src/features/catalog/CatalogSearchInput.tsx'),css=read('src/features/customer-experience/premiumMobileV2.css'),productCss=read('src/features/home/components/ProductCard.css'),product=read('src/features/home/components/ProductCard.tsx'),price=read('src/features/home/components/PriceDisplay.tsx'),image=read('src/features/home/components/PremiumImage.tsx'),runtime=read('src/features/customer-experience/premiumMobileShellRuntime.ts'),readiness=read('supabase/migrations/20260828174048_derive_home_sales_readiness_from_live_controls_v3.sql'),readinessCopy=read('supabase/migrations/20260828174653_refine_public_home_sales_readiness_copy_v4.sql');
 function requireMatch(condition,message){if(!condition)failures.push(message);}
 requireMatch(main.includes("premiumMobileV2.css"),'Premium Mobile V2 stylesheet must be installed.');
 requireMatch(main.includes('installPremiumMobileShellRuntime'),'Adaptive mobile shell runtime must be installed.');
-for(const old of['referenceHomeExact.css','homeMerchandisingUpgrade.css','homeOneRowPremium.css']){requireMatch(!main.includes(old),`Superseded Home stylesheet import remains: ${old}`);requireMatch(!exists(`src/features/customer-experience/${old}`),`Superseded Home stylesheet file remains: ${old}`);}
+for(const old of['referenceHomeExact.css','homeMerchandisingUpgrade.css','homeOneRowPremium.css','homeProductRowLock.css']){requireMatch(!main.includes(old),`Superseded Home stylesheet import remains: ${old}`);requireMatch(!exists(`src/features/customer-experience/${old}`)&&!exists(`src/features/home/components/${old}`),`Superseded Home stylesheet file remains: ${old}`);}
 requireMatch(home.includes('useHomeExperience'),'Home must consume the bounded Home experience contract.');
 requireMatch(home.includes('IntersectionObserver'),'Deferred Home sections must remain viewport-driven.');
 requireMatch(!home.includes('useLiveHomeCatalog'),'Home must not restore the full-catalog client filter path.');
@@ -25,21 +25,23 @@ requireMatch(css.includes('--go-mobile-pad:20px'),'Canonical mobile horizontal p
 requireMatch(css.includes('env(safe-area-inset-bottom'),'Bottom navigation must retain iOS/Android safe-area handling.');
 requireMatch(css.includes('@media(prefers-reduced-motion:reduce)'),'Reduced-motion support is required.');
 requireMatch(css.includes('min-height:44px'),'Minimum touch target contract is missing.');
-requireMatch(css.includes('-webkit-line-clamp:2'),'Product titles must support two readable lines.');
 requireMatch(css.includes('@media(max-width:350px)')&&css.includes('@media(max-width:520px)'),'Small-phone responsive guards are missing.');
-requireMatch(css.includes('.go-product-grid-v2{display:grid;width:100%;max-width:860px;grid-template-columns:1fr;gap:0'),'Home products must remain a single compact list instead of returning to card-grid columns.');
-requireMatch(!css.includes('grid-template-columns:repeat(2,minmax(0,1fr))')&&!css.includes('grid-template-columns:repeat(3,minmax(0,1fr))'),'Home product rows must not regress into multi-column cards.');
+requireMatch(product.includes("import'./ProductCard.css';"),'ProductCard must own its canonical marketplace-row stylesheet.');
+requireMatch(productCss.includes('-webkit-line-clamp:2'),'Product titles must support two readable lines.');
+requireMatch(productCss.includes('.go-product-grid-v2')&&productCss.includes('grid-template-columns:minmax(0,1fr)'),'Home products must remain one compact list instead of returning to card-grid columns.');
+requireMatch(!productCss.includes('grid-template-columns:repeat(2,minmax(0,1fr))')&&!productCss.includes('grid-template-columns:repeat(3,minmax(0,1fr))'),'Home product rows must not regress into multi-column cards.');
 requireMatch(product.includes("storeKind==='official'"),'Product card must derive official-store trust from backend data.');
 requireMatch(product.includes('originVerified'),'Product card must derive origin verification from backend data.');
-requireMatch(product.includes('const visualSignal=signal??')&&product.includes('<ProductBadge tone={visualSignal.tone} label={visualSignal.label}/>'),'Product card must keep one strongest truth-backed visible trust signal.');
+requireMatch(product.includes('const visualSignal=signal??')&&product.includes('go-product-card-v2__trust')&&!product.includes('ProductBadge'),'Product card must keep one strongest truth-backed trust signal without promotional pill UI.');
+requireMatch(product.includes('go-product-card-v2__rating')&&product.includes('item.reviewCount<1')&&product.includes('item.averageRating.toLocaleString'),'Product card may show social proof only from real catalog review aggregates.');
 requireMatch(product.includes('<a href={buildProductUrl(item.slug)}')&&product.includes('data-product-link="true"'),'Every Home product row must remain a real full-row product link.');
 requireMatch(product.includes('data-product-id={item.id}')&&product.includes('data-product-reference={item.slug}'),'Every Home product row must retain stable product identity and route reference markers.');
 requireMatch(product.includes("!item.imagePath.startsWith('brand/official-store/')"),'Official-store brand imagery must not masquerade as a product photo.');
 requireMatch(!product.includes('.map('),'Product card must not map an unbounded badge collection onto the primary card surface.');
-requireMatch(product.includes('compareAtPriceMinor')&&product.includes('buildProductCardAccessibilityLabel')&&product.includes('compareAtPrice:compareMinor!==null?compareMinor/100:null')&&!product.includes('line-through')&&!price.includes('compareAtPriceMinor'),'Primary Home cards may expose canonical compare-at data to accessibility, but must not restore visible strike-through promotional framing.');
+requireMatch(product.includes('compareAtPriceMinor')&&product.includes('buildProductCardAccessibilityLabel')&&product.includes('compareAtPrice:compareMinor!==null?compareMinor/100:null')&&!product.includes('line-through')&&!price.includes('compareAtPriceMinor'),'Primary Home rows may expose canonical compare-at data to accessibility, but must not restore visible strike-through promotional framing.');
 requireMatch(image.includes("loading={eager?'eager':'lazy'}"),'Product imagery must retain lazy loading with an explicit LCP eager path.');
 requireMatch(image.includes('onError')&&image.includes('Fotoğraf yakında'),'Image error fallback must remain honest about missing product photography.');
-requireMatch(css.includes('object-fit:cover'),'Product/category imagery must remain ready for real photography.');
+requireMatch(productCss.includes('object-fit:cover'),'Product thumbnails must remain ready for real photography.');
 requireMatch(runtime.includes('requestAnimationFrame'),'Adaptive header scroll work must stay animation-frame throttled.');
 requireMatch(runtime.includes('COMPACT_ENTER_Y=104')&&runtime.includes('EXPAND_TOP_Y=40'),'Adaptive header must retain distinct enter/top hysteresis thresholds.');
 requireMatch(runtime.includes('EXPAND_REVERSE_TRAVEL=48')&&runtime.includes('directionAnchorY-y>=EXPAND_REVERSE_TRAVEL'),'Adaptive header must require meaningful reverse travel before expansion.');
