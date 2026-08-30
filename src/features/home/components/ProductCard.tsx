@@ -7,6 +7,7 @@ import{buildProductUrl}from'../../navigation/appUrl';
 import PremiumImage from'./PremiumImage';
 import PriceDisplay from'./PriceDisplay';
 import ProductBadge from'./ProductBadge';
+import'./homeProductRowLock.css';
 
 function sourceLabel(item:CatalogItem){const place=[item.producer.village,item.producer.district,item.producer.province].find(value=>typeof value==='string'&&value.trim());return place?`${item.producer.name} · ${place}`:item.producer.name;}
 function strongestSignal(item:CatalogItem){if(item.producer.originVerified)return{tone:'verified' as const,label:'Menşe doğrulandı'};if(item.handlingProfile.requiresColdChain)return{tone:'cold' as const,label:'Soğuk zincir'};if(item.stockMode==='preorder')return{tone:'preorder' as const,label:'Ön sipariş'};if(item.stockMode==='seasonal')return{tone:'seasonal' as const,label:'Mevsimlik'};const handling=productHandlingLabel(item.handlingProfile);return handling?{tone:'verified' as const,label:handling}:null;}
