@@ -1,0 +1,115 @@
+/* Homepage-only compact product list.
+   Each product is rendered as one horizontal row: thumbnail, product name, price, chevron.
+   Rich provenance and handling metadata stay available in product detail and accessibility text,
+   but no longer make the home discovery list vertically oversized. */
+:root[data-app-tab="home"] .go-product-card-v2__button{
+  display:grid;
+  width:100%;
+  min-height:76px;
+  grid-template-columns:56px minmax(0,1fr);
+  align-items:center;
+  gap:12px;
+  padding:10px 0;
+}
+
+:root[data-app-tab="home"] .go-product-card-v2__media{
+  width:56px;
+  height:56px;
+  align-self:center;
+  border-radius:12px;
+}
+
+:root[data-app-tab="home"] .go-product-card-v2__content{
+  display:grid;
+  min-width:0;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:10px;
+}
+
+:root[data-app-tab="home"] .go-product-card-v2__title{
+  display:block;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:var(--go-ivory);
+  font-family:var(--font-sans);
+  font-size:15px;
+  font-weight:750;
+  line-height:1.25;
+  letter-spacing:-.01em;
+}
+
+:root[data-app-tab="home"] .go-product-card-v2__source,
+:root[data-app-tab="home"] .go-product-card-v2__signals{
+  display:none!important;
+}
+
+:root[data-app-tab="home"] .go-product-card-v2__footer{
+  display:flex;
+  min-width:max-content;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  margin:0;
+  white-space:nowrap;
+}
+
+:root[data-app-tab="home"] .go-product-card-v2__footer .go-price-display{
+  display:flex;
+  min-width:max-content;
+  flex-wrap:nowrap;
+  gap:0;
+}
+
+:root[data-app-tab="home"] .go-product-card-v2__footer .go-price-display strong{
+  font-size:15px;
+  line-height:1;
+  white-space:nowrap;
+}
+
+/* Compare-at price is intentionally omitted from the dense home row.
+   The complete price presentation remains on product detail. */
+:root[data-app-tab="home"] .go-product-card-v2__footer .go-price-display>span{
+  display:none;
+}
+
+:root[data-app-tab="home"] .go-product-card-v2__footer>svg{
+  width:15px;
+  height:15px;
+  flex:0 0 auto;
+}
+
+/* Fixed bottom navigation must never consume the final product's usable scroll area. */
+:root[data-app-tab="home"] .go-home-content{
+  padding-bottom:calc(var(--go-nav-height) + 48px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));
+}
+
+@media(max-width:350px){
+  :root[data-app-tab="home"] .go-product-card-v2__button{
+    min-height:68px;
+    grid-template-columns:48px minmax(0,1fr);
+    gap:9px;
+    padding:9px 0;
+  }
+
+  :root[data-app-tab="home"] .go-product-card-v2__media{
+    width:48px;
+    height:48px;
+    border-radius:10px;
+  }
+
+  :root[data-app-tab="home"] .go-product-card-v2__content{
+    gap:7px;
+  }
+
+  :root[data-app-tab="home"] .go-product-card-v2__title,
+  :root[data-app-tab="home"] .go-product-card-v2__footer .go-price-display strong{
+    font-size:14px;
+  }
+
+  :root[data-app-tab="home"] .go-product-card-v2__footer{
+    gap:4px;
+  }
+}
