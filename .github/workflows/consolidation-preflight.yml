@@ -36,7 +36,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Audit production dependency vulnerabilities
         run: npm audit --omit=dev --audit-level=low
-      - name: Run every contract and security audit
+      - name: Run core contract and security audits
         run: npm run audit:all
       - name: TypeScript zero-error gate
         run: npx tsc --noEmit
@@ -57,7 +57,7 @@ jobs:
           set -euo pipefail
           if [[ "${RESULT}" == "success" ]]; then
             state=success
-            description='All audits, TypeScript, dependency and build gates passed'
+            description='Core audits, TypeScript, dependency and build gates passed'
           else
             state=failure
             description="Preflight job ${RESULT}"
