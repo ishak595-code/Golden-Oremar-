@@ -1,22 +1,22 @@
 /* Homepage-only compact product list.
-   Each product is rendered as one horizontal row: thumbnail, product name, price, chevron.
-   Rich provenance and handling metadata stay available in product detail and accessibility text,
-   but no longer make the home discovery list vertically oversized. */
+   Each product is one horizontal identity row: thumbnail, product name, price, chevron.
+   Provenance and handling metadata stay available in product detail and accessibility text,
+   but no longer stack extra visible lines inside the Home discovery list. */
 :root[data-app-tab="home"] .go-product-card-v2__button{
   display:grid;
   width:100%;
-  min-height:76px;
-  grid-template-columns:56px minmax(0,1fr);
+  min-height:108px;
+  grid-template-columns:82px minmax(0,1fr);
   align-items:center;
   gap:12px;
   padding:10px 0;
 }
 
 :root[data-app-tab="home"] .go-product-card-v2__media{
-  width:56px;
-  height:56px;
+  width:82px;
+  height:82px;
   align-self:center;
-  border-radius:12px;
+  border-radius:14px;
 }
 
 :root[data-app-tab="home"] .go-product-card-v2__content{
@@ -28,17 +28,18 @@
 }
 
 :root[data-app-tab="home"] .go-product-card-v2__title{
-  display:block;
+  display:-webkit-box;
   min-width:0;
   overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
   color:var(--go-ivory);
   font-family:var(--font-sans);
   font-size:15px;
   font-weight:750;
   line-height:1.25;
   letter-spacing:-.01em;
+  white-space:normal;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
 }
 
 :root[data-app-tab="home"] .go-product-card-v2__source,
@@ -69,7 +70,7 @@
   white-space:nowrap;
 }
 
-/* Compare-at price is intentionally omitted from the dense home row.
+/* Compare-at price is intentionally omitted from the dense Home row.
    The complete price presentation remains on product detail. */
 :root[data-app-tab="home"] .go-product-card-v2__footer .go-price-display>span{
   display:none;
@@ -88,16 +89,16 @@
 
 @media(max-width:350px){
   :root[data-app-tab="home"] .go-product-card-v2__button{
-    min-height:68px;
-    grid-template-columns:48px minmax(0,1fr);
-    gap:9px;
-    padding:9px 0;
+    min-height:100px;
+    grid-template-columns:74px minmax(0,1fr);
+    gap:10px;
+    padding:10px 0;
   }
 
   :root[data-app-tab="home"] .go-product-card-v2__media{
-    width:48px;
-    height:48px;
-    border-radius:10px;
+    width:74px;
+    height:74px;
+    border-radius:12px;
   }
 
   :root[data-app-tab="home"] .go-product-card-v2__content{
