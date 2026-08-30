@@ -17,7 +17,7 @@ requireMatch(readinessCopy.includes('Katalog görüntülenebilir; ödeme ile sip
 requireMatch(!readinessCopy.includes('provider credential'),'Public readiness copy must not expose provider credential terminology.');
 requireMatch(search.includes('Mic')&&!search.includes('MicOff'),'Voice search must use one microphone icon without a redundant idle-off glyph.');
 requireMatch(search.includes('onVoice'),'Voice search callback must remain wired.');
-requireMatch(search.includes("aria-label={listening?'Sesli arama dinleniyor':'Sesli mikrofon'}")&&search.includes('aria-pressed={listening}')&&search.includes('role="status" aria-live="polite"'),'Voice search must expose idle Sesli mikrofon plus active listening/processing state without idle-off narration.');
+requireMatch(search.includes('aria-label="Sesli mikrofon"')&&!search.includes('aria-pressed=')&&search.includes('data-listening={listening')&&search.includes('role="status" aria-live="polite"')&&search.includes('Sesli arama dinleniyor.'),'Voice search must keep one stable Sesli mikrofon control name and announce active state without toggle-off semantics.');
 requireMatch(!search.includes('role="search"')&&search.includes('aria-label="Ürün, üretici veya köy ara"'),'Search must expose one searchbox name without a duplicate search landmark label.');
 requireMatch(!search.includes("'Mikrofon kapalı'")&&!search.includes('Mikrofon kapalı, sesli aramayı başlat')&&!search.includes('Sesli aramayı başlat'),'Idle voice search must not announce artificial microphone-off or start-instruction text.');
 for(const [token,value] of[['--go-space-1','4px'],['--go-space-2','8px'],['--go-space-3','12px'],['--go-space-4','16px'],['--go-space-5','20px'],['--go-space-6','24px'],['--go-space-7','32px'],['--go-space-8','40px'],['--go-space-9','48px']])requireMatch(css.includes(`${token}:${value}`),`Spacing token ${token}=${value} is missing.`);
@@ -32,7 +32,7 @@ requireMatch(!css.includes('grid-template-columns:repeat(2,minmax(0,1fr))')&&!cs
 requireMatch(product.includes("storeKind==='official'"),'Product card must derive official-store trust from backend data.');
 requireMatch(product.includes('originVerified'),'Product card must derive origin verification from backend data.');
 requireMatch(product.includes('const visualSignal=signal??')&&product.includes('<ProductBadge tone={visualSignal.tone} label={visualSignal.label}/>'),'Product card must keep one strongest truth-backed visible trust signal.');
-requireMatch(product.includes('<a href={buildProductUrl(item.slug)}'),'Every Home product row must remain a real product link.');
+requireMatch(product.includes('<a href={buildProductUrl(item.slug)}')&&product.includes('data-product-link="true"'),'Every Home product row must remain a real full-row product link.');
 requireMatch(product.includes('data-product-id={item.id}')&&product.includes('data-product-reference={item.slug}'),'Every Home product row must retain stable product identity and route reference markers.');
 requireMatch(product.includes("!item.imagePath.startsWith('brand/official-store/')"),'Official-store brand imagery must not masquerade as a product photo.');
 requireMatch(!product.includes('.map('),'Product card must not map an unbounded badge collection onto the primary card surface.');
