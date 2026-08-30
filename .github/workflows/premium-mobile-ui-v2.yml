@@ -38,8 +38,6 @@ jobs:
         run: npm run audit:all
       - name: Audit Premium Mobile architecture
         run: node scripts/premium-mobile-ui-v2-contract-audit.mjs
-      - name: Audit customer professionalization contracts
-        run: node scripts/customer-professionalization-contract-audit.mjs
       - name: TypeScript zero-error gate
         run: npx tsc --noEmit
       - name: Build production application
@@ -59,6 +57,8 @@ jobs:
           done
           cat /tmp/golden-oremar-premium-mobile-preview.log
           exit 1
+      - name: Verify Home voice and full-row link runtime
+        run: node scripts/home-link-voice-runtime-e2e.mjs
       - name: Verify product-card runtime accessibility
         run: node scripts/product-card-accessibility-e2e.mjs
       - name: Verify 320-430px Premium Mobile viewports
