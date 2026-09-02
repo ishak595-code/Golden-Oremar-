@@ -1,7 +1,7 @@
 /* Golden Oremar Home product list v4.
    Mobile-app first. This layer intentionally does not reuse legacy card selectors. */
 
-:root[data-app-tab="home"] .go-product-grid-v2{
+:root[data-app-tab="home"] .go-product-list-v4{
   display:flex!important;
   width:100%!important;
   max-width:860px;
@@ -134,7 +134,7 @@
   stroke-width:2.1;
 }
 
-/* Bottom navigation must not cover the final product row. */
+/* Fixed bottom navigation must not cover the final product row. */
 :root[data-app-tab="home"] .go-home-content{
   padding-bottom:calc(var(--go-nav-height) + 56px + var(--safe-area-inset-bottom,env(safe-area-inset-bottom,0px)));
 }
