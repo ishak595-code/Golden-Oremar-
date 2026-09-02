@@ -39,7 +39,7 @@ export default function ProductCard({item,onClick,eager=false}:{item:CatalogItem
  const meta=[region,verification].filter(Boolean).join(' · ');
  const compareMinor=typeof item.variant.compareAtPriceMinor==='number'&&Number.isSafeInteger(item.variant.compareAtPriceMinor)?item.variant.compareAtPriceMinor:null;
  const accessibleLabel=buildProductCardAccessibilityLabel({name:item.name,price:item.variant.priceMinor/100,currency:item.currency,compareAtPrice:compareMinor!==null?compareMinor/100:null,statuses:[item.producer.name,region,verification]});
- return<article role="listitem" className="go-product-row-v4__item w-full" data-product-id={item.id} data-product-reference={item.slug} data-row-layout="horizontal-list">
+ return<article role="listitem" className="go-product-row-v4__item w-full" data-product-id={item.id} data-product-reference={item.slug} data-row-layout="horizontal-list" data-native-feature-marker="go-product-card-v2">
   <span id={spokenId} className="sr-only">{accessibleLabel}</span>
   <a href={buildProductUrl(item.slug)} onClick={event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;event.preventDefault();onClick();}} className="go-product-row-v4 w-full flex flex-row items-center justify-between hover:bg-[#112217] transition-all cursor-pointer" aria-labelledby={spokenId} data-product-link="true">
    <ProductRowImage src={item.imagePath} alt={`${item.name} ürün fotoğrafı`} eager={eager}/>
