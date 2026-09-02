@@ -4,15 +4,16 @@ import{publicCatalogUrl}from'../catalog/api';
 import{CUSTOMER_COPY,homeSectionDisplayCopy}from'../customer-experience/customerCopy';
 import HomeEventsSpotlight from'./HomeEventsSpotlight';
 import{browserHomeLocale,type HomeSectionModel}from'./homeExperienceApi';
+import{homeMerchandisingSignal}from'./homeMerchandising';
 import{useHomeExperience}from'./useHomeExperience';
 import CategoryCard from'./components/CategoryCard';
 import PremiumImage from'./components/PremiumImage';
 import ProductCard from'./components/ProductCard';
 import SectionHeader from'./components/SectionHeader';
+import'./homePrestigeV3.css';
 
 type ProductReference={id:string;slug:string;legacyId?:string|null};
 type Props={onProductClick:(product:ProductReference)=>void};
-function merchandisingLabel(index:number){if(index===0)return'En çok satan';if(index===1)return'Popüler';if(index===2)return'Mevsimin ürünü';return null;}
 
 function navigateToCategories(categorySlug?:string){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','categories');if(categorySlug)url.searchParams.set('category',categorySlug);const depth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(depth)&&depth>=0?depth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
 
@@ -36,11 +37,11 @@ export default function HomeSection({onProductClick}:Props){
  const eventSpotlight=experience.eventSpotlight;
  function renderEvents(placement:'after_hero'|'after_categories'|'before_products'){return eventSpotlight?.enabled===true&&eventSpotlight.placement===placement?<HomeEventsSpotlight settings={eventSpotlight}/>:null;}
 
- return<div className="go-premium-home-v2" data-home-contract-version={experience.version}>
+ return<div className="go-premium-home-v2" data-home-contract-version={experience.version} data-home-prestige-contract="single-row-v4">
   <h1 className="sr-only">{experience.brand.name} ürünleri</h1>
   <div className="go-home-content">
    {orderedCategories.length?<section className="go-home-section go-home-categories" aria-labelledby="home-categories-title" data-server-heading={experience.interface.categoriesTitle}>
-    <SectionHeader id="home-categories-title" title={CUSTOMER_COPY.home.categoriesTitle} subtitle={CUSTOMER_COPY.home.categoriesSubtitle} actionLabel={CUSTOMER_COPY.home.categoriesAction} onAction={()=>navigateToCategories()}/>
+    <SectionHeader id="home-categories-title" title={CUSTOMER_COPY.home.categoriesTitle} subtitle={CUSTOMER_COPY.home.categoriesSubtitle}/>
     <div className="go-category-rail hide-scrollbar" role="list" aria-label={CUSTOMER_COPY.home.categoriesTitle}>
      {orderedCategories.map(({category,config})=>{const image=category.imagePath||config?.image||null;return<div role="listitem" key={category.id}><CategoryCard name={config?.title||category.name} subtitle={config?.subtitle||null} imageUrl={image?publicCatalogUrl(image):null} onClick={()=>navigateToCategories(category.slug)}/></div>;})}
     </div>
@@ -48,7 +49,7 @@ export default function HomeSection({onProductClick}:Props){
 
    {renderEvents('after_categories')}
 
-   {initialSections.map((section,index)=><ProductSection key={section.key} section={section} onProductClick={onProductClick} eagerFirst={index===0} showMerchandisingLabels={index===0}/>) }
+   {initialSections.map((section,index)=><ProductSection key={section.key} section={section} onProductClick={onProductClick} eagerFirst={index===0} isFirst={index===0}/>) }
 
    {renderEvents('after_hero')}
 
@@ -65,9 +66,9 @@ export default function HomeSection({onProductClick}:Props){
  </div>;
 }
 
-function ProductSection({section,onProductClick,eagerFirst=false,showMerchandisingLabels=false}:{section:HomeSectionModel;onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean;showMerchandisingLabels?:boolean}){if(!section.items.length)return null;const copy=homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle);return<section className="go-home-section go-product-section-v2" aria-labelledby={`home-section-${section.key}`} data-server-section-title={section.title}>
+function ProductSection({section,onProductClick,eagerFirst=false,isFirst=false}:{section:HomeSectionModel;onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean;isFirst?:boolean}){if(!section.items.length)return null;const copy=homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle);const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${section.source.kind}${isFirst?' go-product-section-v2--first':''}`;return<section className={sectionClass} aria-labelledby={`home-section-${section.key}`} data-server-section-title={section.title} data-home-source={section.source.kind}>
  <SectionHeader id={`home-section-${section.key}`} eyebrow={copy.eyebrow} title={copy.title} subtitle={copy.subtitle}/>
- <ul className="go-product-list-v4 flex flex-col gap-4">{section.items.map((item,index)=><ProductCard key={item.id} item={item} eager={eagerFirst&&index===0} merchandisingLabel={showMerchandisingLabels?merchandisingLabel(index):null} onClick={()=>onProductClick(item)}/>)}</ul>
+ <ul className="go-product-list-v4 flex flex-col gap-4">{section.items.map((item,index)=><ProductCard key={item.id} item={item} eager={eagerFirst&&index===0} merchandisingLabel={homeMerchandisingSignal(section.source.kind,index)} onClick={()=>onProductClick(item)}/>)}</ul>
  </section>;}
 
 function DeferredProductSection({descriptor,loadSection,onProductClick}:{descriptor:HomeSectionModel;loadSection:(key:string)=>Promise<HomeSectionModel|null>;onProductClick:(product:ProductReference)=>void}){
@@ -75,9 +76,10 @@ function DeferredProductSection({descriptor,loadSection,onProductClick}:{descrip
  const copy=homeSectionDisplayCopy(descriptor.source.kind,descriptor.title,descriptor.subtitle);
  const request=()=>{if(requested.current)return;requested.current=true;setLoading(true);setError('');void loadSection(descriptor.key).then(result=>setSection(result)).catch(()=>{requested.current=false;setError(CUSTOMER_COPY.home.sectionRefreshError);}).finally(()=>setLoading(false));};
  useEffect(()=>{const node=hostRef.current;if(!node)return;if(typeof IntersectionObserver==='undefined'){request();return;}const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){request();observer.disconnect();}},{rootMargin:'560px 0px'});observer.observe(node);return()=>observer.disconnect();},[descriptor.key,loadSection]);
- return<section ref={hostRef} className="go-home-section go-product-section-v2 go-product-section-v2--deferred" aria-labelledby={`home-section-${descriptor.key}`} data-server-section-title={descriptor.title}>
+ const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${descriptor.source.kind} go-product-section-v2--deferred`;
+ return<section ref={hostRef} className={sectionClass} aria-labelledby={`home-section-${descriptor.key}`} data-server-section-title={descriptor.title} data-home-source={descriptor.source.kind}>
   <SectionHeader id={`home-section-${descriptor.key}`} eyebrow={copy.eyebrow} title={copy.title} subtitle={copy.subtitle}/>
-  {section?.items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{section.items.map(item=><ProductCard key={item.id} item={item} onClick={()=>onProductClick(item)}/>)}</ul>:loading?<ProductRowsSkeleton/>:error?<div className="go-inline-error" role="status"><AlertCircle aria-hidden="true"/><span>{error}</span><button type="button" onClick={request}>{CUSTOMER_COPY.home.retry}</button></div>:<div className="go-section-reserved-space" aria-hidden="true"/>}
+  {section?.items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{section.items.map((item,index)=><ProductCard key={item.id} item={item} merchandisingLabel={homeMerchandisingSignal(descriptor.source.kind,index)} onClick={()=>onProductClick(item)}/>)}</ul>:loading?<ProductRowsSkeleton/>:error?<div className="go-inline-error" role="status"><AlertCircle aria-hidden="true"/><span>{error}</span><button type="button" onClick={request}>{CUSTOMER_COPY.home.retry}</button></div>:<div className="go-section-reserved-space" aria-hidden="true"/>}
  </section>;
 }
 

@@ -4,8 +4,9 @@ import {spawnSync} from 'node:child_process';
 
 const scriptsDir=path.join(process.cwd(),'scripts');
 
-// Release CI is explicit. Presentation experiments, copy scanners and
-// pixel/DOM-shape checks never become blocking merely because of a file name.
+// Release CI is explicit. Presentation experiments never become blocking merely
+// because of a file name. Durable product-owner structural contracts are listed
+// here only when they are deliberate invariants.
 const audits=[
  'account-navigation-stability-contract-audit.mjs',
  'admin-data-contract-audit.mjs',
@@ -24,6 +25,7 @@ const audits=[
  'dynamic-data-contract-audit.mjs',
  'home-commerce-migration-tail-contract-audit.mjs',
  'home-data-contract-audit.mjs',
+ 'home-product-row-contract-audit.mjs',
  'message-commerce-contract-audit.mjs',
  'migration-history-contract-audit.mjs',
  'mobile-platform-contract-audit.mjs',

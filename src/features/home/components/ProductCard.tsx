@@ -37,7 +37,7 @@ export default function ProductCard({item,onClick,eager=false,merchandisingLabel
  const verification=verificationLabel(item);
  const compareMinor=typeof item.variant.compareAtPriceMinor==='number'&&Number.isSafeInteger(item.variant.compareAtPriceMinor)?item.variant.compareAtPriceMinor:null;
  const accessibleLabel=buildProductCardAccessibilityLabel({name:item.name,price:item.variant.priceMinor/100,currency:item.currency,compareAtPrice:compareMinor!==null?compareMinor/100:null,statuses:[merchandisingLabel,item.producer.name,region,verification]});
- return<li className="go-product-row-v4__item w-full" data-product-id={item.id} data-product-reference={item.slug} data-row-layout="horizontal-list" data-native-feature-marker="go-product-card-v2">
+ return<li className="go-product-row-v4__item w-full" data-product-id={item.id} data-product-reference={item.slug} data-row-layout="horizontal-list" data-home-row-contract="single-link-v4" data-native-feature-marker="go-product-card-v2">
   <a href={buildProductUrl(item.slug)} onClick={event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;event.preventDefault();onClick();}} className="go-product-row-v4 w-full flex flex-row items-center justify-between hover:bg-[#112217] transition-all cursor-pointer" aria-label={accessibleLabel} data-product-link="true">
    <ProductRowImage src={item.imagePath} eager={eager}/>
    <span className="go-product-row-v4__middle min-w-0 flex-1" aria-hidden="true">
