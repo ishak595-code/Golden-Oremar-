@@ -1,6 +1,7 @@
-import React,{useId}from'react';
+import React,{useId,useMemo}from'react';
 import{ChevronRight,MapPin}from'lucide-react';
 import type{CatalogItem}from'../../catalog/api';
+import{buildProductExperience}from'../../catalog/productExperience';
 import{productHandlingLabel}from'../../catalog/productHandlingApi';
 import{buildProductCardAccessibilityLabel}from'../../accessibility/productCardAccessibility';
 import{buildProductUrl}from'../../navigation/appUrl';
@@ -13,6 +14,7 @@ function strongestSignal(item:CatalogItem){if(item.producer.originVerified)retur
 
 export default function ProductCard({item,onClick,eager=false}:{item:CatalogItem;onClick:()=>void;eager?:boolean}){
  const spokenId=useId();
+ const experience=useMemo(()=>buildProductExperience(item),[item]);
  const signal=strongestSignal(item);
  const official=item.producer.storeKind==='official';
  const visualSignal=signal??(official?{tone:'official' as const,label:'Resmi mağaza'}:null);
@@ -25,6 +27,7 @@ export default function ProductCard({item,onClick,eager=false}:{item:CatalogItem
    <PremiumImage src={productImagePath} alt={`${item.name} ürün fotoğrafı`} eager={eager} className="go-product-card-v2__media"/>
    <span className="go-product-card-v2__content" aria-hidden="true">
     <span className="go-product-card-v2__title">{item.name}</span>
+    <span className="line-clamp-1 text-[11px] font-black tracking-[0.035em] text-brand-gold">{experience.kicker}</span>
     <span className="go-product-card-v2__source"><MapPin aria-hidden="true"/><span>{sourceLabel(item)}</span></span>
     <span className="go-product-card-v2__signals"><span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-brand-muted">{item.unitLabel||item.category.name}</span>{visualSignal?<ProductBadge tone={visualSignal.tone} label={visualSignal.label}/>:null}</span>
     <span className="go-product-card-v2__footer"><PriceDisplay priceMinor={item.variant.priceMinor} currency={item.currency}/><ChevronRight aria-hidden="true"/></span>
