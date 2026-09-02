@@ -12,6 +12,8 @@ import SectionHeader from'./components/SectionHeader';
 
 type ProductReference={id:string;slug:string;legacyId?:string|null};
 type Props={onProductClick:(product:ProductReference)=>void};
+const HOME_MERCHANDISING_LABELS=['En çok satan','Popüler','Mevsimin ürünü']as const;
+function merchandisingLabel(index:number){return HOME_MERCHANDISING_LABELS[index]||null;}
 
 function navigateToCategories(categorySlug?:string){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','categories');if(categorySlug)url.searchParams.set('category',categorySlug);const depth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(depth)&&depth>=0?depth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
 
@@ -47,7 +49,7 @@ export default function HomeSection({onProductClick}:Props){
 
    {renderEvents('after_categories')}
 
-   {initialSections.map((section,index)=><ProductSection key={section.key} section={section} onProductClick={onProductClick} eagerFirst={index===0}/>) }
+   {initialSections.map((section,index)=><ProductSection key={section.key} section={section} onProductClick={onProductClick} eagerFirst={index===0} showMerchandisingLabels={index===0}/>) }
 
    {renderEvents('after_hero')}
 
@@ -64,9 +66,9 @@ export default function HomeSection({onProductClick}:Props){
  </div>;
 }
 
-function ProductSection({section,onProductClick,eagerFirst=false}:{section:HomeSectionModel;onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean}){if(!section.items.length)return null;const copy=homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle);return<section className="go-home-section go-product-section-v2" aria-labelledby={`home-section-${section.key}`} data-server-section-title={section.title}>
+function ProductSection({section,onProductClick,eagerFirst=false,showMerchandisingLabels=false}:{section:HomeSectionModel;onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean;showMerchandisingLabels?:boolean}){if(!section.items.length)return null;const copy=homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle);return<section className="go-home-section go-product-section-v2" aria-labelledby={`home-section-${section.key}`} data-server-section-title={section.title}>
  <SectionHeader id={`home-section-${section.key}`} eyebrow={copy.eyebrow} title={copy.title} subtitle={copy.subtitle}/>
- <div className="go-product-list-v4 flex flex-col gap-4" role="list">{section.items.map((item,index)=><ProductCard key={item.id} item={item} eager={eagerFirst&&index===0} onClick={()=>onProductClick(item)}/>)}</div>
+ <ul className="go-product-list-v4 flex flex-col gap-4">{section.items.map((item,index)=><ProductCard key={item.id} item={item} eager={eagerFirst&&index===0} merchandisingLabel={showMerchandisingLabels?merchandisingLabel(index):null} onClick={()=>onProductClick(item)}/>)}</ul>
  </section>;}
 
 function DeferredProductSection({descriptor,loadSection,onProductClick}:{descriptor:HomeSectionModel;loadSection:(key:string)=>Promise<HomeSectionModel|null>;onProductClick:(product:ProductReference)=>void}){
@@ -76,7 +78,7 @@ function DeferredProductSection({descriptor,loadSection,onProductClick}:{descrip
  useEffect(()=>{const node=hostRef.current;if(!node)return;if(typeof IntersectionObserver==='undefined'){request();return;}const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){request();observer.disconnect();}},{rootMargin:'560px 0px'});observer.observe(node);return()=>observer.disconnect();},[descriptor.key,loadSection]);
  return<section ref={hostRef} className="go-home-section go-product-section-v2 go-product-section-v2--deferred" aria-labelledby={`home-section-${descriptor.key}`} data-server-section-title={descriptor.title}>
   <SectionHeader id={`home-section-${descriptor.key}`} eyebrow={copy.eyebrow} title={copy.title} subtitle={copy.subtitle}/>
-  {section?.items.length?<div className="go-product-list-v4 flex flex-col gap-4" role="list">{section.items.map(item=><ProductCard key={item.id} item={item} onClick={()=>onProductClick(item)}/>)}</div>:loading?<ProductRowsSkeleton/>:error?<div className="go-inline-error" role="status"><AlertCircle aria-hidden="true"/><span>{error}</span><button type="button" onClick={request}>{CUSTOMER_COPY.home.retry}</button></div>:<div className="go-section-reserved-space" aria-hidden="true"/>}
+  {section?.items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{section.items.map(item=><ProductCard key={item.id} item={item} onClick={()=>onProductClick(item)}/>)}</ul>:loading?<ProductRowsSkeleton/>:error?<div className="go-inline-error" role="status"><AlertCircle aria-hidden="true"/><span>{error}</span><button type="button" onClick={request}>{CUSTOMER_COPY.home.retry}</button></div>:<div className="go-section-reserved-space" aria-hidden="true"/>}
  </section>;
 }
 
