@@ -3,21 +3,20 @@ export type HomePresentationSource='featured'|'preorder'|'seasonal'|'newest'|'of
 type SectionCopy={eyebrow:string;title:string;subtitle:string};
 
 const HOME_SECTION_COPY:Record<HomePresentationSource,SectionCopy>={
- featured:{eyebrow:'Golden Oremar seçkisi',title:'Sofranıza yakışan seçkiler',subtitle:'Ürün ayrıntılarını, kaynağını ve güncel fiyatını birlikte inceleyin.'},
- preorder:{eyebrow:'Hazırlığı zaman ister',title:'Hazırlığı özen isteyen ürünler',subtitle:'Hazırlık süresi bulunan ürünleri ön sipariş bilgileriyle birlikte keşfedin.'},
- seasonal:{eyebrow:'Mevsiminde sunulur',title:'Mevsiminde sunulanlar',subtitle:'Yalnız mevsimsel stok durumuyla sunulan ürünlere göz atın.'},
- newest:{eyebrow:'Vitrine yeni katıldı',title:'Yeni eklenenleri keşfedin',subtitle:'Yakın zamanda yayına alınan ürünleri ayrıntılarıyla birlikte inceleyin.'},
- offers:{eyebrow:'Fiyatı karşılaştırın',title:'Karşılaştırmalı fiyatı olanlar',subtitle:'Güncel ve karşılaştırma fiyatı birlikte sunulan ürünleri kolayca inceleyin.'},
- curated:{eyebrow:'Özenli seçimler',title:'Üreticiden seçilenler',subtitle:'Vitrin için kürasyonla seçilmiş ürünleri kendi ritminizde keşfedin.'},
- category:{eyebrow:'Kategori seçkisi',title:'Bu kategoriden seçtiklerimiz',subtitle:'Aynı kategorideki ürünleri ayrıntıları ve güncel fiyatlarıyla inceleyin.'},
+ featured:{eyebrow:'Golden Oremar seçkisi',title:'Sofranın imza parçaları',subtitle:'Kökeni belli, karakteri güçlü ürünler. Her biri sofrada fark yaratması için seçildi.'},
+ preorder:{eyebrow:'Aceleye gelmeyenler',title:'Beklemeye değen lezzetler',subtitle:'Siparişinizle hazırlanmaya başlayan, emeği ve zamanı ürüne dönüşen özel seçimler.'},
+ seasonal:{eyebrow:'Doğanın takviminden',title:'Hasadın en güzel zamanı',subtitle:'Mevsim ne sunuyorsa onu taşıyan ürünler. Sezonundayken daha canlı, sofradayken daha hatırlanır.'},
+ newest:{eyebrow:'Yeni keşifler',title:'Vitrine yeni düşenler',subtitle:'Yeni üreticiler, yeni tatlar, yeni favoriler. İlk keşfedenlerden biri olun.'},
+ offers:{eyebrow:'Seçili fırsatlar',title:'Değeri fiyatından önce gelenler',subtitle:'Karşılaştırmalı fiyatıyla öne çıkan ürünleri kaynağı ve niteliğiyle birlikte değerlendirin.'},
+ curated:{eyebrow:'Özenle seçildi',title:'Sıradan olmayan sofralar için',subtitle:'Üreticisi, karakteri ve hikayesiyle ayrışan ürünlerden sakin ama iddialı bir seçki.'},
+ category:{eyebrow:'Aynı sofradan',title:'Birlikte keşfetmeye değer',subtitle:'Aynı kategoride farklı üreticilerden öne çıkan seçenekleri tek bakışta karşılaştırın.'},
 };
 
 export const CUSTOMER_COPY={
  home:{
-  categoriesTitle:'Sofranıza göre keşfedin',
-  categoriesSubtitle:'Aradığınız lezzete daha kolay ulaşmak için kategoriler arasında sakin bir gezintiye çıkın.',
-  categoriesAction:'Tümünü gör',
-  discoverAll:'Tüm ürünleri keşfet',
+  categoriesTitle:'Sofranızın karakterini seçin',
+  categoriesSubtitle:'Bal, süt ürünleri, kuru gıda ve daha fazlası. İyi ürüne giden yolu kısalttık.',
+  discoverAll:'Koleksiyonun tamamını keşfet',
   loadErrorTitle:'Ana sayfayı yenileyemedik',
   loadErrorFallback:'Ana sayfa şu anda yenilenemiyor.',
   retry:'Yeniden dene',
