@@ -12,8 +12,7 @@ import SectionHeader from'./components/SectionHeader';
 
 type ProductReference={id:string;slug:string;legacyId?:string|null};
 type Props={onProductClick:(product:ProductReference)=>void};
-const HOME_MERCHANDISING_LABELS=['En çok satan','Popüler','Mevsimin ürünü']as const;
-function merchandisingLabel(index:number){return HOME_MERCHANDISING_LABELS[index]||null;}
+function merchandisingLabel(index:number){if(index===0)return'En çok satan';if(index===1)return'Popüler';if(index===2)return'Mevsimin ürünü';return null;}
 
 function navigateToCategories(categorySlug?:string){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','categories');if(categorySlug)url.searchParams.set('category',categorySlug);const depth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(depth)&&depth>=0?depth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
 
