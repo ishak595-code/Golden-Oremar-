@@ -1,0 +1,9 @@
+{
+  "version":1,
+  "category":"dag-mahsulleri",
+  "target":{"width":1600,"height":1600,"format":"webp","minimumEdge":1200,"basePath":"public/images/products","externalUrlsAllowed":false,"visibleWatermark":false,"requireUniqueBinary":true,"requireManagedStorageVerification":true},
+  "publicationPolicy":{"generatedBinaryRequired":true,"binaryVerificationRequired":true,"productImageRowRequired":true,"runtimeResolutionRequired":true,"allowPublishBeforeVerification":false},
+  "products":[
+    {"slug":"sessiz-orman-kuzu-gobegi-mantari-601","status":"awaiting_generated_binary","files":["public/images/products/sessiz-orman-kuzu-gobegi-mantari-601/01-origin.webp","public/images/products/sessiz-orman-kuzu-gobegi-mantari-601/02-harvest-process.webp","public/images/products/sessiz-orman-kuzu-gobegi-mantari-601/03-texture.webp","public/images/products/sessiz-orman-kuzu-gobegi-mantari-601/04-packaging.webp","public/images/products/sessiz-orman-kuzu-gobegi-mantari-601/05-serving.webp"]}
+  ]
+}

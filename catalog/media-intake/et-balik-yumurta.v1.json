@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "category": "et-balik-yumurta",
+  "target": {
+    "width": 1600,
+    "height": 1600,
+    "format": "webp",
+    "minimumEdge": 1200,
+    "basePath": "public/images/products",
+    "externalUrlsAllowed": false,
+    "visibleWatermark": false,
+    "requireUniqueBinary": true,
+    "requireManagedStorageVerification": true
+  },
+  "publicationPolicy": {
+    "generatedBinaryRequired": true,
+    "binaryVerificationRequired": true,
+    "productImageRowRequired": true,
+    "runtimeResolutionRequired": true,
+    "allowPublishBeforeVerification": false
+  },
+  "products": [
+    {
+      "slug": "abidin-in-yayla-kuzusu-302",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/abidin-in-yayla-kuzusu-302/01-origin.webp",
+        "public/images/products/abidin-in-yayla-kuzusu-302/02-harvest-process.webp",
+        "public/images/products/abidin-in-yayla-kuzusu-302/03-texture.webp",
+        "public/images/products/abidin-in-yayla-kuzusu-302/04-packaging.webp",
+        "public/images/products/abidin-in-yayla-kuzusu-302/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "amine-nin-cifte-sari-koy-yumurtasi-305",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/amine-nin-cifte-sari-koy-yumurtasi-305/01-origin.webp",
+        "public/images/products/amine-nin-cifte-sari-koy-yumurtasi-305/02-harvest-process.webp",
+        "public/images/products/amine-nin-cifte-sari-koy-yumurtasi-305/03-texture.webp",
+        "public/images/products/amine-nin-cifte-sari-koy-yumurtasi-305/04-packaging.webp",
+        "public/images/products/amine-nin-cifte-sari-koy-yumurtasi-305/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "avasin-deresi-canli-alabaligi-ozel-hasat-301",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/avasin-deresi-canli-alabaligi-ozel-hasat-301/01-origin.webp",
+        "public/images/products/avasin-deresi-canli-alabaligi-ozel-hasat-301/02-harvest-process.webp",
+        "public/images/products/avasin-deresi-canli-alabaligi-ozel-hasat-301/03-texture.webp",
+        "public/images/products/avasin-deresi-canli-alabaligi-ozel-hasat-301/04-packaging.webp",
+        "public/images/products/avasin-deresi-canli-alabaligi-ozel-hasat-301/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "fahrettin-in-sutten-kesilmis-oglagi-303",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/fahrettin-in-sutten-kesilmis-oglagi-303/01-origin.webp",
+        "public/images/products/fahrettin-in-sutten-kesilmis-oglagi-303/02-harvest-process.webp",
+        "public/images/products/fahrettin-in-sutten-kesilmis-oglagi-303/03-texture.webp",
+        "public/images/products/fahrettin-in-sutten-kesilmis-oglagi-303/04-packaging.webp",
+        "public/images/products/fahrettin-in-sutten-kesilmis-oglagi-303/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "gunes-sirri-guzu-yagi-ic-yag-701",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/gunes-sirri-guzu-yagi-ic-yag-701/01-origin.webp",
+        "public/images/products/gunes-sirri-guzu-yagi-ic-yag-701/02-harvest-process.webp",
+        "public/images/products/gunes-sirri-guzu-yagi-ic-yag-701/03-texture.webp",
+        "public/images/products/gunes-sirri-guzu-yagi-ic-yag-701/04-packaging.webp",
+        "public/images/products/gunes-sirri-guzu-yagi-ic-yag-701/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "salih-in-meralik-ozgur-horozu-304",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/salih-in-meralik-ozgur-horozu-304/01-origin.webp",
+        "public/images/products/salih-in-meralik-ozgur-horozu-304/02-harvest-process.webp",
+        "public/images/products/salih-in-meralik-ozgur-horozu-304/03-texture.webp",
+        "public/images/products/salih-in-meralik-ozgur-horozu-304/04-packaging.webp",
+        "public/images/products/salih-in-meralik-ozgur-horozu-304/05-serving.webp"
+      ]
+    }
+  ]
+}

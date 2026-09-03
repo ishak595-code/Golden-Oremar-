@@ -1,0 +1,12 @@
+{
+  "version":1,
+  "category":"dogal-tas-enerji",
+  "target":{"width":1600,"height":1600,"format":"webp","minimumEdge":1200,"basePath":"public/images/products","externalUrlsAllowed":false,"visibleWatermark":false,"requireUniqueBinary":true,"requireManagedStorageVerification":true},
+  "publicationPolicy":{"generatedBinaryRequired":true,"binaryVerificationRequired":true,"productImageRowRequired":true,"runtimeResolutionRequired":true,"allowPublishBeforeVerification":false},
+  "products":[
+    {"slug":"el-islemesi-tahta-kasik-ve-yayik-tokmagi-704","status":"awaiting_generated_binary","files":["public/images/products/el-islemesi-tahta-kasik-ve-yayik-tokmagi-704/01-origin.webp","public/images/products/el-islemesi-tahta-kasik-ve-yayik-tokmagi-704/02-harvest-process.webp","public/images/products/el-islemesi-tahta-kasik-ve-yayik-tokmagi-704/03-texture.webp","public/images/products/el-islemesi-tahta-kasik-ve-yayik-tokmagi-704/04-packaging.webp","public/images/products/el-islemesi-tahta-kasik-ve-yayik-tokmagi-704/05-serving.webp"]},
+    {"slug":"kirik-tas-kaya-tuzu-blogu-kristal-603","status":"awaiting_generated_binary","files":["public/images/products/kirik-tas-kaya-tuzu-blogu-kristal-603/01-origin.webp","public/images/products/kirik-tas-kaya-tuzu-blogu-kristal-603/02-harvest-process.webp","public/images/products/kirik-tas-kaya-tuzu-blogu-kristal-603/03-texture.webp","public/images/products/kirik-tas-kaya-tuzu-blogu-kristal-603/04-packaging.webp","public/images/products/kirik-tas-kaya-tuzu-blogu-kristal-603/05-serving.webp"]},
+    {"slug":"koyun-efsanevi-beyaz-isitma-pres-tasi-402","status":"awaiting_generated_binary","files":["public/images/products/koyun-efsanevi-beyaz-isitma-pres-tasi-402/01-origin.webp","public/images/products/koyun-efsanevi-beyaz-isitma-pres-tasi-402/02-harvest-process.webp","public/images/products/koyun-efsanevi-beyaz-isitma-pres-tasi-402/03-texture.webp","public/images/products/koyun-efsanevi-beyaz-isitma-pres-tasi-402/04-packaging.webp","public/images/products/koyun-efsanevi-beyaz-isitma-pres-tasi-402/05-serving.webp"]},
+    {"slug":"sobalik-mese-yarigi-403","status":"awaiting_generated_binary","files":["public/images/products/sobalik-mese-yarigi-403/01-origin.webp","public/images/products/sobalik-mese-yarigi-403/02-harvest-process.webp","public/images/products/sobalik-mese-yarigi-403/03-texture.webp","public/images/products/sobalik-mese-yarigi-403/04-packaging.webp","public/images/products/sobalik-mese-yarigi-403/05-serving.webp"]}
+  ]
+}

@@ -1,6 +1,8 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{ArrowLeft,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,PackageCheck,Plus,QrCode,Share2,ShoppingCart,Star,Store,Truck,X,ZoomIn}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProductFavorite}from'./api';
+import PremiumOrderConfigurator from'./PremiumOrderConfigurator';
+import{buildOrderCustomization,buildProductExperience,defaultOrderOptions,validateOrderOptions,type SelectedOrderOptions}from'./productExperience';
 import ProductSafetyPanel from'../content/ProductSafetyPanel';
 import{getProductSafety}from'../content/productSafetyApi';
 import ProducerQuestionComposer from'../account/ProducerQuestionComposer';
@@ -25,7 +27,7 @@ function safeText(value:unknown,max=1000){return typeof value==='string'?value.t
 function safeInteger(value:unknown){return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:null;}
 function safeRating(value:unknown){return typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=5?value:null;}
 function safeCurrency(value:unknown){const currency=safeText(value,3).toUpperCase();return/^[A-Z]{3}$/.test(currency)?currency:null;}
-function safeReference(value:unknown,max=220){const reference=safeText(value,max);return reference||null;}
+function safeReference(value:unknown,max=220){const normalized=safeText(value,max);return normalized||null;}
 function firstInteger(...values:unknown[]){for(const value of values){const parsed=safeInteger(value);if(parsed!==null)return parsed;}return null;}
 function firstRating(...values:unknown[]){for(const value of values){const parsed=safeRating(value);if(parsed!==null)return parsed;}return null;}
 
@@ -35,6 +37,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const[reviews,setReviews]=useState<any>(null);
  const[variantId,setVariantId]=useState('');
  const[quantity,setQuantity]=useState(1);
+ const[selectedOrderOptions,setSelectedOrderOptions]=useState<SelectedOrderOptions>({});
  const[selectedImagePath,setSelectedImagePath]=useState('');
  const[imageViewerOpen,setImageViewerOpen]=useState(false);
  const[loading,setLoading]=useState(true);
@@ -62,8 +65,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    const firstImage=images.find((item:any)=>item?.primary===true)||images[0];
    setSelectedImagePath(safeText(firstImage?.path,1200));
    if(product?.id){
-    try{const nextReviews=await listProductReviews(product.id,20,0);if(requestId.current===current)setReviews(nextReviews);}
-    catch{if(requestId.current===current)setReviews(null);}
+    try{const nextReviews=await listProductReviews(product.id,20,0);if(requestId.current===current)setReviews(nextReviews);}catch{if(requestId.current===current)setReviews(null);}
    }
   }catch{if(requestId.current===current)setError('Ürün bilgileri şu anda yüklenemedi. Lütfen tekrar deneyin.');}
   finally{if(requestId.current===current)setLoading(false);}
@@ -71,6 +73,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  useEffect(()=>{void load();return()=>{requestId.current+=1;};},[reference]);
  useEffect(()=>{let active=true;setSafetyContent(null);getProductSafety(reference,'tr').then(data=>{if(active)setSafetyContent(data);}).catch(()=>{if(active)setSafetyContent(null);});return()=>{active=false;};},[reference]);
 
+ const experience=useMemo(()=>buildProductExperience(detail||{}),[detail]);
+ useEffect(()=>{setSelectedOrderOptions(defaultOrderOptions(experience.optionSchema));},[detail?.id,experience.customizationKind]);
  const variant=useMemo(()=>Array.isArray(detail?.variants)?detail.variants.find((item:any)=>item?.id===variantId)||null:null,[detail,variantId]);
  const images=Array.isArray(detail?.images)?detail.images:[];
  const selectedImage=images.find((item:any)=>item?.path===selectedImagePath)||images.find((item:any)=>item?.primary===true)||images[0]||null;
@@ -84,13 +88,15 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const soldOut=variant?.available===false||(tracked&&variantStock!==null&&variantStock<=0);
  const maxQuantity=tracked&&variantStock!==null?Math.max(1,Math.min(99,variantStock)):99;
  const preorder=detail?.stockMode==='preorder';
+ const preorderLeadDays=safeInteger(detail?.preorderLeadDays);
  const currency=safeCurrency(detail?.currency);
  const priceMinor=safeInteger(variant?.priceMinor);
  const compareAtPriceMinor=safeInteger(variant?.compareAtPriceMinor);
  const priceReady=currency!==null&&priceMinor!==null;
  const compareAtPriceReady=currency!==null&&priceMinor!==null&&compareAtPriceMinor!==null&&compareAtPriceMinor>priceMinor;
  const variantReference=safeReference(variant?.id,160);
- const purchaseReady=variant?.available===true&&variantReference!==null&&priceReady&&stockReady&&!soldOut;
+ const orderConfigurationError=validateOrderOptions(experience.optionSchema,selectedOrderOptions);
+ const purchaseReady=variant?.available===true&&variantReference!==null&&priceReady&&stockReady&&!soldOut&&!orderConfigurationError;
  useEffect(()=>{setQuantity(current=>Math.max(1,Math.min(current,maxQuantity)));},[variantId,maxQuantity]);
  useEffect(()=>{if(!imageViewerOpen||images.length<2)return;const onKeyDown=(event:KeyboardEvent)=>{if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;event.preventDefault();const delta=event.key==='ArrowLeft'?-1:1;const next=(selectedImageIndex+delta+images.length)%images.length;setSelectedImagePath(safeText(images[next]?.path,1200));};document.addEventListener('keydown',onKeyDown,true);return()=>document.removeEventListener('keydown',onKeyDown,true);},[imageViewerOpen,images,selectedImageIndex]);
 
@@ -100,13 +106,14 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const reviewCount=firstInteger(reviews?.summary?.count,detail?.reviewSummary?.count);
  const averageRating=firstRating(reviews?.summary?.averageRating,detail?.reviewSummary?.averageRating);
 
- function purchaseIssueMessage(){if(soldOut)return'Bu ürün şu anda stokta yok.';if(!priceReady)return'Fiyat bilgisi şu anda gösterilemiyor.';if(!stockReady)return'Stok bilgisi yenileniyor.';return'Bu seçenek şu anda satın alınamıyor.';}
+ function purchaseIssueMessage(){if(orderConfigurationError)return orderConfigurationError;if(soldOut)return'Bu ürün şu anda stokta yok.';if(!priceReady)return'Fiyat bilgisi şu anda gösterilemiyor.';if(!stockReady)return'Stok bilgisi yenileniyor.';return'Bu seçenek şu anda satın alınamıyor.';}
  function moveImage(delta:number){if(images.length<2)return;const next=(selectedImageIndex+delta+images.length)%images.length;setSelectedImagePath(safeText(images[next]?.path,1200));}
+ function selectedOptionsPayload(){const customization=buildOrderCustomization(experience,selectedOrderOptions);return customization?{orderCustomization:customization}:{};}
  async function addToCart(){
   if(!authenticated){onLoginRequired();return;}
   if(!purchaseReady||!variantReference){setError(purchaseIssueMessage());return;}
-  try{setBusy(true);setError('');setStatus('');await setCartItem({variantId:variantReference,quantity});await onCartChanged?.();setStatus('Sepete eklendi.');}
-  catch{setError('Ürün sepete eklenemedi. Lütfen tekrar deneyin.');}
+  try{setBusy(true);setError('');setStatus('');await setCartItem({variantId:variantReference,quantity,selectedOptions:selectedOptionsPayload()});await onCartChanged?.();setStatus(preorder?'Sipariş sepete eklendi.':'Sepete eklendi.');}
+  catch(err){setError(err instanceof Error&&err.message?err.message:'Ürün sepete eklenemedi. Lütfen tekrar deneyin.');}
   finally{setBusy(false);}
  }
  function pushInternalRoute(url:string,tab:string){const currentDepth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(currentDepth)&&currentDepth>=0?currentDepth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab};window.history.pushState(state,'',url);window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
@@ -115,8 +122,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  async function buyNow(){
   if(!authenticated){onLoginRequired();return;}
   if(!purchaseReady||!variantReference){setError(purchaseIssueMessage());return;}
-  try{setBusy(true);setError('');setStatus('');await setCartItem({variantId:variantReference,quantity});await onCartChanged?.();navigateToCart();}
-  catch{setError('Satın alma işlemi başlatılamadı. Lütfen tekrar deneyin.');}
+  try{setBusy(true);setError('');setStatus('');await setCartItem({variantId:variantReference,quantity,selectedOptions:selectedOptionsPayload()});await onCartChanged?.();navigateToCart();}
+  catch(err){setError(err instanceof Error&&err.message?err.message:'Satın alma işlemi başlatılamadı. Lütfen tekrar deneyin.');}
   finally{setBusy(false);}
  }
  async function favorite(){
@@ -146,6 +153,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const producerId=safeReference(detail?.producer?.id,160);
  const productId=safeReference(detail?.id,160);
  const questionReady=Boolean(producerId&&productId);
+ const cartAdded=status==='Sepete eklendi.'||status==='Sipariş sepete eklendi.';
 
  return<article className="mx-auto max-w-6xl px-4 pb-28 sm:px-6">
   <div className="sticky top-0 z-30 -mx-4 mb-4 flex min-h-16 items-center gap-2 border-b border-brand-border bg-brand-card/95 px-4 backdrop-blur-xl sm:-mx-6 sm:px-6">
@@ -156,29 +164,35 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
   </div>
 
   {error?<div role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div>:null}
-  {status?<div role="status" aria-live="polite" className="mb-4 rounded-2xl bg-green-50 p-3 text-sm font-semibold text-green-800 dark:bg-green-950/30 dark:text-green-200">{status==='Sepete eklendi.'?<div className="flex items-center justify-between gap-3"><span>Sepete eklendi.</span><button type="button" onClick={navigateToCart} className="min-h-9 rounded-full border border-green-700/30 px-3 font-black">Sepete Git</button></div>:status}</div>:null}
+  {status?<div role="status" aria-live="polite" className="mb-4 rounded-2xl bg-green-50 p-3 text-sm font-semibold text-green-800 dark:bg-green-950/30 dark:text-green-200">{cartAdded?<div className="flex items-center justify-between gap-3"><span>{status}</span><button type="button" onClick={navigateToCart} className="min-h-9 rounded-full border border-green-700/30 px-3 font-black">Sepete Git</button></div>:status}</div>:null}
 
   <div className="grid gap-6 lg:grid-cols-2">
    <section aria-label="Ürün görselleri">
-    <div className="overflow-hidden rounded-3xl border border-brand-border bg-gray-100 dark:bg-gray-800">{selectedImageUrl?<button type="button" onClick={()=>setImageViewerOpen(true)} aria-label={`${detailName} görselini büyüt`} className="group relative block w-full cursor-zoom-in"><img data-product-primary-image="true" src={selectedImageUrl} alt={safeText(selectedImage.alt,300)||detailName} loading="eager" decoding="async" fetchPriority="high" className="aspect-square h-full w-full object-contain p-2"/><span aria-hidden="true" className="absolute bottom-3 right-3 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand-border bg-brand-card/95 px-3 text-xs font-black text-brand-text shadow-lg backdrop-blur"><ZoomIn className="h-4 w-4"/>Büyüt</span></button>:<div role="img" aria-label={`${detailName} için görsel henüz eklenmedi`} className="grid aspect-square place-items-center text-brand-muted">Ürün görseli yakında</div>}</div>
+    <div className="overflow-hidden rounded-3xl border border-brand-border bg-gray-100 shadow-sm dark:bg-gray-800">{selectedImageUrl?<button type="button" onClick={()=>setImageViewerOpen(true)} aria-label={`${detailName} görselini büyüt`} className="group relative block w-full cursor-zoom-in"><img data-product-primary-image="true" src={selectedImageUrl} alt={safeText(selectedImage.alt,300)||detailName} loading="eager" decoding="async" fetchPriority="high" className="aspect-square h-full w-full object-contain p-2"/><span aria-hidden="true" className="absolute bottom-3 right-3 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand-border bg-brand-card/95 px-3 text-xs font-black text-brand-text shadow-lg backdrop-blur"><ZoomIn className="h-4 w-4"/>Büyüt</span></button>:<div role="img" aria-label={`${detailName} için görsel henüz eklenmedi`} className="grid aspect-square place-items-center text-brand-muted">Ürün görseli yakında</div>}</div>
     {images.length>1?<div className="hide-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">{images.slice(0,12).map((image:any,index:number)=>{const src=publicCatalogUrl(image?.path);return src?<button type="button" key={`${safeText(image.path,1200)}:${index}`} onClick={()=>setSelectedImagePath(safeText(image.path,1200))} aria-label={`${detailName} görseli ${index+1}`} aria-pressed={selectedImage?.path===image.path} className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-brand-card ${selectedImage?.path===image.path?'border-brand-gold ring-2 ring-brand-gold/30':'border-brand-border'}`}><img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain p-1"/></button>:null;})}</div>:null}
    </section>
 
    <section>
     {categoryName?categorySlug?<button type="button" onClick={()=>onCategory?onCategory(categorySlug,categoryName):navigateToCategory(categorySlug)} aria-label={`${categoryName} kategorisini aç`} className="group inline-flex min-h-9 items-center gap-1 rounded-full border border-brand-gold/35 bg-brand-gold/5 px-3 text-xs font-black uppercase tracking-[0.12em] text-brand-gold transition hover:border-brand-gold hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span>{categoryName}</span><ChevronRight aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"/></button>:<div className="text-xs font-black uppercase tracking-[0.14em] text-brand-gold">{categoryName}</div>:null}
-    <h1 className="mt-2 text-3xl font-black leading-tight text-brand-green dark:text-brand-gold">{detailName}</h1>
+    <div className="mt-3 text-xs font-black tracking-[0.08em] text-brand-gold">{experience.kicker}</div>
+    <h1 className="mt-1 text-3xl font-black leading-tight text-brand-green dark:text-brand-gold">{detailName}</h1>
+    {producerLocation?<div className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-brand-muted"><MapPin aria-hidden="true" className="h-4 w-4 text-brand-gold"/><span>{producerLocation}</span></div>:null}
 
-    <div className="mt-3 rounded-2xl bg-gray-50 p-4 dark:bg-gray-800"><div className="flex items-end justify-between gap-3"><div>{priceReady?<div><div className="text-2xl font-black text-brand-green dark:text-brand-gold">{money(priceMinor,currency)}</div>{compareAtPriceReady?<div className="mt-1 text-sm font-semibold text-brand-muted line-through">Önce {money(compareAtPriceMinor,currency)}</div>:null}</div>:<div className="font-bold text-brand-muted">Fiyat şu anda gösterilemiyor</div>}{preorder?<div className="mt-1 text-xs font-bold text-brand-green">Ön siparişe açık</div>:null}</div><div className={`text-sm font-bold ${soldOut?'text-red-700 dark:text-red-300':'text-brand-muted'}`}>{soldOut?'Stokta yok':tracked&&variantStock!==null?variantStock<=5?`${variantStock} adet kaldı`:'Stokta':'Satışta'}</div></div></div>
+    <div className="mt-4 rounded-3xl border border-brand-border bg-brand-card p-4 shadow-sm"><div className="flex items-end justify-between gap-3"><div>{priceReady?<div><div className="text-2xl font-black text-brand-green dark:text-brand-gold">{money(priceMinor,currency)}</div>{compareAtPriceReady?<div className="mt-1 text-sm font-semibold text-brand-muted line-through">Önce {money(compareAtPriceMinor,currency)}</div>:null}</div>:<div className="font-bold text-brand-muted">Fiyat şu anda gösterilemiyor</div>}{preorder?<div className="mt-1 text-xs font-black text-brand-gold">Sipariş üzerine hazırlanır</div>:null}</div><div className={`text-sm font-bold ${soldOut?'text-red-700 dark:text-red-300':'text-brand-muted'}`}>{soldOut?'Stokta yok':tracked&&variantStock!==null?variantStock<=5?`${variantStock} adet kaldı`:'Stokta':'Satışta'}</div></div></div>
 
-    {safeText(detail.shortDescription,1000)?<p className="mt-3 leading-6 text-brand-muted">{safeText(detail.shortDescription,1000)}</p>:null}
+    {safeText(detail.shortDescription,1000)?<p className="mt-4 text-[15px] leading-7 text-brand-muted">{safeText(detail.shortDescription,1000)}</p>:null}
 
     {Array.isArray(detail.variants)&&detail.variants.length>1?<label className="mt-5 block"><span className="text-sm font-black">Paket / seçenek</span><select value={variantId} onChange={event=>setVariantId(event.target.value)} className="mt-2 min-h-11 w-full rounded-xl border border-brand-border bg-brand-card px-3 font-bold text-brand-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{detail.variants.map((item:any)=>{const id=safeReference(item?.id,160)||'';return<option key={id||safeText(item?.name,240)} value={id} disabled={item?.available===false}>{safeText(item?.name,240)||'Seçenek'}</option>;})}</select></label>:null}
 
-    <div className="mt-4 flex items-center justify-between gap-3"><span className="text-sm font-bold">Adet</span><div className="inline-flex items-center rounded-full border border-brand-border bg-brand-card"><button type="button" onClick={()=>setQuantity(value=>Math.max(1,value-1))} disabled={!purchaseReady||busy||quantity<=1} aria-label="Miktarı azalt" className="grid min-h-11 min-w-11 place-items-center rounded-l-full disabled:opacity-40"><Minus aria-hidden="true" className="h-4 w-4"/></button><output aria-live="polite" className="min-w-10 text-center font-black">{quantity}</output><button type="button" onClick={()=>setQuantity(value=>Math.min(maxQuantity,value+1))} disabled={!purchaseReady||busy||quantity>=maxQuantity} aria-label="Miktarı artır" className="grid min-h-11 min-w-11 place-items-center rounded-r-full disabled:opacity-40"><Plus aria-hidden="true" className="h-4 w-4"/></button></div></div>
+    <PremiumOrderConfigurator lead={experience.orderLead} schema={experience.optionSchema} selected={selectedOrderOptions} onChange={setSelectedOrderOptions} disabled={busy||soldOut}/>
 
-    <div className="product-detail-commerce-dock" aria-label="Satın alma seçenekleri">
-     <div className="product-detail-commerce-actions grid gap-2"><button type="button" aria-label="Hediye et" onClick={()=>authenticated?onGift(detail.slug||detail.id):onLoginRequired()} disabled={busy||!purchaseReady} className="product-detail-commerce-gift min-h-12 font-black disabled:opacity-50"><Gift aria-hidden="true" className="h-4 w-4"/><span>Hediye Et</span></button><button type="button" onClick={()=>void addToCart()} disabled={busy||!purchaseReady} className="product-detail-commerce-cart min-h-12 font-black disabled:opacity-50"><ShoppingCart aria-hidden="true" className="h-4 w-4"/><span>{busy?'İşleniyor…':preorder?'Ön Sipariş':'Sepete Ekle'}</span></button><button type="button" onClick={()=>void buyNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-buy min-h-12 font-black disabled:opacity-50"><span>Hemen Satın Al</span></button></div>
+    <div className="mt-5 flex items-center justify-between gap-3"><span className="text-sm font-black">Adet</span><div className="inline-flex items-center rounded-full border border-brand-border bg-brand-card"><button type="button" onClick={()=>setQuantity(value=>Math.max(1,value-1))} disabled={!purchaseReady||busy||quantity<=1} aria-label="Miktarı azalt" className="grid min-h-11 min-w-11 place-items-center rounded-l-full disabled:opacity-40"><Minus aria-hidden="true" className="h-4 w-4"/></button><output aria-live="polite" className="min-w-10 text-center font-black">{quantity}</output><button type="button" onClick={()=>setQuantity(value=>Math.min(maxQuantity,value+1))} disabled={!purchaseReady||busy||quantity>=maxQuantity} aria-label="Miktarı artır" className="grid min-h-11 min-w-11 place-items-center rounded-r-full disabled:opacity-40"><Plus aria-hidden="true" className="h-4 w-4"/></button></div></div>
+
+    <div className="product-detail-commerce-dock mt-5" aria-label="Satın alma seçenekleri">
+     <div className="product-detail-commerce-actions grid gap-2"><button type="button" aria-label="Hediye et" onClick={()=>authenticated?onGift(detail.slug||detail.id):onLoginRequired()} disabled={busy||!purchaseReady} className="product-detail-commerce-gift min-h-12 font-black disabled:opacity-50"><Gift aria-hidden="true" className="h-4 w-4"/><span>Hediye Et</span></button><button type="button" onClick={()=>void addToCart()} disabled={busy||!purchaseReady} className="product-detail-commerce-cart min-h-12 font-black disabled:opacity-50"><ShoppingCart aria-hidden="true" className="h-4 w-4"/><span>{busy?'İşleniyor…':preorder?'Sipariş Ver':'Sepete Ekle'}</span></button><button type="button" onClick={()=>void buyNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-buy min-h-12 font-black disabled:opacity-50">{preorder?<span>Siparişi Tamamla</span>:<span>Hemen Satın Al</span>}</button></div>
     </div>
+
+    {preorder?<div className="mt-3 flex items-start gap-2 rounded-2xl border border-brand-gold/25 bg-brand-gold/5 p-3 text-sm leading-6 text-brand-muted"><Truck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold"/><span>{preorderLeadDays!==null&&preorderLeadDays>0?`Bu ürün siparişten sonra hazırlanır. Kayıtlı hazırlık süresi yaklaşık ${preorderLeadDays} gündür.`:'Bu ürün hazır stok mantığıyla değil, sipariş üzerine hazırlık akışıyla ilerler.'}</span></div>:null}
 
     {detail.producer?.id?<button type="button" onClick={()=>onProducer(String(detail.producer.id),safeText(detail.producer.slug,220)||String(detail.producer.id),safeText(detail.producer.name,240)||'Üretici')} className="mt-5 flex min-h-14 w-full items-center gap-3 rounded-2xl border border-brand-border bg-brand-card p-3 text-left"><Store aria-hidden="true" className="h-5 w-5 text-brand-gold"/><span className="min-w-0 flex-1"><span className="flex items-center gap-1.5 font-bold">{safeText(detail.producer.name,240)||'Üretici'}{detail.producer?.verified===true?<CheckCircle2 aria-hidden="true" className="h-4 w-4 text-brand-green"/>:null}</span>{producerLocation?<span className="mt-0.5 block text-sm text-brand-muted">{producerLocation}</span>:null}</span><span className="text-sm font-bold text-brand-green">Mağazaya git</span></button>:null}
 
@@ -190,8 +204,11 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    </section>
   </div>
 
+  <section aria-labelledby="product-story-title" className="mt-8 overflow-hidden rounded-3xl border border-brand-gold/30 bg-gradient-to-br from-brand-gold/10 via-brand-card to-brand-card shadow-sm">
+   <div className="p-5 sm:p-7"><div className="text-xs font-black uppercase tracking-[0.16em] text-brand-gold">{experience.kicker}</div><h2 id="product-story-title" className="mt-2 text-2xl font-black text-brand-green dark:text-brand-gold">Ürün Hikâyesi</h2><p className="mt-4 whitespace-pre-wrap text-[15px] leading-8 text-brand-muted">{experience.story}</p>{safeText(detail.origin,240)?<div className="mt-5 flex items-center gap-2 border-t border-brand-gold/20 pt-4 text-sm font-black text-brand-text"><MapPin aria-hidden="true" className="h-4 w-4 text-brand-gold"/>{safeText(detail.origin,240)}</div>:null}</div>
+  </section>
+
   <div className="mt-6 space-y-3">
-   <Accordion title="Ürün Hikâyesi"><p className="whitespace-pre-wrap leading-7 text-brand-muted">{safeText(detail.story,12000)||safeText(detail.description,12000)||'Bu ürünün hikâyesi yakında burada olacak.'}</p>{safeText(detail.origin,240)?<div className="mt-4 flex items-center gap-2 text-sm font-bold"><MapPin aria-hidden="true" className="h-4 w-4 text-brand-gold"/>{safeText(detail.origin,240)}</div>:null}</Accordion>
    {featureItems.length?<Accordion title="Ürün Özellikleri"><ul className="grid gap-2 sm:grid-cols-2">{featureItems.map((item,index)=><li key={`${item}-${index}`} className="rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">{item}</li>)}</ul></Accordion>:null}
    <Accordion title="Gıda Güvenliği & Kullanım"><ProductSafetyPanel safety={safetyContent?.safety} summary={safetyContent?.summary} heading="Güvenli kullanım bilgileri"/></Accordion>
    <Accordion title="Teslimat Bilgileri"><ShippingReadiness detail={detail} variant={variant}/></Accordion>
