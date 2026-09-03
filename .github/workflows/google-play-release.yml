@@ -1,0 +1,142 @@
+name: Google Play Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: Google Play track
+        required: true
+        default: internal
+        type: choice
+        options:
+          - internal
+          - alpha
+          - beta
+          - production
+      status:
+        description: Release status
+        required: true
+        default: completed
+        type: choice
+        options:
+          - completed
+          - draft
+          - inProgress
+          - halted
+
+permissions:
+  contents: read
+
+concurrency:
+  group: google-play-release-com-goldenoremar-app
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Require production signing and Play credentials
+        shell: bash
+        env:
+          REAL_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          REAL_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          REAL_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          REAL_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          PLAY_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+          for value in "$REAL_KEYSTORE_BASE64" "$REAL_KEYSTORE_PASSWORD" "$REAL_KEY_ALIAS" "$REAL_KEY_PASSWORD" "$PLAY_SERVICE_ACCOUNT"; do
+            if [[ -z "$value" ]]; then
+              echo 'Google Play publication is fail-closed: production upload-key and service-account secrets must all be configured.' >&2
+              exit 1
+            fi
+          done
+          node -e "const value=JSON.parse(process.env.PLAY_SERVICE_ACCOUNT);if(value.type!=='service_account'||!value.client_email||!value.private_key)process.exit(2)"
+      - name: Install Android 17 API 37.0 with pinned official Android CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOLS_VERSION="15859902"
+          TOOLS_SHA256="4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
+          TOOLS_ZIP="${RUNNER_TEMP}/commandlinetools-linux-${TOOLS_VERSION}_latest.zip"
+          TOOLS_DIR="${RUNNER_TEMP}/android-command-line-tools"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://dl.google.com/android/repository/commandlinetools-linux-${TOOLS_VERSION}_latest.zip" \
+            --output "${TOOLS_ZIP}"
+          echo "${TOOLS_SHA256}  ${TOOLS_ZIP}" | sha256sum --check --strict
+          rm -rf "${TOOLS_DIR}" && mkdir -p "${TOOLS_DIR}"
+          unzip -q "${TOOLS_ZIP}" -d "${TOOLS_DIR}"
+          "${TOOLS_DIR}/cmdline-tools/bin/android" --sdk="${ANDROID_HOME}" sdk install platform-tools platforms/android-37.0 build-tools/37.0.0 --canary
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Audit release architecture and security
+        run: npm run audit:release && npx tsc --noEmit
+      - name: Build and synchronize Android
+        run: npm run build && npx cap sync android
+      - name: Ensure native sync is reproducible
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          node scripts/native-feature-runtime-check.mjs android
+      - name: Prepare production Android upload key
+        shell: bash
+        env:
+          REAL_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          REAL_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          REAL_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          REAL_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          keystore="${RUNNER_TEMP}/golden-oremar-upload.jks"
+          printf '%s' "$REAL_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          test -s "$keystore"
+          echo "::add-mask::$REAL_KEYSTORE_PASSWORD"
+          echo "::add-mask::$REAL_KEY_PASSWORD"
+          echo "ANDROID_KEYSTORE_FILE=$keystore" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$REAL_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$REAL_KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$REAL_KEY_PASSWORD" >> "$GITHUB_ENV"
+      - name: Compile production Android App Bundle
+        working-directory: android
+        run: ./gradlew :app:bundleRelease --no-daemon
+      - name: Verify production AAB signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          aab='android/app/build/outputs/bundle/release/app-release.aab'
+          test -s "$aab"
+          jarsigner -verify -verbose -certs "$aab" >/tmp/golden-oremar-aab-signature.txt
+          grep -q 'jar verified' /tmp/golden-oremar-aab-signature.txt
+          grep -q 'versionCode = 4' android/app/build.gradle
+          grep -q 'versionName = "1.3.0"' android/app/build.gradle
+      - name: Upload AAB to Google Play
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.goldenoremar.app
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          tracks: ${{ inputs.track }}
+          status: ${{ inputs.status }}
+          releaseName: Golden Oremar 1.3.0 (4)
+          whatsNewDirectory: distribution/whatsnew
+      - name: Preserve published bundle evidence
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-oremar-google-play-aab-${{ github.sha }}
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 30

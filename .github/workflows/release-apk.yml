@@ -1,0 +1,147 @@
+name: Signed Release APK
+
+on:
+  push:
+    branches:
+      - integration/product-story-media-ordering-2026-09-03
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signed-release-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-release-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      VITE_SUPABASE_URL: https://rmfcziawxjgcnxexbrvw.supabase.co
+      VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_n4P4WYheJjOzgjO90Ko_jA_vh3CS8Vg
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Android 17 API 37.0 with pinned official Android CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOOLS_VERSION="15859902"
+          TOOLS_SHA256="4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
+          TOOLS_ZIP="${RUNNER_TEMP}/commandlinetools-linux-${TOOLS_VERSION}_latest.zip"
+          TOOLS_DIR="${RUNNER_TEMP}/android-command-line-tools"
+          curl --fail --location --retry 3 --silent --show-error \
+            "https://dl.google.com/android/repository/commandlinetools-linux-${TOOLS_VERSION}_latest.zip" \
+            --output "${TOOLS_ZIP}"
+          echo "${TOOLS_SHA256}  ${TOOLS_ZIP}" | sha256sum --check --strict
+          rm -rf "${TOOLS_DIR}"
+          mkdir -p "${TOOLS_DIR}"
+          unzip -q "${TOOLS_ZIP}" -d "${TOOLS_DIR}"
+          ANDROID_CLI="${TOOLS_DIR}/cmdline-tools/bin/android"
+          test -x "${ANDROID_CLI}"
+          "${ANDROID_CLI}" --sdk="${ANDROID_HOME}" sdk install \
+            platform-tools \
+            platforms/android-37.0 \
+            build-tools/37.0.0 \
+            --canary
+          test -f "${ANDROID_HOME}/platforms/android-37.0/android.jar"
+          test -x "${ANDROID_HOME}/build-tools/37.0.0/apksigner"
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=low
+      - name: Run release architecture and security audits
+        run: npm run audit:release
+      - name: TypeScript zero-error gate
+        run: npx tsc --noEmit
+      - name: Build production application and sync Android
+        run: npm run build && npx cap sync android
+      - name: Ensure Android native sync is reproducible
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! git diff --quiet; then
+            echo 'Capacitor Android sync changed tracked files. Commit generated native changes before release.' >&2
+            git diff --stat
+            git diff
+            exit 1
+          fi
+      - name: Verify native feature markers
+        run: node scripts/native-feature-runtime-check.mjs android
+      - name: Prepare Android release signing material
+        shell: bash
+        env:
+          REAL_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          REAL_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          REAL_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          REAL_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          present=0
+          for value in "$REAL_KEYSTORE_BASE64" "$REAL_KEYSTORE_PASSWORD" "$REAL_KEY_ALIAS" "$REAL_KEY_PASSWORD"; do
+            if [[ -n "$value" ]]; then present=$((present+1)); fi
+          done
+          if [[ "$present" -ne 0 && "$present" -ne 4 ]]; then
+            echo 'Android upload-key secrets are partially configured. Configure all four together.' >&2
+            exit 1
+          fi
+          keystore="${RUNNER_TEMP}/golden-oremar-upload.jks"
+          if [[ "$present" -eq 4 ]]; then
+            printf '%s' "$REAL_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+            store_password="$REAL_KEYSTORE_PASSWORD"
+            key_alias="$REAL_KEY_ALIAS"
+            key_password="$REAL_KEY_PASSWORD"
+            signing_source='github-secrets'
+          else
+            store_password="ci-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-only"
+            key_alias='golden-oremar-ci-validation'
+            key_password="$store_password"
+            keytool -genkeypair -noprompt -v \
+              -keystore "$keystore" \
+              -storepass "$store_password" \
+              -keypass "$key_password" \
+              -alias "$key_alias" \
+              -dname 'CN=Golden Oremar CI Validation,O=Golden Oremar,C=TR' \
+              -keyalg RSA -keysize 2048 -validity 2
+            signing_source='ephemeral-ci'
+          fi
+          test -s "$keystore"
+          echo "::add-mask::$store_password"
+          echo "::add-mask::$key_password"
+          echo "ANDROID_KEYSTORE_FILE=$keystore" >> "$GITHUB_ENV"
+          echo "ANDROID_KEYSTORE_PASSWORD=$store_password" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_ALIAS=$key_alias" >> "$GITHUB_ENV"
+          echo "ANDROID_KEY_PASSWORD=$key_password" >> "$GITHUB_ENV"
+          echo "ANDROID_SIGNING_SOURCE=$signing_source" >> "$GITHUB_ENV"
+      - name: Compile signed Android release APK
+        working-directory: android
+        run: chmod +x gradlew && ./gradlew :app:assembleRelease --no-daemon
+      - name: Verify signed release APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk='android/app/build/outputs/apk/release/app-release.apk'
+          test -s "$apk"
+          "${ANDROID_HOME}/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$apk" | tee /tmp/apk-signature.txt
+          grep -q 'Verifies' /tmp/apk-signature.txt
+          printf '%s\n' "$ANDROID_SIGNING_SOURCE" > android/app/build/outputs/apk/release/signing-source.txt
+          sha256sum "$apk" > android/app/build/outputs/apk/release/app-release.apk.sha256
+      - name: Upload signed Android release APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: golden-oremar-android-signed-release-apk-${{ github.sha }}
+          path: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/apk/release/app-release.apk.sha256
+            android/app/build/outputs/apk/release/signing-source.txt
+          if-no-files-found: error
+          retention-days: 14

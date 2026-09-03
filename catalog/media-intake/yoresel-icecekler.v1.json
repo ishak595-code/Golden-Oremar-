@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "category": "yoresel-icecekler",
+  "target": {
+    "width": 1600,
+    "height": 1600,
+    "format": "webp",
+    "minimumEdge": 1200,
+    "basePath": "public/images/products",
+    "externalUrlsAllowed": false,
+    "visibleWatermark": false,
+    "requireUniqueBinary": true,
+    "requireManagedStorageVerification": true
+  },
+  "publicationPolicy": {
+    "generatedBinaryRequired": true,
+    "binaryVerificationRequired": true,
+    "productImageRowRequired": true,
+    "runtimeResolutionRequired": true,
+    "allowPublishBeforeVerification": false
+  },
+  "products": [
+    {
+      "slug": "ata-tohumu-dag-kekigi-suyu-distile-807",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/ata-tohumu-dag-kekigi-suyu-distile-807/01-origin.webp",
+        "public/images/products/ata-tohumu-dag-kekigi-suyu-distile-807/02-harvest-process.webp",
+        "public/images/products/ata-tohumu-dag-kekigi-suyu-distile-807/03-texture.webp",
+        "public/images/products/ata-tohumu-dag-kekigi-suyu-distile-807/04-packaging.webp",
+        "public/images/products/ata-tohumu-dag-kekigi-suyu-distile-807/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "eksi-karadut-suyu-804",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/eksi-karadut-suyu-804/01-origin.webp",
+        "public/images/products/eksi-karadut-suyu-804/02-harvest-process.webp",
+        "public/images/products/eksi-karadut-suyu-804/03-texture.webp",
+        "public/images/products/eksi-karadut-suyu-804/04-packaging.webp",
+        "public/images/products/eksi-karadut-suyu-804/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "hardaliye-geleneksel-805",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/hardaliye-geleneksel-805/01-origin.webp",
+        "public/images/products/hardaliye-geleneksel-805/02-harvest-process.webp",
+        "public/images/products/hardaliye-geleneksel-805/03-texture.webp",
+        "public/images/products/hardaliye-geleneksel-805/04-packaging.webp",
+        "public/images/products/hardaliye-geleneksel-805/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "kan-kirmizi-yabani-kizilcik-surubu-seti-602",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/kan-kirmizi-yabani-kizilcik-surubu-seti-602/01-origin.webp",
+        "public/images/products/kan-kirmizi-yabani-kizilcik-surubu-seti-602/02-harvest-process.webp",
+        "public/images/products/kan-kirmizi-yabani-kizilcik-surubu-seti-602/03-texture.webp",
+        "public/images/products/kan-kirmizi-yabani-kizilcik-surubu-seti-602/04-packaging.webp",
+        "public/images/products/kan-kirmizi-yabani-kizilcik-surubu-seti-602/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "kekik-aromali-visne-kompostosu-809",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/kekik-aromali-visne-kompostosu-809/01-origin.webp",
+        "public/images/products/kekik-aromali-visne-kompostosu-809/02-harvest-process.webp",
+        "public/images/products/kekik-aromali-visne-kompostosu-809/03-texture.webp",
+        "public/images/products/kekik-aromali-visne-kompostosu-809/04-packaging.webp",
+        "public/images/products/kekik-aromali-visne-kompostosu-809/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "taze-yayik-ayrani-canli-kultur-205",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/taze-yayik-ayrani-canli-kultur-205/01-origin.webp",
+        "public/images/products/taze-yayik-ayrani-canli-kultur-205/02-harvest-process.webp",
+        "public/images/products/taze-yayik-ayrani-canli-kultur-205/03-texture.webp",
+        "public/images/products/taze-yayik-ayrani-canli-kultur-205/04-packaging.webp",
+        "public/images/products/taze-yayik-ayrani-canli-kultur-205/05-serving.webp"
+      ]
+    }
+  ]
+}
