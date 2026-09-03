@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "category": "bal-dag-bitkileri",
+  "target": {
+    "width": 1600,
+    "height": 1600,
+    "format": "webp",
+    "minimumEdge": 1200,
+    "basePath": "public/images/products",
+    "externalUrlsAllowed": false,
+    "visibleWatermark": false,
+    "requireUniqueBinary": true,
+    "requireManagedStorageVerification": true
+  },
+  "publicationPolicy": {
+    "generatedBinaryRequired": true,
+    "binaryVerificationRequired": true,
+    "productImageRowRequired": true,
+    "runtimeResolutionRequired": true,
+    "allowPublishBeforeVerification": false
+  },
+  "products": [
+    {
+      "slug": "avasin-mese-bali-103",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/avasin-mese-bali-103/01-origin.webp",
+        "public/images/products/avasin-mese-bali-103/02-harvest-process.webp",
+        "public/images/products/avasin-mese-bali-103/03-texture.webp",
+        "public/images/products/avasin-mese-bali-103/04-packaging.webp",
+        "public/images/products/avasin-mese-bali-103/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "bercelan-yaylasi-bahar-cicek-bali-102",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/bercelan-yaylasi-bahar-cicek-bali-102/01-origin.webp",
+        "public/images/products/bercelan-yaylasi-bahar-cicek-bali-102/02-harvest-process.webp",
+        "public/images/products/bercelan-yaylasi-bahar-cicek-bali-102/03-texture.webp",
+        "public/images/products/bercelan-yaylasi-bahar-cicek-bali-102/04-packaging.webp",
+        "public/images/products/bercelan-yaylasi-bahar-cicek-bali-102/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "buyuk-iskender-corek-otu-tohumu-705",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/buyuk-iskender-corek-otu-tohumu-705/01-origin.webp",
+        "public/images/products/buyuk-iskender-corek-otu-tohumu-705/02-harvest-process.webp",
+        "public/images/products/buyuk-iskender-corek-otu-tohumu-705/03-texture.webp",
+        "public/images/products/buyuk-iskender-corek-otu-tohumu-705/04-packaging.webp",
+        "public/images/products/buyuk-iskender-corek-otu-tohumu-705/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "daglica-karakovan-petek-bali-101",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/daglica-karakovan-petek-bali-101/01-origin.webp",
+        "public/images/products/daglica-karakovan-petek-bali-101/02-harvest-process.webp",
+        "public/images/products/daglica-karakovan-petek-bali-101/03-texture.webp",
+        "public/images/products/daglica-karakovan-petek-bali-101/04-packaging.webp",
+        "public/images/products/daglica-karakovan-petek-bali-101/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "yuksekova-yayla-poleni-906",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/yuksekova-yayla-poleni-906/01-origin.webp",
+        "public/images/products/yuksekova-yayla-poleni-906/02-harvest-process.webp",
+        "public/images/products/yuksekova-yayla-poleni-906/03-texture.webp",
+        "public/images/products/yuksekova-yayla-poleni-906/04-packaging.webp",
+        "public/images/products/yuksekova-yayla-poleni-906/05-serving.webp"
+      ]
+    },
+    {
+      "slug": "hakkari-ham-propolisi-907",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/hakkari-ham-propolisi-907/01-origin.webp",
+        "public/images/products/hakkari-ham-propolisi-907/02-harvest-process.webp",
+        "public/images/products/hakkari-ham-propolisi-907/03-texture.webp",
+        "public/images/products/hakkari-ham-propolisi-907/04-packaging.webp",
+        "public/images/products/hakkari-ham-propolisi-907/05-serving.webp"
+      ]
+    }
+  ]
+}
