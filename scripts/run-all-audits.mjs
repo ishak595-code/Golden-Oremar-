@@ -24,6 +24,7 @@ const audits=[
  'dependency-runtime-boundary-audit.mjs',
  'dependency-update-governance-audit.mjs',
  'dynamic-data-contract-audit.mjs',
+ 'google-play-release-contract-audit.mjs',
  'home-commerce-migration-tail-contract-audit.mjs',
  'home-data-contract-audit.mjs',
  'home-product-row-contract-audit.mjs',
