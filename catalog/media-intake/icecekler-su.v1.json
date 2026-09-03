@@ -1,9 +1,9 @@
 {
-  "version": 1,
-  "category": "icecekler-su",
-  "target": {"width":1600,"height":1600,"format":"webp","minimumEdge":1200,"basePath":"public/images/products","externalUrlsAllowed":false,"visibleWatermark":false,"requireUniqueBinary":true,"requireManagedStorageVerification":true},
-  "publicationPolicy": {"generatedBinaryRequired":true,"binaryVerificationRequired":true,"productImageRowRequired":true,"runtimeResolutionRequired":true,"allowPublishBeforeVerification":false},
-  "products": [
-    {"slug":"avasin-cam-damacana-suyu-401","status":"awaiting_generated_binary","files":["public/images/products/avasin-cam-damacana-suyu-401/01-mountain-spring-origin.webp","public/images/products/avasin-cam-damacana-suyu-401/02-source-water-flow.webp","public/images/products/avasin-cam-damacana-suyu-401/03-clean-glass-fill.webp","public/images/products/avasin-cam-damacana-suyu-401/04-sealed-glass-damacana.webp","public/images/products/avasin-cam-damacana-suyu-401/05-table-glass-serving.webp"]}
+  "version":1,
+  "category":"icecekler-su",
+  "target":{"width":1600,"height":1600,"format":"webp","minimumEdge":1200,"basePath":"public/images/products","externalUrlsAllowed":false,"visibleWatermark":false,"requireUniqueBinary":true,"requireManagedStorageVerification":true},
+  "publicationPolicy":{"generatedBinaryRequired":true,"binaryVerificationRequired":true,"productImageRowRequired":true,"runtimeResolutionRequired":true,"allowPublishBeforeVerification":false},
+  "products":[
+    {"slug":"avasin-cam-damacana-suyu-401","status":"awaiting_generated_binary","files":["public/images/products/avasin-cam-damacana-suyu-401/01-origin.webp","public/images/products/avasin-cam-damacana-suyu-401/02-harvest-process.webp","public/images/products/avasin-cam-damacana-suyu-401/03-texture.webp","public/images/products/avasin-cam-damacana-suyu-401/04-packaging.webp","public/images/products/avasin-cam-damacana-suyu-401/05-serving.webp"]}
   ]
 }
