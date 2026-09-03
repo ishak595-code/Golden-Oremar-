@@ -6,6 +6,7 @@ on:
       - integration/full-consolidation-2026-08
       - release/store-readiness-2026-08
       - release/ux-professionalization-2026-08
+      - release/product-story-ordering-2026-09
   pull_request:
     branches:
       - main
