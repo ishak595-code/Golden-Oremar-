@@ -87,6 +87,17 @@ for(const intakeFile of intakeFiles){
   }
 }
 
+const canonicalProducts=Array.isArray(storyboard.products)?storyboard.products:[];
+const canonicalSlugs=new Set(canonicalProducts.map(product=>product.slug));
+const canonicalCategories=new Set(canonicalProducts.map(product=>product.category));
+fail(canonicalProducts.length===50,`Canonical storyboard must contain exactly 50 products, found ${canonicalProducts.length}.`);
+fail(totalProducts===canonicalProducts.length,`Media intake must cover all ${canonicalProducts.length} products, found ${totalProducts}.`);
+fail(coveredSlugs.size===canonicalSlugs.size,`Media intake unique product coverage mismatch: expected ${canonicalSlugs.size}, found ${coveredSlugs.size}.`);
+fail(coveredCategories.size===canonicalCategories.size,`Media intake category coverage mismatch: expected ${canonicalCategories.size}, found ${coveredCategories.size}.`);
+for(const slug of canonicalSlugs)fail(coveredSlugs.has(slug),`Missing media intake contract for canonical product ${slug}.`);
+for(const category of canonicalCategories)fail(coveredCategories.has(category),`Missing media intake file for canonical category ${category}.`);
+fail(allPaths.size===canonicalProducts.length*5,`Expected ${canonicalProducts.length*5} reserved story files, found ${allPaths.size}.`);
+
 if(failures.length){
   console.error('Product media intake contract audit failed:');
   for(const failure of failures)console.error(`- ${failure}`);
