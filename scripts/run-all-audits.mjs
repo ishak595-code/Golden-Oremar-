@@ -40,6 +40,7 @@ const audits=[
  'product-media-storyboard-contract-audit.mjs',
  'product-owner-governance-contract-audit.mjs',
  'product-owner-media-contract-audit.mjs',
+ 'product-price-variant-contract-audit.mjs',
  'product-workflow-contract-audit.mjs',
  'public-rpc-contract-audit.mjs',
  'public-rpc-security-boundary-audit.mjs',
