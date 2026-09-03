@@ -8,7 +8,7 @@ const configurator=read('src/features/catalog/PremiumOrderConfigurator.tsx');
 const experience=read('src/features/catalog/productExperience.ts');
 const cartApi=read('src/features/cart/api.ts');
 const commerceMigration=read('supabase/migrations/20260902113000_add_product_commerce_lifecycle_v1.sql');
-const orderMigration=read('supabase/migrations/20260902113000_preserve_server_validated_order_customization_v1.sql');
+const orderMigration=read('supabase/migrations/20260902113500_preserve_server_validated_order_customization_v1.sql');
 const catalogSeed=read('supabase/migrations/20260902114000_seed_hakkari_50_product_catalog_v1.sql');
 
 const failures=[];
@@ -30,6 +30,12 @@ requireText(detail,'selectedOptionsPayload()','Product detail must build selecte
 requireMatch(detail,/setCartItem\(\{variantId:variantReference,quantity,selectedOptions:selectedOptionsPayload\(\)\}\)/,'Add-to-cart must send the selected variant plus customization payload.');
 requireText(configurator,'selectOrderOption','Configurator must mutate only allow-listed option choices.');
 forbidMatch(commerceMigration,/priceDelta|price_delta|priceModifier|price_modifier/i,'Preparation option schema must not accept client-authored price modifiers.');
+
+// The canonical product-owned option schema must remain the sole customization authority.
+requireText(commerceMigration,'private.normalize_product_option_schema_v1','Commerce lifecycle must normalize the stored product option schema.');
+requireMatch(commerceMigration,/select profile\.option_schema,profile\.updated_at[\s\S]*private\.normalize_product_option_schema_v1/,'Order customization must be validated against the stored product option schema.');
+forbidMatch(orderMigration,/derived_kind|product_name|category_slug|haystack|order_customization_kind_mismatch/i,'Order preservation migration must not restore product-name or category heuristics.');
+requireText(orderMigration,'must not replace that','Order preservation migration must document that the canonical schema validator cannot be replaced.');
 
 // Cart is server authoritative and must retain the normalized customization.
 requireText(cartApi,"supabase.rpc('set_my_cart_item_v1'",'Cart writes must use the canonical cart RPC.');
