@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "category": "sut-sarkuteri",
+  "target": {
+    "width": 1600,
+    "height": 1600,
+    "format": "webp",
+    "minimumEdge": 1200,
+    "basePath": "public/images/products",
+    "externalUrlsAllowed": false,
+    "visibleWatermark": false,
+    "requireUniqueBinary": true,
+    "requireManagedStorageVerification": true
+  },
+  "publicationPolicy": {
+    "generatedBinaryRequired": true,
+    "binaryVerificationRequired": true,
+    "productImageRowRequired": true,
+    "runtimeResolutionRequired": true,
+    "allowPublishBeforeVerification": false
+  },
+  "products": [
+    {
+      "slug": "gunluk-taze-civik-sut-sagimdan-kapiya-204",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/gunluk-taze-civik-sut-sagimdan-kapiya-204/01-yayla-cow-origin.webp",
+        "public/images/products/gunluk-taze-civik-sut-sagimdan-kapiya-204/02-hand-milking.webp",
+        "public/images/products/gunluk-taze-civik-sut-sagimdan-kapiya-204/03-fresh-milk-texture.webp",
+        "public/images/products/gunluk-taze-civik-sut-sagimdan-kapiya-204/04-glass-bottle-fill.webp",
+        "public/images/products/gunluk-taze-civik-sut-sagimdan-kapiya-204/05-breakfast-serving.webp"
+      ]
+    },
+    {
+      "slug": "havahan-in-otlu-dag-peyniri-203",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/havahan-in-otlu-dag-peyniri-203/01-yayla-milk-herbs.webp",
+        "public/images/products/havahan-in-otlu-dag-peyniri-203/02-curd-herb-mixing.webp",
+        "public/images/products/havahan-in-otlu-dag-peyniri-203/03-cheese-cut-texture.webp",
+        "public/images/products/havahan-in-otlu-dag-peyniri-203/04-traditional-aging.webp",
+        "public/images/products/havahan-in-otlu-dag-peyniri-203/05-village-table-serving.webp"
+      ]
+    },
+    {
+      "slug": "kekik-aromali-kesik-yogurt-kurud-703",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/kekik-aromali-kesik-yogurt-kurud-703/01-yayla-milk-thyme.webp",
+        "public/images/products/kekik-aromali-kesik-yogurt-kurud-703/02-yogurt-straining.webp",
+        "public/images/products/kekik-aromali-kesik-yogurt-kurud-703/03-kurud-shaping-drying.webp",
+        "public/images/products/kekik-aromali-kesik-yogurt-kurud-703/04-kurud-texture-pack.webp",
+        "public/images/products/kekik-aromali-kesik-yogurt-kurud-703/05-traditional-serving.webp"
+      ]
+    },
+    {
+      "slug": "merez-hatun-un-magara-tulum-peyniri-201",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/merez-hatun-un-magara-tulum-peyniri-201/01-mountain-flock-milk.webp",
+        "public/images/products/merez-hatun-un-magara-tulum-peyniri-201/02-cheese-curd-press.webp",
+        "public/images/products/merez-hatun-un-magara-tulum-peyniri-201/03-tulum-filling.webp",
+        "public/images/products/merez-hatun-un-magara-tulum-peyniri-201/04-cave-aging.webp",
+        "public/images/products/merez-hatun-un-magara-tulum-peyniri-201/05-aged-cheese-serving.webp"
+      ]
+    },
+    {
+      "slug": "naciye-nin-yayik-tereyagi-202",
+      "status": "awaiting_generated_binary",
+      "files": [
+        "public/images/products/naciye-nin-yayik-tereyagi-202/01-yayla-milk-origin.webp",
+        "public/images/products/naciye-nin-yayik-tereyagi-202/02-wooden-churn-process.webp",
+        "public/images/products/naciye-nin-yayik-tereyagi-202/03-butter-separation.webp",
+        "public/images/products/naciye-nin-yayik-tereyagi-202/04-hand-shaped-butter.webp",
+        "public/images/products/naciye-nin-yayik-tereyagi-202/05-bread-breakfast-serving.webp"
+      ]
+    }
+  ]
+}
