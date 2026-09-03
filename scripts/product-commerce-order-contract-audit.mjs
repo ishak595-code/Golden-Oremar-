@@ -7,14 +7,33 @@ const detail=read('src/features/catalog/ProductDetailScreen.tsx');
 const configurator=read('src/features/catalog/PremiumOrderConfigurator.tsx');
 const experience=read('src/features/catalog/productExperience.ts');
 const cartApi=read('src/features/cart/api.ts');
-const commerceMigration=read('supabase/migrations/20260902113000_add_product_commerce_lifecycle_v1.sql');
-const orderMigration=read('supabase/migrations/20260902113500_preserve_server_validated_order_customization_v1.sql');
-const catalogSeed=read('supabase/migrations/20260902114000_seed_hakkari_50_product_catalog_v1.sql');
+const commerceMigrationPath='supabase/migrations/20260902113000_add_product_commerce_lifecycle_v1.sql';
+const orderMigrationPath='supabase/migrations/20260902113500_preserve_server_validated_order_customization_v1.sql';
+const managementMigrationPath='supabase/migrations/20260902113600_expose_product_commerce_management_v1.sql';
+const catalogSeedPath='supabase/migrations/20260902114000_seed_hakkari_50_product_catalog_v1.sql';
+const adminEditorMigrationPath='supabase/migrations/20260902114400_add_product_commerce_admin_editor_v1.sql';
+const editorialSeedPath='supabase/migrations/20260902114500_seed_premium_demo_product_stories_v1.sql';
+const commerceMigration=read(commerceMigrationPath);
+const orderMigration=read(orderMigrationPath);
+const managementMigration=read(managementMigrationPath);
+const catalogSeed=read(catalogSeedPath);
+const adminEditorMigration=read(adminEditorMigrationPath);
+const editorialSeed=read(editorialSeedPath);
 
 const failures=[];
 const requireText=(source,text,message)=>{if(!source.includes(text))failures.push(message);};
 const requireMatch=(source,pattern,message)=>{if(!pattern.test(source))failures.push(message);};
 const forbidMatch=(source,pattern,message)=>{if(pattern.test(source))failures.push(message);};
+const migrationId=(relative)=>path.basename(relative).split('_',1)[0];
+
+// The September commerce chain has dependencies that must remain explicitly ordered.
+const commerceChain=[commerceMigrationPath,orderMigrationPath,managementMigrationPath,catalogSeedPath,adminEditorMigrationPath,editorialSeedPath];
+const commerceIds=commerceChain.map(migrationId);
+if(new Set(commerceIds).size!==commerceIds.length)failures.push('Commerce migration chain must use unique migration IDs.');
+if(commerceIds.join('|')!==[...commerceIds].sort().join('|'))failures.push('Commerce migration chain must remain in canonical dependency order.');
+requireText(managementMigration,'private.management_orders_snapshot_v3','Management snapshot enrichment must run after order customization preservation.');
+requireText(adminEditorMigration,'private.management_product_commerce_editor_v1','Commerce admin editor migration must exist before editorial seed data.');
+requireText(editorialSeed,'Demo editorial seed requested for the test catalog.','Editorial seed must remain explicitly classified as test/demo content.');
 
 // Price-changing customer choices must resolve to a real server-owned variant.
 requireText(commerceMigration,'Price-changing choices remain product_variants','Commerce schema must keep price-changing choices in product_variants.');
