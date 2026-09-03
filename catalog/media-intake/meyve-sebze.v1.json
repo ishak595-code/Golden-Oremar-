@@ -20,60 +20,15 @@
     "allowPublishBeforeVerification": false
   },
   "products": [
-    {
-      "slug": "dag-cilegi-yabani-803",
-      "status": "awaiting_generated_binary",
-      "files": [
-        "public/images/products/dag-cilegi-yabani-803/01-origin.webp",
-        "public/images/products/dag-cilegi-yabani-803/02-harvest-process.webp",
-        "public/images/products/dag-cilegi-yabani-803/03-texture.webp",
-        "public/images/products/dag-cilegi-yabani-803/04-packaging.webp",
-        "public/images/products/dag-cilegi-yabani-803/05-serving.webp"
-      ]
-    },
-    {
-      "slug": "hakkari-dag-elmasi-801",
-      "status": "awaiting_generated_binary",
-      "files": [
-        "public/images/products/hakkari-dag-elmasi-801/01-origin.webp",
-        "public/images/products/hakkari-dag-elmasi-801/02-harvest-process.webp",
-        "public/images/products/hakkari-dag-elmasi-801/03-texture.webp",
-        "public/images/products/hakkari-dag-elmasi-801/04-packaging.webp",
-        "public/images/products/hakkari-dag-elmasi-801/05-serving.webp"
-      ]
-    },
-    {
-      "slug": "kislik-kurutulmus-cennet-hurmasi-808",
-      "status": "awaiting_generated_binary",
-      "files": [
-        "public/images/products/kislik-kurutulmus-cennet-hurmasi-808/01-origin.webp",
-        "public/images/products/kislik-kurutulmus-cennet-hurmasi-808/02-harvest-process.webp",
-        "public/images/products/kislik-kurutulmus-cennet-hurmasi-808/03-texture.webp",
-        "public/images/products/kislik-kurutulmus-cennet-hurmasi-808/04-packaging.webp",
-        "public/images/products/kislik-kurutulmus-cennet-hurmasi-808/05-serving.webp"
-      ]
-    },
-    {
-      "slug": "kitir-taze-cagla-badem-806",
-      "status": "awaiting_generated_binary",
-      "files": [
-        "public/images/products/kitir-taze-cagla-badem-806/01-origin.webp",
-        "public/images/products/kitir-taze-cagla-badem-806/02-harvest-process.webp",
-        "public/images/products/kitir-taze-cagla-badem-806/03-texture.webp",
-        "public/images/products/kitir-taze-cagla-badem-806/04-packaging.webp",
-        "public/images/products/kitir-taze-cagla-badem-806/05-serving.webp"
-      ]
-    },
-    {
-      "slug": "yuksekova-yayla-domatesi-802",
-      "status": "awaiting_generated_binary",
-      "files": [
-        "public/images/products/yuksekova-yayla-domatesi-802/01-origin.webp",
-        "public/images/products/yuksekova-yayla-domatesi-802/02-harvest-process.webp",
-        "public/images/products/yuksekova-yayla-domatesi-802/03-texture.webp",
-        "public/images/products/yuksekova-yayla-domatesi-802/04-packaging.webp",
-        "public/images/products/yuksekova-yayla-domatesi-802/05-serving.webp"
-      ]
-    }
+    {"slug":"dag-cilegi-yabani-803","status":"awaiting_generated_binary","files":["public/images/products/dag-cilegi-yabani-803/01-origin.webp","public/images/products/dag-cilegi-yabani-803/02-harvest-process.webp","public/images/products/dag-cilegi-yabani-803/03-texture.webp","public/images/products/dag-cilegi-yabani-803/04-packaging.webp","public/images/products/dag-cilegi-yabani-803/05-serving.webp"]},
+    {"slug":"hakkari-dag-elmasi-801","status":"awaiting_generated_binary","files":["public/images/products/hakkari-dag-elmasi-801/01-origin.webp","public/images/products/hakkari-dag-elmasi-801/02-harvest-process.webp","public/images/products/hakkari-dag-elmasi-801/03-texture.webp","public/images/products/hakkari-dag-elmasi-801/04-packaging.webp","public/images/products/hakkari-dag-elmasi-801/05-serving.webp"]},
+    {"slug":"kislik-kurutulmus-cennet-hurmasi-808","status":"awaiting_generated_binary","files":["public/images/products/kislik-kurutulmus-cennet-hurmasi-808/01-origin.webp","public/images/products/kislik-kurutulmus-cennet-hurmasi-808/02-harvest-process.webp","public/images/products/kislik-kurutulmus-cennet-hurmasi-808/03-texture.webp","public/images/products/kislik-kurutulmus-cennet-hurmasi-808/04-packaging.webp","public/images/products/kislik-kurutulmus-cennet-hurmasi-808/05-serving.webp"]},
+    {"slug":"kitir-taze-cagla-badem-806","status":"awaiting_generated_binary","files":["public/images/products/kitir-taze-cagla-badem-806/01-origin.webp","public/images/products/kitir-taze-cagla-badem-806/02-harvest-process.webp","public/images/products/kitir-taze-cagla-badem-806/03-texture.webp","public/images/products/kitir-taze-cagla-badem-806/04-packaging.webp","public/images/products/kitir-taze-cagla-badem-806/05-serving.webp"]},
+    {"slug":"yuksekova-yayla-domatesi-802","status":"awaiting_generated_binary","files":["public/images/products/yuksekova-yayla-domatesi-802/01-origin.webp","public/images/products/yuksekova-yayla-domatesi-802/02-harvest-process.webp","public/images/products/yuksekova-yayla-domatesi-802/03-texture.webp","public/images/products/yuksekova-yayla-domatesi-802/04-packaging.webp","public/images/products/yuksekova-yayla-domatesi-802/05-serving.webp"]},
+    {"slug":"yuksekova-sonbahar-armudu-901","status":"awaiting_generated_binary","files":["public/images/products/yuksekova-sonbahar-armudu-901/01-tree-origin.webp","public/images/products/yuksekova-sonbahar-armudu-901/02-hand-harvest.webp","public/images/products/yuksekova-sonbahar-armudu-901/03-skin-texture.webp","public/images/products/yuksekova-sonbahar-armudu-901/04-crate-sorting.webp","public/images/products/yuksekova-sonbahar-armudu-901/05-cut-serving.webp"]},
+    {"slug":"hakkari-dag-erigi-902","status":"awaiting_generated_binary","files":["public/images/products/hakkari-dag-erigi-902/01-tree-origin.webp","public/images/products/hakkari-dag-erigi-902/02-hand-harvest.webp","public/images/products/hakkari-dag-erigi-902/03-bloom-skin-texture.webp","public/images/products/hakkari-dag-erigi-902/04-crate-sorting.webp","public/images/products/hakkari-dag-erigi-902/05-cut-serving.webp"]},
+    {"slug":"yuksekova-yayla-kayisisi-903","status":"awaiting_generated_binary","files":["public/images/products/yuksekova-yayla-kayisisi-903/01-tree-origin.webp","public/images/products/yuksekova-yayla-kayisisi-903/02-hand-harvest.webp","public/images/products/yuksekova-yayla-kayisisi-903/03-velvet-skin-texture.webp","public/images/products/yuksekova-yayla-kayisisi-903/04-crate-sorting.webp","public/images/products/yuksekova-yayla-kayisisi-903/05-halved-serving.webp"]},
+    {"slug":"yuksekova-yaz-hiyari-904","status":"awaiting_generated_binary","files":["public/images/products/yuksekova-yaz-hiyari-904/01-garden-origin.webp","public/images/products/yuksekova-yaz-hiyari-904/02-hand-harvest.webp","public/images/products/yuksekova-yaz-hiyari-904/03-skin-moisture-texture.webp","public/images/products/yuksekova-yaz-hiyari-904/04-crate-sorting.webp","public/images/products/yuksekova-yaz-hiyari-904/05-cut-serving.webp"]},
+    {"slug":"hakkari-yayla-karpuzu-905","status":"awaiting_generated_binary","files":["public/images/products/hakkari-yayla-karpuzu-905/01-field-origin.webp","public/images/products/hakkari-yayla-karpuzu-905/02-ripeness-harvest.webp","public/images/products/hakkari-yayla-karpuzu-905/03-rind-texture.webp","public/images/products/hakkari-yayla-karpuzu-905/04-protected-loading.webp","public/images/products/hakkari-yayla-karpuzu-905/05-cut-red-serving.webp"]}
   ]
 }
