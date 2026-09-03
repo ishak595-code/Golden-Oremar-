@@ -1,145 +1,152 @@
 {
+  "schemaVersion": 2,
   "packageMode": "single-cumulative",
   "productFormFactor": "android-ios-application",
+  "canonicalRepository": "ishak595-code/Golden-Oremar-",
   "canonicalBranch": "main",
-  "mergedPullRequests": [47, 48],
-  "supabaseProject": "rmfcziawxjgcnxexbrvw",
-  "latestCodeMergeHead": "1ea0d37c24b4b62bed88c3cf9d92ab92de2dbdab",
-  "lastVerifiedPreMergeHead": "a7fd0b04fceb94fa79b668cd7b743547a0caf65a",
-  "stateRecordedDate": "2026-08-21",
-  "releaseStatus": "SOFTWARE_DATABASE_AND_CUSTOMER_E2E_GREEN_EXTERNAL_PROVIDER_ASSETS_SIGNING_AND_PHYSICAL_VERIFICATION_PENDING",
+  "stateRecordedDate": "2026-09-03",
+  "lastFunctionalMergeHead": "006c0f732dcde756ddceb0772b170fb9676dc726",
+  "releaseStatus": "FUNCTIONAL_RELEASE_GATES_GREEN_EXTERNAL_PRODUCTION_CREDENTIALS_AND_REAL_PRODUCT_MEDIA_PENDING",
+  "application": {
+    "name": "Golden Oremar",
+    "androidApplicationId": "com.goldenoremar.app",
+    "androidVersionName": "1.3.0",
+    "androidVersionCode": 4,
+    "minSdk": 24,
+    "compileSdk": 37,
+    "targetSdk": 37,
+    "java": 21
+  },
   "applicationShell": {
     "framework": "React/Vite/Capacitor",
+    "reactMajor": 19,
+    "capacitorVersion": "8.5.0",
     "nativeTargets": ["android", "ios"],
     "canonicalBackend": "Supabase",
     "legacyFirebaseCustomerRuntimeRetired": true,
     "legacyNodeSqliteRuntimeRetired": true
   },
-  "repositoryIntegrity": {
-    "canonicalBranchIsMain": true,
-    "legacyCredentialDebugFilesPresentOnMain": false,
-    "legacyFirebaseRuntimeReferences": 0,
-    "legacySqliteRuntimeReferences": 0,
-    "legacyNodeJwtRuntimePresent": false,
-    "legacyDataContextPresent": false,
-    "securityContractAudit": "scripts/security-contract-audit.mjs",
-    "publicRpcSecurityBoundaryAudit": "scripts/public-rpc-security-boundary-audit.mjs",
-    "reactTypesMajor": 19,
-    "typescriptExcludedRuntimeTrees": ["node_modules", "dist", "migration-tools", "supabase/functions", "android", "ios"]
-  },
   "backend": {
     "provider": "Supabase",
-    "liveMigrationCount": 312,
-    "latestMigrationVersion": "20260821142610",
-    "latestMigrationName": "isolate_anonymous_rpc_privileges_in_api_internal_v2",
-    "securityAdvisorLints": 0,
-    "systemErrorDailyRows": 0,
-    "runtimeIntegrityReady": true,
-    "missingPrivateFunctionReferences": 0,
-    "missingPublicFunctionReferences": 0,
-    "publicRpcBoundaryHardened": true
+    "projectRef": "rmfcziawxjgcnxexbrvw",
+    "liveMigrationCount": 417,
+    "latestMigrationVersion": "20260903210427",
+    "latestMigrationName": "add_product_price_variant_management_v1",
+    "usesPostgres": true,
+    "usesAuth": true,
+    "usesStorage": true,
+    "usesEdgeFunctions": true
   },
   "catalog": {
-    "publishedProducts": 42,
-    "activePublishedVariants": 42,
-    "primaryImageDatabaseRows": 42,
-    "catalogPublicStorageObjects": 0,
-    "missingRealPrimaryImageStorageObjects": 42,
-    "estimatedPackagedShippingWeights": 42,
-    "verifiedPackagedShippingWeights": 0,
-    "shippingWeightProvenanceTracked": true,
+    "productsTotal": 50,
+    "publishedActiveProducts": 42,
+    "activeVariants": 50,
+    "commerceProfiles": 50,
+    "salesWindows": 16,
+    "publishedStoriesAtLeast500Characters": 42,
+    "liveProductImageRows": 0,
+    "plannedManagedMediaSlots": 250,
+    "realManagedMediaBinarySetComplete": false,
     "missingAssetsFailClosed": true
   },
-  "legalReadiness": {
-    "ready": true,
-    "registeredLegalName": "Golden Oremar",
-    "registeredCountryCode": "TR",
-    "identityVerificationStatus": "verified",
-    "legalDocumentsFinalized": true,
-    "publishedLegalDocumentCount": 4,
-    "missing": []
+  "commerce": {
+    "serverAuthoritativeVariantPricing": true,
+    "productSpecificPreparationOptions": true,
+    "cartSelectedOptionsPreserved": true,
+    "orderCustomizationSnapshotPreserved": true,
+    "seasonalSalesWindows": true,
+    "preorderLifecycle": true,
+    "availabilitySubscriptions": true,
+    "adminVariantManagement": true,
+    "fakeBusinessPriceVariantsInserted": false
   },
-  "releaseConfiguration": {
-    "publicOrigin": "https://goldenoremar.com",
-    "primaryOriginCount": 1,
-    "productionEnabled": true,
-    "iyzicoEnvironment": "sandbox",
-    "transactionalEmailFrom": "siparis@goldenoremar.com",
-    "managedFromSuperAdmin": true
+  "admin": {
+    "entryRoute": "/?tab=admin",
+    "normalAuthLoginRequired": true,
+    "serverCapabilityRequired": "admin.access",
+    "acceptedLegacyShellRoles": ["admin", "super_admin"],
+    "activeSuperAdminCountAtVerification": 1,
+    "hardcodedAdminPasswordPresent": false,
+    "staffMfaGateImplemented": true,
+    "authorizationModel": "capability-based-server-enforced"
   },
-  "paymentReadiness": {
-    "provider": "iyzico",
-    "mode": "provider_checkout",
-    "liveCardPaymentsEnabled": false,
-    "cardEnrollmentEnabled": false,
-    "savedPaymentMethodsSupported": false,
-    "requiresProviderConfiguration": true,
-    "storesRawCardData": false,
-    "storesCvv": false,
-    "storesProviderSecretsClientSide": false
+  "homePrestigeContract": {
+    "contractFile": "HOME_PRESTIGE_CONTRACT.md",
+    "blockingAudit": "scripts/home-product-row-contract-audit.mjs",
+    "singleProductRow": true,
+    "nativeStructure": "ul>li>a",
+    "singleInteractiveProductLink": true,
+    "nativeMarkerRequired": "data-native-feature-marker=go-product-card-v2"
   },
-  "providerSecretStatus": {
-    "iyzicoApiKeyConfigured": false,
-    "iyzicoSecretKeyConfigured": false,
-    "resendApiKeyConfigured": false,
-    "fcmServiceAccountEmailConfigured": false,
-    "fcmPrivateKeyConfigured": false,
-    "apnsTeamIdConfigured": false,
-    "apnsKeyIdConfigured": false,
-    "apnsPrivateKeyConfigured": false
-  },
-  "auth": {
-    "liveAuthUsers": 0,
-    "liveProfiles": 0,
-    "e2eUsesDisposableCustomerAccount": true,
-    "e2eCleanupEnabled": true
+  "media": {
+    "storyboardContractPresent": true,
+    "intakeContractPresent": true,
+    "serverBinaryVerificationPresent": true,
+    "minimumDimensions": "1200x1200",
+    "checksumVerification": true,
+    "fileExtensionBinaryMatch": true,
+    "liveProductImages": 0,
+    "truthRule": "never_claim_planned_or_generated_media_as_real_village_photography_without_verified_source"
   },
   "qualityGate": {
-    "workflow": "Mobile Quality Gate",
-    "lastPassedRunId": 32492296043,
-    "lastPassedRunNumber": 1086,
-    "verifiedHead": "a7fd0b04fceb94fa79b668cd7b743547a0caf65a",
-    "jobs": {
-      "customer-e2e": "success",
-      "verify-web-android": "success",
-      "verify-ios": "success"
+    "consolidationPreflight": {
+      "runId": 33806972755,
+      "result": "success"
     },
-    "passedStages": [
-      "release architecture and security audits",
-      "real customer Chromium E2E journey",
-      "TypeScript noEmit",
-      "production Vite build",
-      "deployable web artifact",
-      "Capacitor Android/iOS sync",
-      "native sync reproducibility",
-      "Android debug APK",
-      "Android unsigned release AAB",
-      "iOS Swift package resolution",
-      "iOS simulator compile",
-      "iOS deployment target and application identifier verification"
-    ],
-    "mergedToMain": true,
-    "mainMergeHead": "1ea0d37c24b4b62bed88c3cf9d92ab92de2dbdab"
+    "mobileQualityGate": {
+      "runId": 33806972696,
+      "result": "success",
+      "jobs": {
+        "customer-e2e": "success",
+        "verify-web-android": "success",
+        "verify-ios": "success"
+      }
+    },
+    "finalMainSignedReleaseApk": {
+      "runId": 33807690798,
+      "result": "success",
+      "sourceHead": "006c0f732dcde756ddceb0772b170fb9676dc726",
+      "artifactId": 9913680726,
+      "apkSha256": "5d91cd93515b73a0bd349291f27ba98f6817c430575fab3eaf1cfb09d15d46e1",
+      "signatureVerified": true,
+      "signingClass": "ephemeral-ci",
+      "googlePlayProductionSigned": false
+    }
   },
-  "artifacts": {
-    "webDist": {"id": 9450253753, "digest": "sha256:0a3718995ba66f0055ece2eba4051a7df0b28d6eef82ca6d358708d393f69c1b"},
-    "customerE2E": {"id": 9450275607, "digest": "sha256:2ec5eca2287a71b661bedae3f2bdb9d45d990181957717640ea1ac46013986f0"},
-    "androidDebugApk": {"id": 9450335218, "digest": "sha256:137f1326d7c4f953c0f5aa400dbb1a6168c350268b0a00be770dc653a00cb615"},
-    "androidUnsignedReleaseAab": {"id": 9450389470, "digest": "sha256:e85595e764c2b6244e721bc4574cbf1e4faefef96e5786bdc738c1f9c436064f"}
+  "release": {
+    "signedReleaseApkWorkflow": ".github/workflows/release-apk.yml",
+    "googlePlayWorkflow": ".github/workflows/google-play-release.yml",
+    "googlePlayFormat": "AAB",
+    "googlePlayPublicationCompleted": false,
+    "googlePlayFailClosedSecrets": [
+      "ANDROID_UPLOAD_KEYSTORE_BASE64",
+      "ANDROID_UPLOAD_KEYSTORE_PASSWORD",
+      "ANDROID_UPLOAD_KEY_ALIAS",
+      "ANDROID_UPLOAD_KEY_PASSWORD",
+      "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON"
+    ]
   },
-  "externalBlockers": [
-    "42 real primary catalog image Storage objects",
-    "physical or supplier verification of 42 estimated packaged shipping weights",
-    "production iyzico merchant credentials and seller submerchant onboarding",
-    "production Resend API credential and verified sender delivery configuration",
-    "production FCM/APNs credentials",
-    "Play Store and App Store production signing credentials"
+  "externalInputsStillRequired": [
+    "verified real product media binaries for the managed 250-slot product gallery contract",
+    "production Google Play upload key and Play service account",
+    "Apple App Store production signing and provisioning",
+    "real business-approved additional product package/weight prices before adding price-changing variants",
+    "provider-specific production credentials must be reverified before enabling payment, transactional email or native push production switches"
   ],
   "truthfulnessInvariants": [
-    "do not reintroduce retired Firebase, Node/SQLite or credential-reset runtime paths",
-    "do not represent database image references as real assets without Storage objects",
-    "do not represent estimated shipping weights as measured or supplier verified",
-    "do not mark payment or push providers ready until real provider credentials are configured",
-    "main is the canonical branch; stale feature branches are not source-of-truth"
-  ]
+    "main is canonical; stale branches are not source of truth",
+    "do not reintroduce retired Firebase, Node/SQLite or legacy auth runtime paths",
+    "do not represent database media slots as real assets without verified Storage binaries",
+    "do not fabricate popularity, sales, scarcity, harvest dates or variant prices",
+    "do not trust client-provided prices or admin role claims",
+    "do not bypass server capability checks or staff MFA",
+    "do not remove the Home single-row product contract or native feature marker without intentionally updating its blocking contract",
+    "do not claim Play Store production publication until production upload credentials and a successful Play workflow exist"
+  ],
+  "handoff": {
+    "humanGuide": "PROJECT_HANDOFF.md",
+    "environmentTemplate": ".env.example",
+    "sourcePackagingWorkflow": ".github/workflows/source-handoff.yml",
+    "sourcePackageRule": "git archive HEAD, no local secrets, no node_modules, no .git directory"
+  }
 }
