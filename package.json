@@ -51,7 +51,7 @@
     "recharts": "^3.7.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.0",
+    "@capacitor/cli": "8.5.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/cookie": "^0.6.0",
     "@types/node": "^22.14.0",
