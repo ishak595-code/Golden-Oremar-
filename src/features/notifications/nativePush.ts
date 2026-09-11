@@ -159,7 +159,7 @@ export async function clearNativeDeliveredNotifications() {
   try {
     await PushNotifications.removeAllDeliveredNotifications();
   } catch (error) {
-    console.warn('Delivered native notifications could not be cleared', error);
+    if (process.env.NODE_ENV === 'development') console.warn('Notifications clear failed', error);
   }
 }
 

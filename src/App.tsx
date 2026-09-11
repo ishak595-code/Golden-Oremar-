@@ -142,15 +142,15 @@ function AppContent(){
   let active=true;if(!authReady){setAdminSession(previous=>({...previous,checked:false}));return()=>{active=false;};}
   if(!currentUser?.id){setAdminSession({checked:true,isAdmin:false,roles:[]});return()=>{active=false;};}
   setAdminSession(previous=>({...previous,checked:false}));
-  getAdminSessionStatus().then(status=>{if(active)setAdminSession({checked:true,isAdmin:status.is_admin===true,roles:status.roles});}).catch(error=>{console.error('Supabase admin session verification failed',error);if(active)setAdminSession({checked:true,isAdmin:false,roles:[]});});
+  getAdminSessionStatus().then(status=>{if(active)setAdminSession({checked:true,isAdmin:status.is_admin===true,roles:status.roles});}).catch(error=>{if(process.env.NODE_ENV==='development')console.error('Admin session check:',error);if(active)setAdminSession({checked:true,isAdmin:false,roles:[]});});
   return()=>{active=false;};
  },[authReady,currentUser?.id]);
 
  useEffect(()=>{if(authReady&&currentTab==='admin'&&adminSession.checked&&!adminSession.isAdmin){setAccountView('menu');window.history.replaceState({goldenOremar:true,goldenOremarDepth:routeDepth,tab:'account'},'',tabUrl('account'));setCurrentTab('account');showToast('Bu alan için doğrulanmış yönetici yetkisi gerekiyor.');}},[authReady,currentTab,adminSession.checked,adminSession.isAdmin,routeDepth,showToast]);
- useEffect(()=>{let active=true;if(!currentUser){setFavorites([]);return()=>{active=false;};}serverFavoriteReferences().then(references=>{if(active)setFavorites(references);}).catch(error=>console.error('Supabase favorites hydration failed',error));return()=>{active=false;};},[currentUser?.id]);
+ useEffect(()=>{let active=true;if(!currentUser){setFavorites([]);return()=>{active=false;};}serverFavoriteReferences().then(references=>{if(active)setFavorites(references);}).catch(error=>{if(process.env.NODE_ENV==='development')console.error('Favorites sync error:',error);});return()=>{active=false;};},[currentUser?.id]);
 
  const applyServerCartSnapshot=useCallback((snapshot:any)=>{const items=(snapshot?.items||[]).map((item:any)=>({id:item.productId,slug:item.slug,name:item.productName,price:Number(item.priceMinor||0)/100,image:serverCatalogUrl(item.imagePath),quantity:item.quantity,variantId:item.variantId,variantName:item.variantName,cartItemId:item.cartItemId,selectedOptions:item.selectedOptions||{},sellableQuantity:item.sellableQuantity,producer:item.producer,_serverCart:true}));setCart(items);setCartItemCount(snapshotItemCount(snapshot,items));return snapshot;},[]);
- const fetchCart=useCallback(async()=>{if(!currentUser){setCart([]);setCartItemCount(0);return;}try{applyServerCartSnapshot(await getServerCart());}catch(error:any){if(!String(error?.message||'').includes('authentication_required'))console.error('Supabase cart hydration failed',error);setCart([]);setCartItemCount(0);}},[currentUser?.id,applyServerCartSnapshot]);
+ const fetchCart=useCallback(async()=>{if(!currentUser){setCart([]);setCartItemCount(0);return;}try{applyServerCartSnapshot(await getServerCart());}catch(error:any){const errorMsg=String(error?.message||'');if(!errorMsg.includes('authentication_required')&&process.env.NODE_ENV==='development')console.error('Cart sync error:',errorMsg);setCart([]);setCartItemCount(0);}},[currentUser?.id,applyServerCartSnapshot]);
  useEffect(()=>{void fetchCart();},[fetchCart]);
  useEffect(()=>{if(restoreSequence===0)return;showToast('İnternet bağlantısı geri geldi. Güncel veriler doğrulanıyor.');if(currentUser){void fetchCart();void refreshUnreadCount();}},[restoreSequence,currentUser?.id,fetchCart,refreshUnreadCount,showToast]);
 
