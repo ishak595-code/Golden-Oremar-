@@ -171,6 +171,8 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
 
+  useEffect(() => { if (!status) return; const timer = setTimeout(() => setStatus(''), 4000); return () => clearTimeout(timer); }, [status]);
+
   const fulfillableItems = useMemo(
     () => detail.items.filter(item => item.remainingToShip > 0 && !['cancelled', 'returned', 'fulfilled'].includes(item.fulfillmentStatus)),
     [detail],
