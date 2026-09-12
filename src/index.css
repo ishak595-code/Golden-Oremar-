@@ -318,7 +318,10 @@ nav[aria-label="Ana gezinme"] button > span.relative > span[aria-hidden="true"] 
   header,
   button[aria-label*="Yukarı kaydır"],
   button[aria-label*="Şartlar & Güvenlik"],
-  aside[role="dialog"][aria-labelledby="pwa-title"] {
+  aside[role="dialog"][aria-labelledby="pwa-title"],
+  a[href="#main-content"],
+  div[role="status"][aria-live="polite"].fixed,
+  div[role="status"].fixed {
     display: none !important;
   }
 
