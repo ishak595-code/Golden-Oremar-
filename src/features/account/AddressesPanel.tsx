@@ -41,7 +41,7 @@ function validateAddress(address: Address) {
   const line = String(address.address_line || '').trim();
   if (label.length < 1 || label.length > 60) return 'Adres etiketi 1 ile 60 karakter arasında olmalıdır.';
   if (recipient.length < 2 || recipient.length > 120) return 'Alıcı adı 2 ile 120 karakter arasında olmalıdır.';
-  if (!/^[+()0-9 .\-]{10,40}$/.test(phone) || phoneDigits.length < 10 || phoneDigits.length > 15) return 'Teslimat telefonu 10 ile 15 rakam içermelidir.';
+  if (!/^[+()0-9 .\-]{10,40}$/.test(phone) || phoneDigits.length < 10 || phoneDigits.length > 15) return 'Teslimat telefonu 10 ile 15 rakam arasında olmalıdır.';
   if (!/^[A-Z]{2}$/.test(country)) return 'Ülke kodunu iki harfle girin. Örneğin Türkiye için TR.';
   if (province.length < 2 || province.length > 120) return 'İl veya bölge bilgisi 2 ile 120 karakter arasında olmalıdır.';
   if (district.length < 2 || district.length > 120) return 'İlçe veya şehir bilgisi 2 ile 120 karakter arasında olmalıdır.';
