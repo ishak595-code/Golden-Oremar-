@@ -34,7 +34,7 @@ export default function PremiumPreferencesPanel({theme,onThemeChange,mode='all',
  async function toggleEnabled(next:boolean){
   if(saving)return;setNotificationSoundEnabled(next);setEnabled(next);setError('');setStatus(next?'Bildirim sesleri açıldı.':'Bildirim sesleri kapatıldı.');if(next)void preview(sound);
   try{setSaving('enabled');await updateMyAppPreferences({notificationSoundEnabled:next});}
-  catch{setError('Ses tercihiniz şu anda kaydedilemedi. Daha sonra tekrar deneyin.');}
+  catch{setError(`Bildirim sesleri ${next?'açıldı':'kapatıldı'} ancak tercihiniz şu anda kaydedilemedi. Daha sonra tekrar deneyin.`);}
   finally{setSaving(null);}
  }
  const selectedTheme=APP_THEME_OPTIONS.find(item=>item.id===theme)?.label||'Tema';
