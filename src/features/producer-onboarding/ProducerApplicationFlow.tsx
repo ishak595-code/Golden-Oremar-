@@ -255,7 +255,8 @@ export default function ProducerApplicationFlow({ currentUser, onBack }: { curre
     if (documents.length >= 6) { setError('En fazla 6 yeni belge yükleyebilirsiniz.'); return; }
     const allowedTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
     if (!allowedTypes.has(file.type)) { setError('Belgeler PDF, JPEG, PNG veya WebP olmalıdır.'); return; }
-    if (file.size <= 0 || file.size > 20 * 1024 * 1024) { setError('Her belge en fazla 20 MB olabilir ve boş dosya yüklenemez.'); return; }
+    if (file.size <= 0) { setError('Boş dosya yüklenemez. Lütfen geçerli bir belge seçin.'); return; }
+    if (file.size > 20 * 1024 * 1024) { setError('Belge boyutu en fazla 20 MB olabilir. Lütfen daha küçük bir dosya seçin.'); return; }
     setError('');
     setDocuments(previous => [...previous, { file, documentType: businessClass ? 'tax_certificate' : 'identity' }]);
   }
