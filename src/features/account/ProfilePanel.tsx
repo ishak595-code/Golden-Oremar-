@@ -204,13 +204,13 @@ export default function ProfilePanel({ overview, onChanged }: {
 
         <label className="block">
           <span className="text-sm font-semibold">Ad Soyad</span>
-          <input required minLength={2} maxLength={120} disabled={saving} value={displayName} onChange={e => setDisplayName(e.target.value)} autoComplete="name"
+          <input required minLength={2} maxLength={120} disabled={saving} value={displayName} onChange={e => setDisplayName(e.target.value)} autoComplete="name" enterKeyHint="done"
             className="mt-1 min-h-11 w-full rounded-xl border border-gray-300 bg-transparent px-3 disabled:opacity-60 dark:border-gray-700" />
         </label>
 
         <label className="block">
           <span className="text-sm font-semibold">Telefon</span>
-          <input maxLength={40} disabled={saving} value={phone} onChange={e => setPhone(e.target.value)} autoComplete="tel" inputMode="tel"
+          <input maxLength={40} disabled={saving} value={phone} onChange={e => setPhone(e.target.value)} autoComplete="tel" inputMode="tel" enterKeyHint="done"
             className="mt-1 min-h-11 w-full rounded-xl border border-gray-300 bg-transparent px-3 disabled:opacity-60 dark:border-gray-700" />
           <span className="mt-1 block text-xs text-gray-500">Telefon giriyorsanız 10-15 rakam içermelidir.</span>
         </label>
