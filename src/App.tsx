@@ -174,7 +174,7 @@ function AppContent(){
  const triggerVoiceSearch=useCallback(()=>{
   if(isListening){stopVoiceSearch();return;}
   setIsListening(true);
-  void recognizeVoiceSearch({language:'tr-TR'}).then(text=>{setIsListening(false);processVoiceText(text);}).catch(error=>{setIsListening(false);const message=voiceSearchErrorMessage(error);if(message)showToast(message);});
+  void recognizeVoiceSearch({language:'tr-TR'}).then(text=>{setIsListening(false);processVoiceText(text);}).catch(error=>{setIsListening(false);const message=voiceSearchErrorMessage(error);if(message){const[title,body]=message.split('|');if(body){showToast(`${title}\n${body}`);}else{showToast(message);}}});
  },[isListening,processVoiceText,showToast]);
 
  useEffect(()=>{if(!Capacitor.isNativePlatform())return;let disposed=false;let handle:{remove:()=>Promise<void>}|undefined;void CapApp.addListener('backButton',()=>{if(authRecovery.recoveryPending)return;if(isListening){stopVoiceSearch();return;}if(isSearchFocused){setIsSearchFocused(false);return;}if(showGiftModal){setShowGiftModal(false);return;}if(currentTab==='account'&&accountView!=='menu'){setAccountView('menu');return;}if(routeDepth>0){window.history.back();return;}if(currentTab!=='home'){replaceWithHome();return;}void CapApp.exitApp();}).then(next=>{if(disposed)void next.remove();else handle=next;});return()=>{disposed=true;if(handle)void handle.remove();};},[authRecovery.recoveryPending,isListening,isSearchFocused,showGiftModal,currentTab,accountView,routeDepth,replaceWithHome]);

@@ -42,18 +42,18 @@ export function voiceSearchErrorMessage(error: unknown) {
   const code = errorCode(error);
   if (code.includes('speech_cancelled') || code.includes('aborted')) return '';
   if (code.includes('microphone_denied') || code.includes('not-allowed') || code.includes('permission')) {
-    return 'Mikrofon izni verilmedi. Arama kutusunu kullanmaya devam edebilirsiniz.';
+    return 'Mikrofon izni verilmedi.|Cihaz ayarlarından Golden Oremar uygulamasına mikrofon erişimi vermelisiniz. Şimdilik arama kutusunu kullanabilirsiniz.';
   }
   if (code.includes('speech_unavailable') || code.includes('not-supported')) {
-    return 'Bu cihazda sesli arama kullanılamıyor. Arama kutusunu kullanmaya devam edebilirsiniz.';
+    return 'Sesli arama bu cihazda desteklenmiyor.|Tarayıcınız veya cihazınız sesli aramayı desteklemiyor. Arama kutusunu kullanabilirsiniz.';
   }
   if (code.includes('speech_no_match') || code.includes('no-speech')) {
-    return 'Konuşma anlaşılamadı. Tekrar deneyebilir veya arama kutusunu kullanabilirsiniz.';
+    return 'Konuşma anlaşılamadı.|Lütfen daha net konuşarak tekrar deneyin veya arama kutusunu kullanın.';
   }
   if (code.includes('network')) {
-    return 'Sesli arama için bağlantı kurulamadı. Metin araması çalışmaya devam ediyor.';
+    return 'Bağlantı hatası.|Sesli arama için internet bağlantısı gerekli. Metin aramasını kullanabilirsiniz.';
   }
-  return 'Sesli arama tamamlanamadı. Arama kutusunu kullanmaya devam edebilirsiniz.';
+  return 'Sesli arama tamamlanamadı.|Bir sorun oluştu. Lütfen arama kutusunu kullanın veya tekrar deneyin.';
 }
 
 async function recognizeNative(language: string) {
