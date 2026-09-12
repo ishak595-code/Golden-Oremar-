@@ -23,6 +23,7 @@ export default function PasswordRecoveryScreen({
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
@@ -61,7 +62,10 @@ export default function PasswordRecoveryScreen({
       await updatePassword(password);
       setPassword('');
       setConfirmPassword('');
-      onCompleted?.();
+      setSuccess(true);
+      setTimeout(() => {
+        onCompleted?.();
+      }, 2000);
     } catch (e: any) {
       reportError(recoveryErrorMessage(String(e?.message || e)));
     } finally {
@@ -83,24 +87,29 @@ export default function PasswordRecoveryScreen({
 
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-lg items-center p-4 sm:p-6" aria-labelledby="password-recovery-title">
-      <section className="w-full rounded-3xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-7" aria-busy={busy}>
+      <section className="w-full rounded-3xl border-2 border-gray-200 bg-white p-5 shadow-lg dark:border-gray-700 dark:bg-gray-900 sm:p-7" aria-busy={busy}>
         <div className="text-center">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-gold/10 text-brand-gold" aria-hidden="true">
-            <KeyRound className="h-7 w-7" />
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-brand-gold/10 text-brand-gold" aria-hidden="true">
+            <KeyRound className="h-8 w-8" />
           </div>
-          <h1 id="password-recovery-title" className="mt-4 text-2xl font-bold">Yeni Şifre Belirle</h1>
-          <p className="mt-2 text-sm text-gray-500">Hesabınız için yeni bir şifre oluşturun. Şifre kaydedilmeden hemen önce sıfırlama oturumu sunucudan yeniden doğrulanır.</p>
+          <h1 id="password-recovery-title" className="mt-4 text-2xl font-black">Yeni Şifre Belirle</h1>
+          <p className="mt-2 text-sm leading-relaxed text-gray-500 dark:text-gray-400">Hesabınız için yeni bir şifre oluşturun. Şifre kaydedilmeden hemen önce sıfırlama oturumu sunucudan yeniden doğrulanır.</p>
         </div>
 
         <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
           {error ? (
-            <div ref={errorRef} tabIndex={-1} role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 outline-none dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
-              {error}
+            <div ref={errorRef} tabIndex={-1} role="alert" className="rounded-xl border-2 border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 outline-none dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
+              ⚠ {error}
+            </div>
+          ) : null}
+          {success ? (
+            <div role="status" aria-live="polite" className="rounded-xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">
+              ✓ Şifreniz başarıyla güncellendi! Yönlendiriliyorsunuz…
             </div>
           ) : null}
 
           <label className="block" htmlFor="recovery-new-password">
-            <span className="text-sm font-semibold">Yeni şifre</span>
+            <span className="text-sm font-bold">Yeni şifre <span className="text-red-500" aria-label="zorunlu">*</span></span>
             <div className="relative mt-1">
               <input
                 id="recovery-new-password"
@@ -113,24 +122,25 @@ export default function PasswordRecoveryScreen({
                 maxLength={72}
                 required
                 disabled={busy}
+                placeholder="En az 8 karakter"
                 aria-describedby="new-password-help"
-                className="min-h-12 w-full rounded-xl border bg-transparent px-3 pr-12 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+                className="min-h-12 w-full rounded-xl border-2 border-brand-border bg-transparent px-3 pr-12 transition-colors hover:border-brand-gold/30 focus:border-brand-green disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
               />
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => setShowPassword(value => !value)}
                 aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
-                className="absolute right-1 top-1/2 min-h-11 min-w-11 -translate-y-1/2 rounded-lg p-2 text-gray-500 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+                className="absolute right-1 top-1/2 min-h-11 min-w-11 -translate-y-1/2 rounded-lg p-2 text-gray-500 transition-all hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed dark:hover:bg-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
               >
                 {showPassword ? <EyeOff aria-hidden="true" className="mx-auto h-5 w-5" /> : <Eye aria-hidden="true" className="mx-auto h-5 w-5" />}
               </button>
             </div>
-            <span id="new-password-help" className="mt-1 block text-xs text-gray-500">8-72 karakter arasında yeni bir şifre kullanın.</span>
+            <span id="new-password-help" className="mt-1 block text-xs leading-relaxed text-gray-500 dark:text-gray-400">Güvenli bir şifre için en az 8 karakter kullanın. Büyük harf, küçük harf, rakam ve özel karakter karıştırmanız önerilir.</span>
           </label>
 
           <label className="block" htmlFor="recovery-confirm-password">
-            <span className="text-sm font-semibold">Yeni şifreyi tekrar yazın</span>
+            <span className="text-sm font-bold">Yeni şifreyi tekrar yazın <span className="text-red-500" aria-label="zorunlu">*</span></span>
             <input
               id="recovery-confirm-password"
               type={showPassword ? 'text' : 'password'}
@@ -141,14 +151,15 @@ export default function PasswordRecoveryScreen({
               maxLength={72}
               required
               disabled={busy}
-              className="mt-1 min-h-12 w-full rounded-xl border bg-transparent px-3 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+              placeholder="Şifrenizi tekrar girin"
+              className="mt-1 min-h-12 w-full rounded-xl border-2 border-brand-border bg-transparent px-3 transition-colors hover:border-brand-gold/30 focus:border-brand-green disabled:opacity-60 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
             />
           </label>
 
-          <button type="submit" disabled={busy} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
-            {busy ? 'Şifre ve oturum doğrulanıyor…' : 'Şifremi Güncelle'}
+          <button type="submit" disabled={busy || success} className="min-h-12 w-full rounded-xl border-2 border-brand-green bg-brand-green px-4 font-bold text-white shadow-lg transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
+            {busy ? 'Şifre ve oturum doğrulanıyor…' : success ? 'Şifre güncellendi ✓' : 'Şifremi Güncelle'}
           </button>
-          <button type="button" disabled={busy} onClick={cancelRecovery} className="min-h-11 w-full rounded-xl border px-4 text-sm font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
+          <button type="button" disabled={busy || success} onClick={cancelRecovery} className="min-h-11 w-full rounded-xl border-2 border-gray-200 px-4 text-sm font-bold transition-all hover:border-brand-gold/30 hover:bg-brand-gold/5 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
             İşlemi İptal Et ve Bu Cihazdan Çıkış Yap
           </button>
         </form>
