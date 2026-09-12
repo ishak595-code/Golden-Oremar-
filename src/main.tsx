@@ -28,6 +28,7 @@ import ProductDetailConnections from './features/catalog/ProductDetailConnection
 import ProductRecommendationsRail from './features/catalog/ProductRecommendationsRail';
 import {installCatalogMediaFallback} from './features/catalog/installCatalogMediaFallback';
 import {AuthorizationProvider} from './features/auth/AuthorizationContext';
+import PwaInstallPrompt from './features/pwa/PwaInstallPrompt';
 
 installBackendPerformanceHints();
 installCatalogMediaFallback();
@@ -46,6 +47,7 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <AuthorizationProvider>
         <NativeAppUpdateBanner />
+        <PwaInstallPrompt />
         <App />
         <ProductDetailConnections />
         <ProductRecommendationsRail />
