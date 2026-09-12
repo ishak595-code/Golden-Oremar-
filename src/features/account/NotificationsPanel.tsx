@@ -60,7 +60,7 @@ export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{o
    if(!item.readAt){
     const readAt=await markNotificationRead(item.id);
     let verifiedUnread:number|null=null;
-    try{verifiedUnread=(await listNotifications(1)).unreadCount;}catch{}
+    try{verifiedUnread=(await listNotifications(1)).unreadCount;}catch(e){console.warn('Okunmamış bildirim sayısı doğrulanamadı:',e);}
     setData(previous=>previous?{...previous,unreadCount:verifiedUnread??previous.unreadCount,items:previous.items.map(candidate=>candidate.id===item.id?{...candidate,readAt}:candidate)}:previous);
     if(verifiedUnread!==null)onUnreadCountChange?.(verifiedUnread);
    }
