@@ -359,6 +359,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
       if (!finalPreview.canCheckout) throw new Error(friendlyBlockingReason(finalPreview.blockingReason) || 'Hediye siparişi şu anda oluşturulamıyor.');
       if (!effectiveAddress) throw new Error('Teslimat adresi kullanılamıyor.');
       if (livePayments && !selectedPaymentMethod) throw new Error('payment_method_required');
+      if (!livePayments && finalPreview.totalMinor > 0) throw new Error('Hediye siparişleri için ödeme şu anda kullanılamıyor. Ödeme altyapısı hazırlandığında tekrar deneyebilirsiniz.');
 
       if (shouldSaveAddress) {
         setStatus('Yeni teslimat adresi hesabınıza kaydediliyor.');
