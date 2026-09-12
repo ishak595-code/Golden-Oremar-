@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
-import{AlertCircle,ArrowRight,RefreshCw}from'lucide-react';
+import{AlertCircle,ArrowRight,ArrowUp,RefreshCw}from'lucide-react';
 import{publicCatalogUrl}from'../catalog/api';
 import{CUSTOMER_COPY,homeSectionDisplayCopy}from'../customer-experience/customerCopy';
 import HomeEventsSpotlight from'./HomeEventsSpotlight';
@@ -20,6 +20,7 @@ function navigateToCategories(categorySlug?:string){const url=new URL(window.loc
 export default function HomeSection({onProductClick}:Props){
  const locale=browserHomeLocale();
  const{experience,loading,error,retry,loadSection}=useHomeExperience(locale);
+ const[showScrollTop,setShowScrollTop]=useState(false);
  const orderedCategories=useMemo(()=>{
   if(!experience)return[];
   const bySlug=new Map(experience.categories.map(category=>[category.slug,category]));
@@ -30,6 +31,8 @@ export default function HomeSection({onProductClick}:Props){
   return[...managed,...fallback].slice(0,12);
  },[experience]);
 
+ useEffect(()=>{const check=()=>setShowScrollTop(window.scrollY>400);check();window.addEventListener('scroll',check,{passive:true});return()=>window.removeEventListener('scroll',check);},[]);
+
  if(loading&&!experience)return<HomeLoading/>;
  if(!experience)return<HomeError message={error||CUSTOMER_COPY.home.loadErrorFallback} onRetry={()=>void retry().catch(()=>undefined)}/>;
  const initialSections=experience.sections.filter(section=>!section.deferred&&section.items.length>0);
@@ -37,7 +40,8 @@ export default function HomeSection({onProductClick}:Props){
  const eventSpotlight=experience.eventSpotlight;
  function renderEvents(placement:'after_hero'|'after_categories'|'before_products'){return eventSpotlight?.enabled===true&&eventSpotlight.placement===placement?<HomeEventsSpotlight settings={eventSpotlight}/>:null;}
 
- return<div className="go-premium-home-v2" data-home-contract-version={experience.version} data-home-prestige-contract="single-row-v4">
+ return<>
+  <div className="go-premium-home-v2" data-home-contract-version={experience.version} data-home-prestige-contract="single-row-v4">
   <h1 className="sr-only">{experience.brand.name} ürünleri</h1>
   <div className="go-home-content">
    {orderedCategories.length?<section className="go-home-section go-home-categories" aria-labelledby="home-categories-title" data-server-heading={experience.interface.categoriesTitle}>
@@ -63,7 +67,9 @@ export default function HomeSection({onProductClick}:Props){
 
    <button type="button" className="go-discover-all" onClick={()=>navigateToCategories()}><span>{CUSTOMER_COPY.home.discoverAll}</span><ArrowRight aria-hidden="true"/></button>
   </div>
- </div>;
+ </div>
+ {showScrollTop?<button type="button" onClick={()=>window.scrollTo({top:0,behavior:'smooth'})} aria-label="Başa dön" className="fixed bottom-[116px] right-4 z-50 grid h-14 w-14 place-items-center rounded-full border-2 border-brand-green bg-white shadow-2xl transition-all hover:scale-105 hover:border-brand-gold hover:bg-brand-gold/5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:bg-gray-900" style={{bottom:'calc(116px + env(safe-area-inset-bottom, 0px))'}}><ArrowUp aria-hidden="true" className="h-6 w-6 text-brand-green dark:text-brand-gold"/></button>:null}
+ </>;
 }
 
 function ProductSection({section,onProductClick,eagerFirst=false,isFirst=false}:{section:HomeSectionModel;onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean;isFirst?:boolean}){if(!section.items.length)return null;const copy=homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle);const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${section.source.kind}${isFirst?' go-product-section-v2--first':''}`;return<section className={sectionClass} aria-labelledby={`home-section-${section.key}`} data-server-section-title={section.title} data-home-source={section.source.kind}>
