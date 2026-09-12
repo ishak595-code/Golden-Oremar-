@@ -31,6 +31,8 @@ export default function SettingsPanel({closure,onChanged,profile,theme='light',o
  const sessionDialogRef=useAccessibleDialog<HTMLDivElement>(!!sessionConfirmAction,()=>{if(!sessionBusy)setSessionConfirmAction(null);});
  const passwordMismatch=confirmPassword.length>0&&newPassword!==confirmPassword;
  const accountEmail=validEmail(profile.email||newsletter?.email);const currentNewsletterStatus=newsletter?.status??null;
+ 
+ useEffect(()=>{if(!successMessage)return;const timer=setTimeout(()=>setSuccessMessage(''),4000);return()=>clearTimeout(timer);},[successMessage]);
 
  async function loadPrefs(){try{setPrefsLoading(true);setPrefsError('');setPrefs(await getNotificationPreferences());}catch{setPrefs(null);setPrefsError('Bildirim ayarları şu anda yüklenemedi. Lütfen yeniden deneyin.');}finally{setPrefsLoading(false);}}
  async function loadNewsletter(){try{setNewsletterLoading(true);setNewsletterError('');setNewsletter(await getMyNewsletterStatus());}catch{setNewsletter(null);setNewsletterError('E-bülten durumu şu anda alınamadı. Lütfen yeniden deneyin.');}finally{setNewsletterLoading(false);}}

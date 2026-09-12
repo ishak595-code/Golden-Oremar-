@@ -28,6 +28,8 @@ export default function ProfilePanel({ overview, onChanged }: {
   const avatarConfirmRef = useAccessibleDialog<HTMLDivElement>(avatarConfirmOpen, () => {
     if (!avatarBusy) setAvatarConfirmOpen(false);
   });
+  
+  useEffect(() => { if (!message) return; const timer = setTimeout(() => setMessage(''), 4000); return () => clearTimeout(timer); }, [message]);
 
   useEffect(() => {
     setDisplayName(p.display_name);
