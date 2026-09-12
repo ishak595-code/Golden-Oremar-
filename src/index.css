@@ -312,3 +312,22 @@ nav[aria-label="Ana gezinme"] button > span.relative > span[aria-hidden="true"] 
     color: GrayText;
   }
 }
+
+@media print {
+  nav[aria-label="Ana gezinme"],
+  header,
+  button[aria-label*="Yukarı kaydır"],
+  button[aria-label*="Şartlar & Güvenlik"],
+  aside[role="dialog"][aria-labelledby="pwa-title"] {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
+}
