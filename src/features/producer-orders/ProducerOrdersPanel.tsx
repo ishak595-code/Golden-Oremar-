@@ -347,7 +347,7 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
                   </label>
                 ))}
               </div>
-              <button type="button" onClick={() => void markProcessing()} disabled={busy || !selectedProcessing.length} className="mt-3 min-h-12 w-full rounded-xl border border-brand-green font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
+              <button type="button" onClick={() => void markProcessing()} disabled={busy || !selectedProcessing.length} title={!selectedProcessing.length ? 'Önce en az bir ürün seçmelisiniz' : undefined} className="mt-3 min-h-12 w-full rounded-xl border border-brand-green font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
                 <PackageCheck aria-hidden="true" className="mr-2 inline h-5 w-5" />{busy ? 'İşleniyor…' : 'Seçili ürünleri hazırlanıyor yap'}
               </button>
             </fieldset>
@@ -383,7 +383,7 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
                 <label className="block"><span className="text-xs font-semibold">Tahmini teslim (isteğe bağlı)</span><input type="datetime-local" value={eta} onChange={event => setEta(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3" /></label>
               </div>
 
-              <button type="button" onClick={() => void createShipment()} disabled={busy || !selectedShipmentRows.length} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
+              <button type="button" onClick={() => void createShipment()} disabled={busy || !selectedShipmentRows.length} title={!selectedShipmentRows.length ? 'Önce en az bir ürün seçmelisiniz' : undefined} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
                 <Truck aria-hidden="true" className="mr-2 inline h-5 w-5" />{busy ? 'Kaydediliyor…' : 'Kargo kaydını oluştur'}
               </button>
             </fieldset>
