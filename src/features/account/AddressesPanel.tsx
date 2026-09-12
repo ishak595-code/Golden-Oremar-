@@ -62,6 +62,8 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
   const [status, setStatus] = useState('');
   const editDialogRef = useAccessibleDialog<HTMLFormElement>(!!editing, () => { if (!saving) setEditing(null); });
   const deleteDialogRef = useAccessibleDialog<HTMLDivElement>(!!deleteCandidate, () => { if (!deleteBusy) setDeleteCandidate(null); });
+  
+  useEffect(() => { if (!status) return; const timer = setTimeout(() => setStatus(''), 4000); return () => clearTimeout(timer); }, [status]);
   const savedAddresses = addresses.filter(isSavedAddress);
   const addressContractValid = savedAddresses.length === addresses.length;
 

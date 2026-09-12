@@ -9,6 +9,7 @@ function handlingChip(type:ProductHandlingType|null){if(type==='fish')return'bg-
 
 export default function FavoritesPanel({onOpenProduct}:{onOpenProduct?:(slug:string)=>void}){
  const[items,setItems]=useState<FavoriteProductItem[]|null>(null);const[error,setError]=useState('');const[status,setStatus]=useState('');const[loading,setLoading]=useState(true);const[busyId,setBusyId]=useState<string|null>(null);
+ useEffect(()=>{if(!status)return;const timer=setTimeout(()=>setStatus(''),4000);return()=>clearTimeout(timer);},[status]);
  async function load(silent=false){try{if(!silent)setLoading(true);setError('');setItems(await listFavoriteProducts());}catch(e:unknown){setError(e instanceof Error&&e.message?e.message:'Favoriler yüklenemedi.');}finally{if(!silent)setLoading(false);}}
  useEffect(()=>{void load();},[]);
  async function remove(item:FavoriteProductItem){if(busyId)return;try{setBusyId(item.productId);setError('');setStatus('');await removeFavoriteProduct(item.slug);setItems(current=>current?current.filter(row=>row.productId!==item.productId):current);setStatus(`✓ ${item.name} favorilerinizden çıkarıldı.`);}catch(e:unknown){setError(e instanceof Error&&e.message?e.message:'Ürün favorilerden çıkarılamadı.');}finally{setBusyId(null);}}
