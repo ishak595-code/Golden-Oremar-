@@ -59,6 +59,25 @@ export default function PwaInstallPrompt() {
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);
 
+  function handleDismiss() {
+    setVisible(false);
+    setDismissed();
+  }
+
+  useEffect(() => {
+    if (!visible) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !installing) {
+        event.preventDefault();
+        handleDismiss();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [visible, installing]);
+
   async function handleInstall() {
     if (!deferredPrompt || installing) return;
     setInstalling(true);
@@ -75,11 +94,6 @@ export default function PwaInstallPrompt() {
       setInstalling(false);
       setDeferredPrompt(null);
     }
-  }
-
-  function handleDismiss() {
-    setVisible(false);
-    setDismissed();
   }
 
   if (!visible || !deferredPrompt) return null;
