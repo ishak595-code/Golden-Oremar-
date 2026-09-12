@@ -76,7 +76,7 @@ export default function PublicContactScreen({ onBack, currentUser, locale = 'tr'
     const phoneDigits = normalizedPhone.replace(/\D/g, '').length;
     if (normalizedName.length < 2 || normalizedName.length > 120) { setError('Ad soyad alanı 2 ile 120 karakter arasında olmalıdır.'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || normalizedEmail.length > 254) { setError('Geçerli bir e-posta adresi yazın.'); return; }
-    if (normalizedPhone && (phoneDigits < 7 || phoneDigits > 20)) { setError('Telefon numarası yazacaksanız 7 ile 20 rakam içermelidir.'); return; }
+    if (normalizedPhone && (phoneDigits < 7 || phoneDigits > 20)) { setError('Telefon numarası 7 ile 20 rakam arasında olmalıdır.'); return; }
     if (normalizedSubject.length < 2 || normalizedSubject.length > 160) { setError('Mesaj konusu 2 ile 160 karakter arasında olmalıdır.'); return; }
     if (normalizedMessage.length < 10 || normalizedMessage.length > 5000) { setError('Mesajınız 10 ile 5000 karakter arasında olmalıdır.'); return; }
 
