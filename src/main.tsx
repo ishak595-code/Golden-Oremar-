@@ -1,4 +1,4 @@
-import {StrictMode} from 'react';
+import {StrictMode,lazy,Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary';
@@ -28,7 +28,8 @@ import ProductDetailConnections from './features/catalog/ProductDetailConnection
 import ProductRecommendationsRail from './features/catalog/ProductRecommendationsRail';
 import {installCatalogMediaFallback} from './features/catalog/installCatalogMediaFallback';
 import {AuthorizationProvider} from './features/auth/AuthorizationContext';
-import PwaInstallPrompt from './features/pwa/PwaInstallPrompt';
+
+const PwaInstallPrompt=lazy(()=>import('./features/pwa/PwaInstallPrompt'));
 
 installBackendPerformanceHints();
 installCatalogMediaFallback();
@@ -47,7 +48,9 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <AuthorizationProvider>
         <NativeAppUpdateBanner />
-        <PwaInstallPrompt />
+        <Suspense fallback={null}>
+          <PwaInstallPrompt />
+        </Suspense>
         <App />
         <ProductDetailConnections />
         <ProductRecommendationsRail />
