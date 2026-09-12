@@ -1,7 +1,7 @@
 -- Seller notification triggers for order events and product publication
 -- Creates durable in-app notifications when orders are placed, cancelled, or products are published
 
--- Function to notify seller when order is placed
+-- Function to notify sellers when order is placed
 create or replace function private.notify_seller_on_order_placed_v1()
 returns trigger
 language plpgsql
@@ -9,37 +9,39 @@ security definer
 set search_path=''
 as $$
 declare
-  producer_user_id uuid;
   customer_user_id uuid;
   order_number_value text;
-  product_count integer;
+  producer_record record;
 begin
-  -- Get the producer's user ID and order details
-  select 
-    pr.user_id,
-    o.customer_id,
-    o.order_number,
-    (select count(distinct oi.product_id) from public.order_items oi where oi.order_id = NEW.id) as item_count
-  into producer_user_id, customer_user_id, order_number_value, product_count
+  -- Get order and customer details
+  select o.customer_id, o.order_number
+  into customer_user_id, order_number_value
   from public.orders o
-  join public.order_items oi on oi.order_id = o.id
-  join public.products p on p.id = oi.product_id
-  join public.producers pr on pr.id = p.producer_id
-  where o.id = NEW.id
-  limit 1;
+  where o.id = NEW.id;
 
-  -- Notify seller
-  if producer_user_id is not null then
+  -- Notify each distinct producer (in case order has products from multiple sellers)
+  for producer_record in
+    select distinct
+      pr.user_id as producer_user_id,
+      (select count(distinct oi2.product_id) 
+       from public.order_items oi2 
+       join public.products p2 on p2.id = oi2.product_id
+       where oi2.order_id = NEW.id and p2.producer_id = pr.id) as product_count
+    from public.order_items oi
+    join public.products p on p.id = oi.product_id
+    join public.producers pr on pr.id = p.producer_id
+    where oi.order_id = NEW.id and pr.user_id is not null
+  loop
     insert into public.notifications(user_id, type, title, message, action_url, metadata)
     values (
-      producer_user_id,
+      producer_record.producer_user_id,
       'seller_order_placed',
       'Yeni sipariş alındı',
-      order_number_value || ' numaralı sipariş için ' || product_count || ' ürün hazırlığı bekleniyor.',
+      order_number_value || ' numaralı sipariş için ' || producer_record.product_count || ' ürün hazırlığı bekleniyor.',
       '/?tab=account&view=seller:orders',
-      jsonb_build_object('orderId', NEW.id, 'orderNumber', order_number_value, 'productCount', product_count)
+      jsonb_build_object('orderId', NEW.id, 'orderNumber', order_number_value, 'productCount', producer_record.product_count)
     );
-  end if;
+  end loop;
 
   -- Notify customer
   if customer_user_id is not null then
@@ -58,7 +60,7 @@ begin
 end;
 $$;
 
--- Function to notify seller when order is cancelled
+-- Function to notify sellers when order is cancelled
 create or replace function private.notify_seller_on_order_cancelled_v1()
 returns trigger
 language plpgsql
@@ -66,35 +68,35 @@ security definer
 set search_path=''
 as $$
 declare
-  producer_user_id uuid;
   customer_user_id uuid;
   order_number_value text;
+  producer_record record;
 begin
   if NEW.status = 'cancelled' and OLD.status <> 'cancelled' then
-    select 
-      pr.user_id,
-      o.customer_id,
-      o.order_number
-    into producer_user_id, customer_user_id, order_number_value
+    -- Get order details
+    select o.customer_id, o.order_number
+    into customer_user_id, order_number_value
     from public.orders o
-    join public.order_items oi on oi.order_id = o.id
-    join public.products p on p.id = oi.product_id
-    join public.producers pr on pr.id = p.producer_id
-    where o.id = NEW.id
-    limit 1;
+    where o.id = NEW.id;
 
-    -- Notify seller
-    if producer_user_id is not null then
+    -- Notify each distinct producer
+    for producer_record in
+      select distinct pr.user_id as producer_user_id
+      from public.order_items oi
+      join public.products p on p.id = oi.product_id
+      join public.producers pr on pr.id = p.producer_id
+      where oi.order_id = NEW.id and pr.user_id is not null
+    loop
       insert into public.notifications(user_id, type, title, message, action_url, metadata)
       values (
-        producer_user_id,
+        producer_record.producer_user_id,
         'seller_order_cancelled',
         'Sipariş iptal edildi',
         order_number_value || ' numaralı sipariş müşteri tarafından iptal edildi.',
         '/?tab=account&view=seller:orders',
         jsonb_build_object('orderId', NEW.id, 'orderNumber', order_number_value)
       );
-    end if;
+    end loop;
 
     -- Notify customer
     if customer_user_id is not null then
