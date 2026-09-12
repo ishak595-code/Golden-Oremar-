@@ -71,11 +71,11 @@ export default function NativeAppUpdateBanner(){
   finally{setBusy(false);}
  }
 
- return<section data-native-app-update-banner="true" role="status" aria-live="polite" className="relative z-[50] mx-3 mt-3 rounded-2xl border border-brand-gold/30 bg-brand-green px-4 py-3 text-brand-on-green shadow-md sm:mx-auto sm:max-w-7xl">
+ return<section data-native-app-update-banner="true" role="status" aria-live="polite" className="relative z-[50] mx-3 mt-3 rounded-2xl border-2 border-brand-gold/30 bg-brand-green px-4 py-3 text-brand-on-green shadow-lg sm:mx-auto sm:max-w-7xl">
   <div className="flex items-center gap-3">
    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10">{downloaded?<CheckCircle2 aria-hidden="true" className="h-5 w-5"/>:<Download aria-hidden="true" className="h-5 w-5"/>}</div>
-   <div className="min-w-0 flex-1"><div className="font-black">{label}</div><div className="mt-0.5 text-xs font-medium opacity-90 sm:text-sm">{description}</div>{error?<div role="alert" className="mt-1 text-xs font-bold text-amber-100">{error}</div>:null}</div>
-   <button type="button" disabled={busy||downloading} onClick={()=>void update()} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-brand-gold px-4 text-sm font-black text-brand-on-gold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-60">{busy?<><RefreshCw aria-hidden="true" className="mr-2 h-4 w-4 animate-spin"/>İşleniyor</>:downloaded?'Yükle':downloading?'İndiriliyor':'Güncelle'}</button>
+   <div className="min-w-0 flex-1"><div className="font-black">{label}</div><div className="mt-0.5 text-xs font-semibold leading-relaxed opacity-90 sm:text-sm">{description}</div>{error?<div role="alert" className="mt-1 text-xs font-bold leading-relaxed text-amber-100">⚠️ {error}</div>:null}</div>
+   <button type="button" disabled={busy||downloading} onClick={()=>void update()} className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border-2 border-brand-gold bg-brand-gold px-4 text-sm font-black text-brand-on-gold shadow-sm transition-all hover:bg-amber-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none">{busy?<><RefreshCw aria-hidden="true" className="mr-2 h-4 w-4 animate-spin"/>İşleniyor</>:downloaded?'Yükle':downloading?'İndiriliyor':'Güncelle'}</button>
   </div>
  </section>;
 }
