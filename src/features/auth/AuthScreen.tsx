@@ -139,7 +139,7 @@ export default function AuthScreen({
       setBusy(true);
       if (mode === 'forgot') {
         await requestPasswordReset(normalizedEmail);
-        setMessage('Şifre sıfırlama bağlantısı e-posta adresinize gönderildiyse gelen kutunuzdan devam edebilirsiniz.');
+        setMessage('Hesabınız varsa şifre sıfırlama bağlantısı e-posta adresinize gönderildi. Gelen kutunuzdaki bağlantıya tıklayarak devam edin.');
         return;
       }
       if (password.length < 8 || password.length > 72 || /[\u0000-\u001F\u007F]/.test(password)) throw new Error('Şifre 8-72 karakter arasında olmalıdır.');
