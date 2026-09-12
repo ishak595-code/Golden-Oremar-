@@ -51,6 +51,6 @@ export async function getSuperAdminCatalogMediaHealth(){
 
 export function catalogMediaHealthErrorMessage(error:unknown){
   const message=String((error as {message?:unknown})?.message||'').trim();
-  if(message.includes('permission_required:product.health_manage'))return'Katalog medya sağlık görünümü yalnız Super Admin hesabına açıktır.';
+  if(message.includes('permission_required:product.health_manage'))return'Katalog medya sağlık görünümü yalnız Süper Yönetici hesabına açıktır.';
   return message&&message.length<=260?message:'Katalog medya sağlık özeti yüklenemedi.';
 }

@@ -273,7 +273,7 @@ export function allowedAdminOrderTransitions(status: ManagedOrderStatus): Manage
 }
 
 export function settlementLabel(status: SettlementStatus) {
-  return ({ not_required: 'Satıcı hakedişi yok', awaiting_completion: 'Sipariş tamamlanması bekleniyor', blocked: 'Hakediş kilitli', pending_approval: 'Super Admin onayı bekliyor', processing: 'Sağlayıcı onayı işleniyor', released: 'Satıcıya serbest bırakıldı', failed: 'Onay yeniden denenmeli' } as Record<SettlementStatus, string>)[status];
+  return ({ not_required: 'Satıcı hakedişi yok', awaiting_completion: 'Sipariş tamamlanması bekleniyor', blocked: 'Hakediş kilitli', pending_approval: 'Süper Yönetici onayı bekliyor', processing: 'Sağlayıcı onayı işleniyor', released: 'Satıcıya serbest bırakıldı', failed: 'Onay yeniden denenmeli' } as Record<SettlementStatus, string>)[status];
 }
 
 export function settlementReason(reason: string) {
@@ -282,7 +282,7 @@ export function settlementReason(reason: string) {
     payment_not_fully_paid: 'Ödeme tamamen tahsil edilmedi.', open_return: 'Açık iade talebi var.', refund_or_refund_review: 'Geri ödeme veya geri ödeme incelemesi var.',
     seller_ledger_missing: 'Satıcı finans kaydı oluşmadı.', payment_split_missing: 'Ödeme sağlayıcı kırılımı oluşmadı.', ledger_split_mismatch: 'Satıcı defteri ile sağlayıcı kırılımı eşleşmiyor.',
     provider_split_disapproved: 'Sağlayıcı kırılımı onaysız duruma alındı.', provider_approval_processing: 'Sağlayıcı onayı işleniyor.', provider_approval_failed: 'Sağlayıcı onayı tamamlanamadı.',
-    super_admin_approval_required: 'Ürün teslim edildi. Satıcı hakedişinin korumalı havuzdan çıkması için Super Admin onayı gerekiyor.', released: 'Sağlayıcı kırılımları onaylandı ve satıcı bakiyesi kullanılabilir hale geldi.',
+    super_admin_approval_required: 'Ürün teslim edildi. Satıcı hakedişinin korumalı havuzdan çıkması için Süper Yönetici onayı gerekiyor.', released: 'Sağlayıcı kırılımları onaylandı ve satıcı bakiyesi kullanılabilir hale geldi.',
   };
   return labels[reason] || 'Hakediş durumu sunucuda kontrol ediliyor.';
 }
@@ -290,7 +290,7 @@ export function settlementReason(reason: string) {
 export function orderAdminErrorMessage(error: unknown, fallback = 'İşlem tamamlanamadı.') {
   const message = error instanceof Error ? error.message.trim() : String((error as { message?: unknown } | null)?.message || '').trim();
   if (!message) return fallback;
-  if (message.includes('super_admin_required')) return 'Satıcı hakedişini yalnız Super Admin serbest bırakabilir.';
+  if (message.includes('super_admin_required')) return 'Satıcı hakedişini yalnız Süper Yönetici serbest bırakabilir.';
   if (message.includes('settlement_not_releasable')) return 'Hakediş şu anda serbest bırakılamaz. Sipariş, ödeme, iade ve geri ödeme durumunu kontrol edin.';
   if (message.includes('payment_provider_credentials_missing')) return 'Canlı ödeme sağlayıcısı kimlik bilgileri henüz hazır değil. Hakediş güvenli biçimde havuzda kalıyor.';
   if (message.includes('settlement_provider')) return 'Ödeme sağlayıcısı hakediş onayını tamamlamadı. Para havuzda kaldı, işlem daha sonra yeniden denenebilir.';
