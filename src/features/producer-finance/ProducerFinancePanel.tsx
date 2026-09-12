@@ -55,7 +55,7 @@ export default function ProducerFinancePanel({ onBack }: { onBack: () => void })
 
   async function submitWithdrawal(event: React.FormEvent) {
     event.preventDefault(); if (!selectedBalance || payoutBusy) return;
-    const amountMinor = majorToMinor(withdrawAmount); if (!amountMinor) { setPayoutError('Çekim tutarını kuruş hassasiyetinde geçerli bir sayı olarak girin.'); return; }
+    const amountMinor = majorToMinor(withdrawAmount); if (!amountMinor) { setPayoutError('Geçerli bir çekim tutarı girin (örnek: 150,00).'); return; }
     if (amountMinor > selectedBalance.availableMinor) { setPayoutError('Çekim tutarı kullanılabilir bakiyeden yüksek olamaz.'); return; }
     try {
       setPayoutBusy('request'); setPayoutError(''); await requestProducerPayout(selectedBalance.currency, amountMinor, withdrawNote);
