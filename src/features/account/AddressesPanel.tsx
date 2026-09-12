@@ -197,6 +197,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
                   <label key={field.key} className="block">
                     <span className="text-sm font-semibold">{field.label}{field.required ? ' *' : ''}</span>
                     <input
+                      name={field.key}
                       value={value}
                       required={field.required}
                       autoComplete={field.autoComplete}
@@ -219,12 +220,12 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
             </div>
             <label className="mt-3 block">
               <span className="text-sm font-semibold">Açık adres *</span>
-              <textarea required minLength={10} maxLength={1000} autoComplete="street-address" value={editing.address_line} disabled={saving} aria-describedby={formError ? 'address-form-error' : undefined} onChange={e => { if (formError) setFormError(''); setEditing({ ...editing, address_line: e.target.value }); }}
+              <textarea name="address_line" required minLength={10} maxLength={1000} autoComplete="street-address" value={editing.address_line} disabled={saving} aria-describedby={formError ? 'address-form-error' : undefined} onChange={e => { if (formError) setFormError(''); setEditing({ ...editing, address_line: e.target.value }); }}
                 rows={3} className="mt-1 w-full rounded-xl border bg-transparent p-3 disabled:opacity-60" />
             </label>
             <label className="mt-3 block">
               <span className="text-sm font-semibold">Teslimat notu</span>
-              <textarea maxLength={500} value={editing.delivery_notes || ''} disabled={saving} onChange={e => setEditing({ ...editing, delivery_notes: e.target.value })} enterKeyHint="done"
+              <textarea name="delivery_notes" maxLength={500} value={editing.delivery_notes || ''} disabled={saving} onChange={e => setEditing({ ...editing, delivery_notes: e.target.value })} enterKeyHint="done"
                 rows={2} className="mt-1 w-full rounded-xl border bg-transparent p-3 disabled:opacity-60" />
             </label>
             <label className="mt-3 flex min-h-11 items-center gap-3 rounded-xl px-1">
