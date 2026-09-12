@@ -1,5 +1,5 @@
 import React,{useEffect,useState}from'react';
-import{CreditCard,ShieldCheck,X}from'lucide-react';
+import{CreditCard,Loader2,ShieldCheck,X}from'lucide-react';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 import{enrollMyPaymentMethod,type PaymentReadiness,type SavedPaymentMethod}from'./api';
 type Props={open:boolean;readiness:PaymentReadiness|null;onClose:()=>void;onSaved:(method:SavedPaymentMethod)=>void|Promise<void>;};
@@ -17,6 +17,6 @@ export default function PaymentMethodEnrollmentDialog({open,readiness,onClose,on
   <label className="mt-4 flex min-h-12 items-start gap-3 rounded-2xl border border-brand-green/30 bg-brand-green/5 p-3"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)} disabled={busy||!ready} className="mt-1 h-5 w-5"/><span><span className="block font-semibold">Kartımın sonraki alışverişler için kaydedilmesini onaylıyorum.</span><span className="mt-1 block text-xs text-gray-500">Bu onay isteğe bağlıdır. Tek seferlik ödeme için kart kaydetmeniz gerekmez.</span></span></label>
   <label className="mt-3 flex min-h-11 items-center gap-3"><input type="checkbox" checked={makeDefault} onChange={e=>setMakeDefault(e.target.checked)} disabled={busy||!ready} className="h-5 w-5"/><span className="text-sm font-semibold">Varsayılan ödeme yöntemim yap</span></label>
   <div className="mt-4 flex gap-2 rounded-xl bg-gray-50 p-3 text-xs text-gray-600"><ShieldCheck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-green"/><p>Kart kaydetme onayınız güvenli şekilde kayıt altına alınır. Kartı daha sonra hesabınızdan kaldırabilirsiniz.</p></div>
-  <div className="mt-5 grid grid-cols-2 gap-3"><button type="button" disabled={busy} onClick={onClose} className="min-h-12 rounded-xl border font-semibold">Vazgeç</button><button type="submit" disabled={busy||!ready||!consent} aria-busy={busy} className="min-h-12 rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50">{busy?'Kaydediliyor…':'Kartımı Kaydet'}</button></div>
+  <div className="mt-5 grid grid-cols-2 gap-3"><button type="button" disabled={busy} onClick={onClose} className="min-h-12 rounded-xl border font-semibold">Vazgeç</button><button type="submit" disabled={busy||!ready||!consent} aria-busy={busy} className="min-h-12 rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50">{busy?<><Loader2 aria-hidden="true" className="mr-2 inline h-4 w-4 animate-spin"/>Kaydediliyor…</>:'Kartımı Kaydet'}</button></div>
  </form></div>;
 }
