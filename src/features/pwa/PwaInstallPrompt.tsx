@@ -99,7 +99,7 @@ export default function PwaInstallPrompt() {
   if (!visible || !deferredPrompt) return null;
 
   return (
-    <aside role="dialog" aria-labelledby="pwa-title" aria-describedby="pwa-desc" className="fixed bottom-20 left-4 right-4 z-[100] sm:left-auto sm:right-4 sm:w-96">
+    <aside role="dialog" aria-labelledby="pwa-title" aria-describedby="pwa-desc" className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] left-4 right-4 z-[100] sm:left-auto sm:right-4 sm:w-96">
       <div className="overflow-hidden rounded-2xl border-2 border-brand-green bg-white shadow-2xl dark:border-brand-green/80 dark:bg-gray-900">
         <div className="flex items-start gap-3 border-b-2 border-gray-100 bg-gradient-to-br from-brand-green/5 to-brand-gold/5 p-4 dark:border-gray-800">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-brand-green to-green-600 text-white shadow-lg">
