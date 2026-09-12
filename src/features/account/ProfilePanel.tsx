@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { RefreshCw, Upload, User } from 'lucide-react';
 import { Panel, ErrorState } from './ui';
 import { getPrivateAssetSignedUrl, removeCustomerAvatar, updateProfile, uploadCustomerAvatar } from './api';
 import type { AccountOverview } from './types';
@@ -22,6 +23,7 @@ export default function ProfilePanel({ overview, onChanged }: {
   const [error, setError] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
   const [avatarConfirmOpen, setAvatarConfirmOpen] = useState(false);
   const avatarConfirmRef = useAccessibleDialog<HTMLDivElement>(avatarConfirmOpen, () => {
     if (!avatarBusy) setAvatarConfirmOpen(false);
@@ -50,28 +52,49 @@ export default function ProfilePanel({ overview, onChanged }: {
     if (!file || avatarBusy) return;
     setError('');
     setMessage('');
+    setUploadProgress('');
     if (!AVATAR_TYPES.has(file.type)) {
-      setError('Profil fotoğrafı JPEG, PNG, WebP veya AVIF olmalıdır.');
+      setError(`Profil fotoğrafı JPEG, PNG, WebP veya AVIF olmalıdır. Seçilen dosya tipi: ${file.type || 'bilinmiyor'}.`);
       return;
     }
-    if (file.size <= 0 || file.size > MAX_AVATAR_BYTES) {
-      setError('Profil fotoğrafı boş olmamalı ve en fazla 5 MB olabilir.');
+    if (file.size <= 0) {
+      setError('Profil fotoğrafı boş olamaz. Lütfen geçerli bir fotoğraf seçin.');
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      setError(`Profil fotoğrafı en fazla 5 MB olabilir. Seçilen dosya ${sizeMB} MB. Lütfen daha küçük bir fotoğraf seçin.`);
       return;
     }
     try {
       setAvatarBusy(true);
+      setUploadProgress('Fotoğraf doğrulanıyor…');
       const previous = p.avatar_path;
+      setUploadProgress('Fotoğraf yükleniyor…');
       const result = await uploadCustomerAvatar(p.id, file);
       if (previous && previous !== result.avatar_path) {
         const { supabase } = await import('../../lib/supabase');
         await supabase.storage.from('user-private').remove([previous]).catch(()=>{});
       }
+      setUploadProgress('Profil bilgisi güncelleniyor…');
       await onChanged();
-      setMessage('Profil fotoğrafınız güncellendi.');
-    } catch {
-      setError('Profil fotoğrafı şu anda güncellenemedi. Lütfen yeniden deneyin.');
+      setUploadProgress('');
+      setMessage('✓ Profil fotoğrafınız güncellendi.');
+    } catch (err: unknown) {
+      setUploadProgress('');
+      const message = err instanceof Error ? err.message.toLowerCase() : '';
+      if (message.includes('network') || message.includes('fetch') || message.includes('timeout')) {
+        setError('Bağlantı hatası. İnternet bağlantınızı kontrol edip yeniden deneyin.');
+      } else if (message.includes('size') || message.includes('too large')) {
+        setError('Dosya çok büyük. Lütfen 5 MB altında bir fotoğraf seçin.');
+      } else if (message.includes('type') || message.includes('format')) {
+        setError('Dosya tipi desteklenmiyor. Lütfen JPEG, PNG, WebP veya AVIF fotoğraf seçin.');
+      } else {
+        setError('Profil fotoğrafı şu anda güncellenemedi. Lütfen yeniden deneyin.');
+      }
     } finally {
       setAvatarBusy(false);
+      setUploadProgress('');
     }
   }
 
@@ -81,10 +104,11 @@ export default function ProfilePanel({ overview, onChanged }: {
       setAvatarBusy(true);
       setError('');
       setMessage('');
+      setUploadProgress('');
       await removeCustomerAvatar(p.avatar_path);
       setAvatarConfirmOpen(false);
       await onChanged();
-      setMessage('Profil fotoğrafınız kaldırıldı.');
+      setMessage('✓ Profil fotoğrafınız kaldırıldı.');
     } catch {
       setAvatarConfirmOpen(false);
       setError('Profil fotoğrafı şu anda kaldırılamadı. Lütfen yeniden deneyin.');
@@ -136,7 +160,7 @@ export default function ProfilePanel({ overview, onChanged }: {
       await onChanged();
       setDisplayName(normalizedName);
       setPhone(normalizedPhone);
-      setMessage('Profil bilgileriniz güncellendi.');
+      setMessage('✓ Profil bilgileriniz güncellendi.');
     } catch {
       setError('Profil bilgileriniz şu anda güncellenemedi. Lütfen yeniden deneyin.');
     } finally {
@@ -148,15 +172,17 @@ export default function ProfilePanel({ overview, onChanged }: {
     <Panel title="Profilimi Düzenle" description="Ad, telefon, uygulama dili ve pazarlama izninizi yönetin.">
       <form onSubmit={save} className="space-y-4" aria-busy={saving || avatarBusy}>
         {error ? <ErrorState message={error} /> : null}
-        {message ? <div role="status" aria-live="polite" className="rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{message}</div> : null}
+        {message ? <div role="status" aria-live="polite" className="rounded-2xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:bg-green-950/30 dark:text-green-200">{message}</div> : null}
+        {uploadProgress ? <div role="status" aria-live="polite" className="flex items-center gap-2 rounded-2xl border-2 border-blue-200 bg-blue-50 p-3 text-sm font-semibold text-blue-800 dark:bg-blue-950/30 dark:text-blue-200"><RefreshCw aria-hidden="true" className="h-4 w-4 animate-spin"/>{uploadProgress}</div> : null}
 
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-gray-200 p-4 dark:border-gray-700">
-          <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-full bg-brand-gold/15 text-3xl font-bold text-brand-gold" aria-label="Profil fotoğrafı">
-            {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : (p.display_name || p.email || '?').charAt(0).toUpperCase()}
+        <div className="flex flex-col items-center gap-3 rounded-2xl border-2 border-gray-200 p-4 dark:border-gray-700">
+          <div className="relative grid h-24 w-24 place-items-center overflow-hidden rounded-full bg-brand-gold/15 text-3xl font-bold text-brand-gold" aria-label="Profil fotoğrafı">
+            {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : <User aria-hidden="true" className="h-12 w-12"/>}
+            {!avatarUrl && (p.display_name || p.email) ? <span className="absolute text-3xl font-bold">{(p.display_name || p.email || '?').charAt(0).toUpperCase()}</span> : null}
           </div>
           <div className="flex flex-wrap justify-center gap-2">
-            <label className="min-h-11 cursor-pointer rounded-xl border px-4 py-2.5 font-semibold focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-gold">
-              {avatarBusy ? 'Fotoğraf işleniyor…' : 'Fotoğraf değiştir'}
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border-2 border-brand-green bg-white px-4 py-2.5 font-semibold text-brand-text shadow-sm hover:bg-brand-green/5 focus-within:outline-none focus-within:ring-2 focus-within:ring-brand-gold disabled:opacity-50 dark:bg-gray-900">
+              {avatarBusy ? <><RefreshCw aria-hidden="true" className="h-4 w-4 animate-spin"/>Fotoğraf işleniyor…</> : <><Upload aria-hidden="true" className="h-4 w-4"/>Fotoğraf değiştir</>}
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/avif"
@@ -165,9 +191,9 @@ export default function ProfilePanel({ overview, onChanged }: {
                 onChange={e => { void changeAvatar(e.target.files?.[0]); e.currentTarget.value=''; }}
               />
             </label>
-            {p.avatar_path ? <button type="button" disabled={avatarBusy} onClick={() => { setError(''); setMessage(''); setAvatarConfirmOpen(true); }} className="min-h-11 rounded-xl border border-red-300 px-4 font-semibold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Fotoğrafı kaldır</button> : null}
+            {p.avatar_path ? <button type="button" disabled={avatarBusy} onClick={() => { setError(''); setMessage(''); setUploadProgress(''); setAvatarConfirmOpen(true); }} className="min-h-11 rounded-xl border-2 border-red-300 px-4 font-semibold text-red-700 disabled:opacity-50 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300 dark:hover:bg-red-950/20">Fotoğrafı kaldır</button> : null}
           </div>
-          <p className="text-center text-xs text-gray-500">JPEG, PNG, WebP veya AVIF; en fazla 5 MB. Fotoğrafınız yalnız hesabınız için güvenli şekilde saklanır.</p>
+          <p className="text-center text-xs leading-5 text-gray-500">JPEG, PNG, WebP veya AVIF formatında, en fazla 5 MB boyutunda fotoğraf yükleyebilirsiniz. Fotoğrafınız yalnız hesabınız için güvenli şekilde saklanır.</p>
         </div>
 
         <label className="block">
@@ -206,8 +232,8 @@ export default function ProfilePanel({ overview, onChanged }: {
           </span>
         </label>
 
-        <button disabled={saving || avatarBusy} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
-          {saving ? 'Kaydediliyor…' : 'Değişiklikleri Kaydet'}
+        <button disabled={saving || avatarBusy} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-brand-green bg-brand-green px-4 font-bold text-white shadow-lg hover:bg-green-700 disabled:opacity-50 disabled:hover:bg-brand-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
+          {saving ? <><RefreshCw aria-hidden="true" className="h-4 w-4 animate-spin"/>Kaydediliyor…</> : 'Değişiklikleri Kaydet'}
         </button>
       </form>
 
