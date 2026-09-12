@@ -142,7 +142,7 @@ export default function AuthScreen({
         setMessage('Şifre sıfırlama bağlantısı e-posta adresinize gönderildiyse gelen kutunuzdan devam edebilirsiniz.');
         return;
       }
-      if (password.length < 8 || password.length > 72 || /[\u0000-\u001F\u007F]/.test(password)) throw new Error('Şifre 8-72 karakter arasında olmalı ve kontrol karakteri içermemelidir.');
+      if (password.length < 8 || password.length > 72 || /[\u0000-\u001F\u007F]/.test(password)) throw new Error('Şifre 8-72 karakter arasında olmalıdır.');
 
       if (mode === 'login') {
         await signInWithEmail(normalizedEmail, password);
