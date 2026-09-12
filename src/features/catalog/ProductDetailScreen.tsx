@@ -9,6 +9,7 @@ import ProducerQuestionComposer from'../account/ProducerQuestionComposer';
 import{setCartItem}from'../cart/api';
 import{buildProductUrl,buildSearchUrl,copyText,shareOrCopy}from'../navigation/appUrl';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
+import ProductImageWithSkeleton from'./ProductImageWithSkeleton';
 
 type Props={
  reference:string;
@@ -168,7 +169,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
   <div className="grid gap-6 lg:grid-cols-2">
    <section aria-label="Ürün görselleri">
-    <div className="overflow-hidden rounded-3xl border border-brand-border bg-gray-100 shadow-sm dark:bg-gray-800">{selectedImageUrl?<button type="button" onClick={()=>setImageViewerOpen(true)} aria-label={`${detailName} görselini büyüt`} className="group relative block w-full cursor-zoom-in"><img data-product-primary-image="true" src={selectedImageUrl} alt={safeText(selectedImage.alt,300)||detailName} loading="eager" decoding="async" fetchPriority="high" className="aspect-square h-full w-full object-contain p-2"/><span aria-hidden="true" className="absolute bottom-3 right-3 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand-border bg-brand-card/95 px-3 text-xs font-black text-brand-text shadow-lg backdrop-blur"><ZoomIn className="h-4 w-4"/>Büyüt</span></button>:<div role="img" aria-label={`${detailName} için görsel henüz eklenmedi`} className="grid aspect-square place-items-center text-brand-muted">Ürün görseli yakında</div>}</div>
+    <ProductImageWithSkeleton src={selectedImageUrl} alt={safeText(selectedImage.alt,300)||detailName} aspectRatio="square" objectFit="contain" priority className="rounded-3xl border border-brand-border shadow-sm"/>
     {images.length>1?<div className="hide-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">{images.slice(0,12).map((image:any,index:number)=>{const src=publicCatalogUrl(image?.path);return src?<button type="button" key={`${safeText(image.path,1200)}:${index}`} onClick={()=>setSelectedImagePath(safeText(image.path,1200))} aria-label={`${detailName} görseli ${index+1}`} aria-pressed={selectedImage?.path===image.path} className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-brand-card ${selectedImage?.path===image.path?'border-brand-gold ring-2 ring-brand-gold/30':'border-brand-border'}`}><img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain p-1"/></button>:null;})}</div>:null}
    </section>
 
