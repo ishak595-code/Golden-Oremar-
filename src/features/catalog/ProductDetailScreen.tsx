@@ -164,8 +164,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    <button type="button" onClick={()=>void shareProduct()} disabled={shareBusy} aria-label="Ürünü paylaş" className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card disabled:opacity-50"><Share2 aria-hidden="true" className="h-5 w-5"/></button>
   </div>
 
-  {error?<div role="alert" className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div>:null}
-  {status?<div role="status" aria-live="polite" className="mb-4 rounded-2xl bg-green-50 p-3 text-sm font-semibold text-green-800 dark:bg-green-950/30 dark:text-green-200">{cartAdded?<div className="flex items-center justify-between gap-3"><span>{status}</span><button type="button" onClick={navigateToCart} className="min-h-9 rounded-full border border-green-700/30 px-3 font-black">Sepete Git</button></div>:status}</div>:null}
+  {error?<div role="alert" className="mb-4 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div>:null}
+  {status?<div role="status" aria-live="polite" className="mb-4 rounded-2xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:bg-green-950/30 dark:text-green-200">{cartAdded?<div className="flex items-center justify-between gap-3"><span>{status}</span><button type="button" onClick={navigateToCart} className="min-h-9 rounded-full border-2 border-green-700/30 px-3 font-black">Sepete Git</button></div>:status}</div>:null}
 
   <div className="grid gap-6 lg:grid-cols-2">
    <section aria-label="Ürün görselleri">
