@@ -113,6 +113,7 @@ export default function PasswordRecoveryScreen({
             <div className="relative mt-1">
               <input
                 id="recovery-new-password"
+                name="password"
                 ref={passwordRef}
                 type={showPassword ? 'text' : 'password'}
                 value={password}
@@ -143,6 +144,7 @@ export default function PasswordRecoveryScreen({
             <span className="text-sm font-bold">Yeni şifreyi tekrar yazın <span className="text-red-500" aria-label="zorunlu">*</span></span>
             <input
               id="recovery-confirm-password"
+              name="password-confirm"
               type={showPassword ? 'text' : 'password'}
               value={confirmPassword}
               onChange={event => setConfirmPassword(event.target.value.slice(0, 72))}
