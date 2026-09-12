@@ -135,31 +135,22 @@
 ## 🐛 Known CI Issues
 
 ### E2E Test Provisioning (HTTP 402 Error)
-**Status:** Requires owner action. Not an application code issue.
+**Status:** Known limitation. Supabase DB quota exhausted until **18 September 2026** (owner confirmed).
 
 **Symptoms:**
 - `customer-e2e` job fails with `E2E_CI_CONTROL_PROVISION_FAILED:402:unknown`
 - Error originates from `ci-e2e-user` Supabase Edge Function
-- Android build, iOS build, and TypeScript checks pass successfully
+- Android build, iOS build, TypeScript checks, and all code quality audits pass successfully
 
 **Root Cause:**
-The E2E test infrastructure Edge Function returns HTTP 402, typically indicating:
-- Supabase project quota/billing issue
-- Edge Function secrets missing or expired
-- Test user provisioning service misconfigured
+Supabase project database quota exhausted. This is a temporary infrastructure limitation, not an application code defect.
 
-**Required Actions:**
-- [ ] Check Supabase project billing status and quota limits
-- [ ] Verify `ci-e2e-user` Edge Function secrets are configured
-- [ ] Review Edge Function logs in Supabase Dashboard
-- [ ] Confirm test database has capacity for provisioning test users
+**Owner Actions Required:**
+- Wait until quota resets on 18 September 2026
+- OR upgrade Supabase plan if earlier E2E validation is critical
 
-**Workaround:**
-None. E2E tests validate end-to-end customer journeys and cannot be skipped. The application code is sound (TypeScript, build, and platform builds all pass).
-
-**Related Workflows:**
-- `.github/workflows/mobile-quality.yml` (customer-e2e job)
-- `supabase/functions/ci-e2e-user/index.ts`
+**Note for Contributors:**
+Do not attempt to fix this via code changes, migrations, or Edge Function modifications. The application code is sound. All client-side quality checks pass.
 
 ---
 
