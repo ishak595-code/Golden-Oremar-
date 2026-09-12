@@ -12,14 +12,14 @@ const blank: Address = {
 };
 
 const fields = [
-  { key: 'label', label: 'Adres etiketi', autoComplete: 'off', required: true, maxLength: 60 },
-  { key: 'recipient_name', label: 'Alıcı adı', autoComplete: 'name', required: true, maxLength: 120 },
-  { key: 'phone', label: 'Telefon', autoComplete: 'tel', inputMode: 'tel', required: true, maxLength: 40 },
-  { key: 'country_code', label: 'Ülke kodu', autoComplete: 'country', required: true, maxLength: 2 },
-  { key: 'province', label: 'İl/Bölge', autoComplete: 'address-level1', required: true, maxLength: 120 },
-  { key: 'district', label: 'İlçe/Şehir', autoComplete: 'address-level2', required: true, maxLength: 120 },
-  { key: 'neighborhood', label: 'Mahalle/Köy', autoComplete: 'address-level3', required: false, maxLength: 160 },
-  { key: 'postal_code', label: 'Posta kodu', autoComplete: 'postal-code', inputMode: 'text', required: false, maxLength: 20 },
+  { key: 'label', label: 'Adres etiketi', autoComplete: 'off', enterKeyHint: 'next', required: true, maxLength: 60 },
+  { key: 'recipient_name', label: 'Alıcı adı', autoComplete: 'name', enterKeyHint: 'next', required: true, maxLength: 120 },
+  { key: 'phone', label: 'Telefon', autoComplete: 'tel', inputMode: 'tel', enterKeyHint: 'next', required: true, maxLength: 40 },
+  { key: 'country_code', label: 'Ülke kodu', autoComplete: 'country', enterKeyHint: 'next', required: true, maxLength: 2 },
+  { key: 'province', label: 'İl/Bölge', autoComplete: 'address-level1', enterKeyHint: 'next', required: true, maxLength: 120 },
+  { key: 'district', label: 'İlçe/Şehir', autoComplete: 'address-level2', enterKeyHint: 'next', required: true, maxLength: 120 },
+  { key: 'neighborhood', label: 'Mahalle/Köy', autoComplete: 'address-level3', enterKeyHint: 'next', required: false, maxLength: 160 },
+  { key: 'postal_code', label: 'Posta kodu', autoComplete: 'postal-code', inputMode: 'text', enterKeyHint: 'next', required: false, maxLength: 20 },
 ] as const;
 
 type SavedAddress = Address & { id: string };
@@ -199,6 +199,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
                       required={field.required}
                       autoComplete={field.autoComplete}
                       inputMode={'inputMode' in field ? field.inputMode as React.HTMLAttributes<HTMLInputElement>['inputMode'] : undefined}
+                      enterKeyHint={'enterKeyHint' in field ? field.enterKeyHint as React.HTMLAttributes<HTMLInputElement>['enterKeyHint'] : undefined}
                       maxLength={field.maxLength}
                       pattern={field.key === 'country_code' ? '[A-Za-z]{2}' : undefined}
                       disabled={saving}
@@ -221,7 +222,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
             </label>
             <label className="mt-3 block">
               <span className="text-sm font-semibold">Teslimat notu</span>
-              <textarea maxLength={500} value={editing.delivery_notes || ''} disabled={saving} onChange={e => setEditing({ ...editing, delivery_notes: e.target.value })}
+              <textarea maxLength={500} value={editing.delivery_notes || ''} disabled={saving} onChange={e => setEditing({ ...editing, delivery_notes: e.target.value })} enterKeyHint="done"
                 rows={2} className="mt-1 w-full rounded-xl border bg-transparent p-3 disabled:opacity-60" />
             </label>
             <label className="mt-3 flex min-h-11 items-center gap-3 rounded-xl px-1">
