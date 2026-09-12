@@ -232,7 +232,7 @@ export default function ProfilePanel({ overview, onChanged }: {
           </span>
         </label>
 
-        <button disabled={saving || avatarBusy} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-brand-green bg-brand-green px-4 font-bold text-white shadow-lg hover:bg-green-700 disabled:opacity-50 disabled:hover:bg-brand-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
+        <button disabled={saving || avatarBusy} aria-busy={saving} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-brand-green bg-brand-green px-4 font-bold text-white shadow-lg hover:bg-green-700 disabled:opacity-50 disabled:hover:bg-brand-green focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
           {saving ? <><RefreshCw aria-hidden="true" className="h-4 w-4 animate-spin"/>Kaydediliyor…</> : 'Değişiklikleri Kaydet'}
         </button>
       </form>
