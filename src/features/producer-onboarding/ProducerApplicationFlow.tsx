@@ -14,6 +14,7 @@ import {
   type ProducerPlannedProduct,
   type ProductionLocationSuggestion,
 } from './api';
+import{scrollBehavior}from'../../lib/reducedMotion';
 
 const sellerClasses = [
   ['individual_non_merchant', 'Bireysel köy üreticisi'],
@@ -234,7 +235,7 @@ export default function ProducerApplicationFlow({ currentUser, onBack }: { curre
   function next() {
     const issue = validateStep(step);
     if (issue) { setError(issue); return; }
-    setError(''); setStep(value => Math.min(5, value + 1)); window.scrollTo({ top: 0, behavior: 'smooth' });
+    setError(''); setStep(value => Math.min(5, value + 1)); window.scrollTo({ top: 0, behavior: scrollBehavior() });
   }
 
   function updateProduct(index: number, key: keyof ProducerPlannedProduct, value: string | number) {
@@ -262,7 +263,7 @@ export default function ProducerApplicationFlow({ currentUser, onBack }: { curre
   async function submit() {
     for (let index = 0; index <= 5; index += 1) {
       const issue = validateStep(index);
-      if (issue) { setStep(index); setError(issue); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+      if (issue) { setStep(index); setError(issue); window.scrollTo({ top: 0, behavior: scrollBehavior() }); return; }
     }
     let uploaded: { storage_path: string; document_type: string }[] = [];
     try {
