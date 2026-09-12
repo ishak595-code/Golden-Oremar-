@@ -130,7 +130,7 @@ export function AdminNotifications() {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Bildirim Merkezi</h2>
           <p className="mt-1 max-w-3xl text-sm text-gray-500 dark:text-gray-400">Uygulama içi bildirim gerçek Supabase kayıtlarına yazılır. Kayıtlı cihazlarda push açıksa ve kullanıcı ilgili bildirim türüne izin verdiyse push kuyruğu otomatik oluşturulur.</p>
         </div>
-        <button type="button" onClick={() => void loadUsers()} disabled={loadingUsers} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 py-2 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+        <button type="button" onClick={() => void loadUsers()} disabled={loadingUsers} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 py-2 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
           <RefreshCw className={`mr-2 inline h-4 w-4 ${loadingUsers ? 'animate-spin' : ''}`} aria-hidden="true" /> Kullanıcıları yenile
         </button>
       </header>
@@ -151,7 +151,7 @@ export function AdminNotifications() {
           </div>
 
           {form.scope === 'specific' && <div className="mt-4 space-y-3">
-            <label className="relative block"><span className="sr-only">Kullanıcı ara</span><Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" aria-hidden="true" /><input type="search" maxLength={160} value={userSearch} onChange={event => setUserSearch(event.target.value)} placeholder="İsim veya e-posta ara..." className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
+            <label className="relative block"><span className="sr-only">Kullanıcı ara</span><Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" aria-hidden="true" /><input type="search" enterKeyHint="search" maxLength={160} value={userSearch} onChange={event => setUserSearch(event.target.value)} placeholder="İsim veya e-posta ara..." className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 py-2 pl-10 pr-4 dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
             <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Kullanıcı</span><select required aria-describedby={audienceError ? 'notification-audience-error' : undefined} value={form.userId} onChange={event => setForm(current => ({ ...current, userId: event.target.value }))} className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="">Kullanıcı seçin</option>{filteredUsers.map(user => <option key={user.id} value={user.id}>{userLabel(user)} - {user.email||user.primaryRole}</option>)}</select></label>
           </div>}
         </section>
@@ -175,7 +175,7 @@ export function AdminNotifications() {
         </button>
       </form>
 
-      {toast && <div role="status" aria-live="polite" aria-atomic="true" className="fixed bottom-4 right-4 z-[70] flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-white shadow-2xl"><Check className="h-5 w-5 text-green-400" aria-hidden="true" /> {toast}</div>}
+      {toast && <div role="status" aria-live="polite" aria-atomic="true" className="fixed right-4 z-[70] flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-white shadow-2xl" style={{bottom:'calc(1rem + env(safe-area-inset-bottom, 0px))'}}><Check className="h-5 w-5 text-green-400" aria-hidden="true" /> {toast}</div>}
     </div>
   );
 }

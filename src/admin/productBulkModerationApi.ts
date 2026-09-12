@@ -33,7 +33,7 @@ export async function superAdminBulkReviewProducts(input:{approve:boolean;reason
 export function bulkModerationErrorMessage(error:unknown){
  const message=String((error as{message?:unknown})?.message||'').trim();
  const map:Array<[string,string]>=[
-  ['permission_required:product.publish','Toplu ürün onayı ve reddi yalnız AAL2 Super Admin oturumuna açıktır.'],
+  ['permission_required:product.publish','Toplu ürün onayı ve reddi yalnız AAL2 Süper Yönetici oturumuna açıktır.'],
   ['permission_required:product.approve','Toplu ürün onayı için owner onay yetkisi gerekiyor.'],
   ['permission_required:product.reject','Toplu ürün reddi için ret yetkisi gerekiyor.'],
   ['product_ids_required','Atomik toplu yayın için en az bir ürün seçin.'],

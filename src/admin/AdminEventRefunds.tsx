@@ -88,7 +88,7 @@ export default function AdminEventRefunds() {
         <div>
           <div className="flex items-center gap-2 text-red-700">
             <ShieldCheck className="h-5 w-5" />
-            <span className="text-xs font-bold uppercase tracking-[0.14em]">Super Admin finans güvenliği</span>
+            <span className="text-xs font-bold uppercase tracking-[0.14em]">Süper Yönetici finans güvenliği</span>
           </div>
           <h2 className="mt-1 text-2xl font-bold">Etkinlik İade Kuyruğu</h2>
           <p className="mt-1 max-w-3xl text-sm text-gray-500">

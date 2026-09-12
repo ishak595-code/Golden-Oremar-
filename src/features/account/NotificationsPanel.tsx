@@ -1,15 +1,17 @@
-import React,{useEffect,useState}from'react';
+import React,{useEffect,useRef,useState}from'react';
 import{listNotifications,markAllNotificationsRead,markNotificationRead}from'./api';
 import type{AccountNotification,NotificationsPage}from'./types';
 import{EmptyState,ErrorState,LoadingState,Panel}from'./ui';
 import{NETWORK_RESTORED_EVENT}from'../resilience/useConnectivity';
+import{supabase}from'../../lib/supabase';
 
 const PAGE_SIZE=30;
+const FALLBACK_REFRESH_INTERVAL_MS=60000; // Fallback refresh every 60s if realtime fails
 function formatNotificationDate(value:string){const date=new Date(value);if(Number.isNaN(date.getTime()))return'Tarih bilgisi geçersiz';try{return date.toLocaleString('tr-TR');}catch{return'Tarih bilgisi geçersiz';}}
 function notificationKey(item:AccountNotification){return item.id;}
 
 export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{onOpenAction?:(url:string,metadata:Record<string,unknown>)=>void;onUnreadCountChange?:(count:number)=>void}){
- const[data,setData]=useState<NotificationsPage|null>(null);const[loading,setLoading]=useState(true);const[loadingMore,setLoadingMore]=useState(false);const[hasMore,setHasMore]=useState(false);const[error,setError]=useState('');const[loadMoreError,setLoadMoreError]=useState('');const[openingId,setOpeningId]=useState<string|null>(null);const[markAllBusy,setMarkAllBusy]=useState(false);const[actionStatus,setActionStatus]=useState('');
+ const[data,setData]=useState<NotificationsPage|null>(null);const[loading,setLoading]=useState(true);const[loadingMore,setLoadingMore]=useState(false);const[hasMore,setHasMore]=useState(false);const[error,setError]=useState('');const[loadMoreError,setLoadMoreError]=useState('');const[openingId,setOpeningId]=useState<string|null>(null);const[markAllBusy,setMarkAllBusy]=useState(false);const[actionStatus,setActionStatus]=useState('');const[realtimeConnected,setRealtimeConnected]=useState(false);const channelRef=useRef<ReturnType<typeof supabase.channel>|null>(null);
  async function load(reset=true){
   const items=data?.items??[];const before=reset?null:(items.length?items[items.length-1].createdAt:null);
   try{
@@ -31,6 +33,25 @@ export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{o
  }
  useEffect(()=>{void load(true);},[]);
  useEffect(()=>{const restore=()=>{if(openingId||markAllBusy)return;setLoadMoreError('');void load(true);};window.addEventListener(NETWORK_RESTORED_EVENT,restore);return()=>window.removeEventListener(NETWORK_RESTORED_EVENT,restore);},[openingId,markAllBusy]);
+ 
+ useEffect(()=>{
+  let active=true;
+  async function setupRealtime(){
+   try{
+    const{data:{user}}=await supabase.auth.getUser();
+    if(!active||!user)return;
+    const channel=supabase.channel(`notifications:${user.id}`)
+     .on('postgres_changes',{event:'INSERT',schema:'public',table:'notifications',filter:`user_id=eq.${user.id}`},()=>{if(active)void load(true);})
+     .on('postgres_changes',{event:'UPDATE',schema:'public',table:'notifications',filter:`user_id=eq.${user.id}`},()=>{if(active)void load(true);})
+     .subscribe((status)=>{if(active)setRealtimeConnected(status==='SUBSCRIBED');});
+    channelRef.current=channel;
+   }catch{if(active)setRealtimeConnected(false);}
+  }
+  void setupRealtime();
+  return()=>{active=false;if(channelRef.current){channelRef.current.unsubscribe().catch(()=>{});channelRef.current=null;}};
+ },[]);
+ 
+ useEffect(()=>{if(realtimeConnected)return;const interval=setInterval(()=>{if(openingId||markAllBusy||loading||loadingMore)return;void load(true);},FALLBACK_REFRESH_INTERVAL_MS);return()=>clearInterval(interval);},[realtimeConnected,openingId,markAllBusy,loading,loadingMore]);
 
  async function open(item:AccountNotification){
   if(openingId||markAllBusy)return;
@@ -59,17 +80,17 @@ export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{o
  }
 
  if(loading)return<LoadingState label="Bildirimler yükleniyor"/>;
- if(!data)return<Panel title="Bildirimler" description="Sipariş, ödeme, kargo, iade, mesaj ve sistem bildirimleri."><ErrorState message={error||'Bildirim verisi doğrulanamadı.'} onRetry={()=>void load(true)}/></Panel>;
+ if(!data)return<Panel title="Bildirimler" description="Sipariş, ödeme, kargo, iade, mesaj ve sistem bildirimleri."><ErrorState message={error||'Bildirimler yüklenemedi.'} onRetry={()=>void load(true)}/></Panel>;
  const items=data.items;const unreadCount=data.unreadCount;
  return<Panel title="Bildirimler" description="Sipariş, ödeme, kargo, iade, mesaj ve sistem bildirimleri.">
    {error?<ErrorState message={error} onRetry={()=>void load(true)}/>:null}
    {actionStatus?<div role="status" aria-live="polite" className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{actionStatus}</div>:null}
-   <div className="mb-4 flex items-center justify-between gap-3"><div className="text-sm text-gray-500" aria-live="polite">Okunmamış: <strong>{unreadCount}</strong></div>{unreadCount>0?<button type="button" disabled={markAllBusy||Boolean(openingId)} onClick={()=>void markAll()} className="min-h-11 rounded-xl border px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{markAllBusy?'İşaretleniyor…':'Tümünü okundu işaretle'}</button>:null}</div>
+   <div className="mb-4 flex items-center justify-between gap-3"><div className="text-sm text-gray-500" aria-live="polite">Okunmamış: <strong>{unreadCount}</strong></div>{unreadCount>0?<button type="button" disabled={markAllBusy||Boolean(openingId)} onClick={()=>void markAll()} className="min-h-11 rounded-xl border px-4 font-semibold disabled:cursor-not-allowed disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{markAllBusy?'İşaretleniyor…':'Tümünü okundu işaretle'}</button>:null}</div>
    <div className="sr-only" aria-live="polite">{openingId?'Bildirim açılıyor.':markAllBusy?'Bildirimler okundu olarak işaretleniyor.':loadingMore?'Daha fazla bildirim yükleniyor.':loadMoreError||''}</div>
-   {!items.length?<EmptyState title="Yeni bildiriminiz yok" body="Önemli sipariş ve hesap gelişmeleri burada görünecek."/>:<>
-   <div className="space-y-2">{items.map(item=>{const busy=openingId===item.id;const hasNavigableAction=Boolean(item.actionUrl&&onOpenAction);return <button type="button" key={notificationKey(item)} disabled={Boolean(openingId)||markAllBusy} aria-busy={busy} onClick={()=>void open(item)} aria-label={`${item.readAt?'Okundu':'Okunmamış'} bildirim: ${item.title}. ${item.message}${hasNavigableAction?'. İlgili ekrana gider.':''}`} className={`min-h-16 w-full rounded-xl border p-4 text-left disabled:cursor-wait disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${item.readAt?'bg-white dark:bg-gray-900':'border-brand-gold/40 bg-brand-gold/5'}`}><div className="font-bold">{item.title}</div><p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{item.message}</p><div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-400"><span>{busy?'Açılıyor…':formatNotificationDate(item.createdAt)}</span>{hasNavigableAction?<span className="font-semibold text-brand-green dark:text-brand-gold">İlgili ekranı aç</span>:null}</div></button>;})}</div>
-   {loadMoreError?<div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100"><p>Daha eski bildirimler yüklenemedi. Mevcut bildirimler korunuyor.</p><button type="button" disabled={loadingMore} onClick={()=>void load(false)} className="mt-2 min-h-11 rounded-xl border border-amber-300 px-4 font-semibold disabled:opacity-50 dark:border-amber-800">Tekrar dene</button></div>:null}
-   {hasMore?<div className="mt-5 flex justify-center"><button type="button" disabled={loadingMore||Boolean(openingId)||markAllBusy} onClick={()=>void load(false)} className="min-h-11 rounded-xl border border-brand-green px-5 font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:text-brand-gold">{loadingMore?'Yükleniyor…':'Daha fazla bildirim göster'}</button></div>:null}
+   {!items.length?<div className="rounded-3xl border border-brand-border bg-gradient-to-br from-brand-gold/5 via-brand-card to-brand-card p-8 text-center"><div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-brand-gold/10"><svg aria-hidden="true" className="h-8 w-8 text-brand-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg></div><h3 className="text-lg font-bold text-brand-text">Yeni bildiriminiz yok</h3><p className="mt-2 text-sm text-brand-muted">Sipariş, ödeme, kargo ve hesap bildirimleri burada görünecek.{realtimeConnected?<span className="mt-1 block text-xs text-brand-gold">● Canlı bağlantı aktif</span>:null}</p></div>:<>
+   <div className="space-y-2">{items.map(item=>{const busy=openingId===item.id;const hasNavigableAction=Boolean(item.actionUrl&&onOpenAction);const isUnread=!item.readAt;return <button type="button" key={notificationKey(item)} disabled={Boolean(openingId)||markAllBusy} aria-busy={busy} onClick={()=>void open(item)} aria-label={`${isUnread?'Okunmamış':'Okundu'} bildirim: ${item.title}. ${item.message}${hasNavigableAction?'. İlgili ekrana gider.':''}`} className={`relative min-h-16 w-full rounded-xl border p-4 text-left disabled:cursor-wait disabled:cursor-wait disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${isUnread?'border-brand-gold/40 bg-brand-gold/5':'bg-white dark:bg-gray-900'}`}>{isUnread?<span aria-hidden="true" className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-brand-gold ring-2 ring-white dark:ring-gray-900"/>:null}<div className="flex items-start gap-3"><div className="min-w-0 flex-1"><div className="font-bold">{item.title}</div><p className="mt-1 text-sm text-gray-600 dark:text-gray-300">{item.message}</p><div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-400"><span>{busy?'Açılıyor…':formatNotificationDate(item.createdAt)}</span>{hasNavigableAction?<span className="font-semibold text-brand-green dark:text-brand-gold">İlgili ekranı aç</span>:null}</div></div></div></button>;})}</div>
+   {loadMoreError?<div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100"><p>Daha eski bildirimler yüklenemedi. Mevcut bildirimler korunuyor.</p><button type="button" disabled={loadingMore} onClick={()=>void load(false)} className="mt-2 min-h-11 rounded-xl border border-amber-300 px-4 font-semibold disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Tekrar dene</button></div>:null}
+   {hasMore?<div className="mt-5 flex justify-center"><button type="button" disabled={loadingMore||Boolean(openingId)||markAllBusy} onClick={()=>void load(false)} className="min-h-11 rounded-xl border border-brand-green px-5 font-bold text-brand-green disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:text-brand-gold">{loadingMore?'Yükleniyor…':'Daha fazla bildirim göster'}</button></div>:null}
    </>}
  </Panel>;
 }

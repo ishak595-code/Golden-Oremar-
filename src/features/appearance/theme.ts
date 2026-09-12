@@ -82,11 +82,6 @@ export function getStoredTheme(): AppTheme | null {
   return readStored(STORAGE_KEY) || readStored(LEGACY_STORAGE_KEY);
 }
 
-export function getSystemTheme(): AppTheme {
-  if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-color-scheme: dark)').matches) return 'dark';
-  return 'light';
-}
-
 export function resolveInitialTheme(): AppTheme {
   return getStoredTheme() || 'custom';
 }

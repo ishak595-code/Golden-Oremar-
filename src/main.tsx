@@ -1,4 +1,4 @@
-import {StrictMode} from 'react';
+import {StrictMode,lazy,Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary';
@@ -22,12 +22,14 @@ import { installCustomerShellRouteState } from './features/navigation/customerSh
 import { installPremiumMobileShellRuntime } from './features/customer-experience/premiumMobileShellRuntime';
 import { installGlobalErrorTelemetry, sendClientError } from './lib/errorTelemetry';
 import {installBackendPerformanceHints} from './lib/performanceHints';
-import StoreComplianceControls from './features/store/StoreComplianceControls';
+const StoreComplianceControls = lazy(() => import('./features/store/StoreComplianceControls'));
 import NativeAppUpdateBanner from './features/app-update/NativeAppUpdateBanner';
 import ProductDetailConnections from './features/catalog/ProductDetailConnections';
 import ProductRecommendationsRail from './features/catalog/ProductRecommendationsRail';
 import {installCatalogMediaFallback} from './features/catalog/installCatalogMediaFallback';
 import {AuthorizationProvider} from './features/auth/AuthorizationContext';
+
+const PwaInstallPrompt=lazy(()=>import('./features/pwa/PwaInstallPrompt'));
 
 installBackendPerformanceHints();
 installCatalogMediaFallback();
@@ -46,10 +48,15 @@ createRoot(document.getElementById('root')!).render(
     <ErrorBoundary>
       <AuthorizationProvider>
         <NativeAppUpdateBanner />
+        <Suspense fallback={null}>
+          <PwaInstallPrompt />
+        </Suspense>
         <App />
         <ProductDetailConnections />
         <ProductRecommendationsRail />
-        <StoreComplianceControls />
+        <Suspense fallback={null}>
+          <StoreComplianceControls />
+        </Suspense>
       </AuthorizationProvider>
     </ErrorBoundary>
   </StrictMode>,

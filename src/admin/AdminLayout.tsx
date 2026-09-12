@@ -76,7 +76,7 @@ const ADMIN_MENU_GROUPS: MenuGroup[] = [
     { id: 'release-setup', label: 'Yayın ve Entegrasyon', icon: Settings },
     { id: 'appearance', label: 'Görünüm ve Marka Teması', icon: Palette },
     { id: 'security-mfa', label: 'MFA ve Authenticator', icon: ShieldCheck },
-    { id: 'role-governance', label: 'Yetki ve Super Admin', icon: Crown },
+    { id: 'role-governance', label: 'Yetki ve Süper Yönetici', icon: Crown },
     { id: 'account-erasure', label: 'Kapalı Hesap Yönetimi', icon: UserCog },
     { id: 'system-errors', label: 'Günlük Sistem Hataları', icon: Bug },
   ]},
@@ -100,12 +100,12 @@ export function AdminLayout({ children, activeTab, setActiveTab, onLogout, onBac
   const userName = String((currentUser as any)?.name || (currentUser as any)?.display_name || (currentUser as any)?.email || 'Yetkili kullanıcı');
   const roleLabel=useMemo(()=>{
     const roles=snapshot?.roles||[];
-    if(roles.includes('super_admin'))return'Super Admin - Uygulama Sahibi';
-    if(roles.includes('admin'))return'Admin - Yetkili Personel';
-    if(roles.includes('operations'))return'Operations - Operasyon';
-    if(roles.includes('moderator'))return'Moderator - Moderasyon';
-    if(roles.includes('content_editor'))return'Content Editor - İçerik';
-    if(roles.includes('support'))return'Support - Müşteri Desteği';
+    if(roles.includes('super_admin'))return'Süper Yönetici - Uygulama Sahibi';
+    if(roles.includes('admin'))return'Yönetici - Yetkili Personel';
+    if(roles.includes('operations'))return'Operasyon Yöneticisi';
+    if(roles.includes('moderator'))return'Moderatör - İçerik Denetimi';
+    if(roles.includes('content_editor'))return'İçerik Editörü';
+    if(roles.includes('support'))return'Destek Ekibi';
     return'Yetkili Kullanıcı';
   },[snapshot?.roles]);
 
@@ -143,6 +143,6 @@ export function AdminLayout({ children, activeTab, setActiveTab, onLogout, onBac
         <button type="button" onClick={() => void onLogout()} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-50 px-4 font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-300"><LogOut className="h-5 w-5" aria-hidden="true"/>Güvenli çıkış</button>
       </div>
     </aside>
-    <div className="min-h-screen lg:pl-72"><header className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-gray-200 bg-white/95 px-4 backdrop-blur dark:border-gray-700 dark:bg-gray-800/95 sm:px-6 lg:px-8"><button type="button" onClick={() => setIsSidebarOpen(true)} className="min-h-11 min-w-11 rounded-xl p-2 lg:hidden" aria-label="Yönetim menüsünü aç" aria-expanded={isSidebarOpen} aria-controls="admin-sidebar"><Menu className="mx-auto h-6 w-6" aria-hidden="true"/></button>{activeTab!=='dashboard'&&can('admin.access')?<button type="button" onClick={()=>navigate('dashboard')} className="min-h-11 min-w-11 rounded-xl p-2" aria-label="Panele dön"><ArrowLeft className="mx-auto h-5 w-5" aria-hidden="true"/></button>:null}<div className="min-w-0 flex-1"><div className="truncate text-lg font-bold text-gray-900 dark:text-white">{activeItem?.label||'Yetkili Alan'}</div><div className="hidden text-xs text-gray-500 sm:block">Capability bazlı yönetim operasyonları</div></div>{canReadNotifications?<button type="button" onClick={()=>navigate('notifications')} className="min-h-11 min-w-11 rounded-xl p-2" aria-label="Bildirim merkezini aç"><Bell className="mx-auto h-5 w-5" aria-hidden="true"/></button>:null}<button type="button" onClick={()=>window.location.reload()} className="min-h-11 min-w-11 rounded-xl p-2" aria-label="Uygulama görünümünü yenile"><RefreshCw className="mx-auto h-5 w-5" aria-hidden="true"/></button></header><main className="p-4 sm:p-6 lg:p-8"><div className="mx-auto max-w-7xl">{children}</div></main></div>
+    <div className="min-h-screen lg:pl-72"><header className="sticky z-30 flex min-h-16 items-center gap-3 border-b border-gray-200 bg-white/95 px-4 backdrop-blur dark:border-gray-700 dark:bg-gray-800/95 sm:px-6 lg:px-8" style={{top:'env(safe-area-inset-top, 0px)', paddingTop:'env(safe-area-inset-top, 0px)'}}><button type="button" onClick={() => setIsSidebarOpen(true)} className="min-h-11 min-w-11 rounded-xl p-2 lg:hidden" aria-label="Yönetim menüsünü aç" aria-expanded={isSidebarOpen} aria-controls="admin-sidebar"><Menu className="mx-auto h-6 w-6" aria-hidden="true"/></button>{activeTab!=='dashboard'&&can('admin.access')?<button type="button" onClick={()=>navigate('dashboard')} className="min-h-11 min-w-11 rounded-xl p-2" aria-label="Panele dön"><ArrowLeft className="mx-auto h-5 w-5" aria-hidden="true"/></button>:null}<div className="min-w-0 flex-1"><div className="truncate text-lg font-bold text-gray-900 dark:text-white">{activeItem?.label||'Yetkili Alan'}</div><div className="hidden text-xs text-gray-500 sm:block">Yetki bazlı yönetim operasyonları</div></div>{canReadNotifications?<button type="button" onClick={()=>navigate('notifications')} className="min-h-11 min-w-11 rounded-xl p-2" aria-label="Bildirim merkezini aç"><Bell className="mx-auto h-5 w-5" aria-hidden="true"/></button>:null}<button type="button" onClick={()=>window.location.reload()} className="min-h-11 min-w-11 rounded-xl p-2" aria-label="Uygulama görünümünü yenile"><RefreshCw className="mx-auto h-5 w-5" aria-hidden="true"/></button></header><main className="p-4 sm:p-6 lg:p-8"><div className="mx-auto max-w-7xl">{children}</div></main></div>
   </div>;
 }

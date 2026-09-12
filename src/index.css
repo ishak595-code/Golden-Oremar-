@@ -2,6 +2,10 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+.input {
+  @apply min-h-11 w-full rounded-xl border-2 border-brand-border bg-transparent px-3 transition-colors hover:border-brand-gold/30 focus:border-brand-green disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700;
+}
+
 @theme {
   --font-serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
@@ -306,5 +310,27 @@ nav[aria-label="Ana gezinme"] button > span.relative > span[aria-hidden="true"] 
   [aria-disabled="true"], :disabled {
     opacity: 1;
     color: GrayText;
+  }
+}
+
+@media print {
+  nav[aria-label="Ana gezinme"],
+  header,
+  button[aria-label*="Yukarı kaydır"],
+  button[aria-label*="Şartlar & Güvenlik"],
+  aside[role="dialog"][aria-labelledby="pwa-title"],
+  a[href="#main-content"],
+  div[role="status"][aria-live="polite"].fixed,
+  div[role="status"].fixed {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  @page {
+    margin: 1.5cm;
   }
 }

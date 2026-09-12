@@ -105,10 +105,10 @@ export default function ProducerOrdersPanel({ onBack, onChanged }: { onBack: () 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={onBack} className="min-h-11 rounded-xl border px-4 font-semibold">
+        <button type="button" onClick={onBack} className="min-h-11 rounded-xl border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
           <ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4" />Satıcı paneline dön
         </button>
-        <button type="button" onClick={() => void loadList(scope)} className="min-h-11 rounded-xl border px-4 font-semibold">
+        <button type="button" onClick={() => void loadList(scope)} className="min-h-11 rounded-xl border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
           <RefreshCw aria-hidden="true" className="mr-2 inline h-4 w-4" />Yenile
         </button>
       </div>
@@ -118,7 +118,7 @@ export default function ProducerOrdersPanel({ onBack, onChanged }: { onBack: () 
       <Panel title="Sipariş Operasyonu" description="Yalnız size ait, ödemesi doğrulanmış sipariş kalemlerini hazırlayın ve kargoya verin.">
         <div className="grid grid-cols-3 gap-2" role="group" aria-label="Sipariş filtresi">
           {([['open', 'Hazırlanacak'], ['shipped', 'Gönderilen'], ['all', 'Tümü']] as const).map(([value, label]) => (
-            <button key={value} type="button" onClick={() => setScope(value)} aria-pressed={scope === value} className={`min-h-11 rounded-xl border px-2 text-sm font-semibold ${scope === value ? 'border-brand-green bg-brand-green/10 text-brand-green' : ''}`}>
+            <button key={value} type="button" onClick={() => setScope(value)} aria-pressed={scope === value} className={`min-h-11 rounded-xl border px-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${scope === value ? 'border-brand-green bg-brand-green/10 text-brand-green' : ''}`}>
               {label}
             </button>
           ))}
@@ -134,7 +134,7 @@ export default function ProducerOrdersPanel({ onBack, onChanged }: { onBack: () 
         ) : (
           <div className="mt-3 space-y-3">
             {page.items.map(order => (
-              <button key={order.id} type="button" onClick={() => void open(order.id)} className="min-h-20 w-full rounded-2xl border p-4 text-left">
+              <button key={order.id} type="button" onClick={() => void open(order.id)} className="min-h-20 w-full rounded-2xl border p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="font-bold">{order.orderNumber}</div>
@@ -171,6 +171,8 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
 
+  useEffect(() => { if (!status) return; const timer = setTimeout(() => setStatus(''), 4000); return () => clearTimeout(timer); }, [status]);
+
   const fulfillableItems = useMemo(
     () => detail.items.filter(item => item.remainingToShip > 0 && !['cancelled', 'returned', 'fulfilled'].includes(item.fulfillmentStatus)),
     [detail],
@@ -198,9 +200,9 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
     try {
       setBusy(true);
       setError('');
-      setStatus('');
+      setStatus('Ürünler hazırlanıyor olarak işaretleniyor...');
       const next = await markProducerOrderItemsProcessing(detail.id, selectedProcessing);
-      setStatus('Seçili ürünler hazırlanıyor olarak işaretlendi.');
+      setStatus('✓ Seçili ürünler hazırlanıyor olarak işaretlendi. Müşteri bilgilendirildi.');
       await onChanged(next);
     } catch (err: unknown) {
       setError(friendly(err));
@@ -256,7 +258,7 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
     try {
       setBusy(true);
       setError('');
-      setStatus('');
+      setStatus('Kargo kaydı oluşturuluyor...');
       const next = await createProducerShipment({
         orderId: detail.id,
         items: selectedItems,
@@ -269,9 +271,10 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
       setTracking('');
       setTrackingUrl('');
       setEta('');
-      setStatus('Kargo kaydı oluşturuldu ve müşteriye bildirim gönderildi.');
+      setStatus('✓ Kargo kaydı başarıyla oluşturuldu. Müşteriye takip numarası ve tahmini teslim bildirimi gönderildi.');
       await onChanged(next);
     } catch (err: unknown) {
+      setStatus('');
       setError(friendly(err));
     } finally {
       setBusy(false);
@@ -283,14 +286,14 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={() => void onBack()} className="min-h-11 rounded-xl border px-4 font-semibold">
+        <button type="button" onClick={() => void onBack()} className="min-h-11 rounded-xl border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
           <ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4" />Siparişlere dön
         </button>
         <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold dark:bg-gray-800">{orderStatus[detail.status] || detail.status}</span>
       </div>
 
       {error ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-100">{error}</div> : null}
-      {status ? <div role="status" aria-live="polite" className="rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-100">{status}</div> : null}
+      {status ? <div role="status" aria-live="polite" className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-100">{status}</div> : null}
 
       <Panel title={`Sipariş ${detail.orderNumber}`} description="Bu ekranda yalnız sizin ürün kalemleriniz ve gönderim için gerekli alıcı bilgileri gösterilir.">
         <div className="grid gap-3 sm:grid-cols-3">
@@ -346,7 +349,7 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
                   </label>
                 ))}
               </div>
-              <button type="button" onClick={() => void markProcessing()} disabled={busy || !selectedProcessing.length} className="mt-3 min-h-12 w-full rounded-xl border border-brand-green font-bold text-brand-green disabled:opacity-50">
+              <button type="button" onClick={() => void markProcessing()} disabled={busy || !selectedProcessing.length} title={!selectedProcessing.length ? 'Önce en az bir ürün seçmelisiniz' : undefined} className="mt-3 min-h-12 w-full rounded-xl border border-brand-green font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
                 <PackageCheck aria-hidden="true" className="mr-2 inline h-5 w-5" />{busy ? 'İşleniyor…' : 'Seçili ürünleri hazırlanıyor yap'}
               </button>
             </fieldset>
@@ -382,7 +385,7 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
                 <label className="block"><span className="text-xs font-semibold">Tahmini teslim (isteğe bağlı)</span><input type="datetime-local" value={eta} onChange={event => setEta(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3" /></label>
               </div>
 
-              <button type="button" onClick={() => void createShipment()} disabled={busy || !selectedShipmentRows.length} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50">
+              <button type="button" onClick={() => void createShipment()} disabled={busy || !selectedShipmentRows.length} title={!selectedShipmentRows.length ? 'Önce en az bir ürün seçmelisiniz' : undefined} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
                 <Truck aria-hidden="true" className="mr-2 inline h-5 w-5" />{busy ? 'Kaydediliyor…' : 'Kargo kaydını oluştur'}
               </button>
             </fieldset>

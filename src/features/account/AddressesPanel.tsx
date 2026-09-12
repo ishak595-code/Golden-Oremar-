@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Trash2, X } from 'lucide-react';
-import { Panel, EmptyState, ErrorState } from './ui';
+import { MapPin, RefreshCw, Trash2, X } from 'lucide-react';
+import { Panel, ErrorState } from './ui';
 import { deleteAddress, upsertAddress } from './api';
 import type { Address } from './types';
 import { useAccessibleDialog } from '../accessibility/useAccessibleDialog';
@@ -12,14 +12,14 @@ const blank: Address = {
 };
 
 const fields = [
-  { key: 'label', label: 'Adres etiketi', autoComplete: 'off', required: true, maxLength: 60 },
-  { key: 'recipient_name', label: 'Alıcı adı', autoComplete: 'name', required: true, maxLength: 120 },
-  { key: 'phone', label: 'Telefon', autoComplete: 'tel', inputMode: 'tel', required: true, maxLength: 40 },
-  { key: 'country_code', label: 'Ülke kodu', autoComplete: 'country', required: true, maxLength: 2 },
-  { key: 'province', label: 'İl/Bölge', autoComplete: 'address-level1', required: true, maxLength: 120 },
-  { key: 'district', label: 'İlçe/Şehir', autoComplete: 'address-level2', required: true, maxLength: 120 },
-  { key: 'neighborhood', label: 'Mahalle/Köy', autoComplete: 'address-level3', required: false, maxLength: 160 },
-  { key: 'postal_code', label: 'Posta kodu', autoComplete: 'postal-code', inputMode: 'text', required: false, maxLength: 20 },
+  { key: 'label', label: 'Adres etiketi', autoComplete: 'off', enterKeyHint: 'next', required: true, maxLength: 60 },
+  { key: 'recipient_name', label: 'Alıcı adı', autoComplete: 'name', enterKeyHint: 'next', required: true, maxLength: 120 },
+  { key: 'phone', label: 'Telefon', autoComplete: 'tel', inputMode: 'tel', enterKeyHint: 'next', required: true, maxLength: 40 },
+  { key: 'country_code', label: 'Ülke kodu', autoComplete: 'country', enterKeyHint: 'next', required: true, maxLength: 2 },
+  { key: 'province', label: 'İl/Bölge', autoComplete: 'address-level1', enterKeyHint: 'next', required: true, maxLength: 120 },
+  { key: 'district', label: 'İlçe/Şehir', autoComplete: 'address-level2', enterKeyHint: 'next', required: true, maxLength: 120 },
+  { key: 'neighborhood', label: 'Mahalle/Köy', autoComplete: 'address-level3', enterKeyHint: 'next', required: false, maxLength: 160 },
+  { key: 'postal_code', label: 'Posta kodu', autoComplete: 'postal-code', inputMode: 'text', enterKeyHint: 'next', required: false, maxLength: 20 },
 ] as const;
 
 type SavedAddress = Address & { id: string };
@@ -41,7 +41,7 @@ function validateAddress(address: Address) {
   const line = String(address.address_line || '').trim();
   if (label.length < 1 || label.length > 60) return 'Adres etiketi 1 ile 60 karakter arasında olmalıdır.';
   if (recipient.length < 2 || recipient.length > 120) return 'Alıcı adı 2 ile 120 karakter arasında olmalıdır.';
-  if (!/^[+()0-9 .\-]{10,40}$/.test(phone) || phoneDigits.length < 10 || phoneDigits.length > 15) return 'Teslimat telefonu 10 ile 15 rakam içermelidir.';
+  if (!/^[+()0-9 .\-]{10,40}$/.test(phone) || phoneDigits.length < 10 || phoneDigits.length > 15) return 'Teslimat telefonu 10 ile 15 rakam arasında olmalıdır.';
   if (!/^[A-Z]{2}$/.test(country)) return 'Ülke kodunu iki harfle girin. Örneğin Türkiye için TR.';
   if (province.length < 2 || province.length > 120) return 'İl veya bölge bilgisi 2 ile 120 karakter arasında olmalıdır.';
   if (district.length < 2 || district.length > 120) return 'İlçe veya şehir bilgisi 2 ile 120 karakter arasında olmalıdır.';
@@ -62,6 +62,8 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
   const [status, setStatus] = useState('');
   const editDialogRef = useAccessibleDialog<HTMLFormElement>(!!editing, () => { if (!saving) setEditing(null); });
   const deleteDialogRef = useAccessibleDialog<HTMLDivElement>(!!deleteCandidate, () => { if (!deleteBusy) setDeleteCandidate(null); });
+  
+  useEffect(() => { if (!status) return; const timer = setTimeout(() => setStatus(''), 4000); return () => clearTimeout(timer); }, [status]);
   const savedAddresses = addresses.filter(isSavedAddress);
   const addressContractValid = savedAddresses.length === addresses.length;
 
@@ -142,14 +144,14 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
   return (
     <Panel title="Adreslerim" description="Türkiye veya yurt dışındaki teslimat adreslerinizi ekleyin ve varsayılan adresinizi seçin.">
       {error ? <ErrorState message={error} /> : null}
-      {status ? <div role="status" aria-live="polite" className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{status}</div> : null}
+      {status ? <div role="status" aria-live="polite" className="mb-4 rounded-2xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:bg-green-950/30 dark:text-green-200">{status}</div> : null}
       {!addressContractValid ? <ErrorState message="Kayıtlı adreslerden biri şu anda kullanılamıyor. Düzenleme ve silme işlemleri güvenlik amacıyla geçici olarak kapatıldı." /> : null}
-      <button type="button" onClick={startCreate} className="mb-4 min-h-11 rounded-xl bg-brand-green px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
-        Yeni adres ekle
+      <button type="button" onClick={startCreate} className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-brand-green bg-brand-green px-4 font-bold text-white shadow-lg hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
+        <MapPin aria-hidden="true" className="h-4 w-4"/>Yeni adres ekle
       </button>
 
       <div className="space-y-3">
-        {savedAddresses.length === 0 ? <EmptyState title="Kayıtlı adres yok" body="İlk teslimat adresinizi ekleyebilirsiniz." /> : savedAddresses.map(a => (
+        {savedAddresses.length === 0 ? <div className="flex min-h-60 flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-gray-200 py-10 dark:border-gray-800"><div className="grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900"><MapPin aria-hidden="true" className="h-10 w-10 text-gray-400"/></div><div className="text-center"><div className="text-lg font-bold text-brand-text">Kayıtlı adres yok</div><div className="mt-2 max-w-sm px-4 text-sm leading-6 text-brand-muted">İlk teslimat adresinizi ekleyerek sipariş ve hediye gönderimlerinizi hızlandırabilirsiniz.</div></div></div> : savedAddresses.map(a => (
           <article key={a.id} className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
@@ -195,10 +197,12 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
                   <label key={field.key} className="block">
                     <span className="text-sm font-semibold">{field.label}{field.required ? ' *' : ''}</span>
                     <input
+                      name={field.key}
                       value={value}
                       required={field.required}
                       autoComplete={field.autoComplete}
                       inputMode={'inputMode' in field ? field.inputMode as React.HTMLAttributes<HTMLInputElement>['inputMode'] : undefined}
+                      enterKeyHint={'enterKeyHint' in field ? field.enterKeyHint as React.HTMLAttributes<HTMLInputElement>['enterKeyHint'] : undefined}
                       maxLength={field.maxLength}
                       pattern={field.key === 'country_code' ? '[A-Za-z]{2}' : undefined}
                       disabled={saving}
@@ -216,12 +220,12 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
             </div>
             <label className="mt-3 block">
               <span className="text-sm font-semibold">Açık adres *</span>
-              <textarea required minLength={10} maxLength={1000} autoComplete="street-address" value={editing.address_line} disabled={saving} aria-describedby={formError ? 'address-form-error' : undefined} onChange={e => { if (formError) setFormError(''); setEditing({ ...editing, address_line: e.target.value }); }}
+              <textarea name="address_line" required minLength={10} maxLength={1000} autoComplete="street-address" value={editing.address_line} disabled={saving} aria-describedby={formError ? 'address-form-error' : undefined} onChange={e => { if (formError) setFormError(''); setEditing({ ...editing, address_line: e.target.value }); }}
                 rows={3} className="mt-1 w-full rounded-xl border bg-transparent p-3 disabled:opacity-60" />
             </label>
             <label className="mt-3 block">
               <span className="text-sm font-semibold">Teslimat notu</span>
-              <textarea maxLength={500} value={editing.delivery_notes || ''} disabled={saving} onChange={e => setEditing({ ...editing, delivery_notes: e.target.value })}
+              <textarea name="delivery_notes" maxLength={500} value={editing.delivery_notes || ''} disabled={saving} onChange={e => setEditing({ ...editing, delivery_notes: e.target.value })} enterKeyHint="done"
                 rows={2} className="mt-1 w-full rounded-xl border bg-transparent p-3 disabled:opacity-60" />
             </label>
             <label className="mt-3 flex min-h-11 items-center gap-3 rounded-xl px-1">
@@ -231,7 +235,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
             <div aria-live="polite" className="sr-only">{saving ? 'Adres kaydediliyor.' : ''}</div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button type="button" disabled={saving} onClick={closeEditor} className="min-h-11 rounded-xl border font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Vazgeç</button>
-              <button disabled={saving} className="min-h-11 rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
+              <button disabled={saving} aria-busy={saving} className="min-h-11 rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
             </div>
           </form>
         </div>

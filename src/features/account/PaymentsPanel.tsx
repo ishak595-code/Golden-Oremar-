@@ -31,6 +31,7 @@ export default function PaymentsPanel(){
  const[methodStatus,setMethodStatus]=useState('');
  const[methodBusyId,setMethodBusyId]=useState<string|null>(null);
  const[editing,setEditing]=useState<SavedPaymentMethod|null>(null);
+ useEffect(()=>{if(!methodStatus)return;const timer=setTimeout(()=>setMethodStatus(''),4000);return()=>clearTimeout(timer);},[methodStatus]);
  const[editNickname,setEditNickname]=useState('');
  const[editBillingName,setEditBillingName]=useState('');
  const[editCountry,setEditCountry]=useState('');

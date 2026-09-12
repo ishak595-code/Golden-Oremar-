@@ -1,5 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
-import{AlertCircle,ArrowRight,RefreshCw}from'lucide-react';
+import{AlertCircle,ArrowRight,ArrowUp,RefreshCw}from'lucide-react';
 import{publicCatalogUrl}from'../catalog/api';
 import{CUSTOMER_COPY,homeSectionDisplayCopy}from'../customer-experience/customerCopy';
 import HomeEventsSpotlight from'./HomeEventsSpotlight';
@@ -11,6 +11,7 @@ import PremiumImage from'./components/PremiumImage';
 import ProductCard from'./components/ProductCard';
 import SectionHeader from'./components/SectionHeader';
 import'./homePrestigeV3.css';
+import{scrollBehavior}from'../../lib/reducedMotion';
 
 type ProductReference={id:string;slug:string;legacyId?:string|null};
 type Props={onProductClick:(product:ProductReference)=>void};
@@ -20,6 +21,7 @@ function navigateToCategories(categorySlug?:string){const url=new URL(window.loc
 export default function HomeSection({onProductClick}:Props){
  const locale=browserHomeLocale();
  const{experience,loading,error,retry,loadSection}=useHomeExperience(locale);
+ const[showScrollTop,setShowScrollTop]=useState(false);
  const orderedCategories=useMemo(()=>{
   if(!experience)return[];
   const bySlug=new Map(experience.categories.map(category=>[category.slug,category]));
@@ -30,6 +32,8 @@ export default function HomeSection({onProductClick}:Props){
   return[...managed,...fallback].slice(0,12);
  },[experience]);
 
+ useEffect(()=>{const check=()=>setShowScrollTop(window.scrollY>400);check();window.addEventListener('scroll',check,{passive:true});return()=>window.removeEventListener('scroll',check);},[]);
+
  if(loading&&!experience)return<HomeLoading/>;
  if(!experience)return<HomeError message={error||CUSTOMER_COPY.home.loadErrorFallback} onRetry={()=>void retry().catch(()=>undefined)}/>;
  const initialSections=experience.sections.filter(section=>!section.deferred&&section.items.length>0);
@@ -37,7 +41,8 @@ export default function HomeSection({onProductClick}:Props){
  const eventSpotlight=experience.eventSpotlight;
  function renderEvents(placement:'after_hero'|'after_categories'|'before_products'){return eventSpotlight?.enabled===true&&eventSpotlight.placement===placement?<HomeEventsSpotlight settings={eventSpotlight}/>:null;}
 
- return<div className="go-premium-home-v2" data-home-contract-version={experience.version} data-home-prestige-contract="single-row-v4">
+ return<>
+  <div className="go-premium-home-v2" data-home-contract-version={experience.version} data-home-prestige-contract="single-row-v4">
   <h1 className="sr-only">{experience.brand.name} ürünleri</h1>
   <div className="go-home-content">
    {orderedCategories.length?<section className="go-home-section go-home-categories" aria-labelledby="home-categories-title" data-server-heading={experience.interface.categoriesTitle}>
@@ -63,7 +68,9 @@ export default function HomeSection({onProductClick}:Props){
 
    <button type="button" className="go-discover-all" onClick={()=>navigateToCategories()}><span>{CUSTOMER_COPY.home.discoverAll}</span><ArrowRight aria-hidden="true"/></button>
   </div>
- </div>;
+ </div>
+ {showScrollTop?<button type="button" onClick={()=>window.scrollTo({top:0,behavior:scrollBehavior()})} aria-label="Başa dön" className="fixed bottom-[116px] right-4 z-50 grid h-14 w-14 place-items-center rounded-full border-2 border-brand-green bg-white shadow-2xl transition-all hover:scale-105 hover:border-brand-gold hover:bg-brand-gold/5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:bg-gray-900" style={{bottom:'calc(116px + env(safe-area-inset-bottom, 0px))'}}><ArrowUp aria-hidden="true" className="h-6 w-6 text-brand-green dark:text-brand-gold"/></button>:null}
+ </>;
 }
 
 function ProductSection({section,onProductClick,eagerFirst=false,isFirst=false}:{section:HomeSectionModel;onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean;isFirst?:boolean}){if(!section.items.length)return null;const copy=homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle);const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${section.source.kind}${isFirst?' go-product-section-v2--first':''}`;return<section className={sectionClass} aria-labelledby={`home-section-${section.key}`} data-server-section-title={section.title} data-home-source={section.source.kind}>
@@ -79,11 +86,11 @@ function DeferredProductSection({descriptor,loadSection,onProductClick}:{descrip
  const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${descriptor.source.kind} go-product-section-v2--deferred`;
  return<section ref={hostRef} className={sectionClass} aria-labelledby={`home-section-${descriptor.key}`} data-server-section-title={descriptor.title} data-home-source={descriptor.source.kind}>
   <SectionHeader id={`home-section-${descriptor.key}`} eyebrow={copy.eyebrow} title={copy.title} subtitle={copy.subtitle}/>
-  {section?.items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{section.items.map((item,index)=><ProductCard key={item.id} item={item} merchandisingLabel={homeMerchandisingSignal(descriptor.source.kind,index)} onClick={()=>onProductClick(item)}/>)}</ul>:loading?<ProductRowsSkeleton/>:error?<div className="go-inline-error" role="status"><AlertCircle aria-hidden="true"/><span>{error}</span><button type="button" onClick={request}>{CUSTOMER_COPY.home.retry}</button></div>:<div className="go-section-reserved-space" aria-hidden="true"/>}
+  {section?.items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{section.items.map((item,index)=><ProductCard key={item.id} item={item} merchandisingLabel={homeMerchandisingSignal(descriptor.source.kind,index)} onClick={()=>onProductClick(item)}/>)}</ul>:loading?<ProductRowsSkeleton/>:error?<div className="mt-5 flex min-h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-6 dark:border-red-900/60 dark:bg-red-950/30" role="status"><div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800 dark:to-red-900"><AlertCircle aria-hidden="true" className="h-8 w-8 text-red-400"/></div><span className="text-center font-semibold text-red-900 dark:text-red-200">{error}</span><button type="button" onClick={request} className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-red-300 bg-white px-4 font-bold dark:border-red-800 dark:bg-red-950/20"><RefreshCw aria-hidden="true" className="h-4 w-4"/>{CUSTOMER_COPY.home.retry}</button></div>:<div className="go-section-reserved-space" aria-hidden="true"/>}
  </section>;
 }
 
 function CampaignCard({campaign}:{campaign:{title:string;description:string|null;bannerPath:string|null}}){const banner=campaign.bannerPath?publicCatalogUrl(campaign.bannerPath):null;return<section className="go-home-section go-campaign-v2" aria-label={campaign.title}>{banner?<PremiumImage src={banner} alt="" className="go-campaign-v2__media"/>:null}<div className="go-campaign-v2__copy"><span>Kampanya</span><h2>{campaign.title}</h2>{campaign.description?<p>{campaign.description}</p>:null}</div></section>;}
-function HomeError({message,onRetry}:{message:string;onRetry:()=>void}){return<div className="go-home-state" role="alert"><AlertCircle aria-hidden="true"/><h1>{CUSTOMER_COPY.home.loadErrorTitle}</h1><p>{message}</p><button type="button" onClick={onRetry}><RefreshCw aria-hidden="true"/>{CUSTOMER_COPY.home.retry}</button></div>;}
+function HomeError({message,onRetry}:{message:string;onRetry:()=>void}){return<div className="go-home-state" role="alert"><div className="grid h-24 w-24 place-items-center rounded-3xl bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800 dark:to-red-900"><AlertCircle aria-hidden="true" className="h-12 w-12 text-red-400"/></div><h1 className="mt-4 text-2xl font-bold">{CUSTOMER_COPY.home.loadErrorTitle}</h1><p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{message}</p><button type="button" onClick={onRetry} className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl border-2 border-red-300 bg-white px-4 font-bold dark:border-red-800 dark:bg-red-950/20"><RefreshCw aria-hidden="true" className="h-4 w-4"/>{CUSTOMER_COPY.home.retry}</button></div>;}
 function ProductRowsSkeleton(){return<div className="go-product-list-v4 go-product-list-v4--skeleton flex flex-col gap-4" role="status" aria-label="Ürünler yükleniyor">{[0,1,2].map(index=><div className="go-product-skeleton" key={index}><span/><div><i/><i/><i/></div></div>)}</div>;}
 function HomeLoading(){return<div className="go-premium-home-v2"><div className="go-home-content"><section className="go-home-section"><div className="go-heading-skeleton"/><div className="go-category-skeleton-rail">{[0,1,2].map(index=><div className="go-category-skeleton" key={index}/>)}</div></section><section className="go-home-section"><div className="go-heading-skeleton go-heading-skeleton--wide"/><ProductRowsSkeleton/></section></div></div>;}

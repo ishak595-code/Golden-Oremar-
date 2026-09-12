@@ -103,7 +103,7 @@ function campaignToForm(campaign: AdminCampaign): FormState {
 }
 
 function statusLabel(status: CampaignStatus) {
-  return ({ draft: 'Taslak', scheduled: 'Planlandı', active: 'Aktif', paused: 'Duraklatıldı', ended: 'Sona erdi' } as const)[status];
+  return ({ draft: 'Taslak', scheduled: 'Zamanlanmış', active: 'Aktif', paused: 'Duraklatıldı', ended: 'Sona erdi' } as const)[status];
 }
 
 export function AdminCampaigns() {
@@ -359,7 +359,7 @@ export function AdminCampaigns() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="sm:col-span-2"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Kampanya adı</span><input required minLength={2} maxLength={160} value={form.title} onChange={event => updateTitle(event.target.value)} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
                 <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Kısa ad</span><input required maxLength={160} value={form.slug} onChange={event => { setSlugTouched(true); setForm(current => ({ ...current, slug: slugifyCampaign(event.target.value) })); }} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
-                <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Durum</span><select value={form.status} onChange={event => setForm(current => ({ ...current, status: event.target.value as CampaignStatus }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="draft">Taslak</option><option value="scheduled">Planlandı</option><option value="active">Aktif</option><option value="paused">Duraklatıldı</option><option value="ended">Sona erdi</option></select></label>
+                <label><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Durum</span><select value={form.status} onChange={event => setForm(current => ({ ...current, status: event.target.value as CampaignStatus }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white"><option value="draft">Taslak</option><option value="scheduled">Zamanlanmış</option><option value="active">Aktif</option><option value="paused">Duraklatıldı</option><option value="ended">Sona erdi</option></select></label>
                 <label className="sm:col-span-2"><span className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">Açıklama</span><textarea maxLength={4000} rows={3} value={form.description} onChange={event => setForm(current => ({ ...current, description: event.target.value }))} className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 outline-none focus:ring-2 focus:ring-brand-green dark:border-gray-700 dark:bg-gray-900 dark:text-white" /></label>
               </div>
 

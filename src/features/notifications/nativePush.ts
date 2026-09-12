@@ -159,7 +159,7 @@ export async function clearNativeDeliveredNotifications() {
   try {
     await PushNotifications.removeAllDeliveredNotifications();
   } catch (error) {
-    console.warn('Delivered native notifications could not be cleared', error);
+    if (process.env.NODE_ENV === 'development') console.warn('Notifications clear failed', error);
   }
 }
 
@@ -214,13 +214,4 @@ export async function disableNativePushRegistration() {
   pendingActions.splice(0, pendingActions.length);
   pendingReceipt = false;
   await clearNativeDeliveredNotifications();
-}
-
-export async function removeNativePushListeners() {
-  if (listenersInitialization) await listenersInitialization.catch(() => undefined);
-  await Promise.all(listenerHandles.map(handle => handle.remove().catch(() => undefined)));
-  listenerHandles = [];
-  listenersReady = false;
-  pendingActions.splice(0, pendingActions.length);
-  pendingReceipt = false;
 }

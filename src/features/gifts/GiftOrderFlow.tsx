@@ -207,8 +207,8 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
         const defaultPayment = methods.find((method: any) => method?.status === 'active' && method?.isDefault === true)
           || methods.find((method: any) => method?.status === 'active');
         setSelectedPaymentMethodId(safeText(defaultPayment?.id, 160));
-      } catch {
-        if (active) setError('Hediye bilgileri şu anda yüklenemedi. Lütfen yeniden deneyin.');
+      } catch (e: any) {
+        if (active) setError(e?.message?.trim() || 'Hediye bilgileri yüklenemedi.');
       } finally {
         if (active) setLoading(false);
       }
@@ -267,10 +267,10 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
           setPreview(next);
           setError('');
         }
-      } catch {
+      } catch (e: any) {
         if (previewSequence.current === sequence) {
           setPreview(null);
-          setError('Hediye sipariş özeti şu anda hesaplanamadı. Lütfen yeniden deneyin.');
+          setError(e?.message?.trim() || 'Hediye özeti hesaplanamadı.');
         }
       } finally {
         if (previewSequence.current === sequence) setPreviewBusy(false);
@@ -327,12 +327,16 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
 
   async function applyCoupon() {
     const normalized = couponInput.trim().toUpperCase();
-    if (normalized && !/^[A-Z0-9_-]{1,64}$/.test(normalized)) {
-      setError('Kupon kodu yalnız harf, rakam, tire ve alt çizgi içerebilir.');
+    if (!normalized) {
+      setError('Kupon kodu boş olamaz.');
+      return;
+    }
+    if (!/^[A-Z0-9_-]{1,64}$/.test(normalized)) {
+      setError('⚠️ Kupon kodu yalnız harf, rakam, tire ve alt çizgi içerebilir.');
       return;
     }
     setAppliedCoupon(normalized);
-    setStatus(normalized ? 'Kupon kontrol ediliyor.' : 'Kupon kaldırıldı.');
+    setStatus(appliedCoupon && appliedCoupon !== normalized ? 'Yeni kupon uygulanıyor…' : 'Kupon kontrol ediliyor…');
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -359,6 +363,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
       if (!finalPreview.canCheckout) throw new Error(friendlyBlockingReason(finalPreview.blockingReason) || 'Hediye siparişi şu anda oluşturulamıyor.');
       if (!effectiveAddress) throw new Error('Teslimat adresi kullanılamıyor.');
       if (livePayments && !selectedPaymentMethod) throw new Error('payment_method_required');
+      if (!livePayments && finalPreview.totalMinor > 0) throw new Error('Hediye siparişleri için ödeme şu anda kullanılamıyor. Ödeme altyapısı hazırlandığında tekrar deneyebilirsiniz.');
 
       if (shouldSaveAddress) {
         setStatus('Yeni teslimat adresi hesabınıza kaydediliyor.');
@@ -455,7 +460,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
 
   return <div className="fixed inset-0 z-[90] overflow-y-auto bg-black/70 p-3 sm:p-4" onMouseDown={event => { if (event.target === event.currentTarget && !submitting) onClose(); }}>
     <div ref={formDialogRef} role="dialog" aria-modal="true" aria-labelledby="gift-title" aria-describedby="gift-description" tabIndex={-1} className="mx-auto my-2 w-full max-w-4xl rounded-3xl bg-white text-brand-text outline-none shadow-2xl dark:bg-gray-900 sm:my-4">
-      <div className="sticky top-0 z-10 flex items-start justify-between rounded-t-3xl border-b bg-white/95 p-5 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95">
+      <div className="sticky z-10 flex items-start justify-between rounded-t-3xl border-b bg-white/95 p-5 backdrop-blur dark:border-gray-800 dark:bg-gray-900/95" style={{top:'env(safe-area-inset-top, 0px)', paddingTop:'calc(1.25rem + env(safe-area-inset-top, 0px))'}}>
         <div><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-brand-gold"><Gift aria-hidden="true" className="h-4 w-4" /> Golden Oremar Hediye</div><h2 id="gift-title" className="mt-1 text-2xl font-bold">Bir üründen fazlasını gönderin</h2><p id="gift-description" className="mt-1 max-w-2xl text-sm text-gray-500">Ürün, stok, teslimat ve toplam sipariş oluşturulmadan önce tekrar kontrol edilir. Hediye kartınız ve notunuz siparişinizle birlikte güvenli şekilde saklanır.</p></div>
         <button type="button" disabled={submitting} onClick={onClose} aria-label="Hediye ekranını kapat" className="min-h-11 min-w-11 rounded-full border p-2 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><X aria-hidden="true" className="mx-auto h-5 w-5" /></button>
       </div>
@@ -487,8 +492,8 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
 
           <fieldset><legend className="text-sm font-semibold">Bu hediye hangi an için?</legend><div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">{giftOccasions.map(item => <button key={item.value} type="button" aria-pressed={occasion === item.value} disabled={submitting} onClick={() => setOccasion(item.value)} className={`min-h-12 rounded-xl border px-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${occasion === item.value ? 'border-brand-gold bg-brand-gold/10 text-brand-gold' : 'border-gray-200 dark:border-gray-700'}`}>{item.label}</button>)}</div></fieldset>
 
-          <label htmlFor="gift-card-title"><span className="text-sm font-semibold">Kart başlığı <span className="font-normal text-gray-500">(opsiyonel)</span></span><input id="gift-card-title" value={cardTitle} onChange={event => setCardTitle(event.target.value.slice(0, 100))} maxLength={100} placeholder={giftOccasions.find(item => item.value === occasion)?.title} disabled={submitting} className="mt-1 min-h-12 w-full rounded-xl border bg-transparent px-3" /></label>
-          <label htmlFor="gift-message"><span className="text-sm font-semibold">Hediye notunuz</span><textarea id="gift-message" value={message} onChange={event => setMessage(event.target.value.slice(0, 1000))} maxLength={1000} rows={4} placeholder="Kendi cümlenizle yazın. En değerli kısım burası." disabled={submitting} className="mt-1 w-full rounded-xl border bg-transparent p-3" /><span className="mt-1 block text-right text-xs text-gray-500" aria-live="polite">{message.length}/1000</span></label>
+          <label htmlFor="gift-card-title"><span className="text-sm font-semibold">Kart başlığı <span className="font-normal text-gray-500">(opsiyonel)</span></span><input id="gift-card-title" value={cardTitle} onChange={event => setCardTitle(event.target.value.slice(0, 100))} maxLength={100} placeholder={giftOccasions.find(item => item.value === occasion)?.title} enterKeyHint="next" disabled={submitting} className="mt-1 min-h-12 w-full rounded-xl border bg-transparent px-3" /></label>
+          <label htmlFor="gift-message"><span className="text-sm font-semibold">Hediye notunuz</span><textarea id="gift-message" value={message} onChange={event => setMessage(event.target.value.slice(0, 1000))} maxLength={1000} rows={4} placeholder="Kendi cümlenizle yazın. En değerli kısım burası." enterKeyHint="done" disabled={submitting} className="mt-1 w-full rounded-xl border bg-transparent p-3" /><span className="mt-1 block text-right text-xs text-gray-500" aria-live="polite">{message.length}/1000</span></label>
 
           <fieldset><legend className="text-sm font-semibold">Kart sunumu</legend><div className="mt-2 grid gap-2 sm:grid-cols-3">{giftStyles.map(style => <button key={style.value} type="button" aria-pressed={presentationStyle === style.value} disabled={submitting} onClick={() => setPresentationStyle(style.value)} className={`min-h-16 rounded-2xl border p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${presentationStyle === style.value ? 'border-brand-gold bg-brand-gold/10' : 'border-gray-200 dark:border-gray-700'}`}><span className="block font-bold">{style.label}</span><span className="mt-1 block text-xs text-gray-500">{style.description}</span></button>)}</div></fieldset>
 
@@ -530,16 +535,16 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
           {livePayments && !selectedPaymentMethod ? <div role="alert" className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">Ödeme için aktif bir kart seçmeniz veya yeni kart eklemeniz gerekiyor.</div> : null}
         </section>
 
-        <section aria-labelledby="gift-summary-title" className="rounded-3xl border border-gray-200 p-4 dark:border-gray-800 sm:p-5">
-          <div className="flex items-center justify-between gap-3"><div><div className="flex items-center gap-2"><PackageCheck aria-hidden="true" className="h-5 w-5 text-brand-green" /><h3 id="gift-summary-title" className="text-lg font-bold">Hediye sipariş özeti</h3></div><p className="mt-1 text-sm text-gray-500">Tutarlar güncel ürün, kargo ve kampanya bilgilerine göre hesaplanır.</p></div>{previewBusy ? <span role="status" className="text-sm text-gray-500">Hesaplanıyor…</span> : null}</div>
-          <div className="mt-4 flex gap-2"><label htmlFor="gift-coupon" className="min-w-0 flex-1"><span className="sr-only">Kupon kodu</span><input id="gift-coupon" value={couponInput} onChange={event => setCouponInput(event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 64))} maxLength={64} placeholder="Kupon kodu" disabled={submitting} className="min-h-12 w-full rounded-xl border bg-transparent px-3" /></label><button type="button" onClick={() => void applyCoupon()} disabled={submitting || previewBusy || !validCountry} className="min-h-12 rounded-xl border px-4 font-bold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><TicketPercent aria-hidden="true" className="mr-2 inline h-4 w-4" />Uygula</button></div>
-          {appliedCoupon ? <button type="button" onClick={() => { setCouponInput(''); setAppliedCoupon(''); setStatus('Kupon kaldırıldı.'); }} disabled={submitting} className="mt-2 min-h-11 rounded-lg px-2 text-sm font-semibold text-red-700 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:text-red-300">Kuponu kaldır</button> : null}
+        <section aria-labelledby="gift-summary-title" className="rounded-3xl border-2 border-gray-200 bg-white p-4 shadow-lg dark:border-gray-700 dark:bg-gray-900 sm:p-5">
+          <div className="flex items-center justify-between gap-3"><div><div className="flex items-center gap-2"><PackageCheck aria-hidden="true" className="h-5 w-5 text-brand-green" /><h3 id="gift-summary-title" className="text-lg font-black">Hediye Sipariş Özeti</h3></div><p className="mt-1 text-sm leading-relaxed text-gray-500 dark:text-gray-400">Tutarlar güncel ürün, kargo ve kampanya bilgilerine göre hesaplanır.</p></div>{previewBusy ? <span role="status" className="text-sm text-gray-500">Hesaplanıyor…</span> : null}</div>
+          <div className="mt-4"><label htmlFor="gift-coupon" className="block"><span className="text-sm font-bold text-gray-700 dark:text-gray-300">İndirim kuponu (opsiyonel)</span><div className="mt-1 flex gap-2"><input id="gift-coupon" value={couponInput} onChange={event => setCouponInput(event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 64))} maxLength={64} placeholder="Örnek: KAMPANYA2024" enterKeyHint="done" disabled={submitting} className="input min-w-0 flex-1" aria-describedby="gift-coupon-help"/><button type="button" onClick={() => void applyCoupon()} disabled={submitting || previewBusy || !validCountry || !couponInput.trim()} className="min-h-12 rounded-xl border-2 border-brand-green bg-brand-green px-4 font-bold text-white shadow-sm transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><TicketPercent aria-hidden="true" className="mr-2 inline h-4 w-4" />Uygula</button></div><span id="gift-coupon-help" className="mt-1 block text-xs leading-relaxed text-gray-500 dark:text-gray-400">{appliedCoupon?`✓ Kupon uygulandı: ${appliedCoupon}${preview&&preview.discountMinor>0?' — İndiriminiz hesaplandı':preview&&!preview.canCheckout&&(preview.blockingReason==='coupon_invalid_or_unavailable'||preview.blockingReason==='coupon_not_applicable')?' — Kupon geçersiz veya uygulanamıyor':' — Kupon kontrol ediliyor'}`:' Hediye kampanya kodunuz varsa buraya yazın.'}</span></label></div>
+          {appliedCoupon ? <button type="button" onClick={() => { setCouponInput(''); setAppliedCoupon(''); setStatus('✓ Kupon kaldırıldı.'); }} disabled={submitting} className="mt-2 min-h-11 rounded-lg border-2 border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 transition-all hover:border-red-300 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-900/60 dark:bg-red-950/20 dark:text-red-300 dark:hover:border-red-900 dark:hover:bg-red-950/30">Kuponu kaldır</button> : null}
 
-          <div className="mt-4 space-y-2 text-sm"><div className="flex justify-between gap-3"><span>Ara toplam</span><strong>{preview ? <Money minor={preview.subtotalMinor} currency={preview.currency} /> : 'Hesaplanıyor…'}</strong></div><div className="flex justify-between gap-3"><span>Kargo</span><strong>{preview ? <Money minor={preview.shippingMinor} currency={preview.currency} /> : validCountry ? 'Hesaplanıyor…' : 'Ülke gerekli'}</strong></div>{preview && preview.discountMinor > 0 ? <div className="flex justify-between gap-3 text-green-700 dark:text-green-300"><span>{safeText(preview.promotion?.title, 160) || 'İndirim'}</span><strong>-<Money minor={preview.discountMinor} currency={preview.currency} /></strong></div> : null}<div className="flex justify-between gap-3 border-t pt-3 text-lg"><span>Toplam</span><strong>{preview ? <Money minor={preview.totalMinor} currency={preview.currency} /> : 'Hesaplanıyor…'}</strong></div></div>
-          {preview && !preview.canCheckout ? <div role="alert" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">{friendlyBlockingReason(preview.blockingReason) || 'Hediye siparişi şu anda tamamlanamıyor.'}</div> : null}
-          {safeText(preview?.shipping?.publicNote, 800) ? <p className="mt-3 text-xs text-gray-500">{safeText(preview?.shipping?.publicNote, 800)}</p> : null}
-          <div className="mt-4 flex gap-2 rounded-2xl bg-gray-50 p-3 text-sm dark:bg-gray-800"><ShieldCheck aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-green" /><div>Ürün, stok, kargo, kampanya ve toplam sipariş gönderilmeden hemen önce yeniden kontrol edilir. Hediye notu, kart tercihi ve seçilen ödeme yöntemi siparişinizle birlikte güvenli şekilde saklanır.</div></div>
-          <button type="submit" disabled={submitting || previewBusy || !purchaseReady || !preview?.canCheckout || !validCountry || (livePayments && !selectedPaymentMethod)} className="mt-5 min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{submitting ? 'Hediye siparişi oluşturuluyor…' : 'Hediye Siparişini Oluştur'}</button>
+          <div className="mt-4 space-y-2 text-sm"><div className="flex justify-between gap-3"><span>Ara toplam</span><strong>{preview ? <Money minor={preview.subtotalMinor} currency={preview.currency} /> : 'Hesaplanıyor…'}</strong></div><div className="flex justify-between gap-3"><span>Kargo</span><strong>{preview ? <Money minor={preview.shippingMinor} currency={preview.currency} /> : validCountry ? 'Hesaplanıyor…' : 'Ülke gerekli'}</strong></div>{preview && preview.discountMinor > 0 ? <div className="flex justify-between gap-3 font-bold text-green-700 dark:text-green-400"><span>🎉 {safeText(preview.promotion?.title, 160) || 'İndirim'}</span><strong>-<Money minor={preview.discountMinor} currency={preview.currency} /></strong></div> : null}<div className="flex justify-between gap-3 border-t-2 border-gray-200 pt-3 text-lg dark:border-gray-700"><span className="font-bold">Toplam</span><strong className="font-black">{preview ? <Money minor={preview.totalMinor} currency={preview.currency} /> : 'Hesaplanıyor…'}</strong></div></div>
+          {preview && !preview.canCheckout ? <div role="alert" className="mt-4 rounded-xl border-2 border-amber-200 bg-amber-50 p-3 text-sm font-semibold leading-relaxed text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">⚠️ {friendlyBlockingReason(preview.blockingReason) || 'Hediye siparişi şu anda tamamlanamıyor.'}</div> : null}
+          {safeText(preview?.shipping?.publicNote, 800) ? <p className="mt-3 text-xs leading-relaxed text-gray-500 dark:text-gray-400">{safeText(preview?.shipping?.publicNote, 800)}</p> : null}
+          <div className="mt-4 flex gap-2 rounded-2xl border-2 border-brand-green/20 bg-brand-green/5 p-3 text-sm font-semibold leading-relaxed dark:border-brand-green/30"><ShieldCheck aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-green" /><div>Ürün, stok, kargo, kampanya ve toplam sipariş gönderilmeden hemen önce yeniden kontrol edilir. Hediye notu, kart tercihi ve seçilen ödeme yöntemi siparişinizle birlikte güvenli şekilde saklanır.</div></div>
+          <button type="submit" disabled={submitting || previewBusy || !purchaseReady || !preview?.canCheckout || !validCountry || (livePayments && !selectedPaymentMethod)} aria-busy={submitting} className="mt-5 min-h-12 w-full rounded-xl border-2 border-brand-green bg-brand-green px-4 font-bold text-white shadow-lg transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{submitting ? 'Hediye siparişi oluşturuluyor…' : 'Hediye Siparişini Oluştur'}</button>
         </section>
       </form>
     </div>

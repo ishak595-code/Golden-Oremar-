@@ -39,4 +39,4 @@ export async function getSuperAdminProductPublishReadinessItem(productId:string)
  return item;
 }
 
-export function publishReadinessErrorMessage(error:unknown){const message=String((error as {message?:unknown})?.message||'').trim();if(message.includes('permission_required:product.health_manage'))return'Ürün yayın hazırlığı yalnız yetkili Super Admin hesabına açıktır.';return message&&message.length<=300?message:'Ürün yayın hazırlığı yüklenemedi.';}
+export function publishReadinessErrorMessage(error:unknown){const message=String((error as {message?:unknown})?.message||'').trim();if(message.includes('permission_required:product.health_manage'))return'Ürün yayın hazırlığı yalnız yetkili Süper Yönetici hesabına açıktır.';return message&&message.length<=300?message:'Ürün yayın hazırlığı yüklenemedi.';}

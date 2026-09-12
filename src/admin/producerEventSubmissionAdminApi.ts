@@ -100,7 +100,7 @@ export function producerEventAdminErrorMessage(error:unknown,fallback='Etkinlik 
   const message=String((error as{message?:unknown}|null)?.message||'').trim();
   if(!message)return fallback;
   const map:Array<[string,string]>=[
-    ['super_admin_required','Bu kuyruk ve kararlar yalnızca Super Admin tarafından yönetilebilir.'],
+    ['super_admin_required','Bu kuyruk ve kararlar yalnızca Süper Yönetici tarafından yönetilebilir.'],
     ['event_submission_not_reviewable','Başvuru artık incelemeye açık değil. Listeyi yenileyin.'],
     ['event_review_reason_required','Ret veya düzeltme talebinde açık bir gerekçe yazmalısınız.'],
     ['producer_trust_badge_required','Satıcının aktif doğrulama rozeti olmadığı için etkinlik yayınlanamaz.'],
