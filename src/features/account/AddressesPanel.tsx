@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Trash2, X } from 'lucide-react';
-import { Panel, EmptyState, ErrorState } from './ui';
+import { MapPin, RefreshCw, Trash2, X } from 'lucide-react';
+import { Panel, ErrorState } from './ui';
 import { deleteAddress, upsertAddress } from './api';
 import type { Address } from './types';
 import { useAccessibleDialog } from '../accessibility/useAccessibleDialog';
@@ -142,14 +142,14 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
   return (
     <Panel title="Adreslerim" description="Türkiye veya yurt dışındaki teslimat adreslerinizi ekleyin ve varsayılan adresinizi seçin.">
       {error ? <ErrorState message={error} /> : null}
-      {status ? <div role="status" aria-live="polite" className="mb-4 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{status}</div> : null}
+      {status ? <div role="status" aria-live="polite" className="mb-4 rounded-2xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:bg-green-950/30 dark:text-green-200">{status}</div> : null}
       {!addressContractValid ? <ErrorState message="Kayıtlı adreslerden biri şu anda kullanılamıyor. Düzenleme ve silme işlemleri güvenlik amacıyla geçici olarak kapatıldı." /> : null}
-      <button type="button" onClick={startCreate} className="mb-4 min-h-11 rounded-xl bg-brand-green px-4 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
-        Yeni adres ekle
+      <button type="button" onClick={startCreate} className="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-brand-green bg-brand-green px-4 font-bold text-white shadow-lg hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
+        <MapPin aria-hidden="true" className="h-4 w-4"/>Yeni adres ekle
       </button>
 
       <div className="space-y-3">
-        {savedAddresses.length === 0 ? <EmptyState title="Kayıtlı adres yok" body="İlk teslimat adresinizi ekleyebilirsiniz." /> : savedAddresses.map(a => (
+        {savedAddresses.length === 0 ? <div className="flex min-h-60 flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed border-gray-200 py-10 dark:border-gray-800"><div className="grid h-20 w-20 place-items-center rounded-3xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900"><MapPin aria-hidden="true" className="h-10 w-10 text-gray-400"/></div><div className="text-center"><div className="text-lg font-bold text-brand-text">Kayıtlı adres yok</div><div className="mt-2 max-w-sm px-4 text-sm leading-6 text-brand-muted">İlk teslimat adresinizi ekleyerek sipariş ve hediye gönderimlerinizi hızlandırabilirsiniz.</div></div></div> : savedAddresses.map(a => (
           <article key={a.id} className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
