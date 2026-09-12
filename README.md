@@ -67,3 +67,12 @@ VITE_AUTH_REDIRECT_URL=
 ```
 
 Never commit service-role keys, payment-provider secrets, private keys, passwords, KYC documents or signing credentials. Provider secrets belong in server-side secret management / Supabase Vault.
+
+## Production readiness
+
+Before deploying to production, review the [Go-Live Checklist](docs/GO_LIVE_CHECKLIST.md) for:
+- Payment provider credentials (iyzico Edge Function secrets)
+- Notification migrations and Realtime configuration
+- Repository branch protection
+- Android/iOS signing setup
+- Vercel deployment security
