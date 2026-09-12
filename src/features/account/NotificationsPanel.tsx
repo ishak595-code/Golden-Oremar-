@@ -5,6 +5,7 @@ import{EmptyState,ErrorState,LoadingState,Panel}from'./ui';
 import{NETWORK_RESTORED_EVENT}from'../resilience/useConnectivity';
 
 const PAGE_SIZE=30;
+const AUTO_REFRESH_INTERVAL_MS=30000; // Auto-refresh every 30 seconds
 function formatNotificationDate(value:string){const date=new Date(value);if(Number.isNaN(date.getTime()))return'Tarih bilgisi geçersiz';try{return date.toLocaleString('tr-TR');}catch{return'Tarih bilgisi geçersiz';}}
 function notificationKey(item:AccountNotification){return item.id;}
 
@@ -31,6 +32,7 @@ export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{o
  }
  useEffect(()=>{void load(true);},[]);
  useEffect(()=>{const restore=()=>{if(openingId||markAllBusy)return;setLoadMoreError('');void load(true);};window.addEventListener(NETWORK_RESTORED_EVENT,restore);return()=>window.removeEventListener(NETWORK_RESTORED_EVENT,restore);},[openingId,markAllBusy]);
+ useEffect(()=>{const interval=setInterval(()=>{if(openingId||markAllBusy||loading||loadingMore)return;void load(true);},AUTO_REFRESH_INTERVAL_MS);return()=>clearInterval(interval);},[openingId,markAllBusy,loading,loadingMore]);
 
  async function open(item:AccountNotification){
   if(openingId||markAllBusy)return;
