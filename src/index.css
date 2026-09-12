@@ -2,6 +2,10 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+.input {
+  @apply min-h-11 w-full rounded-xl border-2 border-brand-border bg-transparent px-3 transition-colors hover:border-brand-gold/30 focus:border-brand-green disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700;
+}
+
 @theme {
   --font-serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
