@@ -132,6 +132,37 @@
 
 ---
 
+## 🐛 Known CI Issues
+
+### E2E Test Provisioning (HTTP 402 Error)
+**Status:** Requires owner action. Not an application code issue.
+
+**Symptoms:**
+- `customer-e2e` job fails with `E2E_CI_CONTROL_PROVISION_FAILED:402:unknown`
+- Error originates from `ci-e2e-user` Supabase Edge Function
+- Android build, iOS build, and TypeScript checks pass successfully
+
+**Root Cause:**
+The E2E test infrastructure Edge Function returns HTTP 402, typically indicating:
+- Supabase project quota/billing issue
+- Edge Function secrets missing or expired
+- Test user provisioning service misconfigured
+
+**Required Actions:**
+- [ ] Check Supabase project billing status and quota limits
+- [ ] Verify `ci-e2e-user` Edge Function secrets are configured
+- [ ] Review Edge Function logs in Supabase Dashboard
+- [ ] Confirm test database has capacity for provisioning test users
+
+**Workaround:**
+None. E2E tests validate end-to-end customer journeys and cannot be skipped. The application code is sound (TypeScript, build, and platform builds all pass).
+
+**Related Workflows:**
+- `.github/workflows/mobile-quality.yml` (customer-e2e job)
+- `supabase/functions/ci-e2e-user/index.ts`
+
+---
+
 ## 📚 Related Documentation
 
 - Payment fail-closed behavior: `src/features/cart/CartCheckoutFlow.tsx` (purchase readiness validation)
