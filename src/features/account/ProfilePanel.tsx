@@ -144,7 +144,7 @@ export default function ProfilePanel({ overview, onChanged }: {
       return;
     }
     if (normalizedPhone && (phoneDigits.length < 10 || phoneDigits.length > 15)) {
-      setError('Telefon numarası 10 ile 15 rakam içermelidir.');
+      setError('Telefon numarası 10 ile 15 rakam arasında olmalıdır.');
       return;
     }
     if (!PROFILE_LOCALES.has(locale)) {
