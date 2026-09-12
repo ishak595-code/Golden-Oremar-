@@ -58,7 +58,7 @@ const ROLE_HELP: Record<AdminPlatformUserRole, string> = {
   operations: 'Sipariş, stok, satıcı ve operasyon yönetimi erişimi.',
   moderator: 'Ürün, yorum, rapor ve içerik moderasyonu erişimi. Finans ve sistem yönetimi içermez.',
   admin: 'Geniş çalışan-yönetici erişimi. Sahip seviyesindeki sistem ve rol yetkilerini içermez.',
-  super_admin: 'Uygulama sahibinin tüm platform capabilitylerine sahip en yüksek yönetim rolü.',
+  super_admin: 'Uygulama sahibinin tüm platform yetkilerine sahip en yüksek yönetim rolü.',
 };
 
 function roleLabel(role: AdminPlatformUserRole) {
@@ -254,7 +254,7 @@ export function AdminUsers() {
           ? canRestoreUsers
           : canEraseUsers;
     if (!permitted) {
-      setError('Bu işlem için gerekli capability mevcut değil.');
+      setError('Bu işlem için gerekli yetki mevcut değil.');
       return;
     }
 
@@ -325,7 +325,7 @@ export function AdminUsers() {
         <div>
           <h2 className="text-2xl font-bold">Kullanıcı ve Güvenlik Yönetimi</h2>
           <p className="mt-1 max-w-4xl text-sm text-gray-500">
-            Canlı capability sözleşmesini yönetin. Müşteri, satıcı, destek, içerik editörü, operasyon, moderatör, yönetici ve uygulama sahibi Süper Yönetici rolleri ayrı sorumluluk sınırlarıyla uygulanır.
+            Canlı yetki sözleşmesini yönetin. Müşteri, satıcı, destek, içerik editörü, operasyon, moderatör, yönetici ve uygulama sahibi Süper Yönetici rolleri ayrı sorumluluk sınırlarıyla uygulanır.
           </p>
         </div>
         <button type="button" onClick={() => void load()} disabled={loading} className="min-h-11 rounded-xl border px-4 font-semibold disabled:opacity-50">
@@ -423,7 +423,7 @@ export function AdminUsers() {
               <div className="mt-6 space-y-5">
                 <div>
                   <h4 className="font-bold">Ana rol yönetimi</h4>
-                  <p className="mt-1 text-xs text-gray-500">Her hesap müşteri temel rolünü korur. Rol değiştirme yalnız role.manage capability'sine sahip uygulama sahibi tarafından yapılabilir.</p>
+                  <p className="mt-1 text-xs text-gray-500">Her hesap müşteri temel rolünü korur. Rol değiştirme yalnız role.manage yetkisine sahip uygulama sahibi tarafından yapılabilir.</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {ADMIN_PLATFORM_USER_ROLES.map(nextRole => {
                       const disabled = Boolean(busyId) || !canAssignRole(selectedUser, nextRole);
@@ -444,7 +444,7 @@ export function AdminUsers() {
                   <button type="button" disabled={Boolean(busyId) || !canEraseUsers || selectedUser.id === currentUserId || selectedUser.roles.includes('super_admin')} onClick={() => openAction({ type: 'close', user: selectedUser })} className="min-h-11 rounded-xl border border-red-300 px-4 font-bold text-red-800 disabled:opacity-40 dark:text-red-200"><LockKeyhole aria-hidden="true" className="mr-2 inline h-4 w-4" />Kalıcı kapat</button>
                 </div>
 
-                {isManagementAccount(selectedUser) && !canManageRoles ? <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"><AlertTriangle aria-hidden="true" className="mr-2 inline h-4 w-4" />Yönetici hesaplarına rol ve güvenlik müdahalesi yalnız role.manage capability'si olan uygulama sahibi tarafından yapılabilir.</div> : null}
+                {isManagementAccount(selectedUser) && !canManageRoles ? <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200"><AlertTriangle aria-hidden="true" className="mr-2 inline h-4 w-4" />Yönetici hesaplarına rol ve güvenlik müdahalesi yalnız role.manage yetkisi olan uygulama sahibi tarafından yapılabilir.</div> : null}
               </div>
             ) : null}
           </section>
