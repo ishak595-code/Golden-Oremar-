@@ -157,7 +157,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const cartAdded=status==='Sepete eklendi.'||status==='Sipariş sepete eklendi.';
 
  return<article className="mx-auto max-w-6xl px-4 pb-28 sm:px-6">
-  <div className="sticky top-0 z-30 -mx-4 mb-4 flex min-h-16 items-center gap-2 border-b border-brand-border bg-brand-card/95 px-4 backdrop-blur-xl sm:-mx-6 sm:px-6">
+  <div className="sticky z-30 -mx-4 mb-4 flex min-h-16 items-center gap-2 border-b border-brand-border bg-brand-card/95 px-4 backdrop-blur-xl sm:-mx-6 sm:px-6" style={{top:'env(safe-area-inset-top, 0px)', paddingTop:'env(safe-area-inset-top, 0px)'}}>
    <button type="button" onClick={onBack} aria-label="Geri" className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card"><ArrowLeft aria-hidden="true" className="h-5 w-5"/></button>
    <div className="min-w-0 flex-1 text-center"><div className="truncate text-sm font-black text-brand-text">Ürün Detayı</div></div>
    <button type="button" onClick={()=>void favorite()} disabled={busy} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} aria-pressed={isFavorite} className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card disabled:opacity-50"><Heart aria-hidden="true" className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-brand-text'}`}/></button>
