@@ -1,4 +1,4 @@
-import React,{useEffect,useState}from'react';
+import React,{useEffect,useRef,useState}from'react';
 import{Check,Circle,Copy,ExternalLink,MessageCircle,RotateCcw,X}from'lucide-react';
 import{cancelOrder,getOrderDetail,listOrders}from'./api';
 import{copyText}from'../navigation/appUrl';
@@ -29,6 +29,8 @@ export default function OrdersPanel({initialOrderId}:{initialOrderId?:string|nul
  const nestedOpen=Boolean(returnOrderId||returnDetailId||cancelCandidate);
  const orderDialogRef=useAccessibleDialog<HTMLDivElement>(Boolean(detail)&&!nestedOpen,()=>{setQuestionContext(null);setDetail(null);});
  const cancelDialogRef=useAccessibleDialog<HTMLDivElement>(Boolean(cancelCandidate),()=>{if(!cancelBusy)setCancelCandidate(null);});
+ 
+ useEffect(()=>{if(!detailStatus)return;const timer=setTimeout(()=>setDetailStatus(''),4000);return()=>clearTimeout(timer);},[detailStatus]);
 
  async function load(reset=true){
   const currentItems=page?.items??[];const offset=reset?0:currentItems.length;
