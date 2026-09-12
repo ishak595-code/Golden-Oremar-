@@ -43,6 +43,8 @@ export default function CatalogSearchResults({query,categorySlug=null,producerId
  const[favoriteOverrides,setFavoriteOverrides]=useState<Record<string,boolean>>({});
  const[favoriteStatus,setFavoriteStatus]=useState('');
  const[filterOpen,setFilterOpen]=useState(false);
+ 
+ useEffect(()=>{if(!favoriteStatus)return;const timer=setTimeout(()=>setFavoriteStatus(''),4000);return()=>clearTimeout(timer);},[favoriteStatus]);
  const[queryDraft,setQueryDraft]=useState(query.slice(0,100));
  const requestId=useRef(0);
  const previewRequestId=useRef(0);
