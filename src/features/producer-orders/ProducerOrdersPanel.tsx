@@ -105,10 +105,10 @@ export default function ProducerOrdersPanel({ onBack, onChanged }: { onBack: () 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={onBack} className="min-h-11 rounded-xl border px-4 font-semibold">
+        <button type="button" onClick={onBack} className="min-h-11 rounded-xl border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
           <ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4" />Satıcı paneline dön
         </button>
-        <button type="button" onClick={() => void loadList(scope)} className="min-h-11 rounded-xl border px-4 font-semibold">
+        <button type="button" onClick={() => void loadList(scope)} className="min-h-11 rounded-xl border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
           <RefreshCw aria-hidden="true" className="mr-2 inline h-4 w-4" />Yenile
         </button>
       </div>
@@ -118,7 +118,7 @@ export default function ProducerOrdersPanel({ onBack, onChanged }: { onBack: () 
       <Panel title="Sipariş Operasyonu" description="Yalnız size ait, ödemesi doğrulanmış sipariş kalemlerini hazırlayın ve kargoya verin.">
         <div className="grid grid-cols-3 gap-2" role="group" aria-label="Sipariş filtresi">
           {([['open', 'Hazırlanacak'], ['shipped', 'Gönderilen'], ['all', 'Tümü']] as const).map(([value, label]) => (
-            <button key={value} type="button" onClick={() => setScope(value)} aria-pressed={scope === value} className={`min-h-11 rounded-xl border px-2 text-sm font-semibold ${scope === value ? 'border-brand-green bg-brand-green/10 text-brand-green' : ''}`}>
+            <button key={value} type="button" onClick={() => setScope(value)} aria-pressed={scope === value} className={`min-h-11 rounded-xl border px-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold ${scope === value ? 'border-brand-green bg-brand-green/10 text-brand-green' : ''}`}>
               {label}
             </button>
           ))}
@@ -134,7 +134,7 @@ export default function ProducerOrdersPanel({ onBack, onChanged }: { onBack: () 
         ) : (
           <div className="mt-3 space-y-3">
             {page.items.map(order => (
-              <button key={order.id} type="button" onClick={() => void open(order.id)} className="min-h-20 w-full rounded-2xl border p-4 text-left">
+              <button key={order.id} type="button" onClick={() => void open(order.id)} className="min-h-20 w-full rounded-2xl border p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="font-bold">{order.orderNumber}</div>
@@ -284,7 +284,7 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={() => void onBack()} className="min-h-11 rounded-xl border px-4 font-semibold">
+        <button type="button" onClick={() => void onBack()} className="min-h-11 rounded-xl border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
           <ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4" />Siparişlere dön
         </button>
         <span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-semibold dark:bg-gray-800">{orderStatus[detail.status] || detail.status}</span>
@@ -347,7 +347,7 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
                   </label>
                 ))}
               </div>
-              <button type="button" onClick={() => void markProcessing()} disabled={busy || !selectedProcessing.length} className="mt-3 min-h-12 w-full rounded-xl border border-brand-green font-bold text-brand-green disabled:opacity-50">
+              <button type="button" onClick={() => void markProcessing()} disabled={busy || !selectedProcessing.length} className="mt-3 min-h-12 w-full rounded-xl border border-brand-green font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
                 <PackageCheck aria-hidden="true" className="mr-2 inline h-5 w-5" />{busy ? 'İşleniyor…' : 'Seçili ürünleri hazırlanıyor yap'}
               </button>
             </fieldset>
@@ -383,7 +383,7 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
                 <label className="block"><span className="text-xs font-semibold">Tahmini teslim (isteğe bağlı)</span><input type="datetime-local" value={eta} onChange={event => setEta(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border bg-transparent px-3" /></label>
               </div>
 
-              <button type="button" onClick={() => void createShipment()} disabled={busy || !selectedShipmentRows.length} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50">
+              <button type="button" onClick={() => void createShipment()} disabled={busy || !selectedShipmentRows.length} className="min-h-12 w-full rounded-xl bg-brand-green px-4 font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
                 <Truck aria-hidden="true" className="mr-2 inline h-5 w-5" />{busy ? 'Kaydediliyor…' : 'Kargo kaydını oluştur'}
               </button>
             </fieldset>
