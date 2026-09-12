@@ -215,12 +215,3 @@ export async function disableNativePushRegistration() {
   pendingReceipt = false;
   await clearNativeDeliveredNotifications();
 }
-
-export async function removeNativePushListeners() {
-  if (listenersInitialization) await listenersInitialization.catch(() => undefined);
-  await Promise.all(listenerHandles.map(handle => handle.remove().catch(() => undefined)));
-  listenerHandles = [];
-  listenersReady = false;
-  pendingActions.splice(0, pendingActions.length);
-  pendingReceipt = false;
-}
