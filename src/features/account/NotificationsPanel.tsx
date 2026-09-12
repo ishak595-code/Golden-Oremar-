@@ -80,7 +80,7 @@ export default function NotificationsPanel({onOpenAction,onUnreadCountChange}:{o
  }
 
  if(loading)return<LoadingState label="Bildirimler yükleniyor"/>;
- if(!data)return<Panel title="Bildirimler" description="Sipariş, ödeme, kargo, iade, mesaj ve sistem bildirimleri."><ErrorState message={error||'Bildirim verisi doğrulanamadı.'} onRetry={()=>void load(true)}/></Panel>;
+ if(!data)return<Panel title="Bildirimler" description="Sipariş, ödeme, kargo, iade, mesaj ve sistem bildirimleri."><ErrorState message={error||'Bildirimler yüklenemedi.'} onRetry={()=>void load(true)}/></Panel>;
  const items=data.items;const unreadCount=data.unreadCount;
  return<Panel title="Bildirimler" description="Sipariş, ödeme, kargo, iade, mesaj ve sistem bildirimleri.">
    {error?<ErrorState message={error} onRetry={()=>void load(true)}/>:null}
