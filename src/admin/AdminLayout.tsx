@@ -76,7 +76,7 @@ const ADMIN_MENU_GROUPS: MenuGroup[] = [
     { id: 'release-setup', label: 'Yayın ve Entegrasyon', icon: Settings },
     { id: 'appearance', label: 'Görünüm ve Marka Teması', icon: Palette },
     { id: 'security-mfa', label: 'MFA ve Authenticator', icon: ShieldCheck },
-    { id: 'role-governance', label: 'Yetki ve Super Admin', icon: Crown },
+    { id: 'role-governance', label: 'Yetki ve Süper Yönetici', icon: Crown },
     { id: 'account-erasure', label: 'Kapalı Hesap Yönetimi', icon: UserCog },
     { id: 'system-errors', label: 'Günlük Sistem Hataları', icon: Bug },
   ]},
