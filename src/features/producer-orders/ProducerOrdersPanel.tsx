@@ -198,9 +198,9 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
     try {
       setBusy(true);
       setError('');
-      setStatus('');
+      setStatus('Ürünler hazırlanıyor olarak işaretleniyor...');
       const next = await markProducerOrderItemsProcessing(detail.id, selectedProcessing);
-      setStatus('Seçili ürünler hazırlanıyor olarak işaretlendi.');
+      setStatus('✓ Seçili ürünler hazırlanıyor olarak işaretlendi. Müşteri bilgilendirildi.');
       await onChanged(next);
     } catch (err: unknown) {
       setError(friendly(err));
@@ -256,7 +256,7 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
     try {
       setBusy(true);
       setError('');
-      setStatus('');
+      setStatus('Kargo kaydı oluşturuluyor...');
       const next = await createProducerShipment({
         orderId: detail.id,
         items: selectedItems,
@@ -269,9 +269,10 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
       setTracking('');
       setTrackingUrl('');
       setEta('');
-      setStatus('Kargo kaydı oluşturuldu ve müşteriye bildirim gönderildi.');
+      setStatus('✓ Kargo kaydı başarıyla oluşturuldu. Müşteriye takip numarası ve tahmini teslim bildirimi gönderildi.');
       await onChanged(next);
     } catch (err: unknown) {
+      setStatus('');
       setError(friendly(err));
     } finally {
       setBusy(false);
@@ -290,7 +291,7 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
       </div>
 
       {error ? <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-100">{error}</div> : null}
-      {status ? <div role="status" aria-live="polite" className="rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-100">{status}</div> : null}
+      {status ? <div role="status" aria-live="polite" className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-100">{status}</div> : null}
 
       <Panel title={`Sipariş ${detail.orderNumber}`} description="Bu ekranda yalnız sizin ürün kalemleriniz ve gönderim için gerekli alıcı bilgileri gösterilir.">
         <div className="grid gap-3 sm:grid-cols-3">
