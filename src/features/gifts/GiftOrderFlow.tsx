@@ -207,8 +207,8 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
         const defaultPayment = methods.find((method: any) => method?.status === 'active' && method?.isDefault === true)
           || methods.find((method: any) => method?.status === 'active');
         setSelectedPaymentMethodId(safeText(defaultPayment?.id, 160));
-      } catch {
-        if (active) setError('Hediye bilgileri şu anda yüklenemedi. Lütfen yeniden deneyin.');
+      } catch (e: any) {
+        if (active) setError(e?.message?.trim() || 'Hediye bilgileri yüklenemedi.');
       } finally {
         if (active) setLoading(false);
       }
@@ -267,10 +267,10 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
           setPreview(next);
           setError('');
         }
-      } catch {
+      } catch (e: any) {
         if (previewSequence.current === sequence) {
           setPreview(null);
-          setError('Hediye sipariş özeti şu anda hesaplanamadı. Lütfen yeniden deneyin.');
+          setError(e?.message?.trim() || 'Hediye özeti hesaplanamadı.');
         }
       } finally {
         if (previewSequence.current === sequence) setPreviewBusy(false);
