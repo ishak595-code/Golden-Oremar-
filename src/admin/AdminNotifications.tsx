@@ -130,7 +130,7 @@ export function AdminNotifications() {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Bildirim Merkezi</h2>
           <p className="mt-1 max-w-3xl text-sm text-gray-500 dark:text-gray-400">Uygulama içi bildirim gerçek Supabase kayıtlarına yazılır. Kayıtlı cihazlarda push açıksa ve kullanıcı ilgili bildirim türüne izin verdiyse push kuyruğu otomatik oluşturulur.</p>
         </div>
-        <button type="button" onClick={() => void loadUsers()} disabled={loadingUsers} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 py-2 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+        <button type="button" onClick={() => void loadUsers()} disabled={loadingUsers} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 py-2 text-gray-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
           <RefreshCw className={`mr-2 inline h-4 w-4 ${loadingUsers ? 'animate-spin' : ''}`} aria-hidden="true" /> Kullanıcıları yenile
         </button>
       </header>
