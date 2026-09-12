@@ -12,7 +12,7 @@ import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 const PAGE_SIZE=20;
 const statusText:Record<OrderStatus,string>={draft:'Taslak',pending_payment:'Ödeme bekleniyor',confirmed:'Onaylandı',preparing:'Hazırlanıyor',partially_shipped:'Kısmen gönderildi',shipped:'Kargoda',delivered:'Teslim edildi',completed:'Tamamlandı',cancelled:'İptal edildi',refunded:'İade edildi'};
 const paymentText:Record<OrderPaymentStatus,string>={unpaid:'Ödenmedi',authorized:'Yetkilendirildi',partially_paid:'Kısmen ödendi',paid:'Ödendi',partially_refunded:'Kısmi geri ödeme',refunded:'Geri ödendi',failed:'Başarısız',disputed:'İtirazlı'};
-const returnStatusText:Record<string,string>={requested:'Talep alındı',under_review:'İnceleniyor',approved:'Onaylandı',in_transit:'İade kargoda',received:'İade teslim alındı',rejected:'Reddedildi',refunded:'Geri ödeme yapıldı',closed:'Kapandı'};
+const returnStatusText:Record<string,string>={requested:'Talep alındı',under_review:'İnceleniyor',approved:'İade kabul edildi',in_transit:'İade kargoda',received:'İade teslim alındı',rejected:'Reddedildi',refunded:'Geri ödeme yapıldı',closed:'Kapandı'};
 const shipmentStatusText:Record<string,string>={pending:'Bekliyor',label_created:'Etiket oluşturuldu',picked_up:'Teslim alındı',in_transit:'Yolda',out_for_delivery:'Dağıtımda',delivered:'Teslim edildi',exception:'Teslimat sorunu',returned:'Geri döndü'};
 const refundStatusText:Record<string,string>={pending:'Bekliyor',processing:'İşleniyor',succeeded:'Tamamlandı',failed:'Başarısız',cancelled:'İptal edildi'};
 

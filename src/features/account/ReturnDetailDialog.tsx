@@ -7,7 +7,7 @@ import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 type ReturnStatus=ReturnDetail['status'];
 type ReturnReason=ReturnDetail['reasonCode'];
 type RefundStatus=ReturnDetail['refunds'][number]['status'];
-const statusLabels:Record<ReturnStatus,string>={requested:'Talep alındı',under_review:'İnceleniyor',approved:'Onaylandı',in_transit:'İade kargoda',received:'İade teslim alındı',rejected:'Reddedildi',refunded:'Geri ödeme yapıldı',closed:'Kapandı'};
+const statusLabels:Record<ReturnStatus,string>={requested:'Talep alındı',under_review:'İnceleniyor',approved:'İade kabul edildi',in_transit:'İade kargoda',received:'İade teslim alındı',rejected:'Reddedildi',refunded:'Geri ödeme yapıldı',closed:'Kapandı'};
 const reasonLabels:Record<ReturnReason,string>={damaged:'Ürün hasarlı geldi',wrong_item:'Yanlış ürün gönderildi',quality_issue:'Kalite / tazelik sorunu',missing_item:'Siparişte ürün eksik',changed_mind:'Fikrim değişti',delivery_issue:'Teslimat kaynaklı sorun',other:'Diğer'};
 const refundStatusLabels:Record<RefundStatus,string>={pending:'Bekliyor',processing:'İşleniyor',succeeded:'Tamamlandı',failed:'Başarısız',cancelled:'İptal edildi'};
 
