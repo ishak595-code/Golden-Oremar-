@@ -30,6 +30,7 @@ export default function OrdersPanel({initialOrderId}:{initialOrderId?:string|nul
  const orderDialogRef=useAccessibleDialog<HTMLDivElement>(Boolean(detail)&&!nestedOpen,()=>{setQuestionContext(null);setDetail(null);});
  const cancelDialogRef=useAccessibleDialog<HTMLDivElement>(Boolean(cancelCandidate),()=>{if(!cancelBusy)setCancelCandidate(null);});
  
+ useEffect(()=>{if(!listStatus)return;const timer=setTimeout(()=>setListStatus(''),4000);return()=>clearTimeout(timer);},[listStatus]);
  useEffect(()=>{if(!detailStatus)return;const timer=setTimeout(()=>setDetailStatus(''),4000);return()=>clearTimeout(timer);},[detailStatus]);
 
  async function load(reset=true){
