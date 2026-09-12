@@ -22,7 +22,7 @@ import { installCustomerShellRouteState } from './features/navigation/customerSh
 import { installPremiumMobileShellRuntime } from './features/customer-experience/premiumMobileShellRuntime';
 import { installGlobalErrorTelemetry, sendClientError } from './lib/errorTelemetry';
 import {installBackendPerformanceHints} from './lib/performanceHints';
-import StoreComplianceControls from './features/store/StoreComplianceControls';
+const StoreComplianceControls = lazy(() => import('./features/store/StoreComplianceControls'));
 import NativeAppUpdateBanner from './features/app-update/NativeAppUpdateBanner';
 import ProductDetailConnections from './features/catalog/ProductDetailConnections';
 import ProductRecommendationsRail from './features/catalog/ProductRecommendationsRail';
@@ -54,7 +54,9 @@ createRoot(document.getElementById('root')!).render(
         <App />
         <ProductDetailConnections />
         <ProductRecommendationsRail />
-        <StoreComplianceControls />
+        <Suspense fallback={null}>
+          <StoreComplianceControls />
+        </Suspense>
       </AuthorizationProvider>
     </ErrorBoundary>
   </StrictMode>,
