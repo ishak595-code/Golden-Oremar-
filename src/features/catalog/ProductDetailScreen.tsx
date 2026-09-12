@@ -50,6 +50,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const[questionOpen,setQuestionOpen]=useState(false);
  const requestId=useRef(0);
  const imageViewerDialogRef=useAccessibleDialog<HTMLDivElement>(imageViewerOpen,()=>setImageViewerOpen(false));
+ 
+ useEffect(()=>{if(!status)return;const timer=setTimeout(()=>setStatus(''),4000);return()=>clearTimeout(timer);},[status]);
 
  async function load(){
   const current=++requestId.current;
