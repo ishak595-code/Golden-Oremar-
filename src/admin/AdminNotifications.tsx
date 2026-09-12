@@ -175,7 +175,7 @@ export function AdminNotifications() {
         </button>
       </form>
 
-      {toast && <div role="status" aria-live="polite" aria-atomic="true" className="fixed bottom-4 right-4 z-[70] flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-white shadow-2xl"><Check className="h-5 w-5 text-green-400" aria-hidden="true" /> {toast}</div>}
+      {toast && <div role="status" aria-live="polite" aria-atomic="true" className="fixed right-4 z-[70] flex items-center gap-2 rounded-xl bg-gray-900 px-5 py-3 text-white shadow-2xl" style={{bottom:'calc(1rem + env(safe-area-inset-bottom, 0px))'}}><Check className="h-5 w-5 text-green-400" aria-hidden="true" /> {toast}</div>}
     </div>
   );
 }

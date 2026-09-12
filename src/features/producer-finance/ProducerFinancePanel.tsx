@@ -108,7 +108,7 @@ export default function ProducerFinancePanel({ onBack }: { onBack: () => void })
     </Panel>
 
     <div className="rounded-2xl border-2 border-brand-green/20 bg-brand-green/5 p-4 text-sm shadow-sm dark:border-brand-green/30"><div className="flex gap-3"><ShieldCheck aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-brand-green"/><p className="font-semibold leading-relaxed">Bir satış iyzico pazaryeri kırılımıyla serbest bırakıldığında sağlayıcı aktarımı ayrıca rezerve edilir. Böylece aynı hakediş hem iyzico tarafından hem manuel banka transferiyle iki kez ödenemez.</p></div></div>
-    {toast ? <div role="status" aria-live="polite" className="fixed bottom-4 right-4 z-50 max-w-sm rounded-xl border-2 border-gray-900 bg-gray-900 px-5 py-3 text-sm font-bold text-white shadow-2xl">✓ {toast}</div> : null}
+    {toast ? <div role="status" aria-live="polite" className="fixed right-4 z-50 max-w-sm rounded-xl border-2 border-gray-900 bg-gray-900 px-5 py-3 text-sm font-bold text-white shadow-2xl" style={{bottom:'calc(1rem + env(safe-area-inset-bottom, 0px))'}}>✓ {toast}</div> : null}
   </div>;
 }
 
