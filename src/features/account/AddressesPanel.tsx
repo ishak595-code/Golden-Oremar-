@@ -232,7 +232,7 @@ export default function AddressesPanel({ addresses, onChanged }: { addresses: Ad
             <div aria-live="polite" className="sr-only">{saving ? 'Adres kaydediliyor.' : ''}</div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button type="button" disabled={saving} onClick={closeEditor} className="min-h-11 rounded-xl border font-semibold disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Vazgeç</button>
-              <button disabled={saving} className="min-h-11 rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
+              <button disabled={saving} aria-busy={saving} className="min-h-11 rounded-xl bg-brand-green font-bold text-white disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{saving ? 'Kaydediliyor…' : 'Kaydet'}</button>
             </div>
           </form>
         </div>
