@@ -43,7 +43,7 @@ requireMatch(driftMigration,/revoke all on function private\.quarantine_invalid_
 
 requireMatch(producerApi,/uploadProducerProductImages[\s\S]*files\.length>10/,'Producer upload must cap the gallery at ten files.');
 requireMatch(producerApi,/PRODUCT_IMAGE_TYPES=new Set\(\['image\/jpeg','image\/png','image\/webp','image\/avif'\]\)/,'Producer upload must use the canonical image MIME allowlist.');
-requireMatch(producerApi,/export async function validateProducerProductImageFile[\s\S]*file\.size<=0\|\|file\.size>10\*1024\*1024/,'Producer image validator must reject images above 10 MB before upload.');
+requireMatch(producerApi,/export async function validateProducerProductImageFile[\s\S]*file\.size<=0[\s\S]*?file\.size>10\*1024\*1024/,'Producer image validator must reject images above 10 MB before upload.');
 requireMatch(producerApi,/validateProducerProductImageFile[\s\S]*width<MIN_PRODUCT_IMAGE_EDGE\|\|height<MIN_PRODUCT_IMAGE_EDGE/,'Producer image validator must reject images below the minimum pixel dimensions.');
 requireMatch(producerApi,/uploadProducerProductImages[\s\S]*await validateProducerProductImageFile\(file\)[\s\S]*storage\.from\('catalog-public'\)\.upload/,'Producer upload must run the shared image validator before every Storage upload.');
 requireMatch(producerManager,/async function selectImages[\s\S]*await validateProducerProductImageFile\(file\)[\s\S]*accepted\.push\(file\)/,'Producer media picker must validate each image before accepting it into the wizard.');

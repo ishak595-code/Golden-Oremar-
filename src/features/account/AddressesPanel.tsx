@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin, RefreshCw, Trash2, X } from 'lucide-react';
 import { Panel, ErrorState } from './ui';
 import { deleteAddress, upsertAddress } from './api';
