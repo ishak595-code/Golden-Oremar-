@@ -92,29 +92,24 @@ Earlier batches (applied to live as well as committed, before the
 repository-only method was adopted): `20260913211111`, `20260914215826`,
 `20260915060959`, `20260915061050`.
 
-## Still missing (43 function names, recompute before trusting this list)
+## Status: function drift closed
 
-admin_archive_platform_user_v1, admin_finance_report,
-admin_list_producer_applications, admin_list_producer_applications_v2,
-admin_record_manual_payment_v1, admin_record_manual_refund_v1,
-admin_review_producer_application_v2, admin_review_producer_location_change_v1,
-admin_review_product_batch_v1, admin_schedule_producer_payout_v1,
-admin_set_platform_user_status_v1, admin_set_producer_document_status,
-admin_set_producer_phone_verified, admin_set_return_status_v1,
-admin_update_account_closure_v1, admin_update_brand_configuration_v1,
-admin_update_producer_payout_v1, admin_update_product_export_profile_v1,
-admin_update_return_v2, admin_upsert_campaign, admin_upsert_campaign_v2,
-admin_upsert_coupon_v1, admin_upsert_product_export_rule_v1,
-cancel_stock_alert_by_token_v1, catalog_search_suggestions_v1,
-check_product_export_eligibility_v1, confirm_newsletter_v1,
-consume_order_inventory_v1, create_customer_order, create_customer_order_v2,
-create_customer_order_v3, get_my_account_overview_v1,
-get_my_producer_finance_summary_v1, list_my_producer_inventory_v1,
-management_update_order_status_v1, management_upsert_category_v1,
-management_upsert_content_v1, management_upsert_product_core_v1,
-record_order_producer_sales_v1, request_customer_return_v1,
-request_customer_return_v2, submit_event_reservation,
-validate_product_change_payload_v1
+As of 2026-09-16 every function present in the live `public`, `private` and
+`api_public_bridge` schemas has a matching definition in
+`supabase/migrations/`. Verified by re-running the "how to recompute" check
+above against a fresh clone: it returns an empty list.
+
+Each migration in this effort was proven byte-for-byte identical to live via
+md5 before being committed. Two transcription errors were caught this way and
+corrected rather than shipped:
+
+- a doubled backslash in a regex literal inside
+  `admin_update_product_export_profile_v1`, which would have broken HS-code
+  normalisation
+- a spurious `STABLE` volatility marker on two `api_public_bridge` wrappers,
+  which would have misinformed the query planner
+
+Neither reached the repository in a broken state.
 
 ## Scope note
 
