@@ -190,3 +190,51 @@ export function categoryAdminErrorMessage(error: unknown, fallback = 'Kategori i
   for (const [key, text] of map) if (message.includes(key)) return text;
   return message.length <= 260 ? message : fallback;
 }
+
+const CATEGORY_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
+const CATEGORY_IMAGE_EXT: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/avif': 'avif',
+};
+
+/**
+ * Uploads a category image to the catalog-public bucket and returns the stored
+ * object key.
+ *
+ * Categories previously had no upload path at all - the editor exposed a plain
+ * text field, which is how absolute stock-photo URLs ended up in image_path and
+ * rendered as broken images. The database now rejects absolute URLs outright,
+ * so an upload route is required rather than optional.
+ *
+ * The returned value is an object key, never a URL. Callers render it through
+ * categoryImageUrl.
+ */
+export async function uploadCategoryImage(file: File) {
+  if (!(file instanceof File) || !CATEGORY_IMAGE_TYPES.has(file.type)) {
+    throw new Error('Kategori görseli JPEG, PNG, WebP veya AVIF olmalıdır.');
+  }
+  if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
+    throw new Error('Kategori görseli en fazla 10 MB olabilir.');
+  }
+
+  const { data: auth } = await supabase.auth.getUser();
+  const userId = auth?.user?.id;
+  if (!userId) throw new Error('Oturum doğrulanamadı. Lütfen yeniden giriş yapın.');
+
+  const storagePath = `admin/${userId}/categories/${crypto.randomUUID()}.${CATEGORY_IMAGE_EXT[file.type]}`;
+  const { error } = await supabase.storage
+    .from('catalog-public')
+    .upload(storagePath, file, { contentType: file.type, upsert: false, cacheControl: '31536000' });
+  if (error) throw error;
+
+  return storagePath;
+}
+
+/** Resolves a stored category image key to a public URL for preview. */
+export function categoryImageUrl(storagePath: string) {
+  const normalized = String(storagePath || '').trim();
+  if (!normalized) return '';
+  return supabase.storage.from('catalog-public').getPublicUrl(normalized).data.publicUrl;
+}
