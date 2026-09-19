@@ -65,7 +65,7 @@ with tl as (
     E',\n' order by con.contype desc, con.conname) as condef
   from tl
   join pg_constraint con on con.conrelid = tl.reloid
-  where con.contype <> 'f'
+  where con.contype in ('p','u','c','x')
   group by tl.reloid
 ), tabstmt as (
   select tl.nspname, tl.relname,
