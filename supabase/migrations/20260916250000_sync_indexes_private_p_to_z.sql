@@ -99,8 +99,10 @@ CREATE INDEX IF NOT EXISTS security_block_rules_source_user_idx ON private.secur
 CREATE INDEX IF NOT EXISTS security_block_rules_user_active_idx ON private.security_block_rules USING btree (user_id) WHERE ((active = true) AND (subject_type = 'user'::text));
 CREATE INDEX IF NOT EXISTS sensitive_access_log_actor_idx ON private.sensitive_access_log USING btree (actor_user_id, occurred_at DESC);
 CREATE INDEX IF NOT EXISTS sensitive_access_log_resource_idx ON private.sensitive_access_log USING btree (resource_type, resource_id, occurred_at DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS stock_alert_active_email_variant_uidx ON private.stock_alert_subscriptions USING btree (email_normalized, variant_id) WHERE ((email_normalized IS NOT NULL) AND (status = 'active'::text));
-CREATE UNIQUE INDEX IF NOT EXISTS stock_alert_active_user_variant_uidx ON private.stock_alert_subscriptions USING btree (user_id, variant_id) WHERE ((user_id IS NOT NULL) AND (status = 'active'::text));
+-- superseded by 20260916260000 (duplicate of the variant_id-leading index)
+-- CREATE UNIQUE INDEX IF NOT EXISTS stock_alert_active_email_variant_uidx ON private.stock_alert_subscriptions USING btree (email_normalized, variant_id) WHERE ((email_normalized IS NOT NULL) AND (status = 'active'::text));
+-- superseded by 20260916260000 (duplicate of the variant_id-leading index)
+-- CREATE UNIQUE INDEX IF NOT EXISTS stock_alert_active_user_variant_uidx ON private.stock_alert_subscriptions USING btree (user_id, variant_id) WHERE ((user_id IS NOT NULL) AND (status = 'active'::text));
 CREATE UNIQUE INDEX IF NOT EXISTS stock_alert_email_variant_idx ON private.stock_alert_subscriptions USING btree (variant_id, email_normalized) WHERE ((email_normalized IS NOT NULL) AND (status = 'active'::text));
 CREATE INDEX IF NOT EXISTS stock_alert_subscriptions_user_id_idx ON private.stock_alert_subscriptions USING btree (user_id) WHERE (user_id IS NOT NULL);
 CREATE UNIQUE INDEX IF NOT EXISTS stock_alert_user_variant_idx ON private.stock_alert_subscriptions USING btree (variant_id, user_id) WHERE ((user_id IS NOT NULL) AND (status = 'active'::text));

@@ -1,0 +1,42 @@
+-- Remove two duplicate unique indexes on private.stock_alert_subscriptions.
+--
+-- Finding: the table carried four unique indexes that are two pairs of exact
+-- duplicates. Verified against pg_index rather than inferred from names:
+--
+--   stock_alert_active_email_variant_uidx  (email_normalized, variant_id)
+--   stock_alert_email_variant_idx          (variant_id, email_normalized)
+--     both WHERE (email_normalized IS NOT NULL AND status = 'active')
+--
+--   stock_alert_active_user_variant_uidx   (user_id, variant_id)
+--   stock_alert_user_variant_idx           (variant_id, user_id)
+--     both WHERE (user_id IS NOT NULL AND status = 'active')
+--
+-- Within each pair the column set and the predicate are identical and only the
+-- column order differs. Uniqueness enforcement does not depend on column
+-- order, so each pair enforced exactly the same rule twice: two index writes
+-- and two page splits per insert, for one guarantee.
+--
+-- Which one to keep is not arbitrary. A btree can serve a lookup on a leading
+-- column prefix, so column order decides what else the index is good for:
+--
+--   * dispatch_stock_alerts_v1 searches by variant_id alone - it fires when a
+--     variant comes back into stock and needs every active subscriber for
+--     that variant. Only a variant_id-leading index can serve that.
+--   * lookups on user_id alone are already covered by the separate
+--     stock_alert_subscriptions_user_id_idx.
+--   * cancel_my_stock_alert_v1 and subscribe_stock_alert_v1 filter on both
+--     columns with equality, which either ordering serves equally well.
+--
+-- So the variant_id-leading indexes are kept and the reversed duplicates are
+-- dropped. Dropping the other side instead would have silently degraded the
+-- restock notification path to a sequential scan - the kind of regression that
+-- only shows up once the subscriber table is large.
+--
+-- Safety: the uniqueness guarantee is unchanged, because the retained index in
+-- each pair enforces the identical constraint. Verified after applying:
+-- stock_alert_email_variant_idx and stock_alert_user_variant_idx both remain
+-- and both remain UNIQUE. No application code references an index by name.
+-- Idempotent via IF EXISTS.
+
+DROP INDEX IF EXISTS private.stock_alert_active_email_variant_uidx;
+DROP INDEX IF EXISTS private.stock_alert_active_user_variant_uidx;
