@@ -229,6 +229,29 @@ export async function uploadCategoryImage(file: File) {
     .upload(storagePath, file, { contentType: file.type, upsert: false, cacheControl: '31536000' });
   if (error) throw error;
 
+  // Server-side verification, matching what product and storefront uploads
+  // already do. The browser-reported MIME type is attacker-controlled, so the
+  // edge function re-downloads the object, sniffs the real format from its
+  // magic bytes, checks the extension agrees, reads the dimensions and records
+  // a SHA-256. Skipping this for categories alone would leave one public image
+  // surface trusting the client.
+  //
+  // If verification fails the uploaded object is removed rather than left
+  // orphaned in the bucket, and the original reason is surfaced to the caller.
+  try {
+    const { data, error: verifyError } = await supabase.functions.invoke('catalog-media-verify', {
+      body: { path: storagePath },
+    });
+    if (verifyError || !data || (data as { ok?: unknown }).ok !== true) {
+      throw new Error('Kategori görselinin gerçek dosya tipi doğrulanamadı.');
+    }
+  } catch (failure) {
+    await supabase.storage.from('catalog-public').remove([storagePath]).catch(() => {});
+    throw failure instanceof Error
+      ? failure
+      : new Error('Kategori görseli doğrulanamadı.');
+  }
+
   return storagePath;
 }
 
