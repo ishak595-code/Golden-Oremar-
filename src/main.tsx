@@ -2,6 +2,7 @@ import {StrictMode,lazy,Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary';
+import { installStaleChunkListeners, markAppLoadedSuccessfully } from './lib/staleChunkRecovery';
 import './index.css';
 import './features/customer-experience/customerShellPolish.css';
 import './features/customer-experience/videoReferencePremium.css';
@@ -28,6 +29,11 @@ import ProductDetailConnections from './features/catalog/ProductDetailConnection
 import ProductRecommendationsRail from './features/catalog/ProductRecommendationsRail';
 import {installCatalogMediaFallback} from './features/catalog/installCatalogMediaFallback';
 import {AuthorizationProvider} from './features/auth/AuthorizationContext';
+
+// Catch stale-deployment chunk failures that never reach a React boundary,
+// and clear the recovery guard once the app has actually mounted.
+installStaleChunkListeners();
+window.addEventListener('load', () => markAppLoadedSuccessfully());
 
 const PwaInstallPrompt=lazy(()=>import('./features/pwa/PwaInstallPrompt'));
 
