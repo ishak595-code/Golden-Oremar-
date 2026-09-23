@@ -1,4 +1,4 @@
-import{useEffect,useState}from'react';
+import{useEffect,useMemo,useState}from'react';
 import{ChevronRight}from'lucide-react';
 import type{CatalogItem}from'../../catalog/api';
 import{buildProductCardAccessibilityLabel}from'../../accessibility/productCardAccessibility';
@@ -24,12 +24,26 @@ function verificationLabel(item:CatalogItem){
  return null;
 }
 
+function optimizedCatalogImageUrl(src:string){
+ try{
+  const url=new URL(src);
+  const marker='/storage/v1/object/public/';
+  if(!url.pathname.includes(marker))return src;
+  url.pathname=url.pathname.replace(marker,'/storage/v1/render/image/public/');
+  url.searchParams.set('width','320');
+  url.searchParams.set('quality','72');
+  url.searchParams.set('resize','cover');
+  return url.toString();
+ }catch{return src;}
+}
+
 function ProductRowImage({src,eager}:{src:string|null|undefined;eager:boolean}){
  const[failed,setFailed]=useState(false);
  useEffect(()=>setFailed(false),[src]);
- const usable=typeof src==='string'&&src.trim().length>0&&!failed;
+ const optimizedSrc=useMemo(()=>typeof src==='string'&&src.trim()?optimizedCatalogImageUrl(src.trim()):'', [src]);
+ const usable=optimizedSrc.length>0&&!failed;
  if(!usable)return<span className="go-product-row-v4__placeholder rounded-xl w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0" aria-hidden="true"/>;
- return<img src={src} alt="" aria-hidden="true" loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'auto'} decoding="async" onError={()=>setFailed(true)} className="go-product-row-v4__image object-cover rounded-xl w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0"/>;
+ return<img src={optimizedSrc} alt="" aria-hidden="true" loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'auto'} decoding="async" onError={()=>setFailed(true)} className="go-product-row-v4__image object-cover rounded-xl w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0"/>;
 }
 
 export default function ProductCard({item,onClick,eager=false,merchandisingLabel=null}:{item:CatalogItem;onClick:()=>void;eager?:boolean;merchandisingLabel?:string|null}){
