@@ -9,6 +9,7 @@ const scriptsDir=path.join(process.cwd(),'scripts');
 // here only when they are deliberate invariants.
 const audits=[
  'account-navigation-stability-contract-audit.mjs',
+ 'public-route-contract-audit.mjs',
  'admin-data-contract-audit.mjs',
  'admin-user-role-contract-audit.mjs',
  'api-public-bridge-contract-audit.mjs',

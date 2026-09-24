@@ -40,7 +40,12 @@ const SUPPORTED_TABS=new Set<Tab>(['home','categories','cart','account','product
 
 function RouteLoading({label='Ekran yükleniyor'}:{label?:string}){return<div role="status" aria-live="polite" className="mx-auto flex min-h-60 max-w-7xl flex-col items-center justify-center gap-4 p-6"><div className="grid h-20 w-20 place-items-center rounded-3xl border-2 border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-brand-gold/5 shadow-sm"><div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-green/20 border-t-brand-green"/></div><div className="text-center font-black text-brand-text">{label}</div></div>;}
 function safeTab(value:unknown):Tab{const candidate=String(value||'home')as Tab;return SUPPORTED_TABS.has(candidate)?candidate:'home';}
-function tabUrl(tab:Tab){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab',tab);return url.toString();}
+// Tab addresses always start from the site root. Now that product, producer
+// and category pages live on their own paths (/urun/<slug>), keeping the
+// current pathname here would turn a tab switch from a product page into
+// /urun/<slug>?tab=cart - an address that parses as both a product and the
+// cart at once.
+function tabUrl(tab:Tab){const url=new URL(window.location.href);url.pathname='/';url.search='';url.hash='';url.searchParams.set('tab',tab);return url.toString();}
 function normalizeInitialTab(route:ReturnType<typeof parsePublicRoute>,tab:Tab):Tab{if(tab==='product-detail'&&!route.productReference)return'home';if(tab==='producer-profile'&&!route.producerReference)return'home';return tab;}
 function routeDepthFromState(state:any){const value=Number(state?.goldenOremarDepth);return Number.isSafeInteger(value)&&value>=0?value:0;}
 function snapshotItemCount(snapshot:any,items:any[]){const reported=Number(snapshot?.itemCount);if(Number.isSafeInteger(reported)&&reported>=0)return reported;return items.reduce((total,item)=>total+Math.max(0,Math.floor(Number(item?.quantity)||0)),0);}

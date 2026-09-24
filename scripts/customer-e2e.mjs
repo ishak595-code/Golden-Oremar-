@@ -146,7 +146,7 @@ async function verifyProductCommerceJourney(page){
  await removeFavorite.click();
  await page.getByText(`${productName} favorilerinizden çıkarıldı.`,{exact:true}).waitFor({state:'visible',timeout:10000});
  mark('favorite_remove_roundtrip',true);
- await page.goto(`${baseUrl}/?tab=product-detail&product=${productSlug}`,{waitUntil:'networkidle',timeout:30000});
+ await page.goto(`${baseUrl}/urun/${productSlug}`,{waitUntil:'networkidle',timeout:30000});
  await page.getByRole('heading',{name:productName,exact:true}).waitFor({state:'visible',timeout:12000});
  await page.getByRole('button',{name:/Hediye olarak gönder|Hediye et/}).click();
  await page.getByRole('heading',{name:'Bir üründen fazlasını gönderin'}).waitFor({state:'visible',timeout:12000});

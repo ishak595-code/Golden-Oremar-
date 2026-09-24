@@ -21,6 +21,23 @@ export type AppActionTarget =
   | { kind: 'notifications' };
 
 const SAFE_REFERENCE = /^[a-zA-Z0-9][a-zA-Z0-9._~-]{0,199}$/;
+
+/**
+ * Canonical public path segments. Turkish, because these are the addresses
+ * customers share and that search engines index for a Turkish storefront.
+ *
+ * The English segments the router accepted before (/product, /producer,
+ * /events) keep working as aliases in routeFromPath, and ?tab= query URLs keep
+ * working in parsePublicRoute, so no link already shared or saved breaks.
+ * Only the addresses the app *generates* change.
+ */
+export const PUBLIC_PATH = {
+  product: 'urun',
+  producer: 'uretici',
+  category: 'kategori',
+  events: 'etkinlikler',
+  search: 'ara',
+} as const;
 const NAVIGATION_PROTOCOLS = new Set(['http:', 'https:', 'capacitor:']);
 const PUBLIC_PROTOCOLS = new Set(['http:', 'https:']);
 const ACCOUNT_VIEWS = new Set([
@@ -49,8 +66,7 @@ export function buildProductUrl(reference: unknown, baseHref?: string): string {
   const url = safeNavigationBaseUrl(baseHref);
   url.search = '';
   url.hash = '';
-  url.searchParams.set('tab', 'product-detail');
-  url.searchParams.set('product', safeReference);
+  url.pathname = `/${PUBLIC_PATH.product}/${encodeURIComponent(safeReference)}`;
   return url.toString();
 }
 
@@ -60,8 +76,7 @@ export function buildProducerUrl(reference: unknown, baseHref?: string): string 
   const url = safeNavigationBaseUrl(baseHref);
   url.search = '';
   url.hash = '';
-  url.searchParams.set('tab', 'producer-profile');
-  url.searchParams.set('producer', safeReference);
+  url.pathname = `/${PUBLIC_PATH.producer}/${encodeURIComponent(safeReference)}`;
   return url.toString();
 }
 
@@ -71,8 +86,7 @@ export function buildEventUrl(reference: unknown, baseHref?: string): string {
   const url = safeNavigationBaseUrl(baseHref);
   url.search = '';
   url.hash = '';
-  url.searchParams.set('tab', 'events');
-  url.searchParams.set('event', safeReference);
+  url.pathname = `/${PUBLIC_PATH.events}/${encodeURIComponent(safeReference)}`;
   return url.toString();
 }
 
@@ -84,10 +98,19 @@ export function buildSearchUrl(input: {
   const url = safeNavigationBaseUrl(baseHref);
   url.search = '';
   url.hash = '';
-  url.searchParams.set('tab', 'search-results');
   const query = String(input.query ?? '').trim().slice(0, 160);
   const category = cleanPublicReference(input.categorySlug);
   const producer = cleanPublicReference(input.producerId);
+  // A category with nothing else attached gets its own permanent address,
+  // because that is the page worth indexing and sharing. Anything carrying a
+  // free-text query or a producer filter is a transient search and lives
+  // under /ara with query parameters, which is the conventional shape search
+  // engines expect not to index as distinct content.
+  if (category && !query && !producer) {
+    url.pathname = `/${PUBLIC_PATH.category}/${encodeURIComponent(category)}`;
+    return url.toString();
+  }
+  url.pathname = `/${PUBLIC_PATH.search}`;
   if (query) url.searchParams.set('q', query);
   if (category) url.searchParams.set('category', category);
   if (producer) url.searchParams.set('producerId', producer);
@@ -108,7 +131,7 @@ export function parsePublicRoute(href?: string) {
     accountView,
     adminView,
     query: String(url.searchParams.get('q') || '').trim().slice(0, 160),
-    categorySlug: cleanPublicReference(url.searchParams.get('category')),
+    categorySlug: cleanPublicReference(url.searchParams.get('category')) || pathRoute.categorySlug,
     producerId: cleanPublicReference(url.searchParams.get('producerId')),
   };
 }
@@ -232,29 +255,48 @@ function routeFromPath(pathname: string) {
   const first = parts[0] || '';
   const second = parts[1] || '';
 
-  if (first === 'product') return { tab: 'product-detail' as PublicAppTab, productReference: cleanPublicReference(second), producerReference: null, eventReference: null, accountView: null, adminView: null };
-  if (first === 'events') return { tab: 'events' as PublicAppTab, productReference: null, producerReference: null, eventReference: cleanPublicReference(second), accountView: null, adminView: null };
+  if (first === PUBLIC_PATH.product) return { tab: 'product-detail' as PublicAppTab, productReference: cleanPublicReference(safeDecode(second)), producerReference: null, eventReference: null, accountView: null, adminView: null, categorySlug: null };
+  if (first === PUBLIC_PATH.producer) {
+    const producerReference = cleanPublicReference(safeDecode(second));
+    if (producerReference) return { tab: 'producer-profile' as PublicAppTab, productReference: null, producerReference, eventReference: null, accountView: null, adminView: null, categorySlug: null };
+  }
+  if (first === PUBLIC_PATH.category) {
+    const categorySlug = cleanPublicReference(safeDecode(second));
+    if (categorySlug) return { tab: 'search-results' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: null, adminView: null, categorySlug };
+  }
+  if (first === PUBLIC_PATH.search) return { tab: 'search-results' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: null, adminView: null, categorySlug: null };
+  if (first === PUBLIC_PATH.events) return { tab: 'events' as PublicAppTab, productReference: null, producerReference: null, eventReference: cleanPublicReference(safeDecode(second)), accountView: null, adminView: null, categorySlug: null };
+  if (first === 'product') return { tab: 'product-detail' as PublicAppTab, productReference: cleanPublicReference(second), producerReference: null, eventReference: null, accountView: null, adminView: null, categorySlug: null };
+  if (first === 'events') return { tab: 'events' as PublicAppTab, productReference: null, producerReference: null, eventReference: cleanPublicReference(second), accountView: null, adminView: null, categorySlug: null };
   if (first === 'messages') {
     const reference = cleanPublicReference(second);
-    return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: reference ? `messages:${reference}` : 'messages', adminView: null };
+    return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: reference ? `messages:${reference}` : 'messages', adminView: null, categorySlug: null };
   }
   if (first === 'orders') {
     const reference = cleanPublicReference(second);
-    return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: reference ? `orders:${reference}` : 'orders', adminView: null };
+    return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: reference ? `orders:${reference}` : 'orders', adminView: null, categorySlug: null };
   }
-  if (first === 'settings') return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: 'settings', adminView: null };
+  if (first === 'settings') return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: 'settings', adminView: null, categorySlug: null };
   if (first === 'account') {
     const view = second === 'producer-application' ? 'vendor-apply' : safeAccountView(second) || 'menu';
-    return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: view, adminView: null };
+    return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: view, adminView: null, categorySlug: null };
   }
   if (first === 'producer') {
-    if (second === 'products') return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: 'producer-products', adminView: null };
-    if (SELLER_SUBVIEWS.has(second)) return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: `seller:${second}`, adminView: null };
+    if (second === 'products') return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: 'producer-products', adminView: null, categorySlug: null };
+    if (SELLER_SUBVIEWS.has(second)) return { tab: 'account' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: `seller:${second}`, adminView: null, categorySlug: null };
     const producerReference = cleanPublicReference(second);
-    if (producerReference) return { tab: 'producer-profile' as PublicAppTab, productReference: null, producerReference, eventReference: null, accountView: null, adminView: null };
+    if (producerReference) return { tab: 'producer-profile' as PublicAppTab, productReference: null, producerReference, eventReference: null, accountView: null, adminView: null, categorySlug: null };
   }
-  if (first === 'admin') return { tab: 'admin' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: null, adminView: safeAdminView(second) || 'dashboard' };
-  return { tab: null, productReference: null, producerReference: null, eventReference: null, accountView: null, adminView: null };
+  if (first === 'admin') return { tab: 'admin' as PublicAppTab, productReference: null, producerReference: null, eventReference: null, accountView: null, adminView: safeAdminView(second) || 'dashboard', categorySlug: null };
+  return { tab: null, productReference: null, producerReference: null, eventReference: null, accountView: null, adminView: null, categorySlug: null };
+}
+
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return '';
+  }
 }
 
 function toPublicShareUrl(value: string) {
@@ -267,6 +309,11 @@ function toPublicShareUrl(value: string) {
   const publicBase = new URL(configuredOrigin);
   if (!PUBLIC_PROTOCOLS.has(publicBase.protocol)) throw new Error('invalid_public_share_origin');
 
+  // The path must travel with the share. Addresses are now path-based
+  // (/urun/<slug>), so copying only search and hash - as this did when every
+  // address was ?tab= on the root - would turn a product shared from the
+  // native app into a link to the home page.
+  publicBase.pathname = source.pathname;
   publicBase.search = source.search;
   publicBase.hash = source.hash;
   return publicBase.toString();

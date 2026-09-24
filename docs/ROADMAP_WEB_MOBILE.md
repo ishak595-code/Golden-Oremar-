@@ -5,7 +5,7 @@ ilerleme kaydıdır. Yeni bir oturum başladığında **önce bu dosya okunur**,
 sonra en üstteki tamamlanmamış adımdan devam edilir. Tamamlanan adım
 işaretlenir ve commit edilir. Hiçbir adım tekrar yapılmaz.
 
-Son güncelleme: 2026-09-24
+Son güncelleme: 2026-09-25
 
 ---
 
@@ -56,7 +56,7 @@ adresler olmadan yapılamaz.
 
 ### Aşama 1 — Temiz URL yönlendirmesi
 
-Durum: **BAŞLADI**
+Durum: **BÜYÜK KISMI TAMAMLANDI** (1.7 cihaz testi ve 1.9 bekliyor)
 
 Hedef adresler:
 
@@ -70,23 +70,47 @@ Hedef adresler:
 
 Adımlar:
 
-- [ ] 1.1 Mevcut gezinme sistemini haritala (App.tsx, sekmeler, geri tuşu,
-      derinlik takibi). Hiçbir şey değiştirmeden önce tam anla.
-- [ ] 1.2 Adres ↔ ekran eşleme katmanı yaz (tek kaynak, test edilebilir)
-- [ ] 1.3 Ürün detayını `/urun/<slug>` ile açılabilir yap
-- [ ] 1.4 Kategori ve üretici adresleri
-- [ ] 1.5 Eski `?tab=` adreslerini yeni adreslere yönlendir
-- [ ] 1.6 Vercel `rewrites` ile tüm yolların SPA'ya düşmesini sağla
-      (sayfa yenilemede 404 olmasın)
-- [ ] 1.7 Android geri tuşu ve tarayıcı geri tuşu doğru çalışıyor mu test
-- [ ] 1.8 tsc + build + audit:all + manuel gezinme testi
+- [x] 1.1 Gezinme haritalandı. Bulgu: adres↔ekran eşlemesi zaten tek yerde
+      (`src/features/navigation/appUrl.ts`). `routeFromPath` temiz yolları
+      zaten okuyordu; sadece `build*Url` fonksiyonları `?tab=` üretiyordu.
+      Uygulamanın yeniden yazılması gerekmedi.
+- [x] 1.2 `PUBLIC_PATH` sabiti eklendi (tek kaynak): urun, uretici, kategori,
+      etkinlikler, ara
+- [x] 1.3 `/urun/<slug>`
+- [x] 1.4 `/kategori/<slug>`, `/uretici/<slug>`, `/etkinlikler/<slug>`, `/ara?q=`
+- [x] 1.5 Eski `?tab=` ve İngilizce `/product/`, `/producer/` adresleri
+      okunmaya devam ediyor (yönlendirme değil, doğrudan destek)
+- [x] 1.6 `vercel.json` catch-all eklendi. Nokta hariç tutan kalıp
+      kullanılmadı: slug'lar nokta içerebiliyor (`bal-1.5kg`)
+- [ ] 1.7 Android geri tuşu cihazda test edilmeli (sandbox'tan yapılamaz).
+      Tarayıcı geri tuşu mantığı değişmedi, `popstate` aynı
+      `parsePublicRoute`'u kullanıyor
+- [x] 1.8 tsc, build, 46 denetim, vite preview üzerinde doğrudan erişim
+      testi (tüm yeni yollar 200). Kalıcı davranış denetimi eklendi:
+      `scripts/public-route-contract-audit.mjs`
+- [ ] 1.9 Sekme adresleri hâlâ `?tab=cart` biçiminde. `/sepet`, `/hesabim`
+      gibi temiz sekme yolları istenirse ayrıca yapılır (SEO için önemsiz,
+      bu sayfalar indekslenmez)
+
+Yan bulgular ve düzeltmeler:
+
+- `tabUrl` mevcut yolu koruyordu. `/urun/x` sayfasından sepete geçiş
+  `/urun/x?tab=cart` üretirdi. Kök yola sıfırlandı.
+- `toPublicShareUrl` mobilden paylaşımda sadece `?` sonrasını
+  kopyalıyordu. Temiz adreslerle ürün paylaşımı ana sayfaya giderdi.
+  Yol da kopyalanıyor.
+- `customer-event-contract-audit` eski kodun birebir yazılışını arıyordu.
+  Amacı korunarak yeni biçime uyarlandı; bozuk kodu hâlâ reddettiği
+  negatif kontrolle doğrulandı.
+- Misafir sepeti yok: giriş yapmadan sepete ekleme hesaba yönlendiriyor.
+  Birleştirme problemi yoktur (Aşama 5.1 buna göre kapandı).
 
 Risk: gezinmenin temeli değişiyor, her ekranı etkiliyor. Parça parça
 yapılacak, her adımda build ve audit çalıştırılacak.
 
 ### Aşama 2 — SEO
 
-Durum: bekliyor (Aşama 1'e bağlı)
+Durum: **SIRADAKİ** (Aşama 1 hazır)
 
 - [ ] 2.1 Ürün başına başlık, açıklama, canonical
 - [ ] 2.2 Open Graph ve Twitter Card (WhatsApp/Instagram önizlemesi)
@@ -123,7 +147,7 @@ Durum: bekliyor (domain bağlanmasına bağlı)
 
 ### Aşama 5 — Doğrulama
 
-- [ ] 5.1 Misafir sepeti ve giriş sonrası birleştirme testi
+- [x] 5.1 Misafir sepeti yok, birleştirme gerekmiyor (bkz. Aşama 1)
 - [ ] 5.2 Web'de ekle, mobilde gör testi
 - [ ] 5.3 Ürün paylaş, linkten aç testi
 
