@@ -10,6 +10,8 @@ import{setCartItem}from'../cart/api';
 import{buildProductUrl,buildSearchUrl,copyText,shareOrCopy}from'../navigation/appUrl';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 import ProductImageWithSkeleton from'./ProductImageWithSkeleton';
+import{productSeo,type SeoAvailability}from'../seo/seoModel';
+import{applySeo,clearSeoStructuredData,publicSeoOrigin}from'../seo/applySeo';
 
 type Props={
  reference:string;
@@ -51,6 +53,39 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const requestId=useRef(0);
  const imageViewerDialogRef=useAccessibleDialog<HTMLDivElement>(imageViewerOpen,()=>setImageViewerOpen(false));
  
+ // Page metadata from the loaded product, via the same builder the build-time
+ // prerender uses. This runs after the live data arrives, so the document
+ // Google finally renders carries the current price and stock state rather
+ // than the build snapshot. Cleared on leave so Product schema does not
+ // linger on other screens.
+ useEffect(()=>{
+  if(!detail)return;
+  const d:any=detail;
+  const variants:any[]=Array.isArray(d.variants)?d.variants:[];
+  const variant=variants.find(v=>v?.default)||variants[0]||null;
+  const images:any[]=Array.isArray(d.images)?d.images:[];
+  const primary=images.find(i=>i?.primary)||images[0]||null;
+  const stockMode=String(d.stockMode||'');
+  const soldOut=variant&&(variant.available===false||(typeof variant.availableQuantity==='number'&&variant.availableQuantity<=0&&stockMode!=='preorder'));
+  const availability:SeoAvailability=stockMode==='preorder'?'preorder':soldOut?'out_of_stock':'in_stock';
+  const slug=String(d.slug||'').trim();
+  if(!slug)return;
+  applySeo(productSeo({
+   slug,
+   name:String(d.name||'').trim()||'Ürün',
+   description:String(d.shortDescription||d.description||'').trim(),
+   imageUrl:primary?.path?publicCatalogUrl(primary.path)||null:null,
+   priceMinor:typeof variant?.priceMinor==='number'?variant.priceMinor:null,
+   currency:String(variant?.currency||d.currency||'TRY'),
+   availability,
+   brandName:d.producer?.name?String(d.producer.name):null,
+   categoryName:d.category?.name?String(d.category.name):null,
+   categorySlug:d.category?.slug?String(d.category.slug):null,
+   ratingAverage:null,
+   ratingCount:0,
+  },publicSeoOrigin()));
+  return()=>clearSeoStructuredData();
+ },[detail]);
  useEffect(()=>{if(!status)return;const timer=setTimeout(()=>setStatus(''),4000);return()=>clearTimeout(timer);},[status]);
 
  async function load(){

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/check-build-budget.mjs",
+    "build": "vite build && node scripts/prerender-seo.mjs && node scripts/check-build-budget.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "audit:security": "node scripts/security-contract-audit.mjs",

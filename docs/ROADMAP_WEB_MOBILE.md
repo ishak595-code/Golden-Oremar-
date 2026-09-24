@@ -110,19 +110,30 @@ yapılacak, her adımda build ve audit çalıştırılacak.
 
 ### Aşama 2 — SEO
 
-Durum: **SIRADAKİ** (Aşama 1 hazır)
+Durum: **KOD TAMAMLANDI, CANLIDA DOĞRULANMALI** (bkz. 2.7)
 
-- [ ] 2.1 Ürün başına başlık, açıklama, canonical
-- [ ] 2.2 Open Graph ve Twitter Card (WhatsApp/Instagram önizlemesi)
-- [ ] 2.3 JSON-LD: Product, Offer, Brand, BreadcrumbList, Organization
-- [ ] 2.4 Derleme anında ürün sayfalarını hazır HTML olarak üret
-      (prerender), Google içeriği görebilsin
-- [ ] 2.5 `sitemap.xml` ve `robots.txt`
-- [ ] 2.6 Stokta olmayan ürün için doğru `availability` değeri
+- [x] 2.1 Ürün başına başlık, açıklama, canonical (`src/features/seo/seoModel.ts`)
+- [x] 2.2 Open Graph ve Twitter Card. Ana sayfaya da og:image eklendi (önceden yoktu)
+- [x] 2.3 JSON-LD: Product, Offer, Brand, BreadcrumbList, Organization
+- [x] 2.4 `scripts/prerender-seo.mjs`, `npm run build` içinde. Sayfalar
+      `urun/<slug>.html` olarak yazılır, `vercel.json` içinde `cleanUrls`
+      açık. `<slug>/index.html` DENENDİ VE ÇALIŞMADI: sunucu sondaki `/`
+      olmadan klasör indeksini çözmüyor, istek SPA'ya düşüyor ve hazır
+      başlık hiç sunulmuyordu
+- [x] 2.5 `sitemap.xml` ve `robots.txt` derleme anında üretilir
+- [x] 2.6 InStock / OutOfStock / PreOrder doğru eşleniyor
+- [ ] 2.7 **CANLIDA DOĞRULA** (sandbox Supabase'e ve Vercel'e erişemiyor):
+      a) `golden-oremar.vercel.app/sitemap.xml` 40+ URL içeriyor mu
+         (sadece 1 URL varsa derleme sırasında Supabase'e ulaşılamamış:
+         Vercel build log'unda `[seo-prerender] WARNING` ara)
+      b) Bir ürün linkini WhatsApp'a yapıştır: ürün adı ve görseli
+         önizlemede çıkıyor mu
+      c) `cleanUrls` sonrası `/gizlilik-politikasi` hâlâ açılıyor mu
+      d) Google Rich Results Test ile bir ürün sayfası
 
 ### Aşama 3 — Yasal sayfalar
 
-Durum: bekliyor
+Durum: **SIRADAKİ**
 
 - [ ] 3.1 Mesafeli satış sözleşmesi taslağı
 - [ ] 3.2 Ön bilgilendirme formu taslağı
@@ -152,6 +163,27 @@ Durum: bekliyor (domain bağlanmasına bağlı)
 - [ ] 5.3 Ürün paylaş, linkten aç testi
 
 ---
+
+## Aşama 2 tasarım kararları (tekrar tartışılmasın)
+
+- Meta ve JSON-LD tek dosyada üretilir: `seoModel.ts`. Hem derleme hem
+  uygulama aynı fonksiyonu kullanır. İkisi ayrışırsa Google fiyat
+  uyuşmazlığı nedeniyle zengin sonucu düşürür.
+- Derleme anında 42 ayrı ürün detay çağrısı yerine TEK çağrı
+  (`get_public_home_catalog_v3`) kullanılır. Her yayında kota harcamamak için.
+- Prerender ASLA derlemeyi durdurmaz. Veri çekilemezse uyarı verir, ana
+  sayfa ve robots/sitemap yine üretilir. Kota dolu olsa bile yayın çıkar.
+- Yorum yoksa `aggregateRating` yazılmaz. Sahte puan tüm sitenin zengin
+  sonuçlarını düşürebilir.
+- Gerçek fiyat yoksa `Offer` yazılmaz.
+- Ürün adlarını üreticiler yazar, yani güvenilmezdir. JSON-LD `<`, `>`, `&`
+  kaçırılır; nitelikler HTML kaçırılır. `seo-contract-audit.mjs` bunu
+  kilitler; negatif kontrolle doğrulandı.
+- Slug dosya yolu olur, `isSafeSlug` + `dist` dışına yazma kontrolü ile
+  korunur. `../../etc/passwd` testte reddedildi.
+- Yeni eklenen ürünün bir sonraki yayına kadar hazır sayfası olmaz. İstek
+  SPA'ya düşer, uygulama başlığı canlı veriyle günceller. Bu kabul edilen
+  bir sınırdır; çözüm periyodik yeniden derlemedir (Vercel deploy hook).
 
 ## İshak'ın yapması gerekenler (kod dışı)
 
