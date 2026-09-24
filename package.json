@@ -51,14 +51,14 @@
     "recharts": "^3.7.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "8.5.0",
+    "@capacitor/cli": "8.5.2",
     "@tailwindcss/vite": "^4.3.3",
     "@types/cookie": "^0.6.0",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^5.0.4",
-    "autoprefixer": "^10.5.4",
+    "autoprefixer": "^10.6.1",
     "tailwindcss": "^4.3.3",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
