@@ -28,7 +28,7 @@ function staffMfaState(value:unknown):'enrollment_required'|'enforced'|null{if(v
 export async function getAuthorizationContext():Promise<AuthorizationContextSnapshot>{
   const{data,error}=await supabase.rpc('authorization_context_v1');
   if(error)throw error;
-  if(!record(data))throw new Error('Yetki bağlamı sunucudan doğrulanamadı.');
+  if(!record(data))throw new Error('Yetki bağlamı şu anda yüklenemedi. Lütfen tekrar deneyin.');
   const userId=text(data.userId,'Kullanıcı kimliği',36);
   if(!UUID_RE.test(userId))throw new Error('Kullanıcı kimliği doğrulanamadı.');
   const accountStatus=text(data.accountStatus,'Hesap durumu',80);

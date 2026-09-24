@@ -102,7 +102,7 @@ export function useLiveHomeCatalog() {
         ]);
         if (!active) return;
 
-        if (!isRecord(catalog) || !Array.isArray(catalog.items)) throw new Error('Ana katalog ürünleri sunucudan doğrulanamadı.');
+        if (!isRecord(catalog) || !Array.isArray(catalog.items)) throw new Error('Ana katalog ürünleri şu anda yüklenemedi. Lütfen tekrar deneyin.');
         const catalogItems = catalog.items;
         const coreInvalid = catalogItems.some((item: any) => !isRecord(item) || !safeText(item.id,160) || !safeText(item.slug,220) || !safeText(item.name,300) || !isRecord(item.category) || !safeText(item.category.slug,220) || !safeText(item.category.name,160) || !isRecord(item.producer) || !safeText(item.producer.id,160) || !safeText(item.producer.name,240) || safeInteger(item.producer.followerCount)===null || typeof item.producer.verified!=='boolean' || typeof item.producer.originVerified!=='boolean' || !['official','independent'].includes(item.producer.storeKind) || !['ruby','blue'].includes(item.producer.badgeTone) || !['standard','verified','signature'].includes(item.producer.storefrontTier) || !isRecord(item.variant) || !safeText(item.variant.id,160) || !safeText(item.variant.name,240));
         if (coreInvalid) throw new Error('Ana katalogda kimliği doğrulanamayan ürün bulundu. Liste güvenli şekilde gösterilemedi.');
@@ -173,7 +173,7 @@ export function useLiveHomeCatalog() {
           };
         }));
 
-        if (!Array.isArray(categoryRows)) throw new Error('Kategori listesi sunucudan doğrulanamadı.');
+        if (!Array.isArray(categoryRows)) throw new Error('Kategori listesi şu anda yüklenemedi. Lütfen tekrar deneyin.');
         const normalizedCategories = categoryRows.map(category => {
           if (!isRecord(category)) throw new Error('Kategori kaydı doğrulanamadı.');
           const id = safeText(category.slug,220);

@@ -130,7 +130,7 @@ function normalizeEventSpotlight(value: unknown): StorefrontEventSpotlight {
 }
 
 function normalizeStorefrontConfig(value: unknown): StorefrontConfig {
-  if (!isRecord(value) || !isRecord(value.brand) || !isRecord(value.interface) || !isRecord(value.salesReadiness)) throw new Error('Mağaza arayüz ayarları sunucudan doğrulanamadı.');
+  if (!isRecord(value) || !isRecord(value.brand) || !isRecord(value.interface) || !isRecord(value.salesReadiness)) throw new Error('Mağaza arayüz ayarları şu anda yüklenemedi. Lütfen tekrar deneyin.');
   if (!Array.isArray(value.homeSections) || value.homeSections.length > 40) throw new Error('Ana sayfa bölüm ayarları doğrulanamadı.');
   if (!Array.isArray(value.heroCategories) || value.heroCategories.length > 30) throw new Error('Vitrin kategori ayarları doğrulanamadı.');
 

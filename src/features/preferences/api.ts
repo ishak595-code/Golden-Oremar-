@@ -18,7 +18,7 @@ function isSound(value: unknown): value is NotificationSoundId {
 }
 
 function normalize(value: unknown): AppPreferences {
-  if (!isRecord(value)) throw new Error('Uygulama tercihleri sunucudan doğrulanamadı.');
+  if (!isRecord(value)) throw new Error('Uygulama tercihleri şu anda yüklenemedi. Lütfen tekrar deneyin.');
   const theme = value.theme == null ? null : isTheme(value.theme) ? value.theme : null;
   if (value.theme != null && theme == null) throw new Error('Hesap tema tercihi doğrulanamadı.');
   if (!isSound(value.notificationSound)) throw new Error('Hesap bildirim sesi doğrulanamadı.');

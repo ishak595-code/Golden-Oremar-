@@ -81,14 +81,14 @@ function normalizePayout(value: unknown, index: number): ProducerPayout {
 
 export async function getProducerFinance() {
   const { data, error } = await supabase.rpc('get_my_producer_finance_summary_v1'); const payload = unwrap<unknown>(data, error);
-  if (!isRecord(payload)) throw new Error('Satıcı finans özeti sunucudan doğrulanamadı.'); uuid(payload.producerId, 'Satıcı kimliği'); requiredText(payload.displayName, 'Satıcı adı', 240); safeInteger(payload.commissionBasisPoints, 'Komisyon oranı', 0, 10000);
-  if (!Array.isArray(payload.balances) || payload.balances.length > 100) throw new Error('Satıcı bakiye listesi sunucudan doğrulanamadı.'); return payload.balances.map(normalizeBalance);
+  if (!isRecord(payload)) throw new Error('Satıcı finans özeti şu anda yüklenemedi. Lütfen tekrar deneyin.'); uuid(payload.producerId, 'Satıcı kimliği'); requiredText(payload.displayName, 'Satıcı adı', 240); safeInteger(payload.commissionBasisPoints, 'Komisyon oranı', 0, 10000);
+  if (!Array.isArray(payload.balances) || payload.balances.length > 100) throw new Error('Satıcı bakiye listesi şu anda yüklenemedi. Lütfen tekrar deneyin.'); return payload.balances.map(normalizeBalance);
 }
 
 export async function listProducerPayouts(limit = 20, offset = 0) {
   if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100) throw new Error('Ödeme sayfa boyutu doğrulanamadı.'); if (!Number.isSafeInteger(offset) || offset < 0 || offset > 1_000_000) throw new Error('Ödeme sayfa konumu doğrulanamadı.');
   const { data, error } = await supabase.rpc('list_my_producer_payouts_v2', { p_limit: limit, p_offset: offset }); const rows = unwrap<unknown>(data, error);
-  if (!Array.isArray(rows) || rows.length > limit) throw new Error('Satıcı ödeme geçmişi sunucudan doğrulanamadı.'); return rows.map(normalizePayout);
+  if (!Array.isArray(rows) || rows.length > limit) throw new Error('Satıcı ödeme geçmişi şu anda yüklenemedi. Lütfen tekrar deneyin.'); return rows.map(normalizePayout);
 }
 
 export async function requestProducerPayout(code: string, amountMinor: number, note?: string | null) {

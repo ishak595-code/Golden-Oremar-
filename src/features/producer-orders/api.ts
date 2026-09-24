@@ -290,7 +290,7 @@ export async function listProducerOrders(scope: ProducerOrderScope = 'open', lim
     p_offset: offset,
   });
   const payload = unwrap<unknown>(data, error);
-  if (!isRecord(payload) || !Array.isArray(payload.items) || payload.items.length > limit) throw new Error('Satıcı sipariş listesi sunucudan doğrulanamadı.');
+  if (!isRecord(payload) || !Array.isArray(payload.items) || payload.items.length > limit) throw new Error('Satıcı sipariş listesi şu anda yüklenemedi. Lütfen tekrar deneyin.');
   const normalizedScope = requiredText(payload.scope, 'Sipariş filtre cevabı', 20);
   if (normalizedScope !== scope) throw new Error('Sipariş filtre cevabı istekle eşleşmiyor.');
   const responseLimit = safeInteger(payload.limit, 'Sipariş sayfa boyutu', 1, 100);

@@ -95,7 +95,7 @@ function normalizeCampaign(value:unknown):HomeCampaign|null{
 }
 
 function normalizeExperience(value:unknown):HomeExperience{
-  if(!isRecord(value)||!isRecord(value.brand)||!isRecord(value.interface)||!isRecord(value.search)||!isRecord(value.cachePolicy)||!isRecord(value.salesReadiness)||!Array.isArray(value.categories)||!Array.isArray(value.categoryOrder)||!Array.isArray(value.sections))throw new Error('Ana sayfa deneyimi sunucudan doğrulanamadı.');
+  if(!isRecord(value)||!isRecord(value.brand)||!isRecord(value.interface)||!isRecord(value.search)||!isRecord(value.cachePolicy)||!isRecord(value.salesReadiness)||!Array.isArray(value.categories)||!Array.isArray(value.categoryOrder)||!Array.isArray(value.sections))throw new Error('Ana sayfa deneyimi şu anda yüklenemedi. Lütfen tekrar deneyin.');
   const version=integer(value.version,'Ana sayfa sözleşme sürümü',2,20);const locale=normalizeHomeLocale(value.locale);const generatedAt=dateTime(value.generatedAt,'Ana sayfa oluşturma zamanı'),updatedAt=dateTime(value.updatedAt,'Ana sayfa güncelleme zamanı');
   const categories=value.categories.map((item,index)=>normalizeCategory(item,index));if(categories.length>100)throw new Error('Ana sayfa kategori sınırı aşıldı.');
   const sections=value.sections.map((item,index)=>normalizeSection(item,index));if(sections.length>20||sections.filter(section=>!section.deferred).length>1)throw new Error('Ana sayfa ilk yükleme sınırı doğrulanamadı.');

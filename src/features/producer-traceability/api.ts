@@ -352,7 +352,7 @@ export async function setBatchCertification(batchId: string, certificationId: st
     p_enabled: enabled,
   });
   const result = unwrap<unknown>(data, error);
-  if (result !== true) throw new Error('Sertifika bağlantısı sunucudan doğrulanamadı.');
+  if (result !== true) throw new Error('Sertifika bağlantısı şu anda yüklenemedi. Lütfen tekrar deneyin.');
   return true;
 }
 

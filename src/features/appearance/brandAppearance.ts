@@ -40,7 +40,7 @@ function safeHex(value: unknown, label: string) {
 }
 
 function normalize(value: unknown): BrandAppearance {
-  if (!isRecord(value) || !isRecord(value.tokens)) throw new Error('Marka görünümü sunucudan doğrulanamadı.');
+  if (!isRecord(value) || !isRecord(value.tokens)) throw new Error('Marka görünümü şu anda yüklenemedi. Lütfen tekrar deneyin.');
   if (!isTheme(value.defaultTheme)) throw new Error('Varsayılan marka teması doğrulanamadı.');
   if (value.colorScheme !== 'light' && value.colorScheme !== 'dark') throw new Error('Marka renk şeması doğrulanamadı.');
   const defaultTheme: AppTheme = value.defaultTheme;

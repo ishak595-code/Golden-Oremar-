@@ -112,8 +112,8 @@ function optionalUuid(value: unknown, label: string) {
 }
 
 function normalizeCartSnapshot(value: unknown): CartSnapshot {
-  if (!isRecord(value)) throw new Error('Sepet sunucudan doğrulanamadı.');
-  if (!Array.isArray(value.items)) throw new Error('Sepet ürünleri sunucudan doğrulanamadı.');
+  if (!isRecord(value)) throw new Error('Sepet şu anda yüklenemedi. Lütfen tekrar deneyin.');
+  if (!Array.isArray(value.items)) throw new Error('Sepet ürünleri şu anda yüklenemedi. Lütfen tekrar deneyin.');
   if (value.items.length > 100) throw new Error('Sepette desteklenenden fazla ürün kalemi var.');
   const currency = normalizedCurrency(value.currency);
   const items = value.items.map((raw: any, index: number) => {
@@ -158,7 +158,7 @@ function normalizeCartSnapshot(value: unknown): CartSnapshot {
 }
 
 function normalizeCheckoutPreview(value: unknown): CheckoutPreview {
-  if (!isRecord(value)) throw new Error('Sipariş özeti sunucudan doğrulanamadı.');
+  if (!isRecord(value)) throw new Error('Sipariş özeti şu anda yüklenemedi. Lütfen tekrar deneyin.');
   if (typeof value.canCheckout !== 'boolean') throw new Error('Checkout uygunluk durumu doğrulanamadı.');
   if (!isRecord(value.shipping) || !isRecord(value.promotion)) throw new Error('Kargo veya kampanya özeti doğrulanamadı.');
   const blockingReason = optionalText(value.blockingReason, 200);

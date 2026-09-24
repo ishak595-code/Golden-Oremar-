@@ -145,7 +145,7 @@ function normalizeSavedAddress(value: unknown, index: number): GiftSavedAddress 
 }
 
 function normalizeGiftPreview(value: unknown, expected: { productReference: string; variantReference: string; quantity: number; countryCode: string }): GiftCheckoutPreview {
-  if (!isRecord(value) || value.previewOnly !== true) throw new Error('Hediye sipariş özeti sunucudan doğrulanamadı.');
+  if (!isRecord(value) || value.previewOnly !== true) throw new Error('Hediye sipariş özeti şu anda yüklenemedi. Lütfen tekrar deneyin.');
   if (typeof value.canCheckout !== 'boolean' || !isRecord(value.shipping) || !isRecord(value.promotion)) throw new Error('Hediye checkout durumu doğrulanamadı.');
   const quantity = safeInteger(value.quantity, 'Hediye ürün adedi', 1, 20);
   if (quantity !== expected.quantity) throw new Error('Hediye checkout adedi istekle eşleşmiyor.');
@@ -322,7 +322,7 @@ export async function createGiftOrder(input: {
     p_idempotency_key: idempotencyKey,
   });
   const result = unwrap<unknown>(data, error);
-  if (!isRecord(result) || result.ok !== true || result.gift !== true) throw new Error('Hediye siparişi sonucu sunucudan doğrulanamadı.');
+  if (!isRecord(result) || result.ok !== true || result.gift !== true) throw new Error('Hediye siparişi sonucu şu anda yüklenemedi. Lütfen tekrar deneyin.');
   const orderId = safeUuid(result.orderId, 'Sipariş kimliği');
   const orderNumber = requiredText(result.orderNumber, 'Sipariş numarası', 120);
   const status = requiredText(result.status, 'Sipariş durumu', 80);

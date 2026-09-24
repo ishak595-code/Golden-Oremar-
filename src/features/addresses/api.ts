@@ -59,7 +59,7 @@ function phone(value: unknown) {
 }
 
 function normalizeResponse(value: unknown): SavedAddressRecord {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Kaydedilen adres sunucudan doğrulanamadı.');
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Kaydedilen adres şu anda yüklenemedi. Lütfen tekrar deneyin.');
   const raw = value as Record<string, unknown>;
   if (typeof raw.is_default !== 'boolean') throw new Error('Adres varsayılan durumu doğrulanamadı.');
   return {

@@ -287,10 +287,10 @@ export async function getCustomerSessionStatus(): Promise<CustomerSessionStatus 
   const { data, error } = await supabase.rpc('customer_session_status');
   if (error) throw error;
   if (data == null) return null;
-  if (!isRecord(data)) throw new Error('Müşteri oturumu sunucudan doğrulanamadı.');
+  if (!isRecord(data)) throw new Error('Müşteri oturumu şu anda yüklenemedi. Lütfen tekrar deneyin.');
   if (data.is_authenticated !== true) return null;
   const userId = safeUserId(data.user_id);
-  if (!userId) throw new Error('Müşteri kimliği sunucudan doğrulanamadı.');
+  if (!userId) throw new Error('Müşteri kimliği şu anda yüklenemedi. Lütfen tekrar deneyin.');
   const email = normalizeEmail(data.email);
   const displayName = normalizeDisplayName(data.display_name);
   const phone = data.phone == null || String(data.phone).trim() === '' ? null : normalizePhone(data.phone) || null;
