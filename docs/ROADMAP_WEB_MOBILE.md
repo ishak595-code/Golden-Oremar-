@@ -133,14 +133,31 @@ Durum: **KOD TAMAMLANDI, CANLIDA DOĞRULANMALI** (bkz. 2.7)
 
 ### Aşama 3 — Yasal sayfalar
 
-Durum: **SIRADAKİ**
+Durum: **TASLAKLAR HAZIR, SATICI KİMLİĞİ VE AVUKAT BEKLENİYOR**
 
-- [ ] 3.1 Mesafeli satış sözleşmesi taslağı
-- [ ] 3.2 Ön bilgilendirme formu taslağı
-- [ ] 3.3 İade ve cayma hakkı
-- [ ] 3.4 KVKK aydınlatma metni
-- [ ] 3.5 Çerez politikası
-- [ ] 3.6 Ödeme adımında onay kutuları
+**ENGEL (2026-09-25):** Veritabanında satıcı kimliği yok. `legal_name` =
+"Golden Oremar" (marka adı), yasal adres / vergi dairesi / vergi no BOŞ.
+Satıcı unvanı olmadan ne mesafeli satış sözleşmesi geçerli olur ne de
+iyzico başvurusu onaylanır. Bu bir iş kararıdır, kod sorunu değildir.
+Ayrıntı: `docs/legal/taslak/README.md`.
+
+- [x] 3.1 `docs/legal/taslak/MESAFELI_SATIS_SOZLESMESI.md`
+- [x] 3.2 `docs/legal/taslak/ON_BILGILENDIRME_FORMU.md`
+- [x] 3.3 `docs/legal/taslak/IADE_VE_CAYMA.md` - gıdaya özel cayma
+      istisnaları (çabuk bozulan ve ambalajı açılan ürünler) ayrıntılı
+- [x] 3.4 `docs/legal/taslak/KVKK_AYDINLATMA_METNI.md` - şemadan çıkarılan
+      gerçek veri listesiyle. Veriler Frankfurt'ta: KVKK md. 9 yurt dışı
+      aktarımı avukata soruldu
+- [x] 3.5 `docs/legal/taslak/CEREZ_POLITIKASI.md` - kod taraması: hiç
+      izleme/reklam aracı yok, çerez yazılmıyor. Sadece zorunlu depolama,
+      bu yüzden çerez izin penceresi GEREKMİYOR
+- [ ] 3.6 Ödeme adımında onay kutusu + onaylanan sözleşme sürümünün
+      siparişle birlikte kaydedilmesi. BLOKLU: satıcı kimliği ve avukat
+- [ ] 3.7 Ürün sayfasında "cayma hakkı yoktur" etiketi. Veritabanında
+      `products.is_perishable` alanı ZATEN VAR, etiket buradan
+      beslenebilir. Ambalaj açılma istisnası için ayrı bir alan gerekebilir
+- [ ] 3.8 Taslakları statik sayfaya çevirip yayınlama (avukat onayından
+      sonra, `gizlilik-politikasi` ile aynı yapıda)
 
 **Uyarı:** Yasal metinler taslaktır. Satıcı unvanı, vergi numarası, adres,
 cayma süresi gibi kesin bilgiler içerir. **Avukat onayı olmadan yayına
@@ -148,7 +165,7 @@ alınmaz.**
 
 ### Aşama 4 — Domain ve mobil derin bağlantı
 
-Durum: bekliyor (domain bağlanmasına bağlı)
+Durum: **SIRADAKİ** (4.2-4.4 domain beklenmeden hazırlanabilir)
 
 - [ ] 4.1 `goldenoremar.com` Vercel'e bağlanır (İshak yapar)
 - [ ] 4.2 `public/.well-known/assetlinks.json` (Android App Links)
@@ -192,7 +209,13 @@ Durum: bekliyor (domain bağlanmasına bağlı)
 - [ ] Ürün fotoğraflarını yükleme
 - [ ] Authentication ayarlarında "Leaked password protection" açma
 - [ ] `goldenoremar.com` domainini Vercel'e bağlama
-- [ ] Yasal metinleri avukata okutma
+- [ ] **Satıcı tüzel kişiliğine karar ver** (mevcut aile şirketi mi,
+      yeni şirket mi) - mali müşavire danış. İsviçre ikameti ayrıca
+      değerlendirilmeli
+- [ ] Gıda işletme kayıt/onay belgesi (Tarım ve Orman Bakanlığı il
+      müdürlüğü)
+- [ ] Yasal metinleri avukata okut: `docs/legal/taslak/README.md`
+      içindeki kontrol listesiyle
 - [ ] iyzico başvurusu
 
 ---
