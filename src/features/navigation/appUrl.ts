@@ -136,6 +136,68 @@ export function parsePublicRoute(href?: string) {
   };
 }
 
+/**
+ * Hosts whose https links the native app claims and opens in-app.
+ *
+ * Deliberately an explicit allow-list. The OS only hands the app a URL it has
+ * verified the app may open, so an attacker cannot normally route an arbitrary
+ * link here - but the allow-list means that even a misconfigured intent
+ * filter, or a future custom scheme, cannot make the app treat an unrelated
+ * site's path as one of its own screens.
+ *
+ * golden-oremar.vercel.app is included so deep links work before the custom
+ * domain is connected, and keep working afterwards for anything already
+ * shared on the Vercel address.
+ */
+export const DEEP_LINK_HOSTS = new Set([
+  'goldenoremar.com',
+  'www.goldenoremar.com',
+  'golden-oremar.vercel.app',
+]);
+
+export type DeepLinkTarget =
+  | { kind: 'product'; reference: string }
+  | { kind: 'producer'; reference: string }
+  | { kind: 'category'; slug: string }
+  | { kind: 'search'; query: string }
+  | { kind: 'events'; reference: string | null }
+  | { kind: 'home' };
+
+/**
+ * Map an https link the OS opened the app with to the screen it should show.
+ *
+ * Returns null for anything that is not one of this app's public links -
+ * other hosts, non-https schemes, and the custom-scheme auth callbacks, which
+ * useAuthRecoveryCoordinator owns. Returning null rather than 'home' matters:
+ * it lets two appUrlOpen listeners coexist without one hijacking the other's
+ * URLs.
+ *
+ * Account, cart, orders and admin paths are intentionally not honoured from a
+ * link. A tapped link should never drop someone into a signed-in screen, and
+ * it keeps the deep-link surface limited to public, shareable pages.
+ */
+export function resolveDeepLinkTarget(rawUrl: unknown): DeepLinkTarget | null {
+  const raw = typeof rawUrl === 'string' ? rawUrl.trim() : '';
+  if (!raw) return null;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' || !DEEP_LINK_HOSTS.has(url.hostname.toLowerCase())) return null;
+
+  const route = parsePublicRoute(url.toString());
+  if (route.tab === 'product-detail' && route.productReference) return { kind: 'product', reference: route.productReference };
+  if (route.tab === 'producer-profile' && route.producerReference) return { kind: 'producer', reference: route.producerReference };
+  if (route.tab === 'search-results') {
+    if (route.categorySlug && !route.query) return { kind: 'category', slug: route.categorySlug };
+    if (route.query) return { kind: 'search', query: route.query };
+  }
+  if (route.tab === 'events') return { kind: 'events', reference: route.eventReference };
+  return { kind: 'home' };
+}
+
 export function resolveAppActionTarget(actionUrl: unknown, metadata: Record<string, unknown> = {}, baseHref?: string): AppActionTarget {
   const conversationId = cleanPublicReference(metadata.conversationId);
   if (conversationId) return { kind: 'account', view: `messages:${conversationId}` };

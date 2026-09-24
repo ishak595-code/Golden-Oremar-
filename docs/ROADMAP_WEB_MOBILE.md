@@ -165,15 +165,35 @@ alınmaz.**
 
 ### Aşama 4 — Domain ve mobil derin bağlantı
 
-Durum: **SIRADAKİ** (4.2-4.4 domain beklenmeden hazırlanabilir)
+Durum: **KOD TAMAMLANDI (Android), İSHAK'IN DEĞERLERİ BEKLENİYOR**
 
 - [ ] 4.1 `goldenoremar.com` Vercel'e bağlanır (İshak yapar)
-- [ ] 4.2 `public/.well-known/assetlinks.json` (Android App Links)
-- [ ] 4.3 `public/.well-known/apple-app-site-association` (iOS)
-- [ ] 4.4 Capacitor tarafında derin bağlantı dinleyicisi
-- [ ] 4.5 Linkten ürüne atlama testi
+- [x] 4.2 `assetlinks.json` derleme anında `scripts/write-well-known.mjs`
+      tarafından `ANDROID_APP_SHA256_FINGERPRINTS` ortam değişkeninden
+      üretilir. Değişken yoksa dosya yazılmaz, linkler tarayıcıda açılır
+- [x] 4.3 `apple-app-site-association` aynı şekilde `APPLE_TEAM_ID`
+      değişkeninden. `vercel.json` Content-Type başlığını ayarlar
+- [x] 4.4 `useNativeDeepLinks` (açıkken + soğuk başlatma, tekrar
+      engelleme). Android `AndroidManifest.xml` autoVerify filtresi
+      eklendi. Mevcut auth dinleyicisi (`useAuthRecoveryCoordinator`)
+      bozulmadı: `resolveDeepLinkTarget` auth URL'leri için null döner
+- [ ] 4.4b iOS Associated Domains entitlement'ı. Apple Developer hesabı ve
+      Xcode gerekir; `pbxproj` elle düzenlenmedi (risk)
+- [ ] 4.5 Cihazda test: WhatsApp'tan ürün linkine tıkla, uygulama o ürünü
+      açmalı. Sandbox'tan yapılamaz
+
+Güvenlik kararları:
+
+- Sadece `DEEP_LINK_HOSTS` içindeki https alan adları kabul edilir
+- Link ile hesap, sepet, sipariş veya yönetim ekranı ASLA açılmaz, ana
+  sayfaya düşer. Dokunulan bir link kimseyi oturum açılmış ekrana atmamalı
+- Android manifest, Apple dosyası ve `PUBLIC_PATH` aynı yolları
+  tanımlamak zorunda; `public-route-contract-audit` bunu kilitler
+  (negatif kontrolle doğrulandı)
 
 ### Aşama 5 — Doğrulama
+
+Durum: **SIRADAKİ** (cihaz ve canlı erişim gerektiren testler)
 
 - [x] 5.1 Misafir sepeti yok, birleştirme gerekmiyor (bkz. Aşama 1)
 - [ ] 5.2 Web'de ekle, mobilde gör testi
@@ -209,6 +229,11 @@ Durum: **SIRADAKİ** (4.2-4.4 domain beklenmeden hazırlanabilir)
 - [ ] Ürün fotoğraflarını yükleme
 - [ ] Authentication ayarlarında "Leaked password protection" açma
 - [ ] `goldenoremar.com` domainini Vercel'e bağlama
+- [ ] Vercel ortam değişkeni `ANDROID_APP_SHA256_FINGERPRINTS`: Play
+      Console > Kurulum > Uygulama bütünlüğü içindeki uygulama imzalama
+      anahtarı VE yükleme anahtarının SHA-256 parmak izleri, virgülle
+- [ ] Vercel ortam değişkeni `APPLE_TEAM_ID` (Apple Developer hesabı)
+- [ ] Değişkenlerden sonra yeniden yayınla (redeploy)
 - [ ] **Satıcı tüzel kişiliğine karar ver** (mevcut aile şirketi mi,
       yeni şirket mi) - mali müşavire danış. İsviçre ikameti ayrıca
       değerlendirilmeli

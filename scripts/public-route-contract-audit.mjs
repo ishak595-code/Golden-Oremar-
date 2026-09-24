@@ -71,6 +71,35 @@ try { nav.buildProductUrl('../../admin', BASE); } catch { rejected = true; }
 check(rejected, 'Path-traversal references must be rejected when building addresses.');
 check(route(`${BASE}urun/%3Cscript%3E`).productReference === null, 'Encoded markup in a path must not become a product reference.');
 
+// 6. Native deep links: only this app's public https links are claimed.
+const deep = (url) => nav.resolveDeepLinkTarget(url);
+let d = deep('https://goldenoremar.com/urun/hakkari-bali');
+check(d?.kind === 'product' && d.reference === 'hakkari-bali', 'A product link on the custom domain must open that product.');
+check(deep('https://www.goldenoremar.com/uretici/oremar')?.kind === 'producer', 'The www host must be accepted.');
+check(deep('https://golden-oremar.vercel.app/kategori/bal')?.kind === 'category', 'The Vercel host must be accepted, so links work before the domain is connected.');
+check(deep('https://goldenoremar.com/ara?q=bal')?.kind === 'search', 'A search link must open search.');
+check(deep('https://evil.example/urun/hakkari-bali') === null, 'Links on foreign hosts must be ignored.');
+check(deep('http://goldenoremar.com/urun/hakkari-bali') === null, 'Non-https links must be ignored.');
+check(deep('com.goldenoremar.app://auth/callback?code=x') === null, 'Auth callbacks must be left to the auth listener, not claimed here.');
+check(deep('https://goldenoremar.com/?tab=account&view=orders')?.kind === 'home', 'A link must never drop someone into a signed-in account screen.');
+check(deep('https://goldenoremar.com/admin/users')?.kind === 'home', 'A link must never open the admin console.');
+check(deep('not a url') === null && deep('') === null, 'Malformed input must be ignored.');
+
+// 7. The three places that define claimed links must agree, or deep links
+//    break silently: a host or path added to one but not the others either
+//    fails OS verification or opens the browser instead of the app.
+const manifest = fs.readFileSync('android/app/src/main/AndroidManifest.xml', 'utf8');
+const appLinkFilter = manifest.match(/<intent-filter android:autoVerify="true">([\s\S]*?)<\/intent-filter>/)?.[1] || '';
+const manifestHosts = new Set([...appLinkFilter.matchAll(/android:host="([^"]+)"/g)].map(m => m[1]));
+const manifestPaths = new Set([...appLinkFilter.matchAll(/android:pathPrefix="([^"]+)"/g)].map(m => m[1]));
+const codeHosts = [...nav.DEEP_LINK_HOSTS];
+check(codeHosts.length === manifestHosts.size && codeHosts.every(h => manifestHosts.has(h)), 'DEEP_LINK_HOSTS must match the hosts in the Android App Links intent filter.');
+const wellKnown = fs.readFileSync('scripts/write-well-known.mjs', 'utf8');
+const applePaths = new Set([...wellKnown.matchAll(/'(\/[a-z]+\/)\*'/g)].map(m => m[1]));
+const routedPaths = new Set(Object.values(nav.PUBLIC_PATH).filter(segment => segment !== nav.PUBLIC_PATH.search).map(segment => `/${segment}/`));
+check([...routedPaths].every(p => manifestPaths.has(p)) && manifestPaths.size === routedPaths.size, 'Android pathPrefix entries must match the public detail paths in PUBLIC_PATH.');
+check([...routedPaths].every(p => applePaths.has(p)) && applePaths.size === routedPaths.size, 'Apple association paths must match the public detail paths in PUBLIC_PATH.');
+
 fs.rmSync(path.dirname(tempFile), { recursive: true, force: true });
 
 if (failures.length) {
@@ -78,4 +107,4 @@ if (failures.length) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exit(1);
 }
-console.log('Public route contract audit passed: canonical Turkish paths, round-trip parsing, dotted slugs, legacy link compatibility and hostile-reference rejection are locked in.');
+console.log('Public route contract audit passed: canonical Turkish paths, round-trip parsing, dotted slugs, legacy link compatibility, hostile-reference rejection, native deep-link scoping and manifest/association consistency are locked in.');

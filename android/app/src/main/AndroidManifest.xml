@@ -33,6 +33,30 @@
                     android:pathPrefix="/callback" />
             </intent-filter>
 
+            <!-- Android App Links: public product, producer, category and event
+                 pages open in the app instead of the browser.
+                 autoVerify asks Android to confirm ownership through
+                 https://<host>/.well-known/assetlinks.json. Until that file
+                 carries this app's signing-certificate fingerprint, Android
+                 treats these as ordinary links and opens the browser, so the
+                 filter is safe to ship before verification is set up.
+                 Data elements combine as scheme x host x path, so every listed
+                 host accepts every listed path prefix. Only public, shareable
+                 paths are claimed; account, cart and admin are left to the
+                 browser on purpose. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="goldenoremar.com" />
+                <data android:scheme="https" android:host="www.goldenoremar.com" />
+                <data android:scheme="https" android:host="golden-oremar.vercel.app" />
+                <data android:pathPrefix="/urun/" />
+                <data android:pathPrefix="/uretici/" />
+                <data android:pathPrefix="/kategori/" />
+                <data android:pathPrefix="/etkinlikler/" />
+            </intent-filter>
+
         </activity>
 
         <provider

@@ -17,6 +17,7 @@ import{useConnectivity}from'./features/resilience/useConnectivity';
 import{subscribeNativePushActions}from'./features/notifications/nativePush';
 import{buildProductUrl,buildProducerUrl,buildSearchUrl,parsePublicRoute,resolveAppActionTarget}from'./features/navigation/appUrl';
 import HomeSection from'./features/home/HomeSection';
+import{useNativeDeepLinks}from'./features/navigation/useNativeDeepLinks';
 
 const AdminPage=React.lazy(()=>import('./pages/AdminPage').then(module=>({default:module.AdminPage})));
 const AccountCenter=React.lazy(()=>import('./features/account/AccountCenter'));
@@ -122,6 +123,16 @@ function AppContent(){
   setSearchQuery(normalized);setSearchCategorySlug(categorySlug);setSearchProducerId(producerId);setIsSearchFocused(false);
   pushRoute(buildSearchUrl({query:normalized,categorySlug,producerId}),'search-results');
  },[pushRoute]);
+ // Links opened from outside the app (WhatsApp, SMS, e-mail) land on the
+ // matching public screen. Native only; on the web the browser loads the page.
+ useNativeDeepLinks(target=>{
+  if(target.kind==='product')openProduct(target.reference);
+  else if(target.kind==='producer')openProducer(target.reference);
+  else if(target.kind==='category')openSearch('',target.slug);
+  else if(target.kind==='search')openSearch(target.query);
+  else if(target.kind==='events')navigateToTab('events');
+  else navigateToTab('home');
+ });
 
  useEffect(()=>{
   const applyLocation=(event:PopStateEvent)=>{
