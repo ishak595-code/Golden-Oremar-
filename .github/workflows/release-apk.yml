@@ -5,6 +5,17 @@ on:
     branches:
       - integration/product-story-media-ordering-2026-09-03
       - main
+    paths-ignore:
+      # These never change what the running app does, so they must not spend
+      # live-database quota. The E2E suite runs against the production
+      # Supabase project, so every run consumes real egress. Migration files in
+      # this repo are the schema record; the live database is changed through
+      # apply_migration, not by committing a file, so a migration-only commit
+      # cannot alter what the tests would observe.
+      - 'docs/**'
+      - 'supabase/migrations/**'
+      - 'scripts/generate-schema-ddl.sql'
+      - '**/*.md'
   workflow_dispatch:
 
 permissions:
