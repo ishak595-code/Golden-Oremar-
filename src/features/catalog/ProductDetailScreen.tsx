@@ -174,7 +174,12 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
     <div className="group relative">
      <ProductImageWithSkeleton src={selectedImageUrl} alt={safeText(selectedImage.alt,300)||detailName} aspectRatio="square" objectFit="contain" priority className="rounded-3xl border-2 border-brand-border shadow-sm"/>
      {images.length>1?<div className="absolute left-3 top-3 rounded-full border-2 border-white/80 bg-black/60 px-3 py-1 text-xs font-bold text-white shadow-lg backdrop-blur-sm dark:border-gray-700">{selectedImageIndex+1} / {images.length}</div>:null}
-     <button type="button" onClick={()=>setImageViewerOpen(true)} aria-label="Görseli büyüt" className="absolute bottom-3 right-3 grid min-h-11 min-w-11 place-items-center rounded-full border-2 border-white/80 bg-black/60 text-white shadow-lg backdrop-blur-sm opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100 dark:border-gray-700"><ZoomIn aria-hidden="true" className="h-5 w-5"/></button>
+     {/* The whole image is the tap target for the fullscreen viewer. The
+          previous control was a small corner button hidden behind
+          group-hover, so on a touchscreen - where there is no hover - it was
+          invisible and customers had no way to discover that the photo could
+          be enlarged. The icon stays as a permanent visual cue. */}
+     <button type="button" onClick={()=>setImageViewerOpen(true)} aria-label={`${detailName} görselini tam ekran aç`} className="absolute inset-0 rounded-3xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-gold"><span aria-hidden="true" className="absolute bottom-3 right-3 grid min-h-11 min-w-11 place-items-center rounded-full border-2 border-white/80 bg-black/60 text-white shadow-lg backdrop-blur-sm dark:border-gray-700"><ZoomIn className="h-5 w-5"/></span></button>
     </div>
     {images.length>1?<div className="hide-scrollbar mt-3 flex gap-2 overflow-x-auto pb-1">{images.slice(0,12).map((image:any,index:number)=>{const src=publicCatalogUrl(image?.path);const isSelected=selectedImage?.path===image.path;return src?<button type="button" key={`${safeText(image.path,1200)}:${index}`} onClick={()=>setSelectedImagePath(safeText(image.path,1200))} aria-label={`${detailName} görseli ${index+1}`} aria-pressed={isSelected} className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 bg-brand-card transition ${isSelected?'border-brand-gold shadow-lg ring-2 ring-brand-gold/30':'border-brand-border hover:border-brand-gold/50'}`}><img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain p-1" onError={e=>{const img=e.currentTarget;if(img.dataset.fallback)return;img.dataset.fallback='1';img.src='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"%3E%3Cpath d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"%3E%3C/path%3E%3Cpolyline points="9 22 9 12 15 12 15 22"%3E%3C/polyline%3E%3C/svg%3E';img.style.padding='12px';img.style.opacity='0.3';}}/>{isSelected?<div className="absolute inset-0 rounded-xl ring-2 ring-inset ring-brand-gold" aria-hidden="true"/>:null}</button>:null;})}</div>:null}
    </section>
@@ -213,9 +218,14 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    </section>
   </div>
 
-  <section aria-labelledby="product-story-title" className="mt-8 overflow-hidden rounded-3xl border border-brand-gold/30 bg-gradient-to-br from-brand-gold/10 via-brand-card to-brand-card shadow-sm">
-   <div className="p-5 sm:p-7"><div className="text-xs font-black uppercase tracking-[0.16em] text-brand-gold">{experience.kicker}</div><h2 id="product-story-title" className="mt-2 text-2xl font-black text-brand-green dark:text-brand-gold">Ürün Hikâyesi</h2><p className="mt-4 whitespace-pre-wrap text-[15px] leading-8 text-brand-muted">{experience.story}</p>{safeText(detail.origin,240)?<div className="mt-5 flex items-center gap-2 border-t border-brand-gold/20 pt-4 text-sm font-black text-brand-text"><MapPin aria-hidden="true" className="h-4 w-4 text-brand-gold"/>{safeText(detail.origin,240)}</div>:null}</div>
-  </section>
+  {/* Collapsed by default, matching the product specification sections below
+      it. Always-open, the story pushed the purchase controls and every other
+      section far down the screen on a phone. The heading lives in the summary
+      so it stays visible and announced while collapsed. */}
+  <details className="customer-disclosure mt-8 overflow-hidden rounded-3xl border border-brand-gold/30 bg-gradient-to-br from-brand-gold/10 via-brand-card to-brand-card shadow-sm">
+   <summary id="product-story-title" className="text-lg font-black text-brand-green dark:text-brand-gold">Ürün Hikâyesi</summary>
+   <div className="p-5 sm:p-7"><div className="text-xs font-black uppercase tracking-[0.16em] text-brand-gold">{experience.kicker}</div><p className="mt-4 whitespace-pre-wrap text-[15px] leading-8 text-brand-muted">{experience.story}</p>{safeText(detail.origin,240)?<div className="mt-5 flex items-center gap-2 border-t border-brand-gold/20 pt-4 text-sm font-black text-brand-text"><MapPin aria-hidden="true" className="h-4 w-4 text-brand-gold"/>{safeText(detail.origin,240)}</div>:null}</div>
+  </details>
 
   <div className="mt-6 space-y-3">
    {featureItems.length?<Accordion title="Ürün Özellikleri"><ul className="grid gap-2 sm:grid-cols-2">{featureItems.map((item,index)=><li key={`${item}-${index}`} className="rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">{item}</li>)}</ul></Accordion>:null}
