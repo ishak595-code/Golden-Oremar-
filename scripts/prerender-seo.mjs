@@ -199,8 +199,22 @@ async function main() {
   const model = await loadSeoModel();
   log(`origin ${origin}`);
 
-  // Home page: adds og:image, canonical and Organization data the template lacks.
-  fs.writeFileSync(templatePath, renderPage(template, model.renderHeadTags(model.homeSeo(origin, FALLBACK_IMAGE))));
+  // Home page: adds og:image and Organization data the template lacks.
+  //
+  // It deliberately carries NO canonical and NO og:url. index.html is not only
+  // the home page: the vercel.json catch-all serves it for every path that has
+  // no prerendered file - a product added since the last deploy, or every
+  // product while the catalogue fetch is failing. A home canonical here would
+  // tell crawlers that each of those product URLs is really the home page,
+  // inviting Google to fold them into it. Without a canonical, the initial
+  // HTML makes no claim, and the app sets the correct canonical once it runs
+  // (applySeo / App.tsx). Serving the fallback from a separate file was
+  // considered and rejected: if that file were ever missing, every clean URL
+  // would 404, which is exactly the outage fixed in 17a993c.
+  const homeHead = model.renderHeadTags(model.homeSeo(origin, FALLBACK_IMAGE))
+    .replace(/<link rel="canonical"[^>]*>\s*/g, '')
+    .replace(/<meta property="og:url"[^>]*>\s*/g, '');
+  fs.writeFileSync(templatePath, renderPage(template, homeHead));
   const urls = [`${origin}/`];
 
   let data;

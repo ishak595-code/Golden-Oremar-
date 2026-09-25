@@ -122,7 +122,21 @@ Durum: **KOD TAMAMLANDI, CANLIDA DOĞRULANMALI** (bkz. 2.7)
       başlık hiç sunulmuyordu
 - [x] 2.5 `sitemap.xml` ve `robots.txt` derleme anında üretilir
 - [x] 2.6 InStock / OutOfStock / PreOrder doğru eşleniyor
-- [ ] 2.7 **CANLIDA DOĞRULA** (sandbox Supabase'e ve Vercel'e erişemiyor):
+- [x] 2.7a Canlı doğrulama yapıldı (2026-09-25, Vercel MCP ile):
+      tüm yayınlar READY; `/gizlilik-politikasi` cleanUrls sonrası 200;
+      ana sayfada og:image ve Organization şeması canlıda var.
+      **Sitemap sadece 1 URL**: derleme log'unda
+      `get_public_home_catalog_v3 returned HTTP 402`. Supabase kotası hâlâ
+      kısıtlı. Pro'ya geçince YENİDEN YAYINLA, ürün sayfaları o zaman oluşur
+- [x] 2.7b **CANLIDA BULUNAN KRİTİK HATA**: her temiz adres 404 veriyordu.
+      `cleanUrls` açıkken catch-all hedefi `/index.html` artık geçerli
+      değil. `/` yapıldı, canlıda 200 doğrulandı (commit 17a993c).
+      vite preview bu hatayı YAKALAYAMAZ: Vercel'in cleanUrls davranışını
+      taklit etmiyor. Yerel test yetmez, canlıda Vercel MCP ile doğrula
+- [x] 2.7c Ana sayfa HTML'inden canonical ve og:url kaldırıldı. index.html
+      tüm hazırlanmamış adreslerin yedeği olduğu için, ana sayfa canonical'ı
+      her ürün adresine "ben ana sayfayım" dedirtiyordu
+- [ ] 2.7 Kota açılıp yeniden yayınlandıktan sonra tekrar doğrula (sandbox Supabase'e ve Vercel'e erişemiyor):
       a) `golden-oremar.vercel.app/sitemap.xml` 40+ URL içeriyor mu
          (sadece 1 URL varsa derleme sırasında Supabase'e ulaşılamamış:
          Vercel build log'unda `[seo-prerender] WARNING` ara)
@@ -193,7 +207,15 @@ Güvenlik kararları:
 
 ### Aşama 5 — Doğrulama
 
-Durum: **SIRADAKİ** (cihaz ve canlı erişim gerektiren testler)
+Durum: **DEVAM EDİYOR**
+
+**EN ÖNEMLİ BULGU (2026-09-25):** Supabase public API'si HTTP 402 döndürüyor.
+Uygulamanın kendisi de bu API'yi kullanıyor, yani şu an müşteriler ürünleri
+göremiyor. Kod tarafında yapılacak bir şey yok: Pro plan veya aylık sıfırlama.
+
+Canlı doğrulama aracı: Vercel MCP (`web_fetch_vercel_url` canlı sayfayı,
+`list_deployment_events` derleme log'unu okur). Sandbox Supabase'e ve
+vercel.app'e doğrudan erişemez ama bu araçla erişilebilir.
 
 - [x] 5.1 Misafir sepeti yok, birleştirme gerekmiyor (bkz. Aşama 1)
 - [ ] 5.2 Web'de ekle, mobilde gör testi
