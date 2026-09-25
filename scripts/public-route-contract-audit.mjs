@@ -100,6 +100,17 @@ const routedPaths = new Set(Object.values(nav.PUBLIC_PATH).filter(segment => seg
 check([...routedPaths].every(p => manifestPaths.has(p)) && manifestPaths.size === routedPaths.size, 'Android pathPrefix entries must match the public detail paths in PUBLIC_PATH.');
 check([...routedPaths].every(p => applePaths.has(p)) && applePaths.size === routedPaths.size, 'Apple association paths must match the public detail paths in PUBLIC_PATH.');
 
+// 8. Hosting config. vite preview resolves a SPA fallback differently from
+//    Vercel, so this failure passed every local test and shipped: with
+//    cleanUrls enabled, index.html is addressed as "/", and a catch-all whose
+//    destination is "/index.html" no longer resolves - every clean product URL
+//    returned 404 in production. Lock the shape so it cannot regress.
+const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
+const catchAll = (vercel.rewrites || []).find(rule => rule.source === '/(.*)');
+check(Boolean(catchAll), 'vercel.json must keep a /(.*) SPA fallback so clean URLs do not 404 on direct load or refresh.');
+if (catchAll && vercel.cleanUrls) check(!/\.html$/i.test(catchAll.destination), 'With cleanUrls enabled the SPA fallback must target "/", not an .html path, or clean URLs 404 in production.');
+check(vercel.rewrites?.[vercel.rewrites.length - 1]?.source === '/(.*)', 'The SPA fallback must be the last rewrite so explicit rules above it still apply.');
+
 fs.rmSync(path.dirname(tempFile), { recursive: true, force: true });
 
 if (failures.length) {
