@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { compressImageForUpload, CATEGORY_IMAGE_COMPRESSION } from '../lib/compressImage';
 
 export type AdminCategory = {
   id: string;
@@ -211,7 +212,8 @@ const CATEGORY_IMAGE_EXT: Record<string, string> = {
  * The returned value is an object key, never a URL. Callers render it through
  * categoryImageUrl.
  */
-export async function uploadCategoryImage(file: File) {
+export async function uploadCategoryImage(input: File) {
+  const file = await compressImageForUpload(input, CATEGORY_IMAGE_COMPRESSION);
   if (!(file instanceof File) || !CATEGORY_IMAGE_TYPES.has(file.type)) {
     throw new Error('Kategori görseli JPEG, PNG, WebP veya AVIF olmalıdır.');
   }

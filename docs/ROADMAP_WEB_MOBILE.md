@@ -244,9 +244,55 @@ vercel.app'e doğrudan erişemez ama bu araçla erişilebilir.
   SPA'ya düşer, uygulama başlığı canlı veriyle günceller. Bu kabul edilen
   bir sınırdır; çözüm periyodik yeniden derlemedir (Vercel deploy hook).
 
+## Kota (egress) araştırması - 2026-09-25
+
+İshak'ın haklı itirazı: "Pro'ya geçsem de, kotayı hızla tüketen şey
+bulunmazsa hiçbir şey değişmez." Önceki "E2E testleri bitirdi" açıklaması
+ÖLÇÜLMEMİŞ bir tahmindi. Ölçüm sonuçları:
+
+- Hata türü `exceed_cached_egress_quota`: CDN'den sunulan DEPOLAMA trafiği,
+  veritabanı API'si değil.
+- Depolamada şu an 11 dosya, toplam 12 KB. Müşterinin gördüğü iki marka
+  görseli 1 yıl önbellekli (doğru). 9 dosya E2E testlerinin canlıya
+  yüklediği 21-68 baytlık test görseli.
+- Son 24 saatte API'ye sadece 171 istek. Şu an kotayı yiyen bir döngü YOK.
+- Videolu ürün yok.
+- **Geçmişte kotayı neyin bitirdiği bu verilerden bulunamaz**: ücretsiz
+  planda log saklama 24 saat. Kesin cevap Supabase panelinde:
+  Organization > Usage > Cached Egress günlük grafiği.
+
+### Asıl gelecek tehdidi bulundu ve kapatıldı
+
+Telefon fotoğrafları 3-8 MB ve yükleme yolları onları HİÇ küçültmüyordu.
+42 ürüne fotoğraf yüklenince her ürün görüntüleme megabaytlar indirecekti:
+5 GB yaklaşık 1000 görüntülemede, Pro'nun 250 GB'ı yaklaşık 50.000'de
+biterdi. "Hızla tüketen şey" bu olacaktı.
+
+Çözüm `src/lib/compressImage.ts`: yükleme öncesi tarayıcıda WebP'ye
+çevirip küçültür. Tipik sonuç 200-400 KB (15-30 kat küçük). Resmi mağaza,
+üretici ve kategori yüklemelerine bağlandı. Mağaza markası zaten canvas ile
+küçültüyordu, dokunulmadı.
+
+**KRİTİK KURAL:** `catalog-media-verify` genişlik VE yüksekliğin en az 1200
+piksel olmasını şart koşar (`MIN_PRODUCT_IMAGE_EDGE`). İlk tasarım sadece
+uzun kenarı küçültüyordu ve 9:16 dikey fotoğrafı 1125 piksele indirip
+sunucuya reddettirecekti. Küçültme artık kısa kenar 1200'e ulaşınca durur.
+`media-upload-contract-audit.mjs` bu iki değeri birbirine kilitler; sunucu
+tabanı değişip araç değişmezse derleme kırılır.
+
+### Hâlâ açık
+
+- [ ] Video: katalog 50 MB'a kadar video kabul ediyor ve tarayıcıda
+      sıkıştırılamıyor. Video eklenirse kotayı en hızlı bitirecek şey bu.
+      Öneri: videoları kısa tut ve `preload="none"` ile yalnızca
+      dokununca yükle
+- [ ] E2E testleri canlı veritabanında test kullanıcısı oluşturup dosya
+      yüklüyor (9 artık dosya). Doğru çözüm ayrı bir test Supabase projesi
+
 ## İshak'ın yapması gerekenler (kod dışı)
 
-- [ ] Supabase Pro plana geçiş (kota kısıtlaması)
+- [ ] Supabase Pro plana geçiş (kota kısıtlaması) - ÖNCE panelden
+      Usage > Cached Egress grafiğine bak, hangi gün patladığını gör
 - [ ] Uygulama önbelleğini temizleme veya yeniden kurma
 - [ ] Ürün fotoğraflarını yükleme
 - [ ] Authentication ayarlarında "Leaked password protection" açma
