@@ -73,6 +73,18 @@ for (const [label, bad] of [
   ['YouTube page without an id', 'https://www.youtube.com/@goldenoremar'],
   ['empty', ''],
 ]) check(video.parseVideoSource(bad) === null, `${label} must never become a playable video source.`);
+// Admin input normalisation must produce exactly what the server accepts
+// (private.is_youtube_video_url_v1), so a link accepted in the form is never
+// rejected on save.
+const serverPattern = /^https:\/\/((www|m)\.)?(youtube\.com\/(watch\?v=|shorts\/|embed\/|live\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)[A-Za-z0-9_-]{11}([?&#/].*)?$/i;
+for (const pasted of [`youtube.com/watch?v=${ID}`, `https://youtu.be/${ID}?si=share`, `www.youtube.com/shorts/${ID}`, `m.youtube.com/watch?v=${ID}&t=5`]) {
+  const out = video.normalizeYoutubeInput(pasted);
+  check(out !== null && serverPattern.test(out), `Pasted ${pasted} must normalise to a link the server accepts.`);
+}
+check(!/si=/.test(video.normalizeYoutubeInput(`https://youtu.be/${ID}?si=share`) || ''), 'Share-sheet tracking parameters must be stripped.');
+for (const bad of ['https://evil.com/watch?v=' + ID, 'javascript:alert(1)', 'youtube.com/@kanal', '']) {
+  check(video.normalizeYoutubeInput(bad) === null, `${JSON.stringify(bad)} must not normalise to a YouTube link.`);
+}
 check(video.youtubeEmbedUrl(ID).startsWith('https://www.youtube-nocookie.com/embed/'), 'Embeds must use the privacy-enhanced youtube-nocookie.com domain.');
 
 for (const source of ['src/admin/officialStoreProductApi.ts', 'src/features/producer-products/api.ts', 'src/admin/categoryAdminApi.ts']) {

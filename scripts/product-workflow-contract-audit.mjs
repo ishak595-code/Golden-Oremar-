@@ -53,7 +53,15 @@ if(admin){
  requirePattern(admin,/!savedAfterPreview\|\|!draft\.reference/,'Official product publish action must stay locked until a saved previewed draft exists.');
  requirePattern(admin,/OfficialProductCertificateVerification/,'Certified-organic evidence verification must stay embedded in the official product publish step.');
  requirePattern(admin,/draft\.organicClaim==='certified_organic'&&!certificateReady/,'Certified-organic publication must remain blocked until certificate evidence is verified.');
- forbid(admin,/type=["']url["']|https?:\/\/|videoUrl|imageUrl/,'Official product wizard must not reintroduce link-based media fields.');
+ // Narrowed 2026-09-25 at the operator's request. The official wizard may carry
+ // exactly one link field: the YouTube video link, validated client-side by
+ // normalizeYoutubeInput and server-side by private.is_youtube_video_url_v1
+ // (public.management_upsert_product_v2). Images and uploaded video remain
+ // upload-only, and producers keep no link fields at all.
+ forbid(admin,/type=["']url["']|https?:\/\/|videoUrl|imageUrl/,'Official product wizard must not reintroduce generic link-based media fields.');
+ requirePattern(admin,/id="official-youtube-link"/,'The only permitted link field in the official wizard is the YouTube video link.');
+ requirePattern(admin,/normalizeYoutubeInput\(/,'The official YouTube link must be validated before it reaches the draft.');
+ requirePattern(admin,/onYoutubeLink=\{url=>\{setVideoFile\(null\)/,'A YouTube link must replace any pending uploaded video, never be silently overridden by it.');
 }
 
 const adminApi=file('src/admin/officialStoreProductApi.ts');

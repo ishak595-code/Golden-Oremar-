@@ -334,24 +334,24 @@ taşınır. Erken taşıma, olmayan bir sorun için karmaşıklık eklemek olur.
       (dosya seçici / kamera yüklemesi korunur), `onCreate` içinde kurulur.
       Yön zorla yataya çevrilmez (Shorts dikey), geri hareketi tam ekrandan
       çıkar. CİHAZDA TEST EDİLMELİ
-- [ ] **SIRADAKİ: yönetim paneline YouTube linki alanı - İshak onayladı.**
-      Engel iki katmanlı: (1) `product-workflow-contract-audit` arayüzde
-      link alanını yasaklıyor, (2) `public.management_upsert_product_v2`
-      veritabanında `verified_product_video_path_v1(video) is null` ise
-      `stored_product_video_required` fırlatıyor. SADECE ARAYÜZ DEĞİŞİRSE
-      KAYDETME SUNUCUDA REDDEDİLİR. Yapılacak: yazma fonksiyonu yalnız
-      resmi mağaza için ve yalnız v10'daki YouTube desenine uyan linki
-      kabul edecek şekilde değiştirilir (dosya yolu kuralı aynen kalır),
-      migration md5 ile repoya alınır, sonra arayüz alanı eklenir ve
-      denetim "link yok" yerine "sadece YouTube, sadece resmi mağaza"
-      olarak daraltılır. ESKİ NOT (karar bekliyor):
-      `product-workflow-contract-audit` resmi mağaza sihirbazında da link
-      tabanlı medya alanını BİLİNÇLİ olarak yasaklıyor
-      (`forbid(admin, /type="url"|https?:\/\/|videoUrl|imageUrl/)`).
-      Kuralı kaldırmak İshak'ın kararı. Kaldırılırsa: sadece YouTube
-      kabul eden, sunucuda doğrulanan bir alan eklenir; denetim "link yok"
-      yerine "sadece YouTube linki, sadece resmi mağaza" olarak
-      daraltılır. Veritabanı tarafı (v10) buna zaten hazır
+- [x] **Yönetim paneline YouTube linki alanı** (İshak onayladı, 2026-09-25).
+      Veritabanı: `public.management_upsert_product_v2` artık YouTube linkini
+      kabul ediyor; desen tek yerde (`private.is_youtube_video_url_v1`), hem
+      kaydetme hem v10 aynı fonksiyonu kullanıyor. `producer_upsert_product_v2`
+      DOKUNULMADI: üreticiler sadece yüklenmiş video. Arayüz: tek izinli link
+      alanı `official-youtube-link`; `normalizeYoutubeInput` yapıştırılan her
+      biçimi (https'siz, youtu.be, Shorts, ?si= izleme parametreli) sunucunun
+      kabul edeceği biçime çevirir, geçersizi kaydetmeden önce reddeder,
+      geçerliyse önizleme gösterir. Link girilince bekleyen dosya temizlenir
+      (kaydetme dosyayı linke tercih ettiği için sessizce ezilmesin).
+      Denetim KALDIRILMADI, DARALTILDI; negatif kontrolle doğrulandı.
+      Canlıda test: yetki kapısı işlem içinde taklit edilip geri alındı.
+      YouTube kaydedildi; yabancı link ve doğrulanmamış dosya reddedildi
+- [ ] **YÖNETİCİ İKİ ADIMLI DOĞRULAMA:** test sırasında görüldü ki hiçbir
+      yöneticinin doğrulanmış TOTP'si yok. `private.has_permission` personel
+      için TOTP + aal2 şart koşuyor. İshak yönetim panelinde ürün kaydetmek
+      için bir doğrulayıcı uygulama (Google Authenticator vb.) kurmalı;
+      uygulamadaki `StaffMfaGate` bu kurulumu yönetir. Tasarım gereği
 - [ ] **Medya altyapısı: Cloudflare R2 (KÖKTEN ÇÖZÜM, hesap bekliyor).**
       Kayıt: https://dash.cloudflare.com/sign-up . R2'yi etkinleştirmek
       ödeme yöntemi ister (ücretsiz katmanda çekim olmaz; DOĞRULA).
