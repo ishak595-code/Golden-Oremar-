@@ -52,6 +52,19 @@ açık rıza aranmaz. [DOLDURULACAK: avukat bu değerlendirmeyi doğrulamalı]
 Bu bilgileri silerseniz tekrar giriş yapmanız gerekir; başka bir sorun
 oluşmaz.
 
+## YouTube videoları
+
+Bazı ürün sayfalarında YouTube videosu bulunur. **Siz oynat düğmesine
+basana kadar YouTube yüklenmez**; yalnızca YouTube'un görsel sunucusundan
+bir kapak resmi gösterilir ve bu işlem çerez kullanmaz.
+
+Oynat düğmesine bastığınızda video, YouTube'un gizlilik güçlendirilmiş
+adresi (youtube-nocookie.com) üzerinden yüklenir. Bu noktadan sonra
+YouTube kendi politikasına göre cihazınızda bilgi saklayabilir. Bu tercih
+tamamen sizin elinizdedir: videoyu oynatmazsanız YouTube'a hiçbir bağlantı
+kurulmaz. [DOLDURULACAK: avukat, oynatma eyleminin rıza olarak
+değerlendirilip değerlendirilemeyeceğini doğrulamalı]
+
 ## Üçüncü taraf hizmetler
 
 Uygulama çalışırken aşağıdaki hizmet sağlayıcılarla iletişim kurar. Bu
@@ -59,6 +72,7 @@ hizmetler kendi sunucularında teknik kayıtlar tutabilir:
 
 - Supabase (veritabanı, Frankfurt / AB)
 - Vercel (web sitesi barındırma)
+- YouTube (yalnızca videoyu oynattığınızda)
 - [DOLDURULACAK: iyzico, ödeme sırasında]
 
 Ayrıntılar için KVKK Aydınlatma Metni'ne bakınız.

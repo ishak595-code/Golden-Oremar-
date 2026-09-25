@@ -103,7 +103,16 @@ if(storefront){
 
 const safety=file('src/features/content/ProductSafetyPanel.tsx');
 if(safety){
- requirePattern(safety,/<video controls playsInline/,'Verified product video must play inside the product detail.');
+ // The player moved into src/features/media/ProductVideo.tsx, which also
+ // handles YouTube. The intent is unchanged: the video plays inside the app.
+ requirePattern(safety,/<ProductVideo\b/,'Verified product video must play inside the product detail.');
+ forbid(safety,/allowExternalLink/,'Product safety video must not enable the external YouTube link.');
+ const player=file('src/features/media/ProductVideo.tsx');
+ if(player){
+  requirePattern(player,/<video[\s\S]{0,80}controls[\s\S]{0,40}playsInline/,'Product video files must play inline with controls.');
+  requirePattern(player,/allowExternalLink\s*=\s*false/,'The external YouTube link must be off by default.');
+  requirePattern(player,/\{allowExternalLink\s*&&\s*<a/,'The external YouTube link must only render when allowExternalLink is set.');
+ }
  requirePattern(safety,/İçerik ve ürün bilgisi/,'Published product detail must keep ingredients and nutrition information.');
  requirePattern(safety,/Tarif/,'Published product detail must keep optional recipe information.');
  forbid(safety,/target=["']_blank["']|ExternalLink/,'Product safety references must not open an external website from the app.');

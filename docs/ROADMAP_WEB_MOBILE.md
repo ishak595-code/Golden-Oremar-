@@ -280,6 +280,15 @@ sunucuya reddettirecekti. Küçültme artık kısa kenar 1200'e ulaşınca durur
 `media-upload-contract-audit.mjs` bu iki değeri birbirine kilitler; sunucu
 tabanı değişip araç değişmezse derleme kırılır.
 
+### Mimari karar (tekrar tartışılmasın)
+
+Büyük uygulamalar her işi ayrı sisteme verir: veri için ilişkisel
+veritabanı, görsel için görsel CDN'i, video için video platformu.
+Supabase veri için kalır (sipariş, stok, kullanıcı). Video için YouTube
+(bedava) veya ileride Bunny Stream. Görseller şimdilik Supabase'de,
+küçültülmüş olarak; trafik 250 GB/ay sınırına yaklaşınca Bunny CDN'e
+taşınır. Erken taşıma, olmayan bir sorun için karmaşıklık eklemek olur.
+
 ### Hâlâ açık
 
 - [x] Video oynatıcı `preload="metadata"` -> `preload="none"`: video artık
@@ -298,6 +307,26 @@ tabanı değişip araç değişmezse derleme kırılır.
       gitmez) -> uygulama TUS ile doğrudan Bunny'ye yükler -> veritabanında
       sadece video kimliği tutulur -> oynatıcı HLS ile oynatır, kapak
       görseli gösterir
+- [x] YouTube desteği (`src/features/media/`): watch, youtu.be, embed,
+      nocookie, live ve Shorts linkleri tanınır; Shorts dikey oynatıcıda
+      açılır. Dokunulana kadar sadece kapak resmi yüklenir (YouTube betiği
+      ve izleme yok). Native WebView'da gömülü oynatma başarısız olursa
+      diye her zaman "YouTube'da aç" bağlantısı var. javascript:, data:
+      ve http reddedilir; denetimle kilitli
+- [ ] **ÜRÜNÜN KENDİ VİDEOSU MÜŞTERİYE GÖSTERİLMİYOR.** Yönetim panelinde
+      yüklenen video `products.specifications.video` içine kaydediliyor
+      ama `get_public_product_detail_v6` bu alanı döndürmüyor ve ürün detay
+      ekranı onu hiç çizmiyor. Video şu an yalnızca sağlık/içerik panelinde
+      (`ProductSafetyPanel`, `safety.videoUrl`) görünüyor. Yapılacak: detay
+      RPC'sine video alanını ekle, ekranda `ProductVideo` ile göster, yönetim
+      paneline "YouTube linki yapıştır" seçeneği ekle
+      **KISIT:** `product-workflow-contract-audit` üreticilerin link tabanlı
+      medya girmesini BİLİNÇLİ olarak yasaklıyor. Sebep: onaylanan bir
+      YouTube videosu sonradan kanal sahibince değiştirilebilir (onay
+      sonrası içerik değiştirme dolandırıcılığı). YouTube linki SADECE resmi
+      mağaza / yönetim için açılmalı; üreticiler doğrulanmış dosya yüklemeye
+      devam etmeli. Ayrıca ürün güvenlik paneli uygulama dışına bağlantı
+      açamaz (`allowExternalLink` kapalı, denetimle kilitli)
 - [ ] E2E testleri canlı veritabanında test kullanıcısı oluşturup dosya
       yüklüyor (9 artık dosya). Doğru çözüm ayrı bir test Supabase projesi
 
