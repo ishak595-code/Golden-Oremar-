@@ -12,6 +12,7 @@ import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 import ProductImageWithSkeleton from'./ProductImageWithSkeleton';
 import{productSeo,type SeoAvailability}from'../seo/seoModel';
 import{applySeo,clearSeoStructuredData,publicSeoOrigin}from'../seo/applySeo';
+import ProductVideo from '../media/ProductVideo';
 
 type Props={
  reference:string;
@@ -261,6 +262,12 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    <summary id="product-story-title" className="text-lg font-black text-brand-green dark:text-brand-gold">Ürün Hikâyesi</summary>
    <div className="p-5 sm:p-7"><div className="text-xs font-black uppercase tracking-[0.16em] text-brand-gold">{experience.kicker}</div><p className="mt-4 whitespace-pre-wrap text-[15px] leading-8 text-brand-muted">{experience.story}</p>{safeText(detail.origin,240)?<div className="mt-5 flex items-center gap-2 border-t border-brand-gold/20 pt-4 text-sm font-black text-brand-text"><MapPin aria-hidden="true" className="h-4 w-4 text-brand-gold"/>{safeText(detail.origin,240)}</div>:null}</div>
   </details>
+  {/* The product's own video, from detail v10. YouTube links (official store
+      only, enforced in the database) play through the click-to-load facade;
+      uploaded files play inline with nothing downloaded before play. The
+      "open in YouTube" fallback is allowed here - unlike the product safety
+      panel - because some native WebViews cannot play embeds. */}
+  {(()=>{const v:any=(detail as any)?.video;const url=v?.kind==='youtube'?v.url:v?.kind==='file'?publicCatalogUrl(v.path):null;return url?<section aria-labelledby="product-video-heading" className="mt-8"><h2 id="product-video-heading" className="mb-3 text-lg font-black text-brand-green dark:text-brand-gold">Ürün Videosu</h2><ProductVideo url={url} title={detailName} allowExternalLink/></section>:null;})()}
 
   <div className="mt-6 space-y-3">
    {featureItems.length?<Accordion title="Ürün Özellikleri"><ul className="grid gap-2 sm:grid-cols-2">{featureItems.map((item,index)=><li key={`${item}-${index}`} className="rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">{item}</li>)}</ul></Accordion>:null}

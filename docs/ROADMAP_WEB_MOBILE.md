@@ -313,20 +313,32 @@ taşınır. Erken taşıma, olmayan bir sorun için karmaşıklık eklemek olur.
       ve izleme yok). Native WebView'da gömülü oynatma başarısız olursa
       diye her zaman "YouTube'da aç" bağlantısı var. javascript:, data:
       ve http reddedilir; denetimle kilitli
-- [ ] **ÜRÜNÜN KENDİ VİDEOSU MÜŞTERİYE GÖSTERİLMİYOR.** Yönetim panelinde
-      yüklenen video `products.specifications.video` içine kaydediliyor
-      ama `get_public_product_detail_v6` bu alanı döndürmüyor ve ürün detay
-      ekranı onu hiç çizmiyor. Video şu an yalnızca sağlık/içerik panelinde
-      (`ProductSafetyPanel`, `safety.videoUrl`) görünüyor. Yapılacak: detay
-      RPC'sine video alanını ekle, ekranda `ProductVideo` ile göster, yönetim
-      paneline "YouTube linki yapıştır" seçeneği ekle
-      **KISIT:** `product-workflow-contract-audit` üreticilerin link tabanlı
-      medya girmesini BİLİNÇLİ olarak yasaklıyor. Sebep: onaylanan bir
-      YouTube videosu sonradan kanal sahibince değiştirilebilir (onay
-      sonrası içerik değiştirme dolandırıcılığı). YouTube linki SADECE resmi
-      mağaza / yönetim için açılmalı; üreticiler doğrulanmış dosya yüklemeye
-      devam etmeli. Ayrıca ürün güvenlik paneli uygulama dışına bağlantı
-      açamaz (`allowExternalLink` kapalı, denetimle kilitli)
+- [x] **Ürünün kendi videosu artık ürün sayfasında.** `private.get_public_product_detail_v10`
+      (v9 + video alanı, katmanlı desen korundu, köprü v10'a çevrildi).
+      YouTube linki SADECE resmi mağaza ürünlerinde döner - kural
+      veritabanında, arayüz atlatılsa bile geçerli. Depolama yolu sadece
+      dosya gerçekten varsa döner. Canlıda geri alınan işlemle test edildi
+- [ ] **KARAR BEKLİYOR: yönetim paneline YouTube linki alanı.**
+      `product-workflow-contract-audit` resmi mağaza sihirbazında da link
+      tabanlı medya alanını BİLİNÇLİ olarak yasaklıyor
+      (`forbid(admin, /type="url"|https?:\/\/|videoUrl|imageUrl/)`).
+      Kuralı kaldırmak İshak'ın kararı. Kaldırılırsa: sadece YouTube
+      kabul eden, sunucuda doğrulanan bir alan eklenir; denetim "link yok"
+      yerine "sadece YouTube linki, sadece resmi mağaza" olarak
+      daraltılır. Veritabanı tarafı (v10) buna zaten hazır
+- [ ] **Medya altyapısı: Cloudflare R2 (KÖKTEN ÇÖZÜM, hesap bekliyor).**
+      Çıkış ücreti her zaman sıfır, kalıcı ücretsiz katman: 10 GB depolama,
+      ayda 10 milyon okuma, 1 milyon yazma (Eylül 2026 doğrulandı).
+      Medya için "kota doldu" sorunu yapısal olarak ortadan kalkar.
+      Kullanıcı deneyimi DEĞİŞMEZ: yükleme yine yönetim panelinden, kamera
+      ve galeriyle; uygulama arka planda R2'ye gönderir.
+      DİKKAT: görsel doğrulama katmanı (`catalog-media-verify`,
+      `verified_catalog_product_image_path_v1`,
+      `catalog_media_binary_verified_path_v2`) `storage.objects` tablosuna
+      bağlı. R2'ye geçişte bu katman da yeniden kurulmalı; yarım geçiş
+      HİÇBİR ürünün yayınlanamamasına yol açar. Gerekenler: Cloudflare
+      hesabı, R2 kovası, API anahtarı (Supabase Edge Function sırrı olarak,
+      istemciye asla gitmez), özel alan adı (r2.dev üretim için değil)
 - [ ] E2E testleri canlı veritabanında test kullanıcısı oluşturup dosya
       yüklüyor (9 artık dosya). Doğru çözüm ayrı bir test Supabase projesi
 
