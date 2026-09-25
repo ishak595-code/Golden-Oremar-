@@ -30,6 +30,12 @@ class MainActivity : BridgeActivity() {
         registerPlugin(NativeSpeechPlugin::class.java)
         registerPlugin(NativeAppUpdatePlugin::class.java)
         super.onCreate(savedInstanceState)
+        // Replace Capacitor's chrome client with one that supports full-screen
+        // video. Must happen here: its constructor registers ActivityResult
+        // launchers, which Android only permits before the activity starts.
+        bridge?.let { activeBridge ->
+            activeBridge.webView.webChromeClient = FullscreenVideoChromeClient(this, activeBridge)
+        }
     }
 }
 
