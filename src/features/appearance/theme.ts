@@ -90,10 +90,28 @@ export function isDarkTheme(theme: AppTheme) {
   return theme === 'dark' || theme === 'custom';
 }
 
+/**
+ * Record the scheme actually in effect on <html>.
+ *
+ * Tailwind's `dark:` variant is keyed to this attribute (see src/index.css).
+ * It used to be keyed to data-theme="dark" alone, while this module treats the
+ * default "custom" theme as dark too. The result was that every `dark:` class
+ * in the app - over two thousand of them - stayed off for anyone on the default
+ * theme, leaving dark text on a dark background and white panels on a dark
+ * page. Keying the variant to the resolved scheme makes it follow whatever the
+ * brand appearance actually applies, including an admin switching the custom
+ * theme to light.
+ */
+export function setDocumentColorScheme(scheme: 'light' | 'dark') {
+  if (typeof document === 'undefined') return;
+  document.documentElement.style.colorScheme = scheme;
+  document.documentElement.setAttribute('data-color-scheme', scheme);
+}
+
 export function applyThemeToDocument(theme: AppTheme) {
   if (typeof document === 'undefined') return;
   document.documentElement.setAttribute('data-theme', theme);
-  document.documentElement.style.colorScheme = isDarkTheme(theme) ? 'dark' : 'light';
+  setDocumentColorScheme(isDarkTheme(theme) ? 'dark' : 'light');
 }
 
 export function persistTheme(theme: AppTheme) {

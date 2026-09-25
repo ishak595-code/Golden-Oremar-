@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { applyThemeToDocument, getStoredTheme, isTheme, subscribePersonalTheme, type AppTheme } from './theme';
+import { applyThemeToDocument, getStoredTheme, isTheme, subscribePersonalTheme, type AppTheme, setDocumentColorScheme } from './theme';
 
 export type BrandAppearanceTokens = {
   background: string;
@@ -92,7 +92,7 @@ function cssRule(appearance: BrandAppearance) {
 
 function syncCustomColorScheme(theme: AppTheme) {
   if (typeof document === 'undefined' || theme !== 'custom' || !activeAppearance) return;
-  document.documentElement.style.colorScheme = activeAppearance.colorScheme;
+  setDocumentColorScheme(activeAppearance.colorScheme);
 }
 
 export function applyBrandAppearance(appearance: BrandAppearance, options: { applyDefaultWhenUnchosen?: boolean } = {}) {

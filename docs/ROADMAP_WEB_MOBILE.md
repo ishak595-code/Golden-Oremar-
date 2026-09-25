@@ -253,6 +253,35 @@ vercel.app'e doğrudan erişemez ama bu araçla erişilebilir.
   SPA'ya düşer, uygulama başlığı canlı veriyle günceller. Bu kabul edilen
   bir sınırdır; çözüm periyodik yeniden derlemedir (Vercel deploy hook).
 
+## Tarayıcı testleri ve erişilebilirlik - 2026-09-25
+
+İshak görme engelli olduğu için cihaz testlerini yapamıyor; testleri Claude
+yapar. Sandbox'ta gerçek tarayıcı çalıştırmanın yolu: npm'den
+`@sparticuz/chromium@131` + `playwright-core@1.56.0` (Playwright'ın kendi
+indirmesi ağ kısıtı yüzünden engelli). Tarayıcı `--single-process` ve
+`--no-zygote` argümanları ÇIKARILARAK başlatılmalı, yoksa yeni oturum açınca
+çöker. Sandbox Supabase'e bağlanamadığı için RPC istekleri, Supabase MCP ile
+canlıdan çekilmiş GERÇEK verilerle taklit edilir. Marka ayarı
+(`get_public_brand_appearance_v1`) mutlaka gerçek veriyle taklit edilmeli:
+boş bırakınca yedek renkler devreye girip yanlış alarm üretir (8 sahte ihlal
+görüldü). DİKKAT: `pkill -f "vite preview"` kendi komut satırını da öldürür,
+`pkill -f "[v]ite preview"` kullan.
+
+Sonuçlar (412x915 telefon ekranı):
+- Video: 16/16 test geçti. Oynat'a basılmadan YouTube'a hiç bağlanılmıyor,
+  Shorts dikey, iframe'de allowfullscreen ve doğru referrer var
+- **Kök hata bulundu ve düzeltildi:** Tailwind `dark:` varyantı sadece
+  `data-theme="dark"` ile eşleşiyordu, ama varsayılan tema "custom" ve
+  koyu. Uygulamadaki 2500'ü aşkın `dark:` sınıfının HİÇBİRİ varsayılan
+  temada çalışmıyordu. Giriş ekranında "Hesap Aç" butonu, e-posta ve şifre
+  etiketleri beyaz kart üstünde beyaza yakındı; yeni müşteri hesap açma
+  butonunu göremiyordu. Varyant artık `data-color-scheme`'e bağlı
+  (`setDocumentColorScheme`, hem tema hem marka ayarı buradan yazar).
+  Ölçüm: 6 ekranda 39 kontrast ihlali -> 0. Tam axe taraması ihlal yok.
+  `theme-contract-audit` kilitler, negatif kontrolle doğrulandı
+- Android tam ekran: sandbox'ta Android olmadığı için cihazda denenemedi;
+  kod APK derlemesinde derlendi. Fiziksel cihaz testi hâlâ açık
+
 ## Kota (egress) araştırması - 2026-09-25
 
 İshak'ın haklı itirazı: "Pro'ya geçsem de, kotayı hızla tüketen şey

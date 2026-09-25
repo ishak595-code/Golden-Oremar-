@@ -1,6 +1,10 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+/* `dark:` follows the scheme actually in effect (data-color-scheme, set by
+   src/features/appearance/theme.ts), not only a theme literally named "dark".
+   The default "custom" theme is dark; keyed to data-theme alone, every dark:
+   class stayed off for it. data-theme="dark" is kept for first paint. */
+@custom-variant dark (&:where([data-color-scheme="dark"], [data-color-scheme="dark"] *, [data-theme="dark"], [data-theme="dark"] *));
 
 .input {
   @apply min-h-11 w-full rounded-xl border-2 border-brand-border bg-transparent px-3 transition-colors hover:border-brand-gold/30 focus:border-brand-green disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700;
