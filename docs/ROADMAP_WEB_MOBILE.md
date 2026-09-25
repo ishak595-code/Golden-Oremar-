@@ -327,7 +327,24 @@ taşınır. Erken taşıma, olmayan bir sorun için karmaşıklık eklemek olur.
       YouTube linki SADECE resmi mağaza ürünlerinde döner - kural
       veritabanında, arayüz atlatılsa bile geçerli. Depolama yolu sadece
       dosya gerçekten varsa döner. Canlıda geri alınan işlemle test edildi
-- [ ] **KARAR BEKLİYOR: yönetim paneline YouTube linki alanı.**
+- [x] **Android'de YouTube tam ekran** (commit 91a64b1, APK derlemesi başarılı).
+      Capacitor `BridgeWebChromeClient.onShowCustomView` tam ekranı
+      `callback.onCustomViewHidden()` ile ANINDA REDDEDİYORDU; web'de çalışıp
+      uygulamada çalışmıyordu. `FullscreenVideoChromeClient` onu genişletir
+      (dosya seçici / kamera yüklemesi korunur), `onCreate` içinde kurulur.
+      Yön zorla yataya çevrilmez (Shorts dikey), geri hareketi tam ekrandan
+      çıkar. CİHAZDA TEST EDİLMELİ
+- [ ] **SIRADAKİ: yönetim paneline YouTube linki alanı - İshak onayladı.**
+      Engel iki katmanlı: (1) `product-workflow-contract-audit` arayüzde
+      link alanını yasaklıyor, (2) `public.management_upsert_product_v2`
+      veritabanında `verified_product_video_path_v1(video) is null` ise
+      `stored_product_video_required` fırlatıyor. SADECE ARAYÜZ DEĞİŞİRSE
+      KAYDETME SUNUCUDA REDDEDİLİR. Yapılacak: yazma fonksiyonu yalnız
+      resmi mağaza için ve yalnız v10'daki YouTube desenine uyan linki
+      kabul edecek şekilde değiştirilir (dosya yolu kuralı aynen kalır),
+      migration md5 ile repoya alınır, sonra arayüz alanı eklenir ve
+      denetim "link yok" yerine "sadece YouTube, sadece resmi mağaza"
+      olarak daraltılır. ESKİ NOT (karar bekliyor):
       `product-workflow-contract-audit` resmi mağaza sihirbazında da link
       tabanlı medya alanını BİLİNÇLİ olarak yasaklıyor
       (`forbid(admin, /type="url"|https?:\/\/|videoUrl|imageUrl/)`).
@@ -336,6 +353,13 @@ taşınır. Erken taşıma, olmayan bir sorun için karmaşıklık eklemek olur.
       yerine "sadece YouTube linki, sadece resmi mağaza" olarak
       daraltılır. Veritabanı tarafı (v10) buna zaten hazır
 - [ ] **Medya altyapısı: Cloudflare R2 (KÖKTEN ÇÖZÜM, hesap bekliyor).**
+      Kayıt: https://dash.cloudflare.com/sign-up . R2'yi etkinleştirmek
+      ödeme yöntemi ister (ücretsiz katmanda çekim olmaz; DOĞRULA).
+      Üretim için özel alan adı gerekir (r2.dev hız sınırlıdır): alan adı
+      Cloudflare DNS'inde olmalı. Anahtarlar sohbete YAPIŞTIRILMAZ, doğrudan
+      Supabase > Edge Functions > Secrets'a girilir:
+      R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET,
+      R2_PUBLIC_BASE_URL
       Çıkış ücreti her zaman sıfır, kalıcı ücretsiz katman: 10 GB depolama,
       ayda 10 milyon okuma, 1 milyon yazma (Eylül 2026 doğrulandı).
       Medya için "kota doldu" sorunu yapısal olarak ortadan kalkar.
