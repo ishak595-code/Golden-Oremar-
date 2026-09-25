@@ -282,10 +282,22 @@ tabanı değişip araç değişmezse derleme kırılır.
 
 ### Hâlâ açık
 
-- [ ] Video: katalog 50 MB'a kadar video kabul ediyor ve tarayıcıda
-      sıkıştırılamıyor. Video eklenirse kotayı en hızlı bitirecek şey bu.
-      Öneri: videoları kısa tut ve `preload="none"` ile yalnızca
-      dokununca yükle
+- [x] Video oynatıcı `preload="metadata"` -> `preload="none"`: video artık
+      sadece oynat'a basılınca iner (ProductSafetyPanel, tek video öğesi)
+- [ ] **Video altyapısı: Bunny Stream'e taşı (KARAR BEKLİYOR).** Büyük
+      uygulamaların yöntemi: sunucu videoyu birden çok kaliteye çevirir
+      (transcoding), küçük parçalara böler (HLS), oynatıcı bağlantı hızına
+      göre kalite seçer, video dokunulmadan inmez, yükleme kesilirse devam
+      eder (TUS). Supabase bunların hiçbirini yapmaz ve CDN çıkışı pahalıdır.
+      Bunny Stream: transcoding ve oynatıcı ücretsiz, depolama ~0,01 $/GB/ay,
+      teslimat ~0,005-0,01 $/GB (AB/ABD; TÜRKİYE BÖLGE FİYATI DOĞRULANMALI),
+      aylık 1 $ minimum, AB şirketi (Slovenya). Dikey/yatay her en-boy oranı
+      korunur, ek iş gerekmez.
+      Entegrasyon planı: İshak Bunny hesabı + API anahtarı açar -> Supabase
+      Edge Function imzalı yükleme adresi üretir (anahtar asla istemciye
+      gitmez) -> uygulama TUS ile doğrudan Bunny'ye yükler -> veritabanında
+      sadece video kimliği tutulur -> oynatıcı HLS ile oynatır, kapak
+      görseli gösterir
 - [ ] E2E testleri canlı veritabanında test kullanıcısı oluşturup dosya
       yüklüyor (9 artık dosya). Doğru çözüm ayrı bir test Supabase projesi
 
