@@ -13,6 +13,8 @@ import ProductImageWithSkeleton from'./ProductImageWithSkeleton';
 import{productSeo,type SeoAvailability}from'../seo/seoModel';
 import{applySeo,clearSeoStructuredData,publicSeoOrigin}from'../seo/applySeo';
 import ProductVideo from '../media/ProductVideo';
+import{withdrawalTier,WITHDRAWAL_COPY}from'./withdrawalRight';
+import{RotateCcw}from'lucide-react';
 
 type Props={
  reference:string;
@@ -254,6 +256,13 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    </section>
   </div>
 
+  {/* Right of withdrawal, shown before purchase. The regulation's exceptions
+      for perishable goods and opened hygiene-sealed food only protect the
+      seller if the customer was told beforehand, so this sits directly after
+      the purchase controls rather than inside a collapsed section. The tier
+      comes from the admin-classified handlingProfile; if it is missing, no
+      claim is made at all. */}
+  {(()=>{const tier=withdrawalTier((detail as any)?.handlingProfile);if(!tier)return null;const copy=WITHDRAWAL_COPY[tier];const warn=tier==='none';return<aside role="note" aria-labelledby="product-withdrawal-title" className={`mt-6 flex gap-3 rounded-2xl border p-4 ${warn?'border-amber-500/60 bg-amber-50 dark:border-amber-400/40 dark:bg-amber-950/30':'border-brand-green/25 bg-brand-card'}`}><RotateCcw aria-hidden="true" className={`mt-0.5 h-5 w-5 flex-shrink-0 ${warn?'text-amber-700 dark:text-amber-300':'text-brand-green dark:text-brand-gold'}`}/><div><p id="product-withdrawal-title" className={`font-bold ${warn?'text-amber-900 dark:text-amber-100':'text-brand-green dark:text-brand-gold'}`}>{copy.title}</p><p className="mt-1 text-sm leading-relaxed text-gray-800 dark:text-gray-200">{copy.body}</p></div></aside>;})()}
   {/* Collapsed by default, matching the product specification sections below
       it. Always-open, the story pushed the purchase controls and every other
       section far down the screen on a phone. The heading lives in the summary

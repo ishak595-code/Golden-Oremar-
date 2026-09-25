@@ -12,6 +12,7 @@ const audits=[
  'public-route-contract-audit.mjs',
  'seo-contract-audit.mjs',
  'media-upload-contract-audit.mjs',
+ 'consumer-rights-contract-audit.mjs',
  'admin-data-contract-audit.mjs',
  'admin-user-role-contract-audit.mjs',
  'api-public-bridge-contract-audit.mjs',

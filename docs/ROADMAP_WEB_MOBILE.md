@@ -167,9 +167,18 @@ Ayrıntı: `docs/legal/taslak/README.md`.
       bu yüzden çerez izin penceresi GEREKMİYOR
 - [ ] 3.6 Ödeme adımında onay kutusu + onaylanan sözleşme sürümünün
       siparişle birlikte kaydedilmesi. BLOKLU: satıcı kimliği ve avukat
-- [ ] 3.7 Ürün sayfasında "cayma hakkı yoktur" etiketi. Veritabanında
-      `products.is_perishable` alanı ZATEN VAR, etiket buradan
-      beslenebilir. Ambalaj açılma istisnası için ayrı bir alan gerekebilir
+- [x] 3.7 Ürün sayfasında cayma hakkı bildirimi, satın alma kontrollerinin
+      hemen ardından. Üç kademe (`src/features/catalog/withdrawalRight.ts`):
+      bozulabilir -> cayma yok; `non_food` -> 14 gün; diğer gıda -> ambalaj
+      açılmamışsa 14 gün. Kaynak: detayın zaten döndürdüğü
+      `handlingProfile`, yeni veritabanı değişikliği gerekmedi. Kategori
+      adından türetilmez: kurutulmuş yoğurt süt kategorisinde, kurutulmuş
+      hurma taze ürün kategorisinde ve ikisi de doğru olarak raf ömrü uzun.
+      Veri eksikse hiçbir iddia yapılmaz. Her bildirim ayıplı mal hakkının
+      sürdüğünü söyler. `consumer-rights-contract-audit` canlı katalogdaki
+      18 ürün sınıfını kilitler
+- [ ] 3.7b Aynı bildirim sepette ve ödeme özetinde de gösterilmeli (ön
+      bilgilendirme formunun parçası). Ödeme açılınca yapılmalı
 - [ ] 3.8 Taslakları statik sayfaya çevirip yayınlama (avukat onayından
       sonra, `gizlilik-politikasi` ile aynı yapıda)
 
