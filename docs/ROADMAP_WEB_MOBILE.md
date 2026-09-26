@@ -308,10 +308,12 @@ Kilit: `responsive-resilience-contract-audit.mjs` (3 negatif kontrolle
 doğrulandı). Denetim sayısı: 51. Tarayıcı: `navigation-check.mjs` 14/14
 (butonlar, alt menü, geri, adres çubuğu ve yenileme).
 
-**GÖNDERİM ENGELİ (2026-09-26):** oturumun git vekili depoyu yetkili
-listede görmediği için push reddedildi. İş kaybolmasın diye yama dosyası
-claude.ai projesine yazıldı: `claude/pending/`. Çözüm: İshak GitHub
-hesabını claude.ai'da bağlar, sonraki oturum `add_repo` + `git am`.
+**GitHub erişimi (2026-09-26, ÇÖZÜLDÜ):** bulut oturumları artık PAT ile
+değil, Claude GitHub App ile yazıyor. İshak claude.ai/code'dan GitHub'ı
+bağladı ve uygulamayı depoya kurdu; oturumda `add_repo` ile depo eklenir.
+Commit yazarı `Claude <noreply@anthropic.com>` olmalı (yoksa GitHub
+"Unverified" gösterir). İki commit gönderildi, Vercel 6d2ae23 READY.
+Supabase hâlâ HTTP 402 (kota): SEO ürün sayfaları kota açılınca oluşur.
 
 **Tarayıcı testlerinden öğrenilen tuzaklar:** sabit test yanıtı kullanma,
 istemci sayfa boyutunu kendi isteğiyle karşılaştırıyor (limit/offset'i
