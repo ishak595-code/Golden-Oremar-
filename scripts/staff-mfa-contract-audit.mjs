@@ -10,6 +10,17 @@ const recovery=read('supabase/migrations/20260824133655_add_super_admin_mfa_brea
 const auditIntegrity=read('supabase/migrations/20260824142118_harden_mfa_client_audit_integrity_v1.sql');
 const recoveryControls=read('supabase/migrations/20260824142244_complete_super_admin_mfa_recovery_controls_v1.sql');
 req(baseline,/auth\.jwt\(\)->>'aal'/,'AAL must originate from the authenticated JWT claim.');
+// Super Admin exemption (owner decision, 2026-09-26). Lock its exact scope:
+// super_admin out, the five other staff roles still in. Widening the
+// exemption, or silently re-imposing MFA on the owner, both fail here.
+const superAdminExemption=read('supabase/migrations/20260926104304_exempt_super_admin_from_staff_mfa_v1.sql');
+const exemptionRoles=superAdminExemption.match(/ur\.role in \(([^)]*)\)/)?.[1]||'';
+for(const role of['support','content_editor','operations','moderator','admin'])req(exemptionRoles,new RegExp(`'${role}'`),`Staff MFA must still be required for ${role}.`);
+forbid(exemptionRoles,/'super_admin'/,'Super Admin is exempt from staff MFA by owner decision; re-imposing it needs a new, explicit migration.');
+const staffE2e=read('scripts/staff-mfa-e2e.mjs');
+req(staffE2e,/roleScenario\('super_admin'[\s\S]*?\{mfaRequired:false\}\)/,'The live E2E must prove Super Admin works at AAL1 without a factor.');
+req(staffE2e,/roleScenario\('admin','mfa-admin'[^\n]*\]\);/,'The live E2E must keep the full MFA denial matrix for the admin role.');
+
 req(hardening,/create table if not exists private\.staff_mfa_security_state/,'Staff MFA transition must use an explicit account security state.');
 req(hardening,/state text not null check \(state in \('enrollment_required','enforced'\)\)/,'Staff MFA state must be deterministic and closed.');
 req(hardening,/values\('mfa\.self_manage','mfa'/,'Canonical mfa.self_manage capability is missing.');

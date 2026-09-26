@@ -444,11 +444,15 @@ taşınır. Erken taşıma, olmayan bir sorun için karmaşıklık eklemek olur.
       Denetim KALDIRILMADI, DARALTILDI; negatif kontrolle doğrulandı.
       Canlıda test: yetki kapısı işlem içinde taklit edilip geri alındı.
       YouTube kaydedildi; yabancı link ve doğrulanmamış dosya reddedildi
-- [ ] **YÖNETİCİ İKİ ADIMLI DOĞRULAMA:** test sırasında görüldü ki hiçbir
-      yöneticinin doğrulanmış TOTP'si yok. `private.has_permission` personel
-      için TOTP + aal2 şart koşuyor. İshak yönetim panelinde ürün kaydetmek
-      için bir doğrulayıcı uygulama (Google Authenticator vb.) kurmalı;
-      uygulamadaki `StaffMfaGate` bu kurulumu yönetir. Tasarım gereği
+- [x] **Süper admin iki adımlı doğrulamadan muaf** (İshak'ın kararı,
+      2026-09-26, migration 20260926104304). Tek yönetici o ve TOTP kurulumu
+      ona pratik değil. Muafiyet SADECE super_admin rolü için: support,
+      content_editor, operations, moderator, admin hâlâ zorunlu; aynı
+      hesaba başka personel rolü eklenirse zorunluluk geri gelir. Canlıda
+      gerçek hesapla doğrulandı: aal1'de product.update ve product.publish
+      açık. `staff-mfa-contract-audit` kapsamı kilitler, canlı E2E süper
+      adminin faktörsüz çalıştığını kanıtlar. Telafi: güçlü, benzersiz
+      şifre ve Supabase Auth'ta sızdırılmış şifre koruması açılmalı
 - [ ] **Medya altyapısı: Cloudflare R2 (KÖKTEN ÇÖZÜM, hesap bekliyor).**
       Kayıt: https://dash.cloudflare.com/sign-up . R2'yi etkinleştirmek
       ödeme yöntemi ister (ücretsiz katmanda çekim olmaz; DOĞRULA).

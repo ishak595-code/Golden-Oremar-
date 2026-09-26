@@ -80,14 +80,21 @@ async function moderatorScenario(){
   await control('remove-staff-roles',{slot:'mfa-mod-a'});assert.equal(await can(a,'product.moderate'),false,'removed staff role retained capability on old AAL2 token');snap=await context(a);assert.ok(!snap.roles.includes('moderator'));
 }
 
-async function roleScenario(role,slot,allowed,denied){
-  await provision(role,slot);const c=client();await signIn(c,slot);await assertAal1StaffDenied(c,role);const factor=await enroll(c,`CI ${role}`);await verifyFactor(c,factor);const snap=await context(c);assert.equal(snap.mfaSatisfied,true);assert.equal(snap.canAccessAdmin,true);for(const p of allowed)assert.equal(await can(c,p),true,`${role} missing ${p}`);for(const p of denied)assert.equal(await can(c,p),false,`${role} leaked ${p}`);return{client:c,factor,snapshot:snap};
+// mfaRequired=false is the Super Admin case: exempt from staff MFA by the
+// owner's decision (migration 20260926104304). That role must then work at
+// AAL1 with no factor enrolled, report staffMfaRequired=false and still get
+// its full capability set. Every other staff role keeps the AAL1 denial matrix.
+async function roleScenario(role,slot,allowed,denied,{mfaRequired=true}={}){
+  await provision(role,slot);const c=client();await signIn(c,slot);let factor=null;
+  if(mfaRequired){await assertAal1StaffDenied(c,role);factor=await enroll(c,`CI ${role}`);await verifyFactor(c,factor);}
+  else{const pre=await context(c);assert.ok(Array.isArray(pre.roles)&&pre.roles.includes(role));assert.equal(pre.staffMfaRequired,false,`${role} must be exempt from staff MFA`);assert.equal(pre.authenticatorAssuranceLevel,'aal1');assert.equal((await verifiedFactors(c)).length,0,`${role} exemption must not depend on an enrolled factor`);}
+  const snap=await context(c);assert.equal(snap.mfaSatisfied,true);assert.equal(snap.canAccessAdmin,true);for(const p of allowed)assert.equal(await can(c,p),true,`${role} missing ${p}`);for(const p of denied)assert.equal(await can(c,p),false,`${role} leaked ${p}`);return{client:c,factor,snapshot:snap};
 }
 
 try{
   await moderatorScenario();
   await roleScenario('admin','mfa-admin',['admin.access','user.manage','refund.execute'],['product.publish','product.health_manage','role.manage','payout.release','system.configure','security.manage']);
-  const owner=await roleScenario('super_admin','mfa-super',['admin.access','product.publish','product.health_manage','role.manage','payout.release','system.configure','security.manage','payment.manage','user.erase','product.remove','mfa.self_manage'],[]);
+  const owner=await roleScenario('super_admin','mfa-super',['admin.access','product.publish','product.health_manage','role.manage','payout.release','system.configure','security.manage','payment.manage','user.erase','product.remove','mfa.self_manage'],[],{mfaRequired:false});
   assert.ok(owner.snapshot.permissions.length>=77,'Super Admin does not receive the complete active capability set');
   await verifyOwnerCatalogMedia(owner.client);
   console.log('staff-mfa-e2e: PASS');

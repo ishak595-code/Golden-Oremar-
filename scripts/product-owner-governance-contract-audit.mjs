@@ -44,7 +44,7 @@ requirePattern(migration,/product_health\.reject/,'Product-health rejection must
 requirePattern(staffMfa,/\['admin\.access','product\.moderate','product\.publish','product\.health_manage'/,'AAL1 staff denial must cover owner-only product capabilities.');
 requirePattern(staffMfa,/for\(const p of \['product\.publish','product\.health_manage'/,'Moderator AAL2 must explicitly deny owner-only product capabilities.');
 requirePattern(staffMfa,/roleScenario\('admin'[\s\S]*\['product\.publish','product\.health_manage'/,'Admin AAL2 must explicitly deny owner-only product capabilities.');
-requirePattern(staffMfa,/roleScenario\('super_admin'[\s\S]*'product\.publish','product\.health_manage'/,'Super Admin AAL2 must explicitly receive owner-only product capabilities.');
+requirePattern(staffMfa,/roleScenario\('super_admin'[\s\S]*'product\.publish','product\.health_manage'/,'Super Admin must explicitly receive owner-only product capabilities in the live E2E.');
 
 if(failures.length){
   console.error('Golden Oremar product owner governance contract audit failed:');
