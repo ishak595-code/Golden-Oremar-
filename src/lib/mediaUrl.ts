@@ -10,7 +10,8 @@ import { supabase } from './supabase';
  *
  * Rules, each matching the worker exactly:
  *   - only the three public buckets are mirrored;
- *   - only images (by extension) are mirrored. Videos stay on Supabase;
+ *   - images (by extension) are mirrored; product videos (catalog-public,
+ *     mp4/webm/mov) exist only in R2, uploaded there directly;
  *   - a name that could escape its prefix is never mirrored;
  *   - the R2 key is "<bucket>/<name>", each segment URL-encoded.
  *
@@ -28,6 +29,8 @@ export const MIRRORED_BUCKETS = ['catalog-public', 'content-public', 'event-publ
 type MirroredBucket = (typeof MIRRORED_BUCKETS)[number];
 const MIRRORED = new Set<string>(MIRRORED_BUCKETS);
 const IMAGE_EXTENSION = /\.(jpe?g|png|webp|avif)$/i;
+// Product videos live only in R2 (media-video-upload), never in Supabase.
+const VIDEO_EXTENSION = /\.(mp4|webm|mov)$/i;
 const UNSAFE_NAME = /(^\/|\/\/|\/$|(^|\/)\.{1,2}(\/|$)|[\\\u0000-\u001f\u007f])/;
 
 function readBase(): string {
@@ -48,6 +51,10 @@ export function isMirrorableMediaPath(bucket: string, path: string): boolean {
   return MIRRORED.has(bucket) && path.length > 0 && path.length <= 1024 && !UNSAFE_NAME.test(path) && IMAGE_EXTENSION.test(path);
 }
 
+function isCdnVideoPath(bucket: string, path: string): boolean {
+  return bucket === 'catalog-public' && path.length > 0 && path.length <= 1024 && !UNSAFE_NAME.test(path) && VIDEO_EXTENSION.test(path);
+}
+
 /** The Supabase Storage URL, always. Use for videos and anything not mirrored. */
 export function storageOriginUrl(bucket: string, path: string): string {
   try {
@@ -60,7 +67,7 @@ export function storageOriginUrl(bucket: string, path: string): string {
 /** CDN URL when the image is mirrorable and a CDN is configured, else Supabase. */
 export function publicMediaUrl(bucket: MirroredBucket | string, path: string, base: string = MEDIA_CDN_BASE): string {
   if (!path) return '';
-  if (base && isMirrorableMediaPath(bucket, path)) {
+  if (base && (isMirrorableMediaPath(bucket, path) || isCdnVideoPath(bucket, path))) {
     return `${base}/${`${bucket}/${path}`.split('/').map(encodeURIComponent).join('/')}`;
   }
   return storageOriginUrl(bucket, path);

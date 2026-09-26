@@ -277,7 +277,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
       uploaded files play inline with nothing downloaded before play. The
       "open in YouTube" fallback is allowed here - unlike the product safety
       panel - because some native WebViews cannot play embeds. */}
-  {(()=>{const v:any=(detail as any)?.video;const url=v?.kind==='youtube'?v.url:v?.kind==='file'?publicCatalogUrl(v.path):null;return url?<section aria-labelledby="product-video-heading" className="mt-8"><h2 id="product-video-heading" className="mb-3 text-lg font-black text-brand-green dark:text-brand-gold">Ürün Videosu</h2><ProductVideo url={url} title={detailName} allowExternalLink/></section>:null;})()}
+  {(()=>{const v:any=(detail as any)?.video;const url=v?.kind==='youtube'?v.url:v?.kind==='file'?(typeof v.url==='string'&&/^https:\/\//.test(v.url)?v.url:publicCatalogUrl(v.path)):null;return url?<section aria-labelledby="product-video-heading" className="mt-8"><h2 id="product-video-heading" className="mb-3 text-lg font-black text-brand-green dark:text-brand-gold">Ürün Videosu</h2><ProductVideo url={url} title={detailName} allowExternalLink/></section>:null;})()}
 
   <div className="mt-6 space-y-3">
    {featureItems.length?<Accordion title="Ürün Özellikleri"><ul className="grid gap-2 sm:grid-cols-2">{featureItems.map((item,index)=><li key={`${item}-${index}`} className="rounded-xl bg-gray-50 p-3 text-sm dark:bg-gray-800">{item}</li>)}</ul></Accordion>:null}

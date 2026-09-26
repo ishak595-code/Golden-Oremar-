@@ -72,12 +72,33 @@ check(/enabled boolean not null default false/.test(sql), 'mirroring must be off
 
 // 6. Every public image URL goes through the one builder, with a fallback.
 const offenders = execSync("grep -rln \"getPublicUrl\" src || true", { encoding: 'utf8' }).split('\n').filter(Boolean)
-  .filter(file => !['src/lib/mediaUrl.ts', 'src/features/content/productSafetyApi.ts'].includes(file));
+  .filter(file => file !== 'src/lib/mediaUrl.ts');
 check(offenders.length === 0, `public image URLs must be built with publicMediaUrl, found getPublicUrl in: ${offenders.join(', ')}`);
-check(read('src/features/content/productSafetyApi.ts').match(/getPublicUrl/g)?.length === 1 && /videoPath/.test(read('src/features/content/productSafetyApi.ts')), 'productSafetyApi may only call getPublicUrl for its video, which is never mirrored.');
 const fallback = read('src/features/catalog/installCatalogMediaFallback.ts');
 check(fallback.includes('mediaOriginUrl') && fallback.includes('if (retryFromOrigin(target)) {\n      event.stopImmediatePropagation();'), 'a failing CDN image must be retried from Supabase before the placeholder.');
 check(/compressImageForUpload\(rawFile,EVENT_IMAGE_COMPRESSION\)/.test(read('src/features/producer-events/api.ts')), 'event images must be compressed before upload.');
+
+// 6b. Videos live only in R2: never uploaded to Supabase, budgeted apart.
+const videoSql = read(fs.readdirSync('supabase/migrations').filter(n => n.endsWith('_direct_r2_product_video_v1.sql')).map(n => path.join('supabase/migrations', n))[0] || 'package.json');
+const videoFn = read('supabase/functions/media-video-upload/index.ts');
+const direct = read('src/lib/directVideoUpload.ts');
+check(/update storage\.buckets\s+set allowed_mime_types = array\['image\/jpeg','image\/png','image\/webp','image\/avif'\]/.test(videoSql), 'the Supabase catalogue bucket must accept images only.');
+check(/video_budget_bytes bigint not null default (\d+)/.test(videoSql) && Number(videoSql.match(/video_budget_bytes bigint not null default (\d+)/)[1]) <= budget / 2, 'videos must have their own budget of at most half the total, so photos always have room.');
+check(/video_budget_bytes <= budget_bytes/.test(videoSql), 'video budget must never exceed the total budget.');
+check(/max_video_bytes between 1 and 52428800/.test(videoSql), 'a single video may be at most 50 MB.');
+check(/total \+ p_size > s\.budget_bytes or videos \+ p_size > s\.video_budget_bytes then return 'budget_full'/.test(videoSql), 'video reservation must respect both budgets.');
+check(/pending >= 3 then return 'too_many_pending'/.test(videoSql), 'a user may hold at most three unfinished video uploads.');
+check(/not m\.confirmed and m\.reserved_at < now\(\) - interval '1 hour'/.test(videoSql) && /not private\.media_direct_referenced_v1\(m\.object_name\)/.test(videoSql), 'abandoned and unreferenced videos must be cleaned up.');
+check(videoFn.indexOf('service_media_video_reserve_v1') > 0 && videoFn.indexOf('service_media_video_reserve_v1') < videoFn.indexOf('r2.sign('), 'no upload URL may be signed before the bytes are reserved.');
+check(/signQuery: true, allHeaders: true/.test(videoFn), 'the upload URL must sign the content type, or any file type could be uploaded.');
+check(/UPLOAD_URL_SECONDS = (\d+)/.test(videoFn) && Number(videoFn.match(/UPLOAD_URL_SECONDS = (\d+)/)[1]) <= 900, 'upload URLs must expire within 15 minutes.');
+check(videoFn.includes('videoMagicMatches(first, contentType)') && videoFn.indexOf('videoMagicMatches(first, contentType)') < videoFn.indexOf('service_media_video_confirm_v1", {'), 'a video is confirmed only after its own first bytes prove it is a video.');
+for (const file of ['src/features/producer-products/api.ts', 'src/admin/officialStoreProductApi.ts']) {
+  const source = read(file);
+  const fnSource = source.slice(source.search(/export async function upload(Producer|Official)ProductVideo/)).split('\n')[0];
+  check(fnSource.includes('uploadDirectVideo(') && !fnSource.includes('storage.from('), `${file}: product video must be uploaded straight to R2, never to Supabase Storage.`);
+}
+check(!/storage\.from\(['"]catalog-public['"]\)\.upload\([^)]*video/i.test(direct), 'the direct uploader must not touch Supabase Storage.');
 
 // 7. Behaviour of the URL builder itself.
 const stubbed = client
@@ -91,7 +112,8 @@ fs.rmSync(dir, { recursive: true, force: true });
 const CDN = 'https://pub-test.r2.dev';
 const eq = (actual, expected, label) => check(actual === expected, `${label}: expected ${expected}, got ${actual}`);
 eq(media.publicMediaUrl('catalog-public', 'p1/products/a b.webp', CDN), `${CDN}/catalog-public/p1/products/a%20b.webp`, 'image goes to CDN, segments encoded');
-eq(media.publicMediaUrl('catalog-public', 'p1/products/v.mp4', CDN), 'https://origin.test/storage/v1/object/public/catalog-public/p1/products/v.mp4', 'video stays on Supabase');
+eq(media.publicMediaUrl('catalog-public', 'p1/products/v.mp4', CDN), `${CDN}/catalog-public/p1/products/v.mp4`, 'product video is served from R2, its only home');
+eq(media.publicMediaUrl('event-public', 'p1/events/v.mp4', CDN), 'https://origin.test/storage/v1/object/public/event-public/p1/events/v.mp4', 'no video outside catalog-public goes to the CDN');
 eq(media.publicMediaUrl('user-private', 'u/a.webp', CDN), 'https://origin.test/storage/v1/object/public/user-private/u/a.webp', 'non-mirrored bucket stays on Supabase');
 eq(media.publicMediaUrl('catalog-public', '../x.webp', CDN), 'https://origin.test/storage/v1/object/public/catalog-public/../x.webp', 'unsafe name never goes to CDN');
 eq(media.publicMediaUrl('catalog-public', 'p1/a.webp', ''), 'https://origin.test/storage/v1/object/public/catalog-public/p1/a.webp', 'no CDN configured behaves exactly as before');

@@ -60,6 +60,23 @@ for (const route of ['/kategori/bal-sifa', '/urun/daglica-karakovan-petek-bali-1
   record(broken.length === 0 && down.seen.origin > 0,
     `${route} both down: origin tried ${down.seen.origin}x, visible broken images ${broken.length}${broken.map(i => ` [${i.src.slice(0, 120)}]`).join("")}, placeholders ${down.images.filter(i => i.placeholder).length}`);
 }
+{
+  // An uploaded product video lives only in R2: the player must point there,
+  // must not download anything before play, and Supabase is never asked.
+  const context = await browser.newContext({ viewport: { width: 412, height: 915 }, locale: 'tr-TR' });
+  const page = await context.newPage();
+  const seen = { cdnVideo: 0, origin: 0 };
+  await routeSupabase(page, { get_public_product_detail_v6: 'detail_file_video.json' });
+  await page.route(`${CDN}/**`, r => { if (r.request().url().endsWith('.mp4')) seen.cdnVideo++; return r.fulfill({ status: 200, contentType: 'image/jpeg', body: image }); });
+  await page.route('**/storage/v1/**', r => { seen.origin++; return r.fulfill({ status: 200, contentType: 'image/jpeg', body: image }); });
+  await page.goto(BASE + '/urun/daglica-karakovan-petek-bali-101');
+  await page.waitForTimeout(3000);
+  const video = await page.evaluate(() => { const v = document.querySelector('video'); return v ? { src: v.currentSrc || v.src || v.querySelector('source')?.src || '', preload: v.preload } : null; });
+  record(Boolean(video) && video.src.startsWith(`${CDN}/catalog-public/`) && video.src.endsWith('.mp4'), `uploaded video plays from R2 (${video?.src || 'no video element'})`);
+  record(video?.preload === 'none' && seen.cdnVideo === 0, `video not downloaded before play (preload=${video?.preload}, requests=${seen.cdnVideo})`);
+  record(seen.origin === 0, `no Supabase storage request on a product with video (${seen.origin})`);
+  await context.close();
+}
 await browser.close();
 
 const failed = results.filter(([ok]) => !ok).length;

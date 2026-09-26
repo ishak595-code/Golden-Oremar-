@@ -503,7 +503,8 @@ yayınlatmaz" riski bu tasarımla YOK: Supabase kaynak olarak kalıyor.
 
 ### 10 GB koruması (yapısal, "umarız" değil)
 
-- Sadece 3 genel kovadaki GÖRSELLER. Video ve özel kovalar asla
+- Aynaya sadece 3 genel kovadaki GÖRSELLER girer; özel kovalar asla.
+  Videolar aynaya girmez, doğrudan R2'ye yüklenir (aşağıda, ayrı bütçe)
 - Her PUT'tan ÖNCE defterde rezervasyon: defter her zaman R2'nin üst
   kümesi, yani R2 hiçbir zaman defterden büyük olamaz
 - Rezervasyon satır kilidiyle bütçeyi yeniden kontrol eder: varsayılan
@@ -538,6 +539,48 @@ yayınlatmaz" riski bu tasarımla YOK: Supabase kaynak olarak kalıyor.
       depolamaya SIFIR istek; CDN yokken tüm görseller Supabase'den geldi;
       ikisi de yokken kırık görsel yok. Eski 4 tarayıcı testi de temiz
 
+### Videolar da R2'de, ama Supabase'e HİÇ uğramadan (İshak'ın isteği)
+
+İshak: "resim ve video oraya gitsin, veritabanı sadece diğer veriler."
+Karar ve gerekçe (tekrar tartışılmasın):
+
+- VİDEO: sadece R2. Tarayıcı dosyayı imzalı adresle doğrudan R2'ye yükler.
+  Sebep: 50 MB'lık 20 video Supabase ücretsiz depolamanın tamamı (1 GB)
+- FOTOĞRAF: asıl dosya Supabase'de kalır, müşteri R2'den indirir. Sebep:
+  ikili doğrulayıcı ve tüm yayın kontrolleri Supabase dosyasına bağlı;
+  fotoğraf ~300 KB, 1 GB yaklaşık 3000 fotoğraf. Kotayı yiyen şey
+  indirmeydi ve o artık R2'de. Asılları da taşımak ileride mümkün ama
+  referans sayımı gerektirir (yanlış silme geri alınamaz), şimdi gereksiz
+- Supabase `catalog-public` kovası artık SADECE görsel kabul ediyor
+  (video türleri kaldırıldı, sınır 10 MB). İçinde video yoktu
+
+Yapılanlar:
+
+- [x] Migration `20260926160000_direct_r2_product_video_v1.sql`
+      (md5 b2d81ac08d9848575663bb0cafa3bd9c) ve
+      `20260926161500_media_cdn_target_v1.sql`
+      (md5 15976caf004575751ffacb27c11326da), canlıda
+- [x] Video bütçesi ayrı: 3 GiB (toplamın yarısından az, fotoğraflara her
+      zaman yer kalır), tek video en fazla 50 MB, kullanıcı başına en fazla
+      3 yarım kalmış yükleme
+- [x] Temizlik: 1 saatte bitirilmeyen yükleme ve 24 saat sonra hiçbir
+      ürünün kullanmadığı video otomatik silinir (ürün, değişiklik talebi,
+      editör taslağı ve arşiv kontrol edilir)
+- [x] `verified_product_video_path_v1` ve ürün detayı v10 R2 videolarını
+      tanıyor; detay artık hazır `url` döndürüyor
+- [x] Edge function `media-video-upload` (verify_jwt=true): start/finish/
+      cancel. Yetki catalog-media-verify ile aynı. İmzalı adres 10 dakika,
+      içerik türü imzada. Bitirmede boyut, tür ve dosyanın ilk baytları
+      (ftyp / EBML) R2'de kontrol edilir; tutmazsa R2'den silinir
+- [x] `scripts/media-cdn/video-upload-local-test.ts` 20/20 (gerçek
+      baytlar imzalı adrese yüklendi; farklı içerik türüyle yükleme imzada
+      reddedildi; HTML'i MP4 diye yüklemek reddedildi ve silindi)
+- [x] `src/lib/directVideoUpload.ts` + `scripts/media-cdn/direct-video-client-test.mjs` 11/11
+- [x] Canlıda geri alınan işlemde SQL testi: sahip kontrolü, uzantı-tür
+      eşleşmesi, 50 MB, yol kaçışı, video bütçesi, çift kayıt, onay, url,
+      temizlik, kullanılan videonun silinmemesi
+- [x] media-cdn-check 12/12 (video R2'den, oynat'a basmadan inmiyor)
+
 ### AÇMA SIRASI (kalanlar)
 
 1. [ ] Cloudflare panelinde: `golden-oremar-media` kovası (konum EEUR),
@@ -545,6 +588,8 @@ yayınlatmaz" riski bu tasarımla YOK: Supabase kaynak olarak kalıyor.
        anahtarı. Cloudflare MCP bunları yapamıyor (sadece kova oluşturur,
        konum seçemez). İshak görme engelli: bunu CLAUDE tarayıcı üzerinden
        yapacak, sohbet bilgisayara bağlanınca (Link to this computer)
+1b. [ ] Kova Settings > CORS Policy (video yükleme için ŞART):
+       `[{"AllowedOrigins":["https://golden-oremar.vercel.app","https://goldenoremar.com","https://www.goldenoremar.com","https://localhost","capacitor://localhost"],"AllowedMethods":["PUT"],"AllowedHeaders":["Content-Type"],"MaxAgeSeconds":3600}]`
 2. [ ] Supabase Edge Function secrets: `R2_ACCESS_KEY_ID`,
        `R2_SECRET_ACCESS_KEY` (aynı tarayıcı oturumunda)
 3. [ ] `update private.media_cdn_settings set public_base_url='https://pub-....r2.dev', enabled=true`
