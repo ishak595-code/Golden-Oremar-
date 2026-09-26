@@ -111,6 +111,23 @@ check(Boolean(catchAll), 'vercel.json must keep a /(.*) SPA fallback so clean UR
 if (catchAll && vercel.cleanUrls) check(!/\.html$/i.test(catchAll.destination), 'With cleanUrls enabled the SPA fallback must target "/", not an .html path, or clean URLs 404 in production.');
 check(vercel.rewrites?.[vercel.rewrites.length - 1]?.source === '/(.*)', 'The SPA fallback must be the last rewrite so explicit rules above it still apply.');
 
+// 9. Tab URLs are always rooted at "/". Five screens once built them from the
+//    current href without resetting the path, so from a product page "go to
+//    cart" gave /urun/<slug>?tab=cart and "see category" gave
+//    /urun/<slug>?tab=categories: the address kept naming the product while
+//    the app drew another screen, and a shared or crawled copy received the
+//    product's prerendered page. One builder now serves every tab link.
+const fromProduct = 'https://goldenoremar.com/urun/daglica-karakovan-petek-bali-101?x=1#frag';
+check(nav.buildTabUrl('cart', {}, fromProduct) === 'https://goldenoremar.com/?tab=cart', 'buildTabUrl from a product page must give /?tab=cart.');
+check(nav.buildTabUrl('categories', { category: 'bal-sifa' }, fromProduct) === 'https://goldenoremar.com/?tab=categories&category=bal-sifa', 'buildTabUrl must drop the current path, query and hash and keep only the given params.');
+check(nav.buildTabUrl('categories', { category: null, empty: '' }, fromProduct) === 'https://goldenoremar.com/?tab=categories', 'buildTabUrl must skip empty params.');
+const tabBuilders = [];
+for (const dir of ['src']) {
+  const walk = d => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, e.name); if (e.isDirectory()) walk(f); else if (/\.(ts|tsx)$/.test(e.name) && !f.endsWith(path.join('navigation', 'appUrl.ts'))) { const s = fs.readFileSync(f, 'utf8'); if (/new URL\(window\.location\.href\)[\s\S]{0,200}searchParams\.set\(\s*['"]tab['"]/.test(s) || /(href|return)\s*=?\s*['"`]\?tab=/.test(s)) tabBuilders.push(f); } } };
+  walk(dir);
+}
+check(tabBuilders.length === 0, `Tab URLs must be built with buildTabUrl, not from window.location.href or a relative "?tab=" link: ${tabBuilders.join(', ')}`);
+
 fs.rmSync(path.dirname(tempFile), { recursive: true, force: true });
 
 if (failures.length) {

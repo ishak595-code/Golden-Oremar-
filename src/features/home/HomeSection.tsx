@@ -12,11 +12,12 @@ import ProductCard from'./components/ProductCard';
 import SectionHeader from'./components/SectionHeader';
 import'./homePrestigeV3.css';
 import{scrollBehavior}from'../../lib/reducedMotion';
+import{buildTabUrl}from'../navigation/appUrl';
 
 type ProductReference={id:string;slug:string;legacyId?:string|null};
 type Props={onProductClick:(product:ProductReference)=>void};
 
-function navigateToCategories(categorySlug?:string){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','categories');if(categorySlug)url.searchParams.set('category',categorySlug);const depth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(depth)&&depth>=0?depth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
+function navigateToCategories(categorySlug?:string){const url=buildTabUrl('categories',{category:categorySlug});const depth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(depth)&&depth>=0?depth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
 
 export default function HomeSection({onProductClick}:Props){
  const locale=browserHomeLocale();

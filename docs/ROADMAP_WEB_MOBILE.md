@@ -296,8 +296,22 @@ Bulunan ve düzeltilen gerçek hatalar:
 - Sesli arama eklentisi iki yerde kaydediliyordu; tek modüle alındı
   (`src/lib/nativeSpeechPlugin.ts`)
 
+- **Sekme adresleri ürün yolunu koruyordu (beş kopya).** Ürün sayfasından
+  "Tümünü gör" `/urun/<slug>?tab=categories`, "sepete git"
+  `/urun/<slug>?tab=cart` üretiyordu: ekran değişiyor, adres ürünü
+  gösteriyordu; paylaşılan/taranan bağlantı ürünün SEO sayfasını alıyordu.
+  Faz 1'de sadece App.tsx'teki kopya düzeltilmişti. Artık tek fonksiyon:
+  `buildTabUrl` (appUrl.ts); `public-route-contract-audit` başka yerde
+  sekme adresi kurulmasını yasaklar (negatif kontrolle doğrulandı)
+
 Kilit: `responsive-resilience-contract-audit.mjs` (3 negatif kontrolle
-doğrulandı). Denetim sayısı: 51.
+doğrulandı). Denetim sayısı: 51. Tarayıcı: `navigation-check.mjs` 14/14
+(butonlar, alt menü, geri, adres çubuğu ve yenileme).
+
+**GÖNDERİM ENGELİ (2026-09-26):** oturumun git vekili depoyu yetkili
+listede görmediği için push reddedildi. İş kaybolmasın diye yama dosyası
+claude.ai projesine yazıldı: `claude/pending/`. Çözüm: İshak GitHub
+hesabını claude.ai'da bağlar, sonraki oturum `add_repo` + `git am`.
 
 **Tarayıcı testlerinden öğrenilen tuzaklar:** sabit test yanıtı kullanma,
 istemci sayfa boyutunu kendi isteğiyle karşılaştırıyor (limit/offset'i

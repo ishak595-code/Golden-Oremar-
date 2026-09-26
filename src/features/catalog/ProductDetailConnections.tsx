@@ -2,10 +2,11 @@ import React,{useEffect,useMemo,useState}from'react';
 import{ChevronRight,MapPin,Store,Tag}from'lucide-react';
 import{buildProducerUrl,buildSearchUrl,parsePublicRoute}from'../navigation/appUrl';
 import{useLiveHomeCatalog}from'./useLiveHomeCatalog';
+import{buildTabUrl}from'../navigation/appUrl';
 
 const ROUTE_EVENT='golden-oremar:route-change';
 function pushRoute(url:string,tab:string){const currentDepth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(currentDepth)&&currentDepth>=0?currentDepth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab};window.history.pushState(state,'',url);window.dispatchEvent(new PopStateEvent('popstate',{state}));window.dispatchEvent(new Event(ROUTE_EVENT));window.scrollTo({top:0,behavior:'auto'});}
-function categoryUrl(slug:string){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','categories');url.searchParams.set('category',slug);return url.toString();}
+function categoryUrl(slug:string){return buildTabUrl('categories',{category:slug});}
 
 export default function ProductDetailConnections(){
  const[routeVersion,setRouteVersion]=useState(0);

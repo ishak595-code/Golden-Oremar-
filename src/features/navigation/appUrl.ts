@@ -90,6 +90,26 @@ export function buildEventUrl(reference: unknown, baseHref?: string): string {
   return url.toString();
 }
 
+/**
+ * URL of an in-app tab: "/?tab=cart", "/?tab=categories&category=bal-sifa".
+ *
+ * Always rooted at "/". Five screens used to build this themselves from the
+ * current href, clearing the query but not the path, so from a product page
+ * "go to cart" produced /urun/<slug>?tab=cart and "see category" produced
+ * /urun/<slug>?tab=categories. The screen changed while the address still
+ * named the product: a shared or crawled link then got the product's
+ * prerendered page, and the app drew another screen. Empty params are skipped.
+ */
+export function buildTabUrl(tab: string, params: Record<string, string | null | undefined> = {}, baseHref?: string): string {
+  const url = safeNavigationBaseUrl(baseHref);
+  url.pathname = '/';
+  url.search = '';
+  url.hash = '';
+  url.searchParams.set('tab', tab);
+  for (const [key, value] of Object.entries(params)) if (value) url.searchParams.set(key, value);
+  return url.toString();
+}
+
 export function buildSearchUrl(input: {
   query?: unknown;
   categorySlug?: unknown;

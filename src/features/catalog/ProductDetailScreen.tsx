@@ -15,6 +15,7 @@ import{applySeo,clearSeoStructuredData,publicSeoOrigin}from'../seo/applySeo';
 import ProductVideo from '../media/ProductVideo';
 import{withdrawalTier,WITHDRAWAL_COPY}from'./withdrawalRight';
 import{RotateCcw}from'lucide-react';
+import{buildTabUrl}from'../navigation/appUrl';
 
 type Props={
  reference:string;
@@ -158,7 +159,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
   finally{setBusy(false);}
  }
  function pushInternalRoute(url:string,tab:string){const currentDepth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(currentDepth)&&currentDepth>=0?currentDepth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab};window.history.pushState(state,'',url);window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
- function navigateToCart(){const url=new URL(window.location.href);url.search='';url.hash='';url.searchParams.set('tab','cart');pushInternalRoute(url.toString(),'cart');}
+ function navigateToCart(){pushInternalRoute(buildTabUrl('cart'),'cart');}
  function navigateToCategory(slug:string){pushInternalRoute(buildSearchUrl({query:'',categorySlug:slug,producerId:null}),'search-results');}
  async function buyNow(){
   if(!authenticated){onLoginRequired();return;}
