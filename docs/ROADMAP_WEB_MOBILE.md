@@ -453,6 +453,14 @@ taşınır. Erken taşıma, olmayan bir sorun için karmaşıklık eklemek olur.
       açık. `staff-mfa-contract-audit` kapsamı kilitler, canlı E2E süper
       adminin faktörsüz çalıştığını kanıtlar. Telafi: güçlü, benzersiz
       şifre ve Supabase Auth'ta sızdırılmış şifre koruması açılmalı
+- [ ] **KOTA AÇILINCA: Mobile Quality Gate'i yeniden çalıştır.** 2026-09-25
+      06:49'dan beri her çalışmada `customer-e2e` düşüyor. Sebep kod değil:
+      Supabase günlüğü, testin ilk adımı olan `functions/v1/ci-e2e-user`
+      (test kullanıcısı oluşturma) çağrısının HTTP 402 aldığını gösteriyor
+      (2026-09-26 10:46). Bu yüzden `staff-mfa-e2e` içindeki yeni süper admin
+      muafiyet senaryosu canlıda henüz HİÇ çalışmadı; veritabanı davranışı
+      doğrudan SQL ile doğrulandı. Kota açılınca ilk yeşil çalışma bu
+      senaryoyu da kanıtlamalı
 - [ ] **Medya altyapısı: Cloudflare R2 (KÖKTEN ÇÖZÜM, hesap bekliyor).**
       Kayıt: https://dash.cloudflare.com/sign-up . R2'yi etkinleştirmek
       ödeme yöntemi ister (ücretsiz katmanda çekim olmaz; DOĞRULA).
