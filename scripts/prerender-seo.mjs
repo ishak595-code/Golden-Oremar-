@@ -96,6 +96,30 @@ async function loadCatalogue() {
   return { home, categories, producers };
 }
 
+// Same rule as src/lib/mediaUrl.ts: product images are served from the R2 CDN
+// once a base is configured (build variable, else the constant in that file).
+function mediaCdnBase() {
+  let raw = String(process.env.VITE_MEDIA_CDN_BASE || '').trim();
+  if (!raw) {
+    try {
+      const source = fs.readFileSync(new URL('../src/lib/mediaUrl.ts', import.meta.url), 'utf8');
+      raw = (source.match(/const CANONICAL_MEDIA_CDN_BASE = '([^']*)';/) || [])[1] || '';
+    } catch {
+      raw = '';
+    }
+  }
+  raw = raw.replace(/\/+$/, '');
+  if (!raw) return '';
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== 'https:' || url.search || url.hash || url.username || url.password) return '';
+    return url.toString().replace(/\/+$/, '');
+  } catch {
+    return '';
+  }
+}
+const MEDIA_CDN_BASE = mediaCdnBase();
+
 function storageImageUrl(imagePath) {
   const value = String(imagePath || '').trim();
   if (!value) return null;
@@ -103,8 +127,12 @@ function storageImageUrl(imagePath) {
   if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return null;
   const clean = value.replace(/^\/+/, '');
   if (!clean || clean.split('/').some(part => !part || part === '.' || part === '..')) return null;
+  const encoded = clean.split('/').map(encodeURIComponent).join('/');
+  if (MEDIA_CDN_BASE && clean.length <= 1024 && !/[\\\u0000-\u001f\u007f]/.test(clean) && /\.(jpe?g|png|webp|avif)$/i.test(clean)) {
+    return `${MEDIA_CDN_BASE}/catalog-public/${encoded}`;
+  }
   const base = String(process.env.VITE_SUPABASE_URL || CANONICAL_SUPABASE_URL).replace(/\/+$/, '');
-  return `${base}/storage/v1/object/public/catalog-public/${clean.split('/').map(encodeURIComponent).join('/')}`;
+  return `${base}/storage/v1/object/public/catalog-public/${encoded}`;
 }
 
 // Remove the template's own SEO tags so each page carries exactly one set.

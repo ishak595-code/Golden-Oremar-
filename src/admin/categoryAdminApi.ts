@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { compressImageForUpload, CATEGORY_IMAGE_COMPRESSION } from '../lib/compressImage';
 import { publicMediaUrl } from '../lib/mediaUrl';
+import { uploadDirectMedia } from '../lib/directMediaUpload';
 
 export type AdminCategory = {
   id: string;
@@ -194,16 +195,9 @@ export function categoryAdminErrorMessage(error: unknown, fallback = 'Kategori i
 }
 
 const CATEGORY_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
-const CATEGORY_IMAGE_EXT: Record<string, string> = {
-  'image/jpeg': 'jpg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'image/avif': 'avif',
-};
-
 /**
- * Uploads a category image to the catalog-public bucket and returns the stored
- * object key.
+ * Uploads a category image to Cloudflare R2 (path in the catalog-public
+ * namespace) and returns the stored object key.
  *
  * Categories previously had no upload path at all - the editor exposed a plain
  * text field, which is how absolute stock-photo URLs ended up in image_path and
@@ -221,41 +215,13 @@ export async function uploadCategoryImage(input: File) {
   if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
     throw new Error('Kategori görseli en fazla 10 MB olabilir.');
   }
-
-  const { data: auth } = await supabase.auth.getUser();
-  const userId = auth?.user?.id;
-  if (!userId) throw new Error('Oturum doğrulanamadı. Lütfen yeniden giriş yapın.');
-
-  const storagePath = `admin/${userId}/categories/${crypto.randomUUID()}.${CATEGORY_IMAGE_EXT[file.type]}`;
-  const { error } = await supabase.storage
-    .from('catalog-public')
-    .upload(storagePath, file, { contentType: file.type, upsert: false, cacheControl: '31536000' });
-  if (error) throw error;
-
-  // Server-side verification, matching what product and storefront uploads
-  // already do. The browser-reported MIME type is attacker-controlled, so the
-  // edge function re-downloads the object, sniffs the real format from its
-  // magic bytes, checks the extension agrees, reads the dimensions and records
-  // a SHA-256. Skipping this for categories alone would leave one public image
-  // surface trusting the client.
-  //
-  // If verification fails the uploaded object is removed rather than left
-  // orphaned in the bucket, and the original reason is surfaced to the caller.
-  try {
-    const { data, error: verifyError } = await supabase.functions.invoke('catalog-media-verify', {
-      body: { path: storagePath },
-    });
-    if (verifyError || !data || (data as { ok?: unknown }).ok !== true) {
-      throw new Error('Kategori görselinin gerçek dosya tipi doğrulanamadı.');
-    }
-  } catch (failure) {
-    await supabase.storage.from('catalog-public').remove([storagePath]).catch(() => {});
-    throw failure instanceof Error
-      ? failure
-      : new Error('Kategori görseli doğrulanamadı.');
-  }
-
-  return storagePath;
+  // Uploaded straight to Cloudflare R2. The media-upload edge function reads
+  // the file back, sniffs the real format from its bytes, checks the
+  // extension, requires both edges to be at least 1200 px and records a
+  // SHA-256 - the same checks product images get. (The old Storage path was
+  // refused by catalog-media-verify for categories, so every upload failed.)
+  const result = await uploadDirectMedia('category-image', file);
+  return result.path;
 }
 
 /** Resolves a stored category image key to a public URL for preview. */

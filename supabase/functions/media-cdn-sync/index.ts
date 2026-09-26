@@ -1,19 +1,25 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.111.0";
 import { AwsClient } from "npm:aws4fetch@1.0.20";
+import { detectImageMime, imageDimensions, sha256Hex } from "../_shared/media_binary.ts";
 
-// Copies public images from Supabase Storage to Cloudflare R2 and removes
-// copies whose source is gone. Called only by the pg_cron job
-// golden-oremar-media-cdn-sync (see migration add_media_cdn_mirror_v1), which
-// sends the vault secret in x-golden-worker-secret.
+// Keeps Cloudflare R2 the only home of public media. Called by the pg_cron
+// job golden-oremar-media-cdn-sync with the vault secret in
+// x-golden-worker-secret, only when the database says there is work.
 //
-// Every decision about WHAT to copy is made by the database (plan, budget,
-// reservation). This function only moves bytes, and it re-checks the bytes
-// themselves: an object whose content is not really the image type it claims
-// is refused, so R2 never hosts anything but images.
-//
-// Secrets: R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY (Edge Function secrets).
-// Account id and bucket name are not secret and come from the plan.
+// Each run:
+//   1. adopt   - images that still landed in a public Supabase bucket (older
+//                app versions, tests) are copied to R2, with their real type,
+//                dimensions and SHA-256 recorded;
+//   2. offload - once the R2 copy is confirmed, the Supabase copy is deleted;
+//   3. collect - unfinished uploads (1 h) and files nothing refers to (seen
+//                unreferenced in two scans 72 h apart) are deleted from R2,
+//                with their staging key, then from the ledger;
+//   4. sweep   - every 6 hours, staging keys (_incoming/<uuid>) older than
+//                2 hours are deleted, so a device that uploaded and never
+//                called finish cannot leave bytes behind.
+// What to do is decided by the database (plan, budget, reference scan); this
+// function moves bytes and refuses anything that is not really an image.
 
 const IMMUTABLE = "public, max-age=31536000, immutable";
 const DEADLINE_MS = 45_000;
@@ -23,25 +29,6 @@ function json(status: number, body: Record<string, unknown>) {
 }
 function text(value: unknown, max = 1024) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
-}
-function ascii(bytes: Uint8Array, start: number, length: number) {
-  return String.fromCharCode(...bytes.slice(start, start + length));
-}
-function equal(bytes: Uint8Array, signature: number[], offset = 0) {
-  return signature.every((value, index) => bytes[offset + index] === value);
-}
-// Same magic-byte rules as catalog-media-verify.
-export function detectMime(bytes: Uint8Array) {
-  if (bytes.length >= 3 && equal(bytes, [0xff, 0xd8, 0xff])) return "image/jpeg";
-  if (bytes.length >= 24 && equal(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]) && ascii(bytes, 12, 4) === "IHDR") return "image/png";
-  if (bytes.length >= 12 && ascii(bytes, 0, 4) === "RIFF" && ascii(bytes, 8, 4) === "WEBP") return "image/webp";
-  if (bytes.length >= 16 && ascii(bytes, 4, 4) === "ftyp") {
-    const brands: string[] = [ascii(bytes, 8, 4)];
-    const limit = Math.min(bytes.length, 64);
-    for (let offset = 16; offset + 4 <= limit; offset += 4) brands.push(ascii(bytes, offset, 4));
-    if (brands.includes("avif") || brands.includes("avis")) return "image/avif";
-  }
-  return "";
 }
 
 const BUCKETS = new Set(["catalog-public", "content-public", "event-public"]);
@@ -55,7 +42,23 @@ export function r2Key(bucket: string, name: string) {
 }
 
 type Upload = { bucket: string; name: string; etag: string; size: number; contentType: string };
-type Removal = { bucket: string; name: string };
+type Ref = { bucket: string; name: string; staging?: string | null };
+
+const STAGING_RE = /^_incoming\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const STAGING_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+
+/** Keys and upload times from a ListObjectsV2 answer (only staging keys). */
+export function parseStagingList(xml: string) {
+  const items: { key: string; modified: number }[] = [];
+  for (const block of xml.match(/<Contents>[\s\S]*?<\/Contents>/g) || []) {
+    const key = (block.match(/<Key>([^<]*)<\/Key>/) || [])[1] || "";
+    const modified = Date.parse((block.match(/<LastModified>([^<]*)<\/LastModified>/) || [])[1] || "");
+    if (STAGING_RE.test(key) && Number.isFinite(modified)) items.push({ key, modified });
+  }
+  const truncated = /<IsTruncated>true<\/IsTruncated>/.test(xml);
+  const next = (xml.match(/<NextContinuationToken>([^<]*)<\/NextContinuationToken>/) || [])[1] || "";
+  return { items, next: truncated ? next.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'") : "" };
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { ok: false, error: "method_not_allowed" });
@@ -90,37 +93,49 @@ Deno.serve(async (req: Request) => {
   const r2 = new AwsClient({ accessKeyId, secretAccessKey, service: "s3", region: "auto" });
   const objectUrl = (bucket: string, name: string) => `${endpoint}/${bucketName}/${r2Key(bucket, name)}`;
 
-  const result = { uploaded: 0, uploadedBytes: 0, deleted: 0, failed: 0, refused: 0, skippedForTime: 0, errors: [] as string[] };
+  const stagingUrl = (key: string) => {
+    if (!STAGING_RE.test(key)) throw new Error("media_staging_key_invalid");
+    return `${endpoint}/${bucketName}/${key}`;
+  };
+
+  const result = { adopted: 0, adoptedBytes: 0, offloaded: 0, collected: 0, deleted: 0, swept: 0, failed: 0, refused: 0, skippedForTime: 0, errors: [] as string[] };
   const note = (message: string) => { if (result.errors.length < 10) result.errors.push(message.slice(0, 200)); };
 
-  for (const item of (Array.isArray(plan.deletes) ? plan.deletes : []) as Removal[]) {
-    try {
-      const response = await r2.fetch(objectUrl(item.bucket, item.name), { method: "DELETE" });
-      if (response.ok || response.status === 404) {
-        await service.rpc("service_media_cdn_forget_v1", { p_bucket: item.bucket, p_name: item.name });
-        result.deleted++;
-      } else {
-        result.failed++;
-        note(`delete ${item.bucket}/${item.name}: ${response.status}`);
-      }
-      await response.body?.cancel();
-    } catch (error) {
-      result.failed++;
-      note(`delete ${item.bucket}/${item.name}: ${error instanceof Error ? error.message : String(error)}`);
-    }
+  const deleteUrl = async (target: string) => {
+    const response = await r2.fetch(target, { method: "DELETE" });
+    await response.body?.cancel();
+    if (!response.ok && response.status !== 404) throw new Error(`r2_delete_${response.status}`);
+  };
+  // The ledger row goes only after R2 is clear, so the ledger always lists at
+  // least what R2 holds. forget refuses confirmed rows that were not marked.
+  const deleteFromR2 = async (item: Ref) => {
+    await deleteUrl(objectUrl(item.bucket, item.name));
+    if (item.staging) await deleteUrl(stagingUrl(item.staging));
+    await service.rpc("service_media_cdn_forget_v1", { p_bucket: item.bucket, p_name: item.name });
+  };
+
+  // Legacy mirror copies whose source is gone.
+  for (const item of (Array.isArray(plan.deletes) ? plan.deletes : []) as Ref[]) {
+    try { await deleteFromR2(item); result.deleted++; } catch (error) { result.failed++; note(`delete ${item.name}: ${error instanceof Error ? error.message : error}`); }
   }
 
+  // 1. Adopt.
+  const adopted: Ref[] = [];
   for (const item of (Array.isArray(plan.uploads) ? plan.uploads : []) as Upload[]) {
     if (Date.now() - started > DEADLINE_MS) { result.skippedForTime++; continue; }
+    // Before the PUT nothing is in R2, so the reservation can go. Once a PUT
+    // was attempted it may have landed; the unconfirmed row then stays and the
+    // garbage collector deletes the key after an hour (or a retry confirms it).
+    let putAttempted = false;
     const fail = async (reason: string) => {
       result.failed++;
       note(`${item.bucket}/${item.name}: ${reason}`);
       await service.rpc("service_media_cdn_fail_v1", { p_bucket: item.bucket, p_name: item.name, p_etag: item.etag, p_reason: reason });
-      await service.rpc("service_media_cdn_forget_v1", { p_bucket: item.bucket, p_name: item.name });
+      if (!putAttempted) await service.rpc("service_media_cdn_forget_v1", { p_bucket: item.bucket, p_name: item.name });
     };
     try {
       if (!BUCKETS.has(item.bucket) || !safeObjectName(item.name)) { result.refused++; continue; }
-      const { data: reserved, error: reserveError } = await service.rpc("service_media_cdn_reserve_v1", {
+      const { data: reserved, error: reserveError } = await service.rpc("service_media_adopt_reserve_v1", {
         p_bucket: item.bucket, p_name: item.name, p_etag: item.etag, p_size: item.size, p_content_type: item.contentType,
       });
       if (reserveError) { note(`reserve ${item.name}: ${reserveError.message}`); result.failed++; continue; }
@@ -130,9 +145,13 @@ Deno.serve(async (req: Request) => {
       if (downloadError || !blob) { await fail("source_download_failed"); continue; }
       const bytes = new Uint8Array(await blob.arrayBuffer());
       if (bytes.byteLength !== item.size) { await fail("source_size_changed"); continue; }
-      const detected = detectMime(bytes);
+      const detected = detectImageMime(bytes);
       if (!detected || detected !== item.contentType) { await fail(`binary_type_mismatch:${detected || "unknown"}`); continue; }
+      const dimensions = imageDimensions(bytes, detected);
+      if (!dimensions || dimensions.width < 1 || dimensions.height < 1 || dimensions.width > 20000 || dimensions.height > 20000) { await fail("dimensions_unreadable"); continue; }
+      const sha256 = await sha256Hex(bytes);
 
+      putAttempted = true;
       const response = await r2.fetch(objectUrl(item.bucket, item.name), {
         method: "PUT",
         body: bytes,
@@ -140,15 +159,66 @@ Deno.serve(async (req: Request) => {
       });
       await response.body?.cancel();
       if (!response.ok) { await fail(`r2_put_${response.status}`); continue; }
-      const { data: confirmed } = await service.rpc("service_media_cdn_confirm_v1", { p_bucket: item.bucket, p_name: item.name, p_etag: item.etag });
-      if (confirmed !== true) note(`confirm ${item.name}: source changed during copy, will retry`);
-      result.uploaded++;
-      result.uploadedBytes += bytes.byteLength;
+      const { data: confirmed } = await service.rpc("service_media_adopt_confirm_v1", {
+        p_bucket: item.bucket, p_name: item.name, p_etag: item.etag, p_sha256: sha256, p_width: dimensions.width, p_height: dimensions.height,
+      });
+      if (confirmed !== true) { note(`confirm ${item.name}: source changed during copy, will retry`); continue; }
+      result.adopted++;
+      result.adoptedBytes += bytes.byteLength;
+      adopted.push({ bucket: item.bucket, name: item.name });
     } catch (error) {
-      await fail(error instanceof Error ? error.message : "upload_failed").catch(() => undefined);
+      await fail(error instanceof Error ? error.message : "adopt_failed").catch(() => undefined);
     }
   }
 
+  // 2. Offload: delete Supabase copies that now live in R2 (this run's and earlier ones).
+  const offloads = [...adopted, ...((Array.isArray(plan.offloads) ? plan.offloads : []) as Ref[])];
+  if (plan.offloadSources !== false) {
+    const byBucket = new Map<string, string[]>();
+    for (const item of offloads) {
+      if (!BUCKETS.has(item.bucket) || !safeObjectName(item.name)) continue;
+      const names = byBucket.get(item.bucket) || [];
+      if (!names.includes(item.name)) names.push(item.name);
+      byBucket.set(item.bucket, names);
+    }
+    for (const [bucket, names] of byBucket) {
+      const { data: removed, error } = await service.storage.from(bucket).remove(names);
+      if (error) { result.failed++; note(`offload ${bucket}: ${error.message}`); continue; }
+      result.offloaded += Array.isArray(removed) ? removed.length : 0;
+    }
+  }
+
+  // 3. Collect garbage: unfinished uploads and files nothing refers to.
+  if (Date.now() - started < DEADLINE_MS) {
+    const { data: gc, error: gcError } = await service.rpc("service_media_gc_candidates_v2", { p_limit: 50 });
+    if (gcError) { result.failed++; note(`gc: ${gcError.message}`); }
+    for (const item of ((gc && Array.isArray(gc.delete)) ? gc.delete : []) as Ref[]) {
+      try { await deleteFromR2(item); result.collected++; } catch (error) { result.failed++; note(`collect ${item.name}: ${error instanceof Error ? error.message : error}`); }
+    }
+  }
+
+  // 4. Sweep staging keys nobody finished.
+  if (plan.stagingSweepDue === true && Date.now() - started < DEADLINE_MS) {
+    let token = "", complete = true;
+    do {
+      const list = new URL(`${endpoint}/${bucketName}`);
+      if (token) list.searchParams.set("continuation-token", token);
+      list.searchParams.set("list-type", "2");
+      list.searchParams.set("max-keys", "1000");
+      list.searchParams.set("prefix", "_incoming/");
+      const response = await r2.fetch(list.toString(), { method: "GET" });
+      if (!response.ok) { await response.body?.cancel(); complete = false; result.failed++; note(`sweep list: ${response.status}`); break; }
+      const page = parseStagingList(await response.text());
+      for (const item of page.items) {
+        if (Date.now() - item.modified < STAGING_MAX_AGE_MS) continue;
+        try { await deleteUrl(stagingUrl(item.key)); result.swept++; } catch (error) { complete = false; result.failed++; note(`sweep ${item.key}: ${error instanceof Error ? error.message : error}`); }
+      }
+      token = page.next;
+      if (token && Date.now() - started > DEADLINE_MS) { complete = false; break; }
+    } while (token);
+    if (complete) await service.rpc("service_media_staging_swept_v1");
+  }
+
   const status = result.failed ? "partial" : "ok";
-  return finish(status, { ...result, budgetBlocked: plan.budgetBlocked ?? 0, mirroredBytesBefore: plan.mirroredBytes ?? 0, ms: Date.now() - started });
+  return finish(status, { ...result, budgetBlocked: plan.budgetBlocked ?? 0, storedBytesBefore: plan.mirroredBytes ?? 0, ms: Date.now() - started });
 });

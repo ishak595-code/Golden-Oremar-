@@ -21,9 +21,14 @@ requireMatch(verifier,/return json\(200,\{ok:true,path,detectedMime,byteSize:byt
 
 requireText(producerApi,'MIN_PRODUCT_IMAGE_EDGE=1200','Producer picker must retain the same 1200 px client-side minimum for early feedback.');
 requireText(producerApi,'MAX_PRODUCT_IMAGE_PIXELS=25_000_000','Producer picker must retain the same 25 MP client-side ceiling.');
+const sharedBinary=read('supabase/functions/_shared/media_binary.ts');
+requireText(sharedBinary,'MIN_PRODUCT_IMAGE_EDGE = 1200','The R2 verifier (media-upload) must keep the 1200 px product image floor.');
+requireText(sharedBinary,'MAX_PRODUCT_IMAGE_PIXELS = 25_000_000','The R2 verifier (media-upload) must keep the 25 MP ceiling.');
 for(const api of [producerApi,officialApi]){
-  requireText(api,"functions.invoke('catalog-media-verify'",'Every product image upload surface must use the canonical server verifier.');
-  requireMatch(api,/catch\(error\)[\s\S]*storage\.from\('catalog-public'\)\.remove\(uploaded\)/,'Rejected image uploads must remove newly uploaded objects.');
+  // Since 2026-09-26 images go straight to Cloudflare R2; media-upload is the
+  // canonical server verifier (type from bytes, 1200 px floor, SHA-256).
+  requireMatch(api,/uploadDirectMedia\('(product|official)-image'/,'Every product image upload surface must use the canonical server verifier (media-upload).');
+  requireMatch(api,/catch\(error\)\{if\(uploaded\.length\)await cancelDirectMedia\(uploaded\)/,'Rejected image uploads must remove newly uploaded objects.');
 }
 
 if(failures.length){

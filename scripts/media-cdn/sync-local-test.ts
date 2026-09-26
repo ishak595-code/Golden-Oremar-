@@ -1,113 +1,98 @@
 // Runs supabase/functions/media-cdn-sync against local fakes of Supabase and
-// R2, and checks every byte and header that would reach Cloudflare.
-//
-// The fake R2 verifies each request's AWS Signature V4 with its own
-// implementation (not aws4fetch), so a signing mistake fails here instead of
-// as a 403 in production.
+// R2: adopting files that still landed in Supabase Storage, deleting the
+// Supabase copies once R2 has them, and collecting garbage from R2.
 //
 //   deno run -A --no-config scripts/media-cdn/sync-local-test.ts
-//
-// (Deno can be installed without root: npm i deno, then node_modules/.bin/deno)
+// (Deno without root: npm i deno, then node_modules/.bin/deno)
+
+import { bundleFunction, startFakeR2 } from "./fakes.ts";
 
 const SUPA_PORT = 54891, R2_PORT = 54892, FN_PORT = 8000; // Deno.serve default port
-const ACCESS = "test-access-key-id", SECRET = "test-secret-access-key";
 const WORKER_SECRET = "a".repeat(64);
-const ACCOUNT = "05764c9f34befd8e71cffca80a56d26b", BUCKET = "golden-oremar-media";
+const enc = new TextEncoder();
 
-const webp = new Uint8Array([...new TextEncoder().encode("RIFF"), 30, 0, 0, 0, ...new TextEncoder().encode("WEBPVP8 "), 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
-const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, ...new TextEncoder().encode("IHDR"), 0, 0, 0, 1, 0, 0, 0, 1, 8, 6]);
+function png(width: number, height: number) {
+  const b = new Uint8Array(64);
+  b.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, ...enc.encode("IHDR")]);
+  new DataView(b.buffer).setUint32(16, width); new DataView(b.buffer).setUint32(20, height);
+  return b;
+}
+const good = png(1600, 1200);
+const disguised = enc.encode("<html>" + "x".repeat(60) + "</html>");
 const files: Record<string, Uint8Array> = {
-  "catalog-public/p1/products/a.webp": webp,
-  "catalog-public/p1/products/fake.webp": png, // PNG bytes wearing a .webp label
+  "catalog-public/p1/products/a.png": good,
+  "catalog-public/p1/products/fake.png": disguised,
 };
 
-type Scenario = { enabled: boolean; reserveRefuse?: string[] };
+type Scenario = { enabled: boolean; offloadSources?: boolean; stagingSweepDue?: boolean };
 let scenario: Scenario = { enabled: true };
-const rpcCalls: { name: string; body: Record<string, unknown> }[] = [];
-const r2Requests: { method: string; path: string; headers: Headers; body: Uint8Array; signatureOk: boolean; detail: string }[] = [];
+const OLD_STAGING = "_incoming/0b8c4c3e-3f55-4b8a-9a55-2a4e5b8d9f10", FRESH_STAGING = "_incoming/7d1e2f30-4a5b-4c6d-8e7f-901a2b3c4d5e";
+const ABANDONED_STAGING = "_incoming/5e6f7a8b-9c0d-4e1f-8a2b-3c4d5e6f7a8b";
+const rpcCalls: { name: string; body: Record<string, any> }[] = [];
+const storageRemovals: { bucket: string; names: string[] }[] = [];
 
 function plan() {
   return {
-    enabled: scenario.enabled, accountId: ACCOUNT, bucket: BUCKET, mirroredBytes: 100, budgetBytes: 8589934592, budgetBlocked: 0,
+    enabled: scenario.enabled, accountId: "05764c9f34befd8e71cffca80a56d26b", bucket: "golden-oremar-media", mirroredBytes: 100, budgetBytes: 8589934592, budgetBlocked: 0,
+    offloadSources: scenario.offloadSources ?? true, stagingSweepDue: scenario.stagingSweepDue ?? true,
     uploads: [
-      { bucket: "catalog-public", name: "p1/products/a.webp", etag: "e1", size: webp.length, contentType: "image/webp" },
-      { bucket: "catalog-public", name: "p1/products/fake.webp", etag: "e2", size: png.length, contentType: "image/webp" },
-      { bucket: "catalog-public", name: "p1/products/refused.webp", etag: "e3", size: 10, contentType: "image/webp" },
-      { bucket: "catalog-public", name: "../escape.webp", etag: "e4", size: 10, contentType: "image/webp" },
+      { bucket: "catalog-public", name: "p1/products/a.png", etag: "e1", size: good.length, contentType: "image/png" },
+      { bucket: "catalog-public", name: "p1/products/fake.png", etag: "e2", size: disguised.length, contentType: "image/png" },
+      { bucket: "catalog-public", name: "p1/products/refused.png", etag: "e3", size: 10, contentType: "image/png" },
+      { bucket: "catalog-public", name: "../escape.png", etag: "e4", size: 10, contentType: "image/png" },
     ],
-    deletes: [{ bucket: "event-public", name: "p1/events/old.webp" }],
+    offloads: [{ bucket: "event-public", name: "p1/events/already-in-r2.png" }],
+    deletes: [{ bucket: "catalog-public", name: "legacy/mirror-copy.png" }],
   };
 }
 
 Deno.serve({ port: SUPA_PORT, onListen() {} }, async req => {
   const url = new URL(req.url);
+  const reply = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { "Content-Type": "application/json" } });
   const rpc = url.pathname.match(/\/rest\/v1\/rpc\/([a-z0-9_]+)/)?.[1];
   if (rpc) {
     const body = await req.json().catch(() => ({}));
     rpcCalls.push({ name: rpc, body });
-    const reply = (value: unknown) => new Response(JSON.stringify(value), { headers: { "Content-Type": "application/json" } });
     if (rpc === "service_validate_media_cdn_worker_v1") return reply(body.p_secret === WORKER_SECRET);
     if (rpc === "service_media_cdn_plan_v1") return reply(plan());
-    if (rpc === "service_media_cdn_reserve_v1") return reply(!(scenario.reserveRefuse || []).includes(body.p_name));
-    if (rpc === "service_media_cdn_confirm_v1" || rpc === "service_media_cdn_forget_v1") return reply(true);
+    if (rpc === "service_media_adopt_reserve_v1") return reply(body.p_name !== "p1/products/refused.png");
+    if (rpc === "service_media_adopt_confirm_v1") return reply(true);
+    if (rpc === "service_media_gc_candidates_v2") return reply({ delete: [{ bucket: "catalog-public", name: "u1/products/abandoned.png", staging: ABANDONED_STAGING }] });
+    if (rpc === "service_media_cdn_forget_v1") return reply(true);
     return reply(null);
+  }
+  const remove = req.method === "DELETE" && url.pathname.match(/^\/storage\/v1\/object\/([a-z-]+)$/);
+  if (remove) {
+    const body = await req.json().catch(() => ({}));
+    storageRemovals.push({ bucket: remove[1], names: body.prefixes || [] });
+    return reply((body.prefixes || []).map((name: string) => ({ name })));
   }
   const object = url.pathname.match(/\/storage\/v1\/object\/(?:authenticated\/)?(.+)$/)?.[1];
   if (object) {
     const bytes = files[decodeURIComponent(object)];
-    return bytes ? new Response(bytes, { headers: { "Content-Type": "application/octet-stream" } }) : new Response("{}", { status: 404 });
+    return bytes ? new Response(bytes, { headers: { "Content-Type": "application/octet-stream" } }) : reply({}, 404);
   }
-  return new Response("not found", { status: 404 });
+  return reply({}, 404);
 });
 
-// --- independent SigV4 verification -------------------------------------
-const enc = new TextEncoder();
-const hex = (buf: ArrayBuffer) => Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("");
-const sha256 = async (data: Uint8Array | string) => hex(await crypto.subtle.digest("SHA-256", typeof data === "string" ? enc.encode(data) : data));
-async function hmac(key: ArrayBuffer | Uint8Array, data: string) {
-  const k = await crypto.subtle.importKey("raw", key, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  return crypto.subtle.sign("HMAC", k, enc.encode(data));
-}
-async function verifySigV4(req: Request, body: Uint8Array) {
-  const auth = req.headers.get("authorization") || "";
-  const m = auth.match(/^AWS4-HMAC-SHA256 Credential=([^/]+)\/(\d{8})\/([^/]+)\/([^/]+)\/aws4_request, SignedHeaders=([^,]+), Signature=([0-9a-f]{64})$/);
-  if (!m) return { ok: false, detail: `bad authorization header: ${auth}` };
-  const [, key, date, region, service, signedHeaders, signature] = m;
-  if (key !== ACCESS || region !== "auto" || service !== "s3") return { ok: false, detail: `scope ${key}/${region}/${service}` };
-  const amzDate = req.headers.get("x-amz-date") || "";
-  const payloadHash = req.headers.get("x-amz-content-sha256") || "";
-  if (payloadHash !== await sha256(body) && payloadHash !== "UNSIGNED-PAYLOAD") return { ok: false, detail: "payload hash mismatch" };
-  const url = new URL(req.url);
-  const canonicalHeaders = signedHeaders.split(";").map(h => `${h}:${(req.headers.get(h) || "").trim().replace(/\s+/g, " ")}\n`).join("");
-  const canonical = [req.method, url.pathname, url.search.slice(1), canonicalHeaders, signedHeaders, payloadHash].join("\n");
-  const toSign = ["AWS4-HMAC-SHA256", amzDate, `${date}/${region}/${service}/aws4_request`, await sha256(canonical)].join("\n");
-  let k = await hmac(enc.encode("AWS4" + SECRET), date);
-  k = await hmac(k, region); k = await hmac(k, service); k = await hmac(k, "aws4_request");
-  const expected = hex(await hmac(k, toSign));
-  return { ok: expected === signature, detail: expected === signature ? "signature valid" : "signature mismatch" };
-}
-
-Deno.serve({ port: R2_PORT, onListen() {} }, async req => {
-  const body = new Uint8Array(await req.arrayBuffer());
-  const { ok, detail } = await verifySigV4(req, body);
-  r2Requests.push({ method: req.method, path: new URL(req.url).pathname, headers: req.headers, body, signatureOk: ok, detail });
-  if (!ok) return new Response("SignatureDoesNotMatch", { status: 403 });
-  return new Response(null, { status: req.method === "DELETE" ? 204 : 200 });
-});
-
-// --- run the real function in a child process ----------------------------
-// The jsr: type-only import is dropped from a temporary copy: it carries no
-// runtime code, and jsr.io is not reachable from every sandbox.
-const source = await Deno.readTextFile(new URL("../../supabase/functions/media-cdn-sync/index.ts", import.meta.url));
-const fnPath = await Deno.makeTempFile({ suffix: ".ts" });
-await Deno.writeTextFile(fnPath, source.replace(/^import "jsr:[^"]+";\n/m, ""));
+const r2 = startFakeR2(R2_PORT);
+const seed = () => {
+  const now = Date.now();
+  r2.objects.set("catalog-public/legacy/mirror-copy.png", { body: good, type: "image/png", cacheControl: "", modified: now });
+  r2.objects.set("catalog-public/u1/products/abandoned.png", { body: good, type: "image/png", cacheControl: "", modified: now });
+  r2.objects.set(ABANDONED_STAGING, { body: good, type: "image/png", cacheControl: "", modified: now - 90 * 60_000 });
+  r2.objects.set(OLD_STAGING, { body: good, type: "image/png", cacheControl: "", modified: now - 3 * 3600_000 });
+  r2.objects.set(FRESH_STAGING, { body: good, type: "image/png", cacheControl: "", modified: now - 10 * 60_000 });
+};
+seed();
+const fnPath = await bundleFunction("media-cdn-sync");
 async function startFunction(env: Record<string, string>) {
   const child = new Deno.Command(Deno.execPath(), {
     args: ["run", "-A", "--no-check", "--no-config", "--node-modules-dir=none", fnPath],
-    env: { SUPABASE_URL: `http://127.0.0.1:${SUPA_PORT}`, SUPABASE_SERVICE_ROLE_KEY: "service", R2_ENDPOINT: `http://127.0.0.1:${R2_PORT}`, PORT: String(FN_PORT), ...env },
+    env: { SUPABASE_URL: `http://127.0.0.1:${SUPA_PORT}`, SUPABASE_SERVICE_ROLE_KEY: "service", R2_ENDPOINT: `http://127.0.0.1:${R2_PORT}`, ...env },
     stdout: "null", stderr: "piped",
   }).spawn();
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < 300; i++) {
     try { await fetch(`http://127.0.0.1:${FN_PORT}/`, { method: "GET" }).then(r => r.body?.cancel()); return child; } catch { await new Promise(r => setTimeout(r, 100)); }
   }
   throw new Error("function did not start");
@@ -116,46 +101,65 @@ const call = (secret: string) => fetch(`http://127.0.0.1:${FN_PORT}/`, { method:
 
 const results: [boolean, string][] = [];
 const check = (ok: boolean, label: string) => results.push([ok, label]);
-const reset = (s: Scenario) => { scenario = s; rpcCalls.length = 0; r2Requests.length = 0; };
+const reset = (s: Scenario) => { scenario = s; rpcCalls.length = 0; r2.log.length = 0; storageRemovals.length = 0; };
+const names = (rpc: string) => rpcCalls.filter(c => c.name === rpc).map(c => String(c.body.p_name));
 
-let child = await startFunction({ R2_ACCESS_KEY_ID: ACCESS, R2_SECRET_ACCESS_KEY: SECRET });
+let child = await startFunction({ R2_ACCESS_KEY_ID: r2.access, R2_SECRET_ACCESS_KEY: r2.secret });
 
 reset({ enabled: true });
 let res = await call("wrong".repeat(10));
-check(res.status === 401 && r2Requests.length === 0 && rpcCalls.length === 1, `wrong worker secret -> 401, nothing touched (status ${res.status}, r2 ${r2Requests.length}, rpc ${rpcCalls.length})`);
+check(res.status === 401 && r2.log.length === 0 && rpcCalls.length === 1, `wrong worker secret -> 401, nothing touched (${res.status})`);
 
 reset({ enabled: false });
 res = await call(WORKER_SECRET);
-check(res.status === 200 && res.body.status === "disabled" && r2Requests.length === 0, `disabled -> no R2 traffic (${res.body.status})`);
+check(res.status === 200 && res.body.status === "disabled" && r2.log.length === 0 && storageRemovals.length === 0, "disabled -> nothing moves");
 
-reset({ enabled: true, reserveRefuse: ["p1/products/refused.webp"] });
-res = await call(WORKER_SECRET);
-const puts = r2Requests.filter(r => r.method === "PUT"), dels = r2Requests.filter(r => r.method === "DELETE");
-check(r2Requests.every(r => r.signatureOk), `every R2 request carries a valid SigV4 signature (${r2Requests.map(r => r.detail).join(", ")})`);
-check(puts.length === 1 && puts[0].path === `/${BUCKET}/catalog-public/p1/products/a.webp`, `exactly one PUT, to the bucket-prefixed key (${puts.map(p => p.path).join(", ")})`);
-check(puts.length === 1 && puts[0].headers.get("content-type") === "image/webp" && puts[0].headers.get("cache-control") === "public, max-age=31536000, immutable", `PUT has image content type and a one-year immutable cache header`);
-check(puts.length === 1 && puts[0].body.length === webp.length && puts[0].body.every((b, i) => b === webp[i]), "PUT body is byte-identical to the source");
-check(dels.length === 1 && dels[0].path === `/${BUCKET}/event-public/p1/events/old.webp`, `orphan copy deleted (${dels.map(d => d.path).join(", ")})`);
-const names = (rpc: string) => rpcCalls.filter(c => c.name === rpc).map(c => String(c.body.p_name));
-check(names("service_media_cdn_confirm_v1").join() === "p1/products/a.webp", `only the good image confirmed (${names("service_media_cdn_confirm_v1")})`);
-check(names("service_media_cdn_fail_v1").join() === "p1/products/fake.webp" && names("service_media_cdn_forget_v1").includes("p1/products/fake.webp"), "PNG disguised as WebP refused, recorded as failure, reservation released");
-check(!names("service_media_cdn_reserve_v1").includes("../escape.webp"), "path-escaping name never even reserved");
-check(names("service_media_cdn_forget_v1").includes("p1/events/old.webp"), "deleted copy forgotten in the ledger");
-check(res.body.uploaded === 1 && res.body.refused === 2 && res.body.failed === 1 && res.body.deleted === 1 && res.body.status === "partial", `run summary ${JSON.stringify({ u: res.body.uploaded, r: res.body.refused, f: res.body.failed, d: res.body.deleted, s: res.body.status })}`);
-check(rpcCalls.some(c => c.name === "service_media_cdn_finish_v1"), "run recorded with finish");
-child.kill(); await child.status;
-
-// The verifier itself must be able to say no: a wrong secret has to fail.
-child = await startFunction({ R2_ACCESS_KEY_ID: ACCESS, R2_SECRET_ACCESS_KEY: "wrong-secret" });
 reset({ enabled: true });
 res = await call(WORKER_SECRET);
-check(r2Requests.length > 0 && r2Requests.every(r => !r.signatureOk) && res.body.uploaded === 0 && names("service_media_cdn_confirm_v1").length === 0, `wrong R2 secret -> fake R2 rejects every signature, nothing confirmed (${r2Requests.map(r => r.detail).join(", ")})`);
+const puts = r2.log.filter(l => l.method === "PUT");
+check(r2.log.every(l => l.ok), `every R2 request correctly signed (${[...new Set(r2.log.map(l => l.detail))].join(", ")})`);
+check(puts.length === 1 && puts[0].path === "/golden-oremar-media/catalog-public/p1/products/a.png", `exactly one PUT, the real image (${puts.map(p => p.path).join(", ")})`);
+const stored = r2.objects.get("catalog-public/p1/products/a.png");
+check(Boolean(stored) && stored!.type === "image/png" && stored!.cacheControl === "public, max-age=31536000, immutable" && stored!.body.length === good.length, "stored byte-identical, image type, one-year immutable cache");
+const confirm = rpcCalls.find(c => c.name === "service_media_adopt_confirm_v1")?.body || {};
+check(confirm.p_name === "p1/products/a.png" && confirm.p_width === 1600 && confirm.p_height === 1200 && /^[0-9a-f]{64}$/.test(confirm.p_sha256), "adoption records real dimensions and SHA-256");
+check(names("service_media_cdn_fail_v1").join() === "p1/products/fake.png", "HTML disguised as PNG refused and recorded as failure");
+check(!names("service_media_adopt_reserve_v1").includes("../escape.png"), "path-escaping name never reserved");
+const removed = storageRemovals.flatMap(r => r.names.map(n => `${r.bucket}/${n}`)).sort();
+check(JSON.stringify(removed) === JSON.stringify(["catalog-public/p1/products/a.png", "event-public/p1/events/already-in-r2.png"]), `Supabase copies deleted only once R2 has them (${removed.join(", ")})`);
+check(!r2.objects.has("catalog-public/legacy/mirror-copy.png") && names("service_media_cdn_forget_v1").includes("legacy/mirror-copy.png"), "legacy mirror copy deleted from R2 and ledger");
+check(!r2.objects.has("catalog-public/u1/products/abandoned.png") && !r2.objects.has(ABANDONED_STAGING) && names("service_media_cdn_forget_v1").includes("u1/products/abandoned.png"), "garbage deleted from R2 with its staging key, then from the ledger");
+const forgetIndex = r2.log.findIndex(l => l.method === "DELETE" && l.path.endsWith(ABANDONED_STAGING));
+check(forgetIndex >= 0 && r2.log.some(l => l.method === "GET" && l.path === "/golden-oremar-media"), "staging sweep listed the _incoming/ prefix");
+check(!r2.objects.has(OLD_STAGING) && r2.objects.has(FRESH_STAGING), "sweep deletes staging keys older than 2 hours, keeps an upload in progress");
+check(rpcCalls.some(c => c.name === "service_media_staging_swept_v1"), "a complete sweep is recorded");
+check(res.body.adopted === 1 && res.body.offloaded === 2 && res.body.collected === 1 && res.body.deleted === 1 && res.body.swept === 1 && res.body.refused === 2 && res.body.failed === 1 && res.body.status === "partial",
+  `run summary ${JSON.stringify({ a: res.body.adopted, o: res.body.offloaded, c: res.body.collected, d: res.body.deleted, sw: res.body.swept, r: res.body.refused, f: res.body.failed, s: res.body.status })}`);
+check(rpcCalls.some(c => c.name === "service_media_cdn_finish_v1"), "run recorded");
+
+// Default: Supabase copies are kept until offloading is switched on.
+reset({ enabled: true, offloadSources: false, stagingSweepDue: false });
+res = await call(WORKER_SECRET);
+check(storageRemovals.length === 0 && res.body.adopted === 1, "offloadSources off: adopted into R2, the Supabase copy is kept");
+check(!rpcCalls.some(c => c.name === "service_media_staging_swept_v1") && !r2.log.some(l => l.method === "GET" && l.path === "/golden-oremar-media"), "no sweep when it is not due");
+child.kill(); await child.status;
+
+// A wrong R2 secret must make the fake refuse, proving the verifier can say no.
+child = await startFunction({ R2_ACCESS_KEY_ID: r2.access, R2_SECRET_ACCESS_KEY: "wrong-secret" });
+reset({ enabled: true });
+r2.objects.clear();
+res = await call(WORKER_SECRET);
+check(r2.log.length > 0 && r2.log.every(l => !l.ok) && res.body.adopted === 0 && storageRemovals.every(r => !r.names.includes("p1/products/a.png")),
+  "wrong R2 secret: every signature refused, nothing adopted, the Supabase copy is kept");
+check(names("service_media_cdn_fail_v1").includes("p1/products/a.png") && !names("service_media_cdn_forget_v1").includes("p1/products/a.png"),
+  "a failed R2 PUT is recorded but its reservation is kept, so the garbage collector can clear whatever landed");
+check(!rpcCalls.some(c => c.name === "service_media_staging_swept_v1"), "a sweep that could not list is not recorded as done");
 child.kill(); await child.status;
 
 child = await startFunction({ R2_ACCESS_KEY_ID: "", R2_SECRET_ACCESS_KEY: "" });
 reset({ enabled: true });
 res = await call(WORKER_SECRET);
-check(res.status === 503 && res.body.status === "not_configured" && r2Requests.length === 0, `missing R2 keys -> 503 not_configured, no R2 traffic (${res.status})`);
+check(res.status === 503 && res.body.status === "not_configured" && r2.log.length === 0, "missing R2 keys -> 503, nothing touched");
 child.kill(); await child.status;
 
 const failed = results.filter(([ok]) => !ok).length;

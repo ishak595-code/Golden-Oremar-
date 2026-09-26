@@ -35,14 +35,13 @@ export async function updateStorefrontPresentation(input:{id:string;launchAudien
  const{data,error}=await supabase.rpc('super_admin_update_storefront_presentation_v1',{p_producer_id:id,p_launch_audience_count:count,p_launch_audience_label:label,p_storefront_tier:input.tier,p_storefront_theme:input.theme,p_headline:headline||null,p_subheadline:subheadline||null});return unwrap<unknown>(data,error);
 }
 
-function extensionFor(type:string){if(type==='image/png')return'png';if(type==='image/webp')return'webp';return'jpg';}
-export async function uploadStorefrontAsset(producerId:string,kind:'logo'|'cover',file:File,current:{logoPath:string|null;coverPath:string|null}){
- const id=uuid(producerId,'Mağaza kimliği');if(!(file instanceof File)||!IMAGE_TYPES.has(file.type))throw new Error('Yalnızca JPEG, PNG veya WebP mağaza görseli yüklenebilir.');const max=kind==='logo'?5*1024*1024:10*1024*1024;if(file.size<=0||file.size>max)throw new Error(kind==='logo'?'Profil görseli en fazla 5 MB olabilir.':'Kapak görseli en fazla 10 MB olabilir.');
- const{data:userData,error:userError}=await supabase.auth.getUser();if(userError)throw userError;const userId=userData.user?.id;if(!userId||!UUID_RE.test(userId))throw new Error('Süper Yönetici oturumu doğrulanamadı.');
- const random=typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function'?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`;const storagePath=`admin/${userId}/storefronts/${id}/${kind}-${random}.${extensionFor(file.type)}`;
- const{error:uploadError}=await supabase.storage.from('catalog-public').upload(storagePath,file,{cacheControl:'31536000',upsert:false,contentType:file.type});if(uploadError)throw uploadError;
- const nextLogo=kind==='logo'?storagePath:current.logoPath;const nextCover=kind==='cover'?storagePath:current.coverPath;
- try{const{data,error}=await supabase.rpc('super_admin_update_storefront_media_v1',{p_producer_id:id,p_logo_path:nextLogo,p_cover_path:nextCover});return{result:unwrap<unknown>(data,error),path:storagePath};}catch(error){await supabase.storage.from('catalog-public').remove([storagePath]).catch(()=>undefined);throw error;}
+// The storefront media RPC was retired (it always answers
+// storefront_media_legacy_retired): store logo and cover are managed through
+// the store branding editor, which uploads to Cloudflare R2 and verifies the
+// image. Refuse here before anything is uploaded, instead of uploading a file
+// only to delete it again.
+export async function uploadStorefrontAsset(_producerId:string,_kind:'logo'|'cover',_file:File,_current:{logoPath:string|null;coverPath:string|null}):Promise<{result:unknown;path:string}>{
+ throw new Error('Mağaza logosu ve kapağı artık Mağaza Görünümü bölümünden yükleniyor.');
 }
 
 export function storefrontAssetUrl(storagePath:string|null|undefined){if(!storagePath)return'';try{return publicMediaUrl('catalog-public',storagePath);}catch{return'';}}

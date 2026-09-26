@@ -88,12 +88,14 @@ requireText(retiredOwnerPublisher,'endpoint_retired','Retired owner-publish main
 for(const forbidden of ['service_role','auth.admin','createUser','enroll','challenge','verify','product.publish','maintenance key','MAINTENANCE'])forbidText(retiredOwnerPublisher,forbidden,`Retired owner-publish endpoint must never regain privileged logic: ${forbidden}.`);
 
 for(const api of [producerApi,officialApi]){
- requireText(api,"functions.invoke('catalog-media-verify'",'Every catalog image upload path must invoke the canonical binary verifier.');
- requirePattern(api,/catch\(error\)[\s\S]*storage\.from\('catalog-public'\)\.remove\(uploaded\)/,'Catalog image upload must compensate by deleting newly uploaded objects after verification failure.');
+ requirePattern(api,/uploadDirectMedia\('(product|official)-image'/,'Every catalog image upload path must invoke the canonical binary verifier (media-upload).');
+ requirePattern(api,/catch\(error\)\{if\(uploaded\.length\)await cancelDirectMedia\(uploaded\)/,'Catalog image upload must compensate by deleting newly uploaded objects after verification failure.');
 }
-requireText(officialApi,'admin/${userId}/official-products/${crypto.randomUUID()}','Official media paths must be randomized inside the acting owner namespace.');
+const mediaUploadFn=read('supabase/functions/media-upload/index.ts');
+requireText(mediaUploadFn,'return `admin/${userId}/official-products/${id}.${ext}`','Official media paths must be randomized inside the acting owner namespace.');
+requireText(mediaUploadFn,'pathFor(kind, userId, producerId, contentType, crypto.randomUUID())','Media paths must be randomized by the server.');
 forbidText(officialApi,"if(input.publish&&!gallery.length)",'Official-store publication must not reintroduce a client-only image requirement that conflicts with the canonical brand fallback.');
-requireText(producerApi,'${normalizedProducerId}/products/${crypto.randomUUID()}','Producer media paths must be randomized inside the producer namespace.');
+requireText(mediaUploadFn,'return `${producerId}/products/${id}.${ext}`','Producer media paths must be randomized inside the producer namespace.');
 
 requireText(capabilities,"'product-health':'product.health_manage'",'Product Health admin surface must require product.health_manage.');
 requireText(capabilities,"'official-store-products':'product.publish'",'Official Store Product manager must require product.publish.');

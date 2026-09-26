@@ -484,123 +484,102 @@ taşınır. Erken taşıma, olmayan bir sorun için karmaşıklık eklemek olur.
 - [ ] E2E testleri canlı veritabanında test kullanıcısı oluşturup dosya
       yüklüyor (9 artık dosya). Doğru çözüm ayrı bir test Supabase projesi
 
-## Görseller Cloudflare R2'den - 2026-09-26
+## Tüm görsel ve videolar Cloudflare R2'de - 2026-09-26
 
-İshak R2'yi açtı (ödeme yöntemi eklendi). "Burada da hemen dolmasın,
-10 GB'ı doldurmasın" şartıyla kuruldu. Önceki "yarım geçiş hiçbir ürünü
-yayınlatmaz" riski bu tasarımla YOK: Supabase kaynak olarak kalıyor.
+İshak: "resim ve video oraya gitsin, veritabanı sadece diğer veriler.
+Bütün uygulamaların yaptığı gibi." İlk kurulan "Supabase kaynak, R2 kopya"
+tasarımı bu istekle DEĞİŞTİ. Güncel tasarım aşağıda (tekrar tartışılmasın).
 
-### Tasarım (tekrar tartışılmasın)
+### Tasarım
 
-- Supabase Storage tek doğru kaynak. Yükleme, RLS, `catalog-media-verify`
-  ve tüm SQL doğrulayıcıları DEĞİŞMEDİ
-- `media-cdn-sync` edge function genel görselleri R2'ye KOPYALAR, kaynağı
-  silinen kopyayı SİLER. Anahtar: `<bucket>/<dosya adı>`
-- İstemci R2 adresini kurar; R2'de yoksa (henüz kopyalanmadı, bütçe doldu)
-  görsel sessizce Supabase'den gelir. Sonra ikisi de yoksa eski yedekler
-- Hangi dosyanın kopyalanacağına veritabanı karar verir, fonksiyon sadece
-  bayt taşır ve baytın gerçekten o görsel türü olduğunu kontrol eder
+- Her genel görsel ve video TEK yerde durur: R2. Anahtar
+  `<kova>/<dosya adı>`; `catalog-public`, `content-public`, `event-public`
+  R2 içinde sadece klasör adı. Supabase'de sadece kayıt (defter) var
+- Yükleme: uygulama `media-upload` fonksiyonundan imzalı adres alır, dosyayı
+  doğrudan R2'ye koyar, sonra "bitir" der. Türler: ürün görseli/videosu,
+  resmi mağaza görseli/videosu, kategori, mağaza logo/kapak, etkinlik
+- İmzalı adres ASLA yayındaki ada gitmez: rastgele bir bekleme anahtarına
+  (`_incoming/<uuid>`) gider. "Bitir" dosyayı okur; boyut, gerçek tür
+  (dosyanın kendi baytları), uzantı ve ölçü kurallarını kontrol eder;
+  sonra KONTROL EDİLEN baytları kendisi yayındaki ada yazar. Kontrolden
+  sonra aynı adrese başka dosya yüklemek yayındakini değiştiremez
+- Eski uygulama sürümleri hâlâ Supabase'e yükleyebilir: işçi
+  (`media-cdn-sync`, 5 dakikada bir, sadece iş varken) bunları R2'ye
+  taşır ("sahiplenme"). Supabase kopyasının silinmesi (`offload_sources`)
+  şimdilik KAPALI, bilerek açılacak
+- İstemci adresleri tek yerden kurar (`src/lib/mediaUrl.ts`). R2'de henüz
+  olmayan eski bir görsel Supabase'den denenir, sonra yedek gösterilir
 
-### 10 GB koruması (yapısal, "umarız" değil)
+### 10 GB koruması (yapısal)
 
-- Aynaya sadece 3 genel kovadaki GÖRSELLER girer; özel kovalar asla.
-  Videolar aynaya girmez, doğrudan R2'ye yüklenir (aşağıda, ayrı bütçe)
-- Her PUT'tan ÖNCE defterde rezervasyon: defter her zaman R2'nin üst
-  kümesi, yani R2 hiçbir zaman defterden büyük olamaz
-- Rezervasyon satır kilidiyle bütçeyi yeniden kontrol eder: varsayılan
-  8 GiB, CHECK ile tavan 9 GiB, uyarı 7 GiB
-- Tek dosya en fazla 5 MiB (sıkıştırılmış ürün fotoğrafı 200-400 KB)
-- Kaynağı silinen kopya bir sonraki turda silinir: yetim birikmez
-- Başarısız dosya 10/20 dk arayla en fazla 3 kez denenir, sonra durur
-- Etkinlik görselleri artık yüklemeden önce sıkıştırılıyor (1920 px)
-- Tur başına en fazla 25 yükleme, 5 dakikada bir, SADECE iş varken
-  (boşta hiç çağrı yok)
+- Her R2 yazımından ÖNCE defterde kilitli rezervasyon: defter her zaman
+  R2'nin üst kümesi. Toplam bütçe 8 GiB (tavan 9 GiB), video bütçesi
+  3 GiB (fotoğraflara her zaman yer kalır)
+- Tek dosya: görsel 10 MB, logo/kapak 5 MB, video 50 MB
+- Kişi başı: en fazla 20 yarım yükleme ve GÜNDE 1 GiB. Tek hesap depoyu
+  dolduramaz
+- Silme iki aşamalı: önce "siliniyor" işareti, sonra R2, en son defter.
+  R2 hata verirse işaret kalır, temizlikçi 10 dakika sonra bitirir
+- Temizlik: 1 saatte bitirilmeyen yükleme silinir (bekleme anahtarıyla
+  birlikte). Hiçbir yerde kullanılmayan dosya ancak 72 saat arayla İKİ
+  taramada da kullanılmıyorsa silinir; arada biri kullanırsa sayaç sıfırlanır.
+  Tarama public ve private şemadaki TÜM metin/JSON/dizi sütunlarına bakar
+- Sahibi bilinmeyen sahiplenilmiş dosyalar asla otomatik silinmez
+- Bekleme anahtarları 6 saatte bir süpürülür (2 saatten eskiler)
+- Başarısız dosya en fazla 3 kez denenir; R2'ye yazma denendiyse kayıt
+  tutulur ki yarım yazılan dosya da temizlensin
 
 ### Yapılanlar
 
-- [x] Migration `20260926140000_add_media_cdn_mirror_v1.sql`
-      (md5 a87a74a4ae63ee92119ff82df66b3077), canlıda. `enabled=false`
-      ile KAPALI. Canlıda geri alınan işlemde test edildi: bütçe, yanlış
-      boyut/etag reddi, yetim silme, hata geri çekilmesi, güvensiz ad
-      reddi, yetkisiz erişim reddi, cron kaydı
-- [x] Edge function `media-cdn-sync` deploy edildi (verify_jwt=false,
-      vault sırrı `golden_oremar_media_cdn_worker` ile kimlik doğrular)
-- [x] `scripts/media-cdn/sync-local-test.ts`: gerçek fonksiyon, sahte
-      Supabase ve sahte R2 ile 15/15. Sahte R2 imzayı (AWS SigV4) KENDİ
-      koduyla doğrular; yanlış sır verildiğinde reddettiği de test edildi.
-      Çalıştırma: `npm i deno` sonra `deno run -A --no-config scripts/media-cdn/sync-local-test.ts`
-- [x] `src/lib/mediaUrl.ts`: tüm genel görsel adresleri tek yerden
-      (13 dosya). CDN adresi yoksa davranış birebir eskisi gibi
-- [x] `installCatalogMediaFallback`: CDN hatası pencere yakalama
-      aşamasında Supabase'e çevrilir ve olay durdurulur; bileşenlerin kendi
-      "Fotoğraf yakında" yedekleri sadece Supabase de hata verirse çalışır
-- [x] `scripts/media-cdn-contract-audit.mjs` (run-all'da, 52 denetim)
-- [x] `scripts/browser/media-cdn-check.mjs` 9/9: CDN sağlıklıyken Supabase
-      depolamaya SIFIR istek; CDN yokken tüm görseller Supabase'den geldi;
-      ikisi de yokken kırık görsel yok. Eski 4 tarayıcı testi de temiz
-
-### Videolar da R2'de, ama Supabase'e HİÇ uğramadan (İshak'ın isteği)
-
-İshak: "resim ve video oraya gitsin, veritabanı sadece diğer veriler."
-Karar ve gerekçe (tekrar tartışılmasın):
-
-- VİDEO: sadece R2. Tarayıcı dosyayı imzalı adresle doğrudan R2'ye yükler.
-  Sebep: 50 MB'lık 20 video Supabase ücretsiz depolamanın tamamı (1 GB)
-- FOTOĞRAF: asıl dosya Supabase'de kalır, müşteri R2'den indirir. Sebep:
-  ikili doğrulayıcı ve tüm yayın kontrolleri Supabase dosyasına bağlı;
-  fotoğraf ~300 KB, 1 GB yaklaşık 3000 fotoğraf. Kotayı yiyen şey
-  indirmeydi ve o artık R2'de. Asılları da taşımak ileride mümkün ama
-  referans sayımı gerektirir (yanlış silme geri alınamaz), şimdi gereksiz
-- Supabase `catalog-public` kovası artık SADECE görsel kabul ediyor
-  (video türleri kaldırıldı, sınır 10 MB). İçinde video yoktu
-
-Yapılanlar:
-
-- [x] Migration `20260926160000_direct_r2_product_video_v1.sql`
-      (md5 b2d81ac08d9848575663bb0cafa3bd9c) ve
-      `20260926161500_media_cdn_target_v1.sql`
-      (md5 15976caf004575751ffacb27c11326da), canlıda
-- [x] Video bütçesi ayrı: 3 GiB (toplamın yarısından az, fotoğraflara her
-      zaman yer kalır), tek video en fazla 50 MB, kullanıcı başına en fazla
-      3 yarım kalmış yükleme
-- [x] Temizlik: 1 saatte bitirilmeyen yükleme ve 24 saat sonra hiçbir
-      ürünün kullanmadığı video otomatik silinir (ürün, değişiklik talebi,
-      editör taslağı ve arşiv kontrol edilir)
-- [x] `verified_product_video_path_v1` ve ürün detayı v10 R2 videolarını
-      tanıyor; detay artık hazır `url` döndürüyor
-- [x] Edge function `media-video-upload` (verify_jwt=true): start/finish/
-      cancel. Yetki catalog-media-verify ile aynı. İmzalı adres 10 dakika,
-      içerik türü imzada. Bitirmede boyut, tür ve dosyanın ilk baytları
-      (ftyp / EBML) R2'de kontrol edilir; tutmazsa R2'den silinir
-- [x] `scripts/media-cdn/video-upload-local-test.ts` 20/20 (gerçek
-      baytlar imzalı adrese yüklendi; farklı içerik türüyle yükleme imzada
-      reddedildi; HTML'i MP4 diye yüklemek reddedildi ve silindi)
-- [x] `src/lib/directVideoUpload.ts` + `scripts/media-cdn/direct-video-client-test.mjs` 11/11
-- [x] Canlıda geri alınan işlemde SQL testi: sahip kontrolü, uzantı-tür
-      eşleşmesi, 50 MB, yol kaçışı, video bütçesi, çift kayıt, onay, url,
-      temizlik, kullanılan videonun silinmemesi
-- [x] media-cdn-check 12/12 (video R2'den, oynat'a basmadan inmiyor)
+- [x] Migration'lar canlıda:
+      `20260926140000_add_media_cdn_mirror_v1.sql` (md5 a87a74a4ae63ee92119ff82df66b3077),
+      `20260926160000_direct_r2_product_video_v1.sql` (md5 b2d81ac08d9848575663bb0cafa3bd9c),
+      `20260926161500_media_cdn_target_v1.sql` (md5 15976caf004575751ffacb27c11326da),
+      `20260926180000_r2_single_home_for_public_media_v1.sql`,
+      `20260926181500_media_cdn_plan_offload_flag_v1.sql`,
+      `20260926190000_r2_media_hardening_v1.sql` (md5 a8a53479f13a44b872ad02af80956d28).
+      Hepsi önce canlıda geri alınan işlemde test edildi; sistem `enabled=false`
+- [x] Bağımsız inceleme bulguları kapatıldı: bekleme anahtarı, iki aşamalı
+      silme, iki taramalı temizlik, günlük kota, sahiplenmede bütçe ve kota,
+      PUT hatasında kaydı tutma, Supabase silmenin varsayılan kapalı olması
+- [x] Edge function `media-upload` v2 (verify_jwt=true) ve `media-cdn-sync`
+      v3 deploy edildi. `media-video-upload` 410 döndürür (emekli)
+- [x] Yerel testler (gerçek fonksiyon, sahte Supabase, imzayı kendi
+      koduyla doğrulayan sahte R2): `media-upload-local-test.ts` 43/43,
+      `sync-local-test.ts` 22/22, `direct-media-client-test.mjs` 16/16.
+      Çalıştırma: `deno run -A --no-config --node-modules-dir=none scripts/media-cdn/<dosya>`
+- [x] SQL testleri: `scripts/media-cdn/r2-single-home.test.sql`,
+      `scripts/media-cdn/r2-hardening.test.sql` (migration metniyle birlikte,
+      geri alınan tek işlemde)
+- [x] `media-cdn-contract-audit` yeni kuralları kilitliyor (run-all, 52/52);
+      bilerek bozulunca yakaladığı denendi
+- [x] SEO ön-render ürün görsellerini CDN adresinden veriyor (adres varsa)
+- [x] Tarayıcı: 5 kontrolün hepsi temiz (media-cdn 12/12)
 
 ### AÇMA SIRASI (kalanlar)
 
-1. [ ] Cloudflare panelinde: `golden-oremar-media` kovası (konum EEUR),
-       Public Development URL açık, kovaya özel "Object Read & Write"
-       anahtarı. Cloudflare MCP bunları yapamıyor (sadece kova oluşturur,
-       konum seçemez). İshak görme engelli: bunu CLAUDE tarayıcı üzerinden
-       yapacak, sohbet bilgisayara bağlanınca (Link to this computer)
-1b. [ ] Kova Settings > CORS Policy (video yükleme için ŞART):
+1. [ ] Sohbeti bilgisayara bağla (masaüstü uygulamada "Link to this
+       computer"). Aşağıdaki Cloudflare/Supabase panel adımlarını CLAUDE
+       tarayıcıdan yapacak; İshak görme engelli, panel işi ona verilmez
+2. [ ] Cloudflare: `golden-oremar-media` kovası, konum EEUR
+3. [ ] Kovada Public Development URL (r2.dev) açık
+4. [ ] Kova CORS (yükleme için ŞART):
        `[{"AllowedOrigins":["https://golden-oremar.vercel.app","https://goldenoremar.com","https://www.goldenoremar.com","https://localhost","capacitor://localhost"],"AllowedMethods":["PUT"],"AllowedHeaders":["Content-Type"],"MaxAgeSeconds":3600}]`
-2. [ ] Supabase Edge Function secrets: `R2_ACCESS_KEY_ID`,
-       `R2_SECRET_ACCESS_KEY` (aynı tarayıcı oturumunda)
-3. [ ] `update private.media_cdn_settings set public_base_url='https://pub-....r2.dev', enabled=true`
-4. [ ] Supabase açık olmalı (402 bitmeli), sonra cron ilk turu yapar;
-       `super_admin_media_cdn_status_v1` / `last_run_detail` kontrol
-5. [ ] r2.dev adresinden bir görseli çek, 200 ve `cache-control: immutable` gör
-6. [ ] `CANONICAL_MEDIA_CDN_BASE` (src/lib/mediaUrl.ts) doldur, yayınla.
-       Yerel `npx vite build` ile media-cdn-check'i gerçek adresle tekrar koş
-7. [ ] İleride: `goldenoremar.com` Cloudflare'e alınınca
-       `media.goldenoremar.com` özel alan adı (önbellek, hız sınırı yok).
-       r2.dev'i KAPATMA: eski mobil sürümler onu kullanır; yedek zaten var
+5. [ ] Sadece bu kovaya "Object Read & Write" anahtarı
+6. [ ] Supabase Edge Function secrets: `R2_ACCESS_KEY_ID`,
+       `R2_SECRET_ACCESS_KEY` (sohbete YAPIŞTIRILMAZ, doğrudan panele)
+7. [ ] `CANONICAL_MEDIA_CDN_BASE` (src/lib/mediaUrl.ts) r2.dev adresiyle
+       doldur, web ve uygulamayı AÇMADAN ÖNCE yayınla. Sebep: yeni
+       yüklemeler sadece R2'de; adres yoksa istemci onları gösteremez
+8. [ ] `update private.media_cdn_settings set public_base_url='https://pub-....r2.dev', r2_account_id='...', enabled=true where id`
+9. [ ] Supabase kotası açık olmalı (402 bitmeli). Sonra bir görsel yükle,
+       r2.dev'den 200 ve `cache-control: immutable` gör;
+       `super_admin_media_cdn_status_v1` kontrol
+10. [ ] Birkaç gün sonra, sahiplenme temiz çalışınca `offload_sources=true`
+11. [ ] Sonra: genel kovalara doğrudan yükleme izinlerini kaldır,
+        `staff-mfa-e2e` testini yeni yüklemeye taşı
+12. [ ] İleride: `media.goldenoremar.com` özel alan adı. r2.dev'i KAPATMA,
+        eski mobil sürümler onu kullanır
 
 ## İshak'ın yapması gerekenler (kod dışı)
 

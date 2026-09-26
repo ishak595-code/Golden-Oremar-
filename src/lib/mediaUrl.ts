@@ -1,24 +1,26 @@
 import { supabase } from './supabase';
 
 /**
- * The one place that turns a public storage path into an image URL.
+ * The one place that turns a public storage path into an image or video URL.
  *
- * Public images are mirrored to Cloudflare R2 by the media-cdn-sync worker
- * (migration add_media_cdn_mirror_v1). R2 does not charge for downloads, so
- * serving from there keeps customer traffic off the Supabase egress quota,
- * which is what took the whole project offline in September 2026.
+ * Cloudflare R2 is the home of every public image and video (migration
+ * r2_single_home_for_public_media_v1): new uploads go there directly through
+ * the media-upload edge function, and anything that still lands in a public
+ * Supabase bucket is adopted into R2 by the media-cdn-sync worker. R2 does not
+ * charge for downloads, which keeps customer traffic off the Supabase egress
+ * quota that took the whole project offline in September 2026.
  *
- * Rules, each matching the worker exactly:
- *   - only the three public buckets are mirrored;
- *   - images (by extension) are mirrored; product videos (catalog-public,
- *     mp4/webm/mov) exist only in R2, uploaded there directly;
- *   - a name that could escape its prefix is never mirrored;
- *   - the R2 key is "<bucket>/<name>", each segment URL-encoded.
+ * Rules, each matching the server exactly:
+ *   - the three public buckets (catalog-public, content-public, event-public)
+ *     are namespaces inside the R2 bucket: key "<bucket>/<name>";
+ *   - images and, in catalog-public, videos are served from R2;
+ *   - a name that could escape its prefix is never used;
+ *   - each key segment is URL-encoded.
  *
  * When no CDN base is configured, or a path is not eligible, the Supabase URL
- * is returned exactly as before. A CDN image that fails to load (not mirrored
- * yet, or refused by the budget) is retried from Supabase by
- * installCatalogMediaFallback, using mediaOriginUrl below.
+ * is returned exactly as before. An image that is not in R2 yet (adopted a few
+ * minutes after an old app version uploaded it to Supabase) is retried from
+ * Supabase by installCatalogMediaFallback, using mediaOriginUrl below.
  */
 
 // Filled in once the R2 public address exists. Native builds read this
@@ -29,7 +31,7 @@ export const MIRRORED_BUCKETS = ['catalog-public', 'content-public', 'event-publ
 type MirroredBucket = (typeof MIRRORED_BUCKETS)[number];
 const MIRRORED = new Set<string>(MIRRORED_BUCKETS);
 const IMAGE_EXTENSION = /\.(jpe?g|png|webp|avif)$/i;
-// Product videos live only in R2 (media-video-upload), never in Supabase.
+// Product videos live only in R2 (media-upload), never in Supabase.
 const VIDEO_EXTENSION = /\.(mp4|webm|mov)$/i;
 const UNSAFE_NAME = /(^\/|\/\/|\/$|(^|\/)\.{1,2}(\/|$)|[\\\u0000-\u001f\u007f])/;
 

@@ -1,5 +1,6 @@
 import{supabase}from'../../lib/supabase';
 import { publicMediaUrl } from '../../lib/mediaUrl';
+import { cancelDirectMedia, uploadDirectMedia } from '../../lib/directMediaUpload';
 
 export type StoreBrandingKind='logo'|'cover';
 export type StoreBrandingSnapshot={producerId:string;displayName:string;storeKind:string;status:string;verified:boolean;logoPath:string;coverPath:string;canEdit:boolean;logoBinaryVerified:boolean;coverBinaryVerified:boolean};
@@ -23,7 +24,6 @@ function storagePath(value:unknown,label:string){const normalized=text(value,lab
 function normalizeSnapshot(value:unknown):StoreBrandingSnapshot{if(!record(value))throw new Error('Mağaza görsel paketi doğrulanamadı.');const producerId=text(value.producerId,'Mağaza kimliği',80);if(!UUID_RE.test(producerId))throw new Error('Mağaza kimliği doğrulanamadı.');return{producerId,displayName:text(value.displayName,'Mağaza adı',240),storeKind:text(value.storeKind,'Mağaza tipi',40),status:text(value.status,'Mağaza durumu',40),verified:bool(value.verified,'Mağaza doğrulaması'),logoPath:storagePath(value.logoPath,'Logo yolu'),coverPath:storagePath(value.coverPath,'Kapak yolu'),canEdit:bool(value.canEdit,'Görsel düzenleme yetkisi'),logoBinaryVerified:bool(value.logoBinaryVerified,'Logo binary doğrulaması'),coverBinaryVerified:bool(value.coverBinaryVerified,'Kapak binary doğrulaması')};}
 function normalizeId(value:string){const normalized=String(value||'').trim().toLowerCase();if(!UUID_RE.test(normalized))throw new Error('Mağaza kimliği doğrulanamadı.');return normalized;}
 function extension(mime:string){if(mime==='image/jpeg')return'jpg';if(mime==='image/png')return'png';if(mime==='image/webp')return'webp';throw new Error('Logo ve kapak yalnız JPEG, PNG veya WebP olabilir.');}
-function profilePathOwnedBy(producerId:string,path:string){return new RegExp(`^${producerId}/profile/(logo|cover)-[0-9a-f-]{36}[.](jpg|jpeg|png|webp)$`,'i').test(path);}
 
 export function storeBrandingAssetUrl(path:string){const normalized=storagePath(path,'Mağaza görseli');return normalized?publicMediaUrl('catalog-public',normalized):'';}
 export async function getStoreBranding(producerId:string){const id=normalizeId(producerId);const{data,error}=await supabase.rpc('get_store_branding_editor_v1',{p_producer_id:id});if(error)throw error;return normalizeSnapshot(data);}
@@ -72,18 +72,19 @@ export async function prepareStoreBrandingFile(file:File,kind:StoreBrandingKind)
  }finally{decoded.dispose();}
 }
 
-async function edgeErrorMessage(error:unknown,data:unknown){let code='';if(record(data)&&typeof data.error==='string')code=data.error;const context=(error as {context?:unknown}|null)?.context;if(!code&&typeof Response!=='undefined'&&context instanceof Response){try{const payload=await context.clone().json();if(record(payload)&&typeof payload.error==='string')code=payload.error;}catch{/* response body is optional */}}return storeBrandingError(code||String((error as {message?:unknown}|null)?.message||''));}
 function isPrepared(value:File|PreparedStoreBrandingAsset):value is PreparedStoreBrandingAsset{return !(value instanceof File);}
 export async function uploadAndBindStoreBrandAsset(producerId:string,kind:StoreBrandingKind,input:File|PreparedStoreBrandingAsset){
- const id=normalizeId(producerId),prepared=isPrepared(input)?input:await prepareStoreBrandingFile(input,kind),file=prepared.file,path=`${id}/profile/${kind}-${crypto.randomUUID()}.${extension(file.type)}`;let uploaded=false;
+ const id=normalizeId(producerId),prepared=isPrepared(input)?input:await prepareStoreBrandingFile(input,kind),file=prepared.file;let path='';
  try{
-  const{error:uploadError}=await supabase.storage.from('catalog-public').upload(path,file,{contentType:file.type,cacheControl:'31536000',upsert:false});if(uploadError)throw uploadError;uploaded=true;
-  const{data:verified,error:verifyError}=await supabase.functions.invoke('catalog-media-verify',{body:{path}});if(verifyError||!record(verified)||verified.ok!==true)throw new Error(await edgeErrorMessage(verifyError,verified));
+  // Uploaded straight to Cloudflare R2 and verified there (type from the
+  // bytes, exact logo/cover dimensions) by the media-upload edge function.
+  const verified=await uploadDirectMedia(kind==='logo'?'brand-logo':'brand-cover',file,{producerId:id.toLowerCase()});path=verified.path;
   if(verified.assetKind!==kind||verified.width!==prepared.outputDimensions.width||verified.height!==prepared.outputDimensions.height)throw new Error('Sunucu ile cihazdaki HD görsel doğrulaması eşleşmedi.');
   const{data:bound,error:bindError}=await supabase.rpc('set_store_branding_asset_v1',{p_producer_id:id,p_kind:kind,p_path:path});if(bindError)throw bindError;if(!record(bound)||bound.ok!==true||bound.path!==path)throw new Error('Mağaza görseli sunucuya bağlanamadı.');
-  uploaded=false;const previousPath=storagePath(bound.previousPath,'Önceki mağaza görseli');if(previousPath&&previousPath!==path&&profilePathOwnedBy(id,previousPath))await supabase.storage.from('catalog-public').remove([previousPath]).catch(()=>undefined);
+  // The replaced logo/cover is removed from R2 by the media worker once nothing refers to it.
+  path='';
   return await getStoreBranding(id);
- }catch(error){if(uploaded)await supabase.storage.from('catalog-public').remove([path]).catch(()=>undefined);if(error instanceof Error&&error.message)throw error;throw new Error(storeBrandingError(error));}
+ }catch(error){if(path)await cancelDirectMedia([path]);if(error instanceof Error&&error.message)throw error;throw new Error(storeBrandingError(error));}
 }
 
 export function storeBrandingError(error:unknown){const message=String((error as {message?:unknown}|null)?.message??error??'').trim();const map:Array<[string,string]>=[['store_branding_size_invalid','Optimize edilmiş logo ve kapak görselleri en fazla 5 MB olabilir.'],['store_branding_type_invalid','Logo ve kapak yalnız JPEG, PNG veya WebP olabilir.'],['store_branding_logo_dimensions_invalid','Logo HD işleme sonucunda 1:1 kare ve en az 512 × 512 px olmalıdır.'],['store_branding_cover_dimensions_invalid','Kapak HD işleme sonucunda 5:2 oranında ve en az 1200 × 480 px olmalıdır.'],['store_branding_dimensions_unreadable','Görselin piksel ölçüleri sunucuda doğrulanamadı.'],['store_branding_owner_required','Bu mağazanın görsellerini değiştirme yetkiniz yok.'],['store_branding_access_required','Bu mağazanın marka yönetimine erişim yetkiniz yok.'],['store_branding_edit_required','Bu mağazanın logo veya kapak görselini değiştirme yetkiniz yok.'],['store_branding_asset_not_verified','Görsel gerçek dosya ve Storage bütünlüğü doğrulamasından geçmedi.'],['permission_required:product.publish','Golden Oremar Resmi Mağazası görsellerini yalnız yetkili Super Admin değiştirebilir.']];for(const[key,value]of map)if(message.includes(key))return value;return message&&message.length<=300?message:'Mağaza görseli işlemi tamamlanamadı.';}

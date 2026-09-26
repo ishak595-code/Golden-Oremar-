@@ -53,10 +53,13 @@ for(const product of products){
 }
 
 const officialApi=fs.readFileSync(path.join(root,'src/admin/officialStoreProductApi.ts'),'utf8');
-fail(officialApi.includes("supabase.storage.from('catalog-public').upload"),'Official product media must be uploaded as managed catalog-public Storage files.');
-fail(officialApi.includes("functions.invoke('catalog-media-verify'"),'Official product media must pass the canonical server binary verifier before use.');
-fail(/admin\/\$\{userId\}\/official-products\/\$\{crypto\.randomUUID\(\)\}/.test(officialApi),'Official product media runtime paths must remain immutable admin-owned Storage objects.');
-fail(officialApi.includes('upsert:false'),'Official product media uploads must not overwrite existing binaries.');
+// Since 2026-09-26 official media is uploaded straight to Cloudflare R2 and
+// verified there by media-upload; the server builds the admin-owned path.
+const mediaUploadFn=fs.readFileSync(path.join(root,'supabase/functions/media-upload/index.ts'),'utf8');
+fail(officialApi.includes("uploadDirectMedia('official-image'"),'Official product media must be uploaded as managed files through media-upload.');
+fail(fs.readFileSync(path.join(root,'src/lib/directMediaUpload.ts'),'utf8').includes("action: 'finish'"),'Official product media must pass the canonical server binary verifier before use.');
+fail(mediaUploadFn.includes('case "official-image": case "official-video": return `admin/${userId}/official-products/${id}.${ext}`'),'Official product media runtime paths must remain immutable admin-owned objects.');
+fail(mediaUploadFn.includes('crypto.randomUUID()')&&!officialApi.includes('upsert:true'),'Official product media uploads must not overwrite existing binaries.');
 fail(!/fetch\([^)]*https?:\/\//i.test(officialApi),'Official product media upload must not fetch external image URLs.');
 
 const mediaMigration=fs.readFileSync(path.join(root,'supabase/migrations/20260824172652_harden_product_media_integrity_lifecycle_v1.sql'),'utf8');
