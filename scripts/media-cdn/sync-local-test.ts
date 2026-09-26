@@ -33,7 +33,7 @@ const storageRemovals: { bucket: string; names: string[] }[] = [];
 
 function plan() {
   return {
-    enabled: scenario.enabled, accountId: "05764c9f34befd8e71cffca80a56d26b", bucket: "golden-oremar-media", mirroredBytes: 100, budgetBytes: 8589934592, budgetBlocked: 0,
+    enabled: scenario.enabled, accountId: "05764c9f34befd8e71cffca80a56d26b", bucket: "golden-oremar-media", stagingBucket: "golden-oremar-incoming", mirroredBytes: 100, budgetBytes: 8589934592, budgetBlocked: 0,
     offloadSources: scenario.offloadSources ?? true, stagingSweepDue: scenario.stagingSweepDue ?? true,
     uploads: [
       { bucket: "catalog-public", name: "p1/products/a.png", etag: "e1", size: good.length, contentType: "image/png" },
@@ -57,7 +57,7 @@ Deno.serve({ port: SUPA_PORT, onListen() {} }, async req => {
     if (rpc === "service_media_cdn_plan_v1") return reply(plan());
     if (rpc === "service_media_adopt_reserve_v1") return reply(body.p_name !== "p1/products/refused.png");
     if (rpc === "service_media_adopt_confirm_v1") return reply(true);
-    if (rpc === "service_media_gc_candidates_v2") return reply({ delete: [{ bucket: "catalog-public", name: "u1/products/abandoned.png", staging: ABANDONED_STAGING }] });
+    if (rpc === "service_media_gc_candidates_v3") return reply({ delete: [{ bucket: "catalog-public", name: "u1/products/abandoned.png", staging: ABANDONED_STAGING }] });
     if (rpc === "service_media_cdn_forget_v1") return reply(true);
     return reply(null);
   }
@@ -80,9 +80,9 @@ const seed = () => {
   const now = Date.now();
   r2.objects.set("catalog-public/legacy/mirror-copy.png", { body: good, type: "image/png", cacheControl: "", modified: now });
   r2.objects.set("catalog-public/u1/products/abandoned.png", { body: good, type: "image/png", cacheControl: "", modified: now });
-  r2.objects.set(ABANDONED_STAGING, { body: good, type: "image/png", cacheControl: "", modified: now - 90 * 60_000 });
-  r2.objects.set(OLD_STAGING, { body: good, type: "image/png", cacheControl: "", modified: now - 3 * 3600_000 });
-  r2.objects.set(FRESH_STAGING, { body: good, type: "image/png", cacheControl: "", modified: now - 10 * 60_000 });
+  r2.staging.set(ABANDONED_STAGING, { body: good, type: "image/png", cacheControl: "", modified: now - 90 * 60_000 });
+  r2.staging.set(OLD_STAGING, { body: good, type: "image/png", cacheControl: "", modified: now - 20 * 60_000 });
+  r2.staging.set(FRESH_STAGING, { body: good, type: "image/png", cacheControl: "", modified: now - 5 * 60_000 });
 };
 seed();
 const fnPath = await bundleFunction("media-cdn-sync");
@@ -128,10 +128,11 @@ check(!names("service_media_adopt_reserve_v1").includes("../escape.png"), "path-
 const removed = storageRemovals.flatMap(r => r.names.map(n => `${r.bucket}/${n}`)).sort();
 check(JSON.stringify(removed) === JSON.stringify(["catalog-public/p1/products/a.png", "event-public/p1/events/already-in-r2.png"]), `Supabase copies deleted only once R2 has them (${removed.join(", ")})`);
 check(!r2.objects.has("catalog-public/legacy/mirror-copy.png") && names("service_media_cdn_forget_v1").includes("legacy/mirror-copy.png"), "legacy mirror copy deleted from R2 and ledger");
-check(!r2.objects.has("catalog-public/u1/products/abandoned.png") && !r2.objects.has(ABANDONED_STAGING) && names("service_media_cdn_forget_v1").includes("u1/products/abandoned.png"), "garbage deleted from R2 with its staging key, then from the ledger");
+check(!r2.objects.has("catalog-public/u1/products/abandoned.png") && !r2.staging.has(ABANDONED_STAGING) && names("service_media_cdn_forget_v1").includes("u1/products/abandoned.png"), "garbage deleted from R2 with its staging key, then from the ledger");
 const forgetIndex = r2.log.findIndex(l => l.method === "DELETE" && l.path.endsWith(ABANDONED_STAGING));
-check(forgetIndex >= 0 && r2.log.some(l => l.method === "GET" && l.path === "/golden-oremar-media"), "staging sweep listed the _incoming/ prefix");
-check(!r2.objects.has(OLD_STAGING) && r2.objects.has(FRESH_STAGING), "sweep deletes staging keys older than 2 hours, keeps an upload in progress");
+check(forgetIndex >= 0 && r2.log.some(l => l.method === "GET" && l.path === "/golden-oremar-incoming") && !r2.log.some(l => l.method === "GET" && l.path === "/golden-oremar-media"),
+  "staging sweep lists the private staging bucket, never the public one");
+check(!r2.staging.has(OLD_STAGING) && r2.staging.has(FRESH_STAGING), "sweep deletes staging keys older than 15 minutes, keeps an upload in progress");
 check(rpcCalls.some(c => c.name === "service_media_staging_swept_v1"), "a complete sweep is recorded");
 check(res.body.adopted === 1 && res.body.offloaded === 2 && res.body.collected === 1 && res.body.deleted === 1 && res.body.swept === 1 && res.body.refused === 2 && res.body.failed === 1 && res.body.status === "partial",
   `run summary ${JSON.stringify({ a: res.body.adopted, o: res.body.offloaded, c: res.body.collected, d: res.body.deleted, sw: res.body.swept, r: res.body.refused, f: res.body.failed, s: res.body.status })}`);
@@ -141,7 +142,7 @@ check(rpcCalls.some(c => c.name === "service_media_cdn_finish_v1"), "run recorde
 reset({ enabled: true, offloadSources: false, stagingSweepDue: false });
 res = await call(WORKER_SECRET);
 check(storageRemovals.length === 0 && res.body.adopted === 1, "offloadSources off: adopted into R2, the Supabase copy is kept");
-check(!rpcCalls.some(c => c.name === "service_media_staging_swept_v1") && !r2.log.some(l => l.method === "GET" && l.path === "/golden-oremar-media"), "no sweep when it is not due");
+check(!rpcCalls.some(c => c.name === "service_media_staging_swept_v1") && !r2.log.some(l => l.method === "GET" && l.path === "/golden-oremar-incoming"), "no sweep when it is not due");
 child.kill(); await child.status;
 
 // A wrong R2 secret must make the fake refuse, proving the verifier can say no.

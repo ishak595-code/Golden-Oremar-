@@ -177,8 +177,14 @@ Ayrıntı: `docs/legal/taslak/README.md`.
       Veri eksikse hiçbir iddia yapılmaz. Her bildirim ayıplı mal hakkının
       sürdüğünü söyler. `consumer-rights-contract-audit` canlı katalogdaki
       18 ürün sınıfını kilitler
-- [ ] 3.7b Aynı bildirim sepette ve ödeme özetinde de gösterilmeli (ön
-      bilgilendirme formunun parçası). Ödeme açılınca yapılmalı
+- [x] 3.7b Aynı bildirim sepette, toplamın hemen altında (2026-09-26).
+      Sepet anlık görüntüsü artık ürün sayfasıyla AYNI kaynaktan
+      (`product_handling_profile_v1`) okuyor, iki yer asla ayrışamaz
+      (migration `20260926220000_cart_item_handling_profile_v1.sql`, canlıda,
+      önce geri alınan işlemde test edildi). Karışık sepette en katı kural
+      önce, her ürün kendi grubunda bir kez; profili bilinmeyen ürün için
+      iddia yok. `consumer-rights-contract-audit` bileşeni gerçek React ile
+      çizip metni kontrol ediyor
 - [ ] 3.8 Taslakları statik sayfaya çevirip yayınlama (avukat onayından
       sonra, `gizlilik-politikasi` ile aynı yapıda)
 
@@ -461,7 +467,10 @@ taşınır. Erken taşıma, olmayan bir sorun için karmaşıklık eklemek olur.
       muafiyet senaryosu canlıda henüz HİÇ çalışmadı; veritabanı davranışı
       doğrudan SQL ile doğrulandı. Kota açılınca ilk yeşil çalışma bu
       senaryoyu da kanıtlamalı
-- [ ] **Medya altyapısı: Cloudflare R2 (KÖKTEN ÇÖZÜM, hesap bekliyor).**
+- [x] ~~**Medya altyapısı: Cloudflare R2**~~ YAPILDI, aşağıdaki "Tüm görsel
+      ve videolar Cloudflare R2'de" bölümüne bak. Bu maddenin eski notları
+      tarihçe için duruyor.
+      Eski not: **Medya altyapısı: Cloudflare R2 (KÖKTEN ÇÖZÜM, hesap bekliyor).**
       Kayıt: https://dash.cloudflare.com/sign-up . R2'yi etkinleştirmek
       ödeme yöntemi ister (ücretsiz katmanda çekim olmaz; DOĞRULA).
       Üretim için özel alan adı gerekir (r2.dev hız sınırlıdır): alan adı
@@ -498,8 +507,8 @@ tasarımı bu istekle DEĞİŞTİ. Güncel tasarım aşağıda (tekrar tartış�
 - Yükleme: uygulama `media-upload` fonksiyonundan imzalı adres alır, dosyayı
   doğrudan R2'ye koyar, sonra "bitir" der. Türler: ürün görseli/videosu,
   resmi mağaza görseli/videosu, kategori, mağaza logo/kapak, etkinlik
-- İmzalı adres ASLA yayındaki ada gitmez: rastgele bir bekleme anahtarına
-  (`_incoming/<uuid>`) gider. "Bitir" dosyayı okur; boyut, gerçek tür
+- İmzalı adres ASLA yayındaki ada gitmez: ayrı ve hiç açılmayan bekleme
+  kovasında rastgele bir anahtara (`_incoming/<uuid>`) gider. "Bitir" dosyayı okur; boyut, gerçek tür
   (dosyanın kendi baytları), uzantı ve ölçü kurallarını kontrol eder;
   sonra KONTROL EDİLEN baytları kendisi yayındaki ada yazar. Kontrolden
   sonra aynı adrese başka dosya yüklemek yayındakini değiştiremez
@@ -516,8 +525,8 @@ tasarımı bu istekle DEĞİŞTİ. Güncel tasarım aşağıda (tekrar tartış�
   R2'nin üst kümesi. Toplam bütçe 8 GiB (tavan 9 GiB), video bütçesi
   3 GiB (fotoğraflara her zaman yer kalır)
 - Tek dosya: görsel 10 MB, logo/kapak 5 MB, video 50 MB
-- Kişi başı: en fazla 20 yarım yükleme ve GÜNDE 1 GiB. Tek hesap depoyu
-  dolduramaz
+- Kişi başı: en fazla 20 yarım yükleme ve GÜNDE 1 GiB (iptal edilen ve
+  reddedilen yüklemeler de sayılır). Tek hesap depoyu dolduramaz
 - Silme iki aşamalı: önce "siliniyor" işareti, sonra R2, en son defter.
   R2 hata verirse işaret kalır, temizlikçi 10 dakika sonra bitirir
 - Temizlik: 1 saatte bitirilmeyen yükleme silinir (bekleme anahtarıyla
@@ -525,7 +534,8 @@ tasarımı bu istekle DEĞİŞTİ. Güncel tasarım aşağıda (tekrar tartış�
   taramada da kullanılmıyorsa silinir; arada biri kullanırsa sayaç sıfırlanır.
   Tarama public ve private şemadaki TÜM metin/JSON/dizi sütunlarına bakar
 - Sahibi bilinmeyen sahiplenilmiş dosyalar asla otomatik silinmez
-- Bekleme anahtarları 6 saatte bir süpürülür (2 saatten eskiler)
+- Bekleme anahtarları her yükleme dalgasından sonra ve 6 saatte bir
+  süpürülür (15 dakikadan eskiler); kovada ayrıca 1 günlük silme kuralı
 - Başarısız dosya en fazla 3 kez denenir; R2'ye yazma denendiyse kayıt
   tutulur ki yarım yazılan dosya da temizlensin
 
@@ -542,8 +552,25 @@ tasarımı bu istekle DEĞİŞTİ. Güncel tasarım aşağıda (tekrar tartış�
 - [x] Bağımsız inceleme bulguları kapatıldı: bekleme anahtarı, iki aşamalı
       silme, iki taramalı temizlik, günlük kota, sahiplenmede bütçe ve kota,
       PUT hatasında kaydı tutma, Supabase silmenin varsayılan kapalı olması
-- [x] Edge function `media-upload` v2 (verify_jwt=true) ve `media-cdn-sync`
-      v3 deploy edildi. `media-video-upload` 410 döndürür (emekli)
+- [x] İKİNCİ bağımsız inceleme (2 yüksek, 3 orta, 1 düşük) kapatıldı,
+      migration `20260926210000_r2_media_race_fixes_v1.sql`
+      (md5 9e510ddad967d1589ce511edb5dc9b4d), canlıda:
+      - "bitir" satırı kilitler (yayınlama kilidi); iptal ve temizlikçi o
+        sırada dokunamaz, onay kilit ister. R2'de deftersiz dosya kalamaz
+      - bekleme dosyaları AYRI ve hiç açılmayan kovada
+        (`golden-oremar-incoming`); r2.dev tüm kovayı yayınladığı için şart
+      - imza Content-Length'i de kapsar: ayrılandan büyük dosya R2'de
+        reddedilir. Acil durum anahtarı: `sign_content_length`
+      - okuma If-Match ile ölçülen dosyayı ve en fazla ayrılan boyutu okur
+      - günlük kota silinmeyen kullanım defterinden (`media_upload_usage`):
+        iptal etmek kotayı geri vermez
+      - kullanılabilir bir dosya önce işaretlenir, 10 dakika sonra ikinci
+        kontrol; bu arada kullanılmışsa geri getirilir
+      - tekrar gelen "bitir" onaylanmış dosyayı asla silemez
+      Testler: SQL (geri alınan işlem), media-upload 48/48, sync 22/22,
+      birim testleri 7/7
+- [x] Edge function `media-upload` v3 (verify_jwt=true) ve `media-cdn-sync`
+      v4 deploy edildi. `media-video-upload` 410 döndürür (emekli)
 - [x] Yerel testler (gerçek fonksiyon, sahte Supabase, imzayı kendi
       koduyla doğrulayan sahte R2): `media-upload-local-test.ts` 43/43,
       `sync-local-test.ts` 22/22, `direct-media-client-test.mjs` 16/16.
@@ -561,11 +588,15 @@ tasarımı bu istekle DEĞİŞTİ. Güncel tasarım aşağıda (tekrar tartış�
 1. [ ] Sohbeti bilgisayara bağla (masaüstü uygulamada "Link to this
        computer"). Aşağıdaki Cloudflare/Supabase panel adımlarını CLAUDE
        tarayıcıdan yapacak; İshak görme engelli, panel işi ona verilmez
-2. [ ] Cloudflare: `golden-oremar-media` kovası, konum EEUR
-3. [ ] Kovada Public Development URL (r2.dev) açık
-4. [ ] Kova CORS (yükleme için ŞART):
+2. [x] Cloudflare: `golden-oremar-media` kovası, konum EEUR (var, doğrulandı)
+2b. [ ] İKİNCİ kova `golden-oremar-incoming`, konum EEUR, HİÇ açılmaz (r2.dev
+       KAPALI). Araç konum seçemediği için panelden: araçla açılan kova
+       Kuzey Amerika'ya (ENAM) düştü ve silindi. Settings > Object lifecycle:
+       "1 gün sonra sil" kuralı (yedek temizlik)
+3. [ ] SADECE `golden-oremar-media` kovasında Public Development URL (r2.dev)
+4. [ ] CORS SADECE `golden-oremar-incoming` kovasına (cihaz oraya yükler):
        `[{"AllowedOrigins":["https://golden-oremar.vercel.app","https://goldenoremar.com","https://www.goldenoremar.com","https://localhost","capacitor://localhost"],"AllowedMethods":["PUT"],"AllowedHeaders":["Content-Type"],"MaxAgeSeconds":3600}]`
-5. [ ] Sadece bu kovaya "Object Read & Write" anahtarı
+5. [ ] Sadece bu İKİ kovaya "Object Read & Write" anahtarı
 6. [ ] Supabase Edge Function secrets: `R2_ACCESS_KEY_ID`,
        `R2_SECRET_ACCESS_KEY` (sohbete YAPIŞTIRILMAZ, doğrudan panele)
 7. [ ] `CANONICAL_MEDIA_CDN_BASE` (src/lib/mediaUrl.ts) r2.dev adresiyle
@@ -574,7 +605,11 @@ tasarımı bu istekle DEĞİŞTİ. Güncel tasarım aşağıda (tekrar tartış�
 8. [ ] `update private.media_cdn_settings set public_base_url='https://pub-....r2.dev', r2_account_id='...', enabled=true where id`
 9. [ ] Supabase kotası açık olmalı (402 bitmeli). Sonra bir görsel yükle,
        r2.dev'den 200 ve `cache-control: immutable` gör;
-       `super_admin_media_cdn_status_v1` kontrol
+       `super_admin_media_cdn_status_v1` kontrol. Ayrıca imzalı adrese
+       BÜYÜK bir gövde gönder ve 403 gör (Content-Length imzası çalışıyor).
+       Beklenmedik biçimde gerçek yüklemeler 403 alırsa:
+       `update private.media_cdn_settings set sign_content_length=false where id`
+       (bitir adımı boyutu yine kontrol eder)
 10. [ ] Birkaç gün sonra, sahiplenme temiz çalışınca `offload_sources=true`
 11. [ ] Sonra: genel kovalara doğrudan yükleme izinlerini kaldır,
         `staff-mfa-e2e` testini yeni yüklemeye taşı

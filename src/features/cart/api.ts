@@ -29,6 +29,8 @@ export type CartSnapshot = {
     sellableQuantity?: number | null;
     available: boolean;
     lineTotalMinor: number;
+    /** Same classification as the product page; drives the withdrawal notice. */
+    handlingProfile?: unknown;
   }>;
 };
 
@@ -145,6 +147,7 @@ function normalizeCartSnapshot(value: unknown): CartSnapshot {
       sellableQuantity: optionalSafeInteger(raw.sellableQuantity, 'Satılabilir stok', 0, 999999999),
       available: raw.available,
       lineTotalMinor: safeInteger(raw.lineTotalMinor, 'Satır toplamı'),
+      handlingProfile: isRecord(raw.handlingProfile) ? raw.handlingProfile : null,
     };
   });
   const itemCount = items.reduce((total, item) => total + item.quantity, 0);

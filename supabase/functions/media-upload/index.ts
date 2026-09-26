@@ -18,16 +18,19 @@ import {
 //   POST { action: "cancel", kind, path }
 //     -> { ok }   removes the caller's upload if nothing uses it
 //
-// The signed URL never points at the public name. The device uploads to a
-// random staging key (_incoming/<uuid>); finish reads that, checks it, and
-// writes the checked bytes themselves to the public name. So nothing that was
-// not verified is ever served under a product, and a second PUT to the staging
-// URL after the check changes nothing. Staging keys are deleted here, by the
-// garbage collector, or by the staging sweep of media-cdn-sync.
+// The signed URL never points at the public bucket. The device uploads to a
+// random key (_incoming/<uuid>) in a separate, never-public staging bucket;
+// the signature covers Content-Type and Content-Length, so it can only upload
+// the size it reserved. finish claims the row (media_direct_begin_publish_v1),
+// reads the staging object with a hard size cap, checks it, and writes the
+// checked bytes themselves to the public name. While the claim is fresh
+// neither cancel nor the garbage collector touches the row, so R2 never ends
+// up holding a public file the ledger does not list. Staging keys are deleted
+// here, by the garbage collector, or by the staging sweep of media-cdn-sync.
 //
-// Deleting is two-phase (media_direct_begin_release_v1 marks the row, R2 is
-// cleared, media_direct_finish_release_v1 drops it), so the ledger always
-// lists at least what is in R2.
+// Deleting is two-phase (mark, clear R2, drop the row). A file that was
+// already usable is only marked; the collector deletes it after a second
+// reference check, so a save racing the cancel keeps its image.
 //
 // Permissions mirror catalog-media-verify: staff folders need the matching
 // permission here; producer folders are owned-checked by the database when it
@@ -70,6 +73,25 @@ function contentTypeFor(path: string) {
     : lower.endsWith(".mp4") ? "video/mp4" : lower.endsWith(".webm") ? "video/webm" : lower.endsWith(".mov") ? "video/quicktime" : "";
 }
 
+/** The body, or null as soon as it grows past max bytes (then the read stops). */
+export async function readCapped(response: Response, max: number): Promise<Uint8Array | null> {
+  if (!response.body) return new Uint8Array(0);
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) { await reader.cancel().catch(() => undefined); return null; }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) { out.set(chunk, offset); offset += chunk.byteLength; }
+  return out;
+}
+
 function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" } });
 }
@@ -99,8 +121,9 @@ Deno.serve(async (req: Request) => {
     const { data: target, error: targetError } = await service.rpc("service_media_cdn_target_v1");
     if (targetError || !target || target.enabled !== true || !target.publicBaseUrl) return json(503, { ok: false, error: "media_storage_not_configured" });
     const accessKeyId = text(Deno.env.get("R2_ACCESS_KEY_ID"), 256), secretAccessKey = text(Deno.env.get("R2_SECRET_ACCESS_KEY"), 256);
-    const accountId = text(target.accountId, 64), bucketName = text(target.bucket, 63);
-    if (!accessKeyId || !secretAccessKey || !/^[0-9a-f]{32}$/.test(accountId) || !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(bucketName)) {
+    const accountId = text(target.accountId, 64), bucketName = text(target.bucket, 63), stagingBucket = text(target.stagingBucket, 63);
+    const BUCKET_RE = /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/;
+    if (!accessKeyId || !secretAccessKey || !/^[0-9a-f]{32}$/.test(accountId) || !BUCKET_RE.test(bucketName) || !BUCKET_RE.test(stagingBucket) || stagingBucket === bucketName) {
       return json(503, { ok: false, error: "media_storage_not_configured" });
     }
     // R2_ENDPOINT exists only for the local test; production uses the account endpoint.
@@ -109,7 +132,7 @@ Deno.serve(async (req: Request) => {
     const objectUrl = (path: string) => `${endpoint}/${bucketName}/${rule.bucket}/${path.split("/").map(encodeURIComponent).join("/")}`;
     const stagingUrl = (key: string) => {
       if (!STAGING_RE.test(key)) throw new Error("media_staging_key_invalid");
-      return `${endpoint}/${bucketName}/${key}`;
+      return `${endpoint}/${stagingBucket}/${key}`;
     };
     const can = async (permission: string) => {
       const { data, error } = await userClient.rpc("authorization_has_permission_v1", { p_permission_key: permission });
@@ -147,7 +170,12 @@ Deno.serve(async (req: Request) => {
       }
       const signUrl = new URL(stagingUrl(text(reserved?.staging, 80)));
       signUrl.searchParams.set("X-Amz-Expires", String(UPLOAD_URL_SECONDS));
-      const signed = await r2.sign(new Request(signUrl, { method: "PUT", headers: { "Content-Type": contentType } }), { aws: { signQuery: true, allHeaders: true } });
+      // Content-Length is signed too (browsers and the app WebView always send
+      // it for a file body), so the URL accepts exactly the reserved size.
+      // sign_content_length is an emergency switch, on by default.
+      const signedHeaders: Record<string, string> = { "Content-Type": contentType };
+      if (target.signContentLength !== false) signedHeaders["Content-Length"] = String(size);
+      const signed = await r2.sign(new Request(signUrl, { method: "PUT", headers: signedHeaders }), { aws: { signQuery: true, allHeaders: true } });
       return json(200, { ok: true, bucket: rule.bucket, path, uploadUrl: signed.url, headers: { "Content-Type": contentType }, expiresIn: UPLOAD_URL_SECONDS });
     }
 
@@ -163,48 +191,72 @@ Deno.serve(async (req: Request) => {
     // Two-phase: mark (the row then no longer counts as a usable file), clear
     // R2, drop the row. If R2 fails the marked row stays and the garbage
     // collector finishes the job, so R2 never holds a file the ledger forgot.
-    const release = async () => {
-      const { data: marked } = await service.rpc("service_media_direct_begin_release_v1", { p_user: userId, p_bucket: rule.bucket, p_name: path });
+    // A file that was already usable is only marked ("deferred"): the
+    // collector deletes it after checking again that nothing uses it.
+    // Refusals inside finish pass allowConfirmed=false, so a retried finish
+    // can never delete what an earlier finish confirmed.
+    const release = async (allowConfirmed: boolean) => {
+      const { data: marked } = await service.rpc("service_media_direct_begin_release_v2", {
+        p_user: userId, p_bucket: rule.bucket, p_name: path, p_allow_confirmed: allowConfirmed,
+      });
       if (!marked || typeof marked !== "object") return false;
+      if (marked.deferred === true) return true;
       const staging = text(marked.staging, 80);
-      const cleared = await removeFromR2(objectUrl(path)) && (!staging || await removeFromR2(stagingUrl(staging)));
-      if (!cleared) return false;
-      await service.rpc("service_media_direct_finish_release_v1", { p_user: userId, p_bucket: rule.bucket, p_name: path });
+      const cleared = await removeFromR2(objectUrl(path)).catch(() => false) && (!staging || await removeFromR2(stagingUrl(staging)).catch(() => false));
+      if (cleared) await service.rpc("service_media_direct_finish_release_v1", { p_user: userId, p_bucket: rule.bucket, p_name: path });
       return true;
     };
+    const endPublish = () => service.rpc("service_media_direct_end_publish_v1", { p_user: userId, p_bucket: rule.bucket, p_name: path });
 
     if (action === "cancel") {
-      return (await release()) ? json(200, { ok: true }) : json(409, { ok: false, error: "media_in_use_or_not_owned" });
+      return (await release(true)) ? json(200, { ok: true }) : json(409, { ok: false, error: "media_in_use_or_not_owned" });
     }
 
     if (action === "finish") {
-      const reject = async (error: string, status = 400, extra: Record<string, unknown> = {}) => {
-        await release().catch(() => false);
-        return json(status, { ok: false, error, ...extra });
-      };
       const { data: reservation, error: reservationError } = await service.rpc("service_media_direct_reservation_v1", {
         p_user: userId, p_bucket: rule.bucket, p_name: path,
       });
       if (reservationError) throw reservationError;
       if (!reservation || typeof reservation !== "object") return json(404, { ok: false, error: "media_not_reserved" });
       if (reservation.confirmed === true) return json(409, { ok: false, error: "media_already_finished" });
-      const staging = text(reservation.staging, 80);
-      if (reservation.deleting === true || !STAGING_RE.test(staging)) return json(409, { ok: false, error: "media_reservation_mismatch" });
-      const reservedSize = Number(reservation.size);
+      if (reservation.deleting === true) return json(409, { ok: false, error: "media_reservation_mismatch" });
+
+      // The claim: from here until confirm (or a refusal) nobody else may
+      // publish, cancel or collect this row.
+      const { data: claim, error: claimError } = await service.rpc("service_media_direct_begin_publish_v1", {
+        p_user: userId, p_bucket: rule.bucket, p_name: path,
+      });
+      if (claimError) throw claimError;
+      if (!claim || typeof claim !== "object") return json(409, { ok: false, error: "media_busy" });
+      const staging = text(claim.staging, 80);
+      const reservedSize = Number(claim.size);
+      if (!STAGING_RE.test(staging) || !Number.isSafeInteger(reservedSize) || reservedSize < 1) {
+        await endPublish();
+        return json(409, { ok: false, error: "media_reservation_mismatch" });
+      }
+      const reject = async (error: string, status = 400, extra: Record<string, unknown> = {}) => {
+        await endPublish();
+        await release(false).catch(() => false);
+        return json(status, { ok: false, error, ...extra });
+      };
 
       // Size first, from the headers only, so an oversized upload is never read.
       const head = await r2.fetch(stagingUrl(staging), { method: "HEAD" });
       await head.body?.cancel();
-      if (head.status === 404) return json(404, { ok: false, error: "media_not_uploaded" });
-      if (!head.ok) return json(502, { ok: false, error: `media_check_failed_${head.status}` });
+      if (head.status === 404) { await endPublish(); return json(404, { ok: false, error: "media_not_uploaded" }); }
+      if (!head.ok) { await endPublish(); return json(502, { ok: false, error: `media_check_failed_${head.status}` }); }
       if (Number(head.headers.get("content-length")) !== reservedSize) return reject("media_reservation_mismatch", 409);
+      const etag = head.headers.get("etag") || "";
 
-      const response = await r2.fetch(stagingUrl(staging), { method: "GET" });
-      if (!response.ok) { await response.body?.cancel(); return json(502, { ok: false, error: `media_check_failed_${response.status}` }); }
+      // Read exactly the object that was measured (If-Match), and never more
+      // than the reserved size even if the answer claims otherwise.
+      const response = await r2.fetch(stagingUrl(staging), { method: "GET", headers: etag ? { "If-Match": etag } : {} });
+      if (response.status === 412) { await response.body?.cancel(); return reject("media_reservation_mismatch", 409); }
+      if (!response.ok) { await response.body?.cancel(); await endPublish(); return json(502, { ok: false, error: `media_check_failed_${response.status}` }); }
       const storedType = (response.headers.get("content-type") || "").split(";")[0].trim().toLowerCase();
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      if (bytes.byteLength !== reservedSize) return reject("media_reservation_mismatch", 409);
-      if (storedType !== contentType || reservation.contentType !== contentType || !extensionMatches(path, contentType)) return reject("media_type_invalid");
+      const bytes = await readCapped(response, reservedSize);
+      if (!bytes || bytes.byteLength !== reservedSize) return reject("media_reservation_mismatch", 409);
+      if (storedType !== contentType || claim.contentType !== contentType || !extensionMatches(path, contentType)) return reject("media_type_invalid");
       let width: number | null = null, height: number | null = null;
       if (rule.video) {
         if (!videoMagicMatches(bytes.subarray(0, 64), contentType)) return reject("media_content_invalid");
@@ -225,14 +277,15 @@ Deno.serve(async (req: Request) => {
         headers: { "Content-Type": contentType, "Cache-Control": IMMUTABLE, "Content-Length": String(bytes.byteLength) },
       });
       await put.body?.cancel();
-      if (!put.ok) return json(502, { ok: false, error: `media_store_failed_${put.status}` });
+      // The row stays in the ledger either way, so a half-written file is
+      // still collected; the client cancels, or the collector does it.
+      if (!put.ok) { await endPublish(); return json(502, { ok: false, error: `media_store_failed_${put.status}` }); }
       await removeFromR2(stagingUrl(staging)).catch(() => false);
       const { data: confirmed, error: confirmError } = await service.rpc("service_media_direct_confirm_v1", {
         p_user: userId, p_bucket: rule.bucket, p_name: path, p_size: bytes.byteLength, p_content_type: contentType,
         p_sha256: sha256, p_width: width, p_height: height,
       });
       if (confirmError) throw confirmError;
-      // A size that differs from the reservation (or a too-large file) is refused here.
       if (confirmed !== true) return reject("media_reservation_mismatch", 409);
       return json(200, {
         ok: true, bucket: rule.bucket, path, detectedMime: contentType, byteSize: bytes.byteLength,

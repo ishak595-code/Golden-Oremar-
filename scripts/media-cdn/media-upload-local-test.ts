@@ -28,7 +28,8 @@ const html = enc.encode("<html>" + "x".repeat(100) + "</html>");
 const perms = new Set<string>();
 let targetEnabled = true;
 let reserveResult = "reserved";
-type Row = { size: number; contentType: string; staging: string; confirmed: boolean; deleting: boolean };
+type Row = { size: number; contentType: string; staging: string; confirmed: boolean; deleting: boolean; publishing: boolean; deferred?: boolean };
+let signContentLength = true;
 const ledger = new Map<string, Row>();
 const rpcCalls: { name: string; body: Record<string, any> }[] = [];
 
@@ -50,26 +51,40 @@ Deno.serve({ port: SUPA_PORT, onListen() {} }, async req => {
     const body = await req.json().catch(() => ({}));
     rpcCalls.push({ name: rpc, body });
     if (rpc === "authorization_has_permission_v1") return reply(perms.has(body.p_permission_key));
-    if (rpc === "service_media_cdn_target_v1") return reply({ enabled: targetEnabled, accountId: "05764c9f34befd8e71cffca80a56d26b", bucket: "golden-oremar-media", publicBaseUrl: "https://pub-test.r2.dev", maxVideoBytes: 52428800 });
+    if (rpc === "service_media_cdn_target_v1") return reply({ enabled: targetEnabled, accountId: "05764c9f34befd8e71cffca80a56d26b", bucket: "golden-oremar-media", stagingBucket: "golden-oremar-incoming", signContentLength, publicBaseUrl: "https://pub-test.r2.dev", maxVideoBytes: 52428800 });
     const row = ledger.get(body.p_name);
     if (rpc === "service_media_direct_reserve_v2") {
       if (reserveResult !== "reserved") return reply({ status: reserveResult });
       const staging = `_incoming/${crypto.randomUUID()}`;
-      ledger.set(body.p_name, { size: body.p_size, contentType: body.p_content_type, staging, confirmed: false, deleting: false });
+      ledger.set(body.p_name, { size: body.p_size, contentType: body.p_content_type, staging, confirmed: false, deleting: false, publishing: false });
       return reply({ status: "reserved", staging });
     }
     if (rpc === "service_media_direct_reservation_v1") return reply(row ? { size: row.size, contentType: row.contentType, staging: row.staging || null, confirmed: row.confirmed, deleting: row.deleting } : null);
+    // Mirrors the SQL rules of r2_media_race_fixes_v1 (tested there for real).
+    if (rpc === "service_media_direct_begin_publish_v1") {
+      if (!row || row.confirmed || row.deleting || !row.staging || row.publishing) return reply(null);
+      row.publishing = true;
+      return reply({ size: row.size, contentType: row.contentType, staging: row.staging });
+    }
+    if (rpc === "service_media_direct_end_publish_v1") { if (row && !row.confirmed) row.publishing = false; return reply(!!row); }
     if (rpc === "service_media_direct_confirm_v1") {
-      const ok = !!row && !row.confirmed && !row.deleting && row.size === body.p_size && row.contentType === body.p_content_type && /^[0-9a-f]{64}$/.test(body.p_sha256);
-      if (ok) { row!.confirmed = true; row!.staging = ""; }
+      const ok = !!row && !row.confirmed && !row.deleting && row.publishing && row.size === body.p_size && row.contentType === body.p_content_type && /^[0-9a-f]{64}$/.test(body.p_sha256);
+      if (ok) { row!.confirmed = true; row!.staging = ""; row!.publishing = false; }
       return reply(ok);
     }
-    if (rpc === "service_media_direct_begin_release_v1") {
+    if (rpc === "service_media_direct_begin_release_v2") {
       if (!row) return reply(null);
-      row.deleting = true; row.confirmed = false;
-      return reply({ bucket: body.p_bucket, name: body.p_name, staging: row.staging || null });
+      if (row.deleting) return reply({ bucket: body.p_bucket, name: body.p_name, staging: row.staging || null, deferred: true });
+      if (row.confirmed) {
+        if (!body.p_allow_confirmed) return reply(null);
+        row.deleting = true; row.confirmed = false; row.deferred = true;
+        return reply({ bucket: body.p_bucket, name: body.p_name, staging: row.staging || null, deferred: true });
+      }
+      if (row.publishing) return reply(null);
+      row.deleting = true;
+      return reply({ bucket: body.p_bucket, name: body.p_name, staging: row.staging || null, deferred: false });
     }
-    if (rpc === "service_media_direct_finish_release_v1") return reply(row?.deleting ? ledger.delete(body.p_name) : false);
+    if (rpc === "service_media_direct_finish_release_v1") return reply(row?.deleting && !row.deferred ? ledger.delete(body.p_name) : false);
     return reply(null);
   }
   return reply({}, 404);
@@ -115,25 +130,28 @@ check(u.start.status === 200 && new RegExp(`^${PRODUCER}/products/[0-9a-f-]{36}\
 check(last("service_media_direct_reserve_v2").p_user === USER && last("service_media_direct_reserve_v2").p_bucket === "catalog-public", "reserved for this user in catalog-public");
 check(u.finish?.status === 200 && u.finish.body.width === 1600 && u.finish.body.height === 1200 && u.finish.body.detectedMime === "image/png", `finish reports real dimensions (${JSON.stringify(u.finish?.body)})`);
 check(/^[0-9a-f]{64}$/.test(last("service_media_direct_confirm_v1").p_sha256) && last("service_media_direct_confirm_v1").p_width === 1600, "confirm carries SHA-256 and dimensions");
-check(new URL(u.start.body.uploadUrl).pathname.startsWith("/golden-oremar-media/_incoming/") && !u.start.body.uploadUrl.includes(u.start.body.path), "the signed URL points at a staging key, never at the public name");
-check(r2.log.some((l: R2Log) => l.method === "PUT" && !l.fromFunction && l.path.startsWith("/golden-oremar-media/_incoming/") && l.detail.includes("content-type;host")), "device upload lands on the staging key, content type signed");
+check(new URL(u.start.body.uploadUrl).pathname.startsWith("/golden-oremar-incoming/_incoming/") && !u.start.body.uploadUrl.includes(u.start.body.path), "the signed URL points at the private staging bucket, never at the public bucket");
+check(r2.log.some((l: R2Log) => l.method === "PUT" && !l.fromFunction && l.path.startsWith("/golden-oremar-incoming/_incoming/") && l.detail.includes("content-length;content-type;host")), "device upload lands on the staging key, content type AND length signed");
 const stored = r2.objects.get(`catalog-public/${u.start.body.path}`);
 check(!!stored && stored.cacheControl === "public, max-age=31536000, immutable" && stored.type === "image/png", "checked bytes written to <bucket>/catalog-public/<path>, cacheable for a year");
-check(![...r2.objects.keys()].some(k => k.startsWith("_incoming/")), "staging key deleted after finish");
+check(r2.staging.size === 0 && ![...r2.objects.keys()].some(k => k.startsWith("_incoming/")), "staging key deleted after finish, nothing staged in the public bucket");
 check(ledger.get(u.start.body.path)?.confirmed === true && ledger.get(u.start.body.path)?.staging === "", "ledger confirmed, staging key cleared");
 
 // Swapping the file after the check: the signed URL still works for a few
 // minutes, but only reaches the staging key, never the public file.
-const swap = await fetch(u.start.body.uploadUrl, { method: "PUT", headers: u.start.body.headers, body: html });
+const wrongSize = await fetch(u.start.body.uploadUrl, { method: "PUT", headers: u.start.body.headers, body: html });
+await wrongSize.body?.cancel();
+check(wrongSize.status === 403, `a late PUT of another size is refused by the signature (${wrongSize.status})`);
+const swap = await fetch(u.start.body.uploadUrl, { method: "PUT", headers: u.start.body.headers, body: new Uint8Array(64).fill(1) });
 await swap.body?.cancel();
 check(r2.objects.get(`catalog-public/${u.start.body.path}`)?.body.length === 64 && r2.objects.get(`catalog-public/${u.start.body.path}`)?.body[0] === 0x89, "a second PUT after finish cannot change the published file");
 res = await call({ action: "finish", kind: "product-image", path: u.start.body.path });
 check(res.status === 409 && res.body.error === "media_already_finished", "finish twice -> 409, nothing re-read");
 // That late PUT left a staging object; the media-cdn-sync staging sweep deletes it
 // (sync-local-test). Remove it here so the leftover check below is about refusals.
-const swapKey = decodeURIComponent(new URL(u.start.body.uploadUrl).pathname).replace("/golden-oremar-media/", "");
-check(r2.objects.has(swapKey), "the late PUT only created a staging object");
-r2.objects.delete(swapKey);
+const swapKey = decodeURIComponent(new URL(u.start.body.uploadUrl).pathname).replace("/golden-oremar-incoming/", "");
+check(r2.staging.has(swapKey), "the late PUT only created an object in the private staging bucket");
+r2.staging.delete(swapKey);
 
 // Too small for a product image: refused and removed.
 u = await upload("product-image", png(1000, 1000), "image/png", { producerId: PRODUCER });
@@ -143,9 +161,34 @@ check(u.finish?.status === 400 && u.finish.body.error === "catalog_media_dimensi
 u = await upload("product-image", html, "image/png", { producerId: PRODUCER });
 check(u.finish?.status === 400 && u.finish.body.error === "media_content_invalid" && !r2.objects.has(`catalog-public/${u.start.body.path}`), "HTML disguised as PNG refused and deleted");
 
-// Uploading more bytes than reserved.
+// Uploading more bytes than reserved: the signature refuses the PUT itself.
 u = await upload("product-image", png(1600, 1200), "image/png", { producerId: PRODUCER }, new Uint8Array([...png(1600, 1200), 1, 2, 3]));
-check(u.finish?.status === 409 && u.finish.body.error === "media_reservation_mismatch" && !r2.objects.has(`catalog-public/${u.start.body.path}`), "a file larger than reserved is refused and deleted");
+check(u.put?.status === 403 && u.finish?.status === 404 && r2.staging.size === 0, `a larger body than reserved is refused by R2 at upload (${u.put?.status})`);
+await call({ action: "cancel", kind: "product-image", path: u.start.body.path });
+// With the emergency switch off, finish still catches it from the size.
+signContentLength = false;
+u = await upload("product-image", png(1600, 1200), "image/png", { producerId: PRODUCER }, new Uint8Array([...png(1600, 1200), 1, 2, 3]));
+check(u.put?.status === 200 && u.finish?.status === 409 && u.finish.body.error === "media_reservation_mismatch" && r2.staging.size === 0 && !r2.objects.has(`catalog-public/${u.start.body.path}`),
+  "switch off: larger file reaches staging, finish refuses it and deletes it");
+signContentLength = true;
+
+// A second finish while one is running is refused, and cancel cannot pull the file away mid-publish.
+res = await call({ action: "start", kind: "product-image", producerId: PRODUCER, contentType: "image/png", size: 64 });
+{
+  const put = await fetch(res.body.uploadUrl, { method: "PUT", headers: res.body.headers, body: png(1600, 1200) });
+  await put.body?.cancel();
+  ledger.get(res.body.path)!.publishing = true; // another finish holds the claim
+  const busy = await call({ action: "finish", kind: "product-image", path: res.body.path });
+  const cancelBusy = await call({ action: "cancel", kind: "product-image", path: res.body.path });
+  check(busy.status === 409 && busy.body.error === "media_busy" && cancelBusy.status === 409 && ledger.has(res.body.path), "finish and cancel both wait while another finish holds the claim");
+  ledger.get(res.body.path)!.publishing = false;
+  const done = await call({ action: "finish", kind: "product-image", path: res.body.path });
+  check(done.status === 200, "after the claim is released the upload finishes normally");
+  // Cancelling a finished file only marks it; the collector deletes it after a second check.
+  const later = await call({ action: "cancel", kind: "product-image", path: res.body.path });
+  check(later.status === 200 && r2.objects.has(`catalog-public/${res.body.path}`) && ledger.get(res.body.path)?.deleting === true,
+    "cancel of a finished file marks it, R2 copy stays until the collector re-checks it");
+}
 
 // Wrong content type at PUT time.
 const start = await call({ action: "start", kind: "product-image", producerId: PRODUCER, contentType: "image/png", size: 64 });
@@ -220,11 +263,16 @@ check(res.status === 400 && res.body.error === "media_path_invalid", "path trave
 res = await call({ action: "finish", kind: "event-image", path: `${PRODUCER}/products/${crypto.randomUUID()}.png` });
 check(res.status === 400, "a product path cannot be finished as an event image");
 
-// Cancel.
-u = await upload("product-image", png(1600, 1200), "image/png", { producerId: PRODUCER });
-res = await call({ action: "cancel", kind: "product-image", path: u.start.body.path });
-check(res.status === 200 && !r2.objects.has(`catalog-public/${u.start.body.path}`) && !ledger.has(u.start.body.path), "cancel removes the caller's unused upload, R2 first, then the ledger");
-const leftovers = [...r2.objects.keys()].filter(k => k.startsWith("_incoming/"));
+// Cancel of an upload that never finished: staging and ledger cleared at once.
+res = await call({ action: "start", kind: "product-image", producerId: PRODUCER, contentType: "image/png", size: 64 });
+{
+  const put = await fetch(res.body.uploadUrl, { method: "PUT", headers: res.body.headers, body: png(1600, 1200) });
+  await put.body?.cancel();
+  const path = res.body.path;
+  res = await call({ action: "cancel", kind: "product-image", path });
+  check(res.status === 200 && r2.staging.size === 0 && !ledger.has(path), "cancel of an unfinished upload clears staging, then the ledger");
+}
+const leftovers = [...r2.staging.keys(), ...[...r2.objects.keys()].filter(k => k.startsWith("_incoming/"))];
 check(leftovers.length === 0, `no staging key left behind by any refusal or cancel (${leftovers.join(", ") || "none"})`);
 
 check(r2.log.filter(l => l.fromFunction).every(l => l.ok), `every request the function made was correctly signed (${[...new Set(r2.log.map(l => l.detail))].join(", ")})`);

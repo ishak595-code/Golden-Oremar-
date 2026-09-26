@@ -15,9 +15,16 @@ const rfc3986 = (s: string) => encodeURIComponent(s).replace(/[!'()*]/g, c => "%
 
 export type R2Log = { method: string; path: string; ok: boolean; detail: string; fromFunction: boolean };
 
-export function startFakeR2(port: number, bucket = "golden-oremar-media") {
+type Stored = { body: Uint8Array; type: string; cacheControl: string; modified: number; etag?: string };
+
+/**
+ * Two buckets, like production: the public media bucket (`objects`) and the
+ * private staging bucket (`staging`). Any other bucket answers 404.
+ */
+export function startFakeR2(port: number, bucket = "golden-oremar-media", stagingBucket = "golden-oremar-incoming") {
   const access = "test-access-key-id", secret = "test-secret-access-key";
-  const objects = new Map<string, { body: Uint8Array; type: string; cacheControl: string; modified: number }>();
+  const objects = new Map<string, Stored>();
+  const staging = new Map<string, Stored>();
   const log: R2Log[] = [];
 
   async function signature(date: string, amzDate: string, canonical: string, key = secret) {
@@ -61,7 +68,11 @@ export function startFakeR2(port: number, bucket = "golden-oremar-media") {
     const path = decodeURIComponent(new URL(req.url).pathname);
     log.push({ method: req.method, path, ok, detail, fromFunction: header });
     if (!ok) return new Response("SignatureDoesNotMatch", { status: 403 });
-    if (req.method === "GET" && path === `/${bucket}` && new URL(req.url).searchParams.get("list-type") === "2") {
+    const [, bucketName = "", ...rest] = path.split("/");
+    const store = bucketName === bucket ? objects : bucketName === stagingBucket ? staging : null;
+    if (!store) return new Response("NoSuchBucket", { status: 404 });
+    if (req.method === "GET" && rest.length === 0 && new URL(req.url).searchParams.get("list-type") === "2") {
+      const objects = store;
       const q = new URL(req.url).searchParams, prefix = q.get("prefix") || "", max = Number(q.get("max-keys") || 1000);
       const keys = [...objects.keys()].filter(k => k.startsWith(prefix)).sort();
       const from = q.get("continuation-token") ? keys.indexOf(q.get("continuation-token")!) : 0;
@@ -71,20 +82,23 @@ export function startFakeR2(port: number, bucket = "golden-oremar-media") {
         + `<IsTruncated>${rest ? "true" : "false"}</IsTruncated>${rest ? `<NextContinuationToken>${rest}</NextContinuationToken>` : ""}</ListBucketResult>`;
       return new Response(xml, { status: 200, headers: { "content-type": "application/xml" } });
     }
-    const key = path.replace(`/${bucket}/`, "");
+    const key = rest.join("/");
     if (req.method === "PUT") {
-      objects.set(key, { body, type: req.headers.get("content-type") || "", cacheControl: req.headers.get("cache-control") || "", modified: Date.now() });
-      return new Response(null, { status: 200 });
+      const etag = `"${(await sha256(body)).slice(0, 32)}"`;
+      store.set(key, { body, type: req.headers.get("content-type") || "", cacheControl: req.headers.get("cache-control") || "", modified: Date.now(), etag });
+      return new Response(null, { status: 200, headers: { etag } });
     }
-    if (req.method === "DELETE") { objects.delete(key); return new Response(null, { status: 204 }); }
-    const object = objects.get(key);
+    if (req.method === "DELETE") { store.delete(key); return new Response(null, { status: 204 }); }
+    const object = store.get(key);
     if (!object) return new Response(null, { status: 404 });
-    if (req.method === "HEAD") return new Response(null, { status: 200, headers: { "content-length": String(object.body.length), "content-type": object.type } });
+    const ifMatch = req.headers.get("if-match");
+    if (ifMatch && ifMatch !== object.etag) return new Response("PreconditionFailed", { status: 412 });
+    if (req.method === "HEAD") return new Response(null, { status: 200, headers: { "content-length": String(object.body.length), "content-type": object.type, etag: object.etag || "" } });
     const range = (req.headers.get("range") || "").match(/^bytes=(\d+)-(\d+)$/);
     const part = range ? object.body.slice(+range[1], +range[2] + 1) : object.body;
     return new Response(part, { status: range ? 206 : 200, headers: { "content-type": object.type } });
   });
-  return { access, secret, objects, log };
+  return { access, secret, objects, staging, log };
 }
 
 /**

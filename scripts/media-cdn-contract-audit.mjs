@@ -52,6 +52,8 @@ check(sql.includes("o.name !~ '(^/|//|/$|(^|/)[.]{1,2}(/|$)|[\\\\[:cntrl:]])'"),
 const single = read('supabase/migrations/20260926180000_r2_single_home_for_public_media_v1.sql');
 const videoSql = read('supabase/migrations/20260926160000_direct_r2_product_video_v1.sql');
 const hard = read('supabase/migrations/20260926190000_r2_media_hardening_v1.sql');
+// r2_media_race_fixes_v1 replaces several hardening functions; rules read the newest definition.
+const race = read('supabase/migrations/20260926210000_r2_media_race_fixes_v1.sql');
 const fnBody = (source, name) => source.match(new RegExp(`create or replace function private\\.${name}\\([\\s\\S]*?\\n\\$\\$;`))?.[0] || '';
 const budget = Number(sql.match(/budget_bytes bigint not null default (\d+) check \(budget_bytes between 0 and (\d+)\)/)?.[1]);
 const ceiling = Number(sql.match(/budget_bytes bigint not null default \d+ check \(budget_bytes between 0 and (\d+)\)/)?.[1]);
@@ -60,13 +62,15 @@ check(budget > 0 && budget <= 0.9 * FREE, `default budget ${budget} must leave a
 check(ceiling > 0 && ceiling < FREE, `budget ceiling ${ceiling} must stay below the free tier.`);
 check(Number(videoSql.match(/video_budget_bytes bigint not null default (\d+)/)?.[1]) <= budget / 2, 'videos must have their own budget of at most half the total, so photos always have room.');
 check(/video_budget_bytes <= budget_bytes/.test(videoSql), 'video budget must never exceed the total budget.');
-const reserve = fnBody(hard, 'media_direct_reserve_v2');
+const reserve = fnBody(race, 'media_direct_reserve_v2');
 check(/for update/.test(reserve) && /if total \+ p_size > s\.budget_bytes then return jsonb_build_object\('status', 'budget_full'\)/.test(reserve)
   && /videos \+ p_size > s\.video_budget_bytes then return jsonb_build_object\('status', 'budget_full'\)/.test(reserve), 'direct uploads must be reserved under a lock against both budgets.');
 check(/pending >= 20 then return jsonb_build_object\('status', 'too_many_pending'\)/.test(reserve), 'a user may hold only a bounded number of unfinished uploads.');
 const daily = Number(hard.match(/user_daily_bytes bigint not null default (\d+)/)?.[1]);
 check(daily > 0 && daily <= 2 * 1024 ** 3 && /media_user_recent_bytes_v1\(p_user\) \+ p_size > s\.user_daily_bytes then return jsonb_build_object\('status', 'daily_limit'\)/.test(reserve),
   'one account may upload at most a bounded amount per day, so a single account cannot fill the storage.');
+check(/insert into private\.media_upload_usage \(user_id, byte_size\) values \(p_user, p_size\)/.test(reserve) && /from private\.media_upload_usage/.test(fnBody(race, 'media_user_recent_bytes_v1')),
+  'the daily allowance is counted from an append-only record, so cancelling or failing an upload does not refund it.');
 check(/media_user_recent_bytes_v1\(owner\) \+ p_size > s\.user_daily_bytes then return false/.test(fnBody(hard, 'media_adopt_reserve_v1')), 'the daily limit also applies to files adopted from Supabase.');
 check(/staging := '_incoming\/' \|\| gen_random_uuid\(\)::text/.test(reserve) && /staging_key ~ '\^_incoming\/\[0-9a-f\]\{8\}/.test(hard), 'every direct upload gets its own random staging key.');
 const maxBytes = fnBody(single, 'media_direct_max_bytes_v1');
@@ -78,7 +82,20 @@ check(upload.indexOf('service_media_direct_reserve_v2') > 0 && upload.indexOf('s
 check(/const signUrl = new URL\(stagingUrl\(/.test(upload) && !/const signUrl = new URL\(objectUrl\(/.test(upload), 'the device may only ever upload to its staging key, never to the public name.');
 check(upload.indexOf('dimensionProblem(kind') < upload.indexOf('// Publish exactly the bytes that were checked') && /r2\.fetch\(objectUrl\(path\), \{\s*method: "PUT",\s*body: bytes,/.test(upload),
   'the public name receives only the checked bytes, written by the function after the checks.');
-check(upload.indexOf('head.headers.get("content-length")') > 0 && upload.indexOf('head.headers.get("content-length")') < upload.indexOf('response.arrayBuffer()'), 'the uploaded size is checked from headers before the file is read.');
+check(upload.indexOf('head.headers.get("content-length")') > 0 && upload.indexOf('head.headers.get("content-length")') < upload.indexOf('await readCapped(response, reservedSize)')
+  && !/arrayBuffer\(\)/.test(upload), 'the uploaded size is checked from headers first, and the file is read with a hard cap (never arrayBuffer).');
+check(/headers: etag \? \{ "If-Match": etag \}/.test(upload), 'the file read is exactly the one measured (If-Match on the ETag).');
+check(/if \(target\.signContentLength !== false\) signedHeaders\["Content-Length"\] = String\(size\)/.test(upload), 'the upload URL signs Content-Length, so a device cannot upload more than it reserved.');
+check(/return `\$\{endpoint\}\/\$\{stagingBucket\}\/\$\{key\}`/.test(upload) && /stagingBucket === bucketName/.test(upload) && /r2_staging_bucket is distinct from r2_bucket/.test(race),
+  'staging keys live in a separate bucket, never the public one (r2.dev serves the whole public bucket).');
+const claimAt = upload.indexOf('service_media_direct_begin_publish_v1');
+check(claimAt > 0 && claimAt < upload.indexOf('method: "HEAD"') && claimAt < upload.indexOf('r2.fetch(objectUrl(path), {\n        method: "PUT"'),
+  'finish claims the row before reading or publishing, so cancel and the collector cannot race it.');
+check(/and publishing_at is not null/.test(fnBody(race, 'media_direct_confirm_v1')), 'only a claimed finish can confirm.');
+check(/publishing_at > now\(\) - interval '5 minutes' then return null/.test(fnBody(race, 'media_direct_begin_release_v2'))
+  && /publishing_at is null or publishing_at < now\(\) - interval '10 minutes'/.test(fnBody(race, 'media_gc_candidates_v3')), 'a row being published is never cancelled or collected.');
+check(/await release\(false\)/.test(upload) && /release\(true\)/.test(upload) && /not coalesce\(p_allow_confirmed, false\)/.test(fnBody(race, 'media_direct_begin_release_v2')),
+  'refusals inside finish never release a confirmed file; only an explicit cancel may.');
 check(/signQuery: true, allHeaders: true/.test(upload), 'the upload URL must sign the content type, or any file type could be uploaded.');
 check(Number(upload.match(/UPLOAD_URL_SECONDS = (\d+)/)?.[1]) <= 900, 'upload URLs must expire within 15 minutes.');
 check(upload.indexOf('detectImageMime(bytes)') > 0 && upload.indexOf('dimensionProblem(kind') > 0 && upload.indexOf('videoMagicMatches(') > 0
@@ -87,27 +104,33 @@ check(fn.indexOf('service_media_adopt_reserve_v1') > 0 && fn.indexOf('service_me
 check(fn.indexOf('service_media_adopt_confirm_v1') < fn.indexOf('.remove(names)'), 'a Supabase copy may be deleted only after its R2 twin is confirmed.');
 
 // 5. Garbage collection can only ever keep a used file, never delete one.
-const gc = fnBody(hard, 'media_gc_candidates_v2'), scan = fnBody(single, 'media_unreferenced_v1');
+const gc = fnBody(race, 'media_gc_candidates_v3'), scan = fnBody(single, 'media_unreferenced_v1');
 check(/not confirmed and deleting_at is null and reserved_at < now\(\) - interval '1 hour'/.test(gc) && /reserved_at < now\(\) - interval '72 hours'/.test(gc)
   && /first_unreferenced_at < now\(\) - interval '72 hours'/.test(gc), 'only unfinished uploads (1 h) and files unreferenced in two scans 72 h apart are collected.');
 check(/media_kind is distinct from 'adopted'/.test(gc), 'files adopted from Supabase whose owner is unknown are never garbage-collected.');
 check(/case when object_name = any\(free\) then coalesce\(first_unreferenced_at, now\(\)\) else null end/.test(gc), 'a file that is referenced again starts its 72 h wait over.');
+check(/delete_after = now\(\) \+ interval '10 minutes', restore_binary_verified = binary_verified/.test(gc) && /still_free := coalesce\(private\.media_unreferenced_v1\(due\), '\{\}'\)/.test(gc)
+  && /set deleting_at = null, delete_after = null, confirmed = true, binary_verified = restore_binary_verified/.test(gc),
+  'a usable file is only marked; 10 minutes later it is checked again and restored if anything uses it.');
 check(/c\.table_schema in \('public','private'\)/.test(scan) && /'text','character varying','jsonb','json','ARRAY'/.test(scan), 'the reference scan must cover every text/JSON/array column of the public and private schemas.');
 check(/table_name in \('audit_log','catalog_media_binary_verifications_v2','media_cdn_objects','media_cdn_failures','media_cdn_settings'\)/.test(scan), 'only audit history and media bookkeeping may be excluded from the reference scan.');
-const release = fnBody(hard, 'media_direct_begin_release_v1');
-check(/owner_user_id = p_user/.test(release) && /for update/.test(release) && /media_unreferenced_v1\(array\[p_name\]\)/.test(release) && /reserved_at < now\(\) - interval '24 hours' then return null/.test(release),
-  'a user may cancel only their own upload, under a lock, only while nothing uses it, and only within a day.');
-check(/deleting_at is not null or not confirmed or origin = 'mirror'/.test(fnBody(hard, 'media_cdn_forget_v1')), 'a confirmed file can leave the ledger only after being marked for deletion.');
+const release = fnBody(race, 'media_direct_begin_release_v2');
+check(/owner_user_id = p_user/.test(release) && /for update/.test(release) && /media_unreferenced_v1\(array\[p_name\]\)/.test(release) && /reserved_at < now\(\) - interval '24 hours' then return null/.test(release)
+  && /'deferred', true/.test(release), 'a user may cancel only their own upload, under a lock, only while nothing uses it, within a day, and a usable file only by deferral.');
+check(/\(deleting_at is not null and delete_after <= now\(\)\) or \(not confirmed and deleting_at is null\) or origin = 'mirror'/.test(fnBody(race, 'media_cdn_forget_v1')),
+  'a confirmed file can leave the ledger only after being marked and its delay has passed.');
 check(/check \(deleting_at is null or not confirmed\)/.test(hard), 'a file marked for deletion is never served as confirmed.');
 for (const [file, source] of [['media-upload', upload], ['media-cdn-sync', fn]]) {
-  check(!/service_media_direct_releasable_v1|service_media_direct_release_v1|service_media_direct_reserve_v1|service_media_gc_candidates_v1/.test(source), `${file} must not call functions dropped by the hardening migration.`);
+  check(!/service_media_direct_releasable_v1|service_media_direct_release_v1|service_media_direct_reserve_v1|service_media_gc_candidates_v[12]\b|service_media_direct_begin_release_v1/.test(source), `${file} must not call functions dropped by later migrations.`);
 }
-check(upload.indexOf('service_media_direct_begin_release_v1') < upload.indexOf('removeFromR2(objectUrl(path))') && upload.indexOf('removeFromR2(objectUrl(path))') < upload.indexOf('service_media_direct_finish_release_v1'),
+check(upload.indexOf('service_media_direct_begin_release_v2') < upload.indexOf('removeFromR2(objectUrl(path))') && upload.indexOf('removeFromR2(objectUrl(path))') < upload.indexOf('service_media_direct_finish_release_v1'),
   'cancel marks the row, clears R2, and only then drops the row.');
 check(fn.indexOf('await deleteUrl(objectUrl(item.bucket, item.name))') < fn.indexOf('service_media_cdn_forget_v1", { p_bucket: item.bucket, p_name: item.name });\n  };'), 'the worker forgets a file only after R2 no longer has it.');
 check(/if \(!putAttempted\) await service\.rpc\("service_media_cdn_forget_v1"/.test(fn), 'after a PUT was attempted the reservation stays, so a half-written file is still collected.');
-check(/STAGING_MAX_AGE_MS = 2 \* 60 \* 60 \* 1000/.test(fn) && fn.includes('list.searchParams.set("prefix", "_incoming/")') && /if \(complete\) await service\.rpc\("service_media_staging_swept_v1"\)/.test(fn),
-  'staging keys older than 2 hours are swept, and only a complete sweep is recorded.');
+check(/STAGING_MAX_AGE_MS = 15 \* 60 \* 1000/.test(fn) && fn.includes('list.searchParams.set("prefix", "_incoming/")') && /new URL\(`\$\{endpoint\}\/\$\{stagingBucket\}`\)/.test(fn)
+  && /if \(complete\) await service\.rpc\("service_media_staging_swept_v1"\)/.test(fn),
+  'staging keys older than 15 minutes are swept from the staging bucket, and only a complete sweep is recorded.');
+check(/used_at > s\.last_staging_sweep_at - interval '30 minutes'/.test(fnBody(race, 'media_staging_sweep_due_v1')), 'the sweep stays due after any upload until everything that upload could leave is gone.');
 check(/offload_sources set default false/.test(hard), 'Supabase copies are kept until offloading is switched on deliberately.');
 
 // 6. Security and cache behaviour.
@@ -121,7 +144,11 @@ for (const grant of ['service_media_direct_confirm_v1', 'service_media_adopt_res
 for (const grant of ['service_media_direct_reserve_v2', 'service_media_direct_reservation_v1', 'service_media_direct_begin_release_v1', 'service_media_direct_finish_release_v1', 'service_media_gc_candidates_v2', 'service_media_staging_swept_v1']) {
   check(hard.includes(`'public.${grant}(`), `${grant} must be in the revoke-from-anon/authenticated list.`);
 }
-for (const source of [single, hard]) check(/execute format\('revoke all on function %s from public, anon, authenticated', f\)/.test(source), 'service functions must be revoked from anon and authenticated.');
+for (const grant of ['service_media_direct_begin_publish_v1', 'service_media_direct_end_publish_v1', 'service_media_direct_begin_release_v2', 'service_media_gc_candidates_v3']) {
+  check(race.includes(`'public.${grant}(`), `${grant} must be in the revoke-from-anon/authenticated list.`);
+}
+check(/revoke all on table private\.media_upload_usage from public, anon, authenticated/.test(race), 'the usage record is private.');
+for (const source of [single, hard, race]) check(/execute format\('revoke all on function %s from public, anon, authenticated', f\)/.test(source), 'service functions must be revoked from anon and authenticated.');
 check(/enabled boolean not null default false/.test(sql), 'media storage must be off until explicitly enabled.');
 
 // 7. Client: every public upload goes to R2, every URL through one builder.

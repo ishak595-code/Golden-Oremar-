@@ -13,11 +13,12 @@ import { detectImageMime, imageDimensions, sha256Hex } from "../_shared/media_bi
 //                dimensions and SHA-256 recorded;
 //   2. offload - once the R2 copy is confirmed, the Supabase copy is deleted;
 //   3. collect - unfinished uploads (1 h) and files nothing refers to (seen
-//                unreferenced in two scans 72 h apart) are deleted from R2,
+//                unreferenced in two scans 72 h apart, then checked once
+//                more 10 minutes after being marked) are deleted from R2,
 //                with their staging key, then from the ledger;
-//   4. sweep   - every 6 hours, staging keys (_incoming/<uuid>) older than
-//                2 hours are deleted, so a device that uploaded and never
-//                called finish cannot leave bytes behind.
+//   4. sweep   - keys in the private staging bucket older than 15 minutes
+//                are deleted (upload URLs live 10), after every burst of
+//                uploads and every 6 hours, so nothing unchecked lingers.
 // What to do is decided by the database (plan, budget, reference scan); this
 // function moves bytes and refuses anything that is not really an image.
 
@@ -45,7 +46,7 @@ type Upload = { bucket: string; name: string; etag: string; size: number; conten
 type Ref = { bucket: string; name: string; staging?: string | null };
 
 const STAGING_RE = /^_incoming\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const STAGING_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+const STAGING_MAX_AGE_MS = 15 * 60 * 1000;
 
 /** Keys and upload times from a ListObjectsV2 answer (only staging keys). */
 export function parseStagingList(xml: string) {
@@ -84,8 +85,11 @@ Deno.serve(async (req: Request) => {
   const { data: plan, error: planError } = await service.rpc("service_media_cdn_plan_v1", { p_limit: null });
   if (planError || !plan || typeof plan !== "object") return finish("plan_failed", { error: planError?.message || "plan_invalid" }, 500);
   if (plan.enabled !== true) return json(200, { ok: true, status: "disabled" });
-  const accountId = text(plan.accountId, 64), bucketName = text(plan.bucket, 63);
-  if (!/^[0-9a-f]{32}$/.test(accountId) || !/^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/.test(bucketName)) return finish("not_configured", { error: "r2_target_invalid" }, 503);
+  const accountId = text(plan.accountId, 64), bucketName = text(plan.bucket, 63), stagingBucket = text(plan.stagingBucket, 63);
+  const BUCKET_RE = /^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$/;
+  if (!/^[0-9a-f]{32}$/.test(accountId) || !BUCKET_RE.test(bucketName) || !BUCKET_RE.test(stagingBucket) || stagingBucket === bucketName) {
+    return finish("not_configured", { error: "r2_target_invalid" }, 503);
+  }
 
   // R2_ENDPOINT exists only so the function can be tested against a local
   // server. Production uses the account's S3 endpoint.
@@ -95,7 +99,7 @@ Deno.serve(async (req: Request) => {
 
   const stagingUrl = (key: string) => {
     if (!STAGING_RE.test(key)) throw new Error("media_staging_key_invalid");
-    return `${endpoint}/${bucketName}/${key}`;
+    return `${endpoint}/${stagingBucket}/${key}`;
   };
 
   const result = { adopted: 0, adoptedBytes: 0, offloaded: 0, collected: 0, deleted: 0, swept: 0, failed: 0, refused: 0, skippedForTime: 0, errors: [] as string[] };
@@ -190,7 +194,7 @@ Deno.serve(async (req: Request) => {
 
   // 3. Collect garbage: unfinished uploads and files nothing refers to.
   if (Date.now() - started < DEADLINE_MS) {
-    const { data: gc, error: gcError } = await service.rpc("service_media_gc_candidates_v2", { p_limit: 50 });
+    const { data: gc, error: gcError } = await service.rpc("service_media_gc_candidates_v3", { p_limit: 50 });
     if (gcError) { result.failed++; note(`gc: ${gcError.message}`); }
     for (const item of ((gc && Array.isArray(gc.delete)) ? gc.delete : []) as Ref[]) {
       try { await deleteFromR2(item); result.collected++; } catch (error) { result.failed++; note(`collect ${item.name}: ${error instanceof Error ? error.message : error}`); }
@@ -201,7 +205,7 @@ Deno.serve(async (req: Request) => {
   if (plan.stagingSweepDue === true && Date.now() - started < DEADLINE_MS) {
     let token = "", complete = true;
     do {
-      const list = new URL(`${endpoint}/${bucketName}`);
+      const list = new URL(`${endpoint}/${stagingBucket}`);
       if (token) list.searchParams.set("continuation-token", token);
       list.searchParams.set("list-type", "2");
       list.searchParams.set("max-keys", "1000");
