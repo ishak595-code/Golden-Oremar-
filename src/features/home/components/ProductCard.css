@@ -103,17 +103,27 @@
   justify-content:center;
   gap:6px;
   overflow:hidden;
+  /* The meta line adapts to the row's own width, not the screen's: the same
+     row can sit in a phone list or a wider tablet column. */
+  container-type:inline-size;
 }
 
+
+
 :root[data-app-tab="home"] .go-product-row-v4__title{
-  display:block;
+  /* Up to two lines. Product names carry the story (maker, place, method)
+     and were being cut to about twenty characters on phones. */
+  display:-webkit-box;
   min-width:0;
   overflow:hidden;
   color:#f7f1e7;
-  font:770 15.5px/1.18 var(--font-sans);
+  font:770 15.5px/1.2 var(--font-sans);
   letter-spacing:-.012em;
-  text-overflow:ellipsis;
-  white-space:nowrap;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  line-clamp:2;
 }
 
 :root[data-app-tab="home"] .go-product-row-v4__meta{
@@ -127,11 +137,13 @@
 }
 
 :root[data-app-tab="home"] .go-product-row-v4__badge{
-  display:inline-flex;
-  max-width:104px;
+  /* inline-block, not inline-flex: text-overflow never applies to a flex
+     container, so the label was cut mid-word ("İmza s") with no ellipsis.
+     The badge keeps its size; the region beside it is what shrinks. */
+  display:inline-block;
+  max-width:62%;
   min-width:0;
-  flex:0 1 auto;
-  align-items:center;
+  flex:0 0 auto;
   overflow:hidden;
   border:1px solid rgb(211 180 90 / .20);
   border-radius:999px;
@@ -159,7 +171,8 @@
 }
 
 :root[data-app-tab="home"] .go-product-row-v4__verification{
-  flex:0 1 auto;
+  display:none;
+  flex:0 0 auto;
   color:#afbeb6;
 }
 
@@ -232,15 +245,17 @@
   }
 
   :root[data-app-tab="home"] .go-product-row-v4__middle{gap:5px;}
-  :root[data-app-tab="home"] .go-product-row-v4__title{font-size:14px;}
+  :root[data-app-tab="home"] .go-product-row-v4__title{font-size:14px;-webkit-line-clamp:3;line-clamp:3;}
   :root[data-app-tab="home"] .go-product-row-v4__meta{font-size:10px!important;}
-  :root[data-app-tab="home"] .go-product-row-v4__badge{max-width:86px;padding:2px 5px;font-size:9px;}
-  :root[data-app-tab="home"] .go-product-row-v4__verification{display:none;}
+  :root[data-app-tab="home"] .go-product-row-v4__badge{padding:2px 5px;font-size:9.5px;}
+  
   :root[data-app-tab="home"] .go-product-row-v4__price{font-size:13.5px;}
   :root[data-app-tab="home"] .go-product-row-v4__chevron{width:14px;height:14px;flex-basis:14px;}
 }
 
 @media(min-width:640px){
+  /* Shown only where it fits whole; the accessible label always carries it. */
+  :root[data-app-tab="home"] .go-product-row-v4__verification{display:inline-block;}
   :root[data-app-tab="home"] .go-product-list-v4{gap:12px!important;}
 
   :root[data-app-tab="home"] .go-product-row-v4{
@@ -280,4 +295,21 @@
   :root[data-app-tab="home"] .go-product-row-v4{
     transition:none!important;
   }
+}
+
+/* Container-driven meta line. Kept at the end of the file on purpose: these
+   rules must win over the base badge and region rules above, which have the
+   same specificity. */
+/* Region: "Yüksekova, Hakkâri" where it fits, "Hakkâri" where it does not.
+   Without container-query support the full form shows and ellipsizes. */
+:root[data-app-tab="home"] .go-product-row-v4__region-short{display:none;}
+@container (max-width:215px){
+  :root[data-app-tab="home"] .go-product-row-v4__region-full{display:none;}
+  :root[data-app-tab="home"] .go-product-row-v4__region-short{display:inline;}
+}
+/* Smallest phones (about 320px screens): the badge gets the whole line and the
+   region steps aside; the full origin stays in the accessible label. */
+@container (max-width:150px){
+  :root[data-app-tab="home"] .go-product-row-v4__region{display:none;}
+  :root[data-app-tab="home"] .go-product-row-v4__badge{max-width:100%;}
 }

@@ -36,6 +36,15 @@ export default function CatalogSearchOverlay({
   useEffect(() => {
     const input = document.querySelector<HTMLInputElement>(SEARCH_INPUT_SELECTOR);
     if (!input) return;
+    // aria-expanded is not allowed on a plain search box (implicit role
+    // searchbox), so screen readers ignored it and axe reports it as a critical
+    // error. ARIA's pattern for a text field that opens a panel is a combobox;
+    // HTML permits role="combobox" on input type="search". The panel holds
+    // buttons, not a listbox, so it is declared as a dialog popup. Screen
+    // readers now announce the field as expanded or collapsed, and the panel's
+    // live region still reports how many suggestions were found.
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-haspopup', 'dialog');
     input.setAttribute('aria-controls', 'catalog-search-suggestions');
     input.setAttribute('aria-expanded', String(open));
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -45,7 +54,11 @@ export default function CatalogSearchOverlay({
       input.blur();
     };
     input.addEventListener('keydown', handleKeyDown);
-    return () => input.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      input.removeEventListener('keydown', handleKeyDown);
+      // Restore plain search-box semantics when the overlay goes away.
+      for (const attribute of ['role', 'aria-haspopup', 'aria-controls', 'aria-expanded']) input.removeAttribute(attribute);
+    };
   }, [open, onRequestClose]);
 
   useEffect(() => {
@@ -110,7 +123,8 @@ export default function CatalogSearchOverlay({
       id="catalog-search-suggestions"
       data-catalog-search-overlay="true"
       className="absolute left-4 right-4 top-full z-[100] mx-auto mt-2 max-h-[70vh] max-w-7xl overflow-y-auto rounded-2xl border border-brand-gold/20 bg-white shadow-2xl dark:bg-gray-900"
-      role="region"
+      role="dialog"
+      aria-modal="false"
       aria-label="Arama önerileri"
       aria-busy={loading}
       onKeyDown={event => {
@@ -126,7 +140,7 @@ export default function CatalogSearchOverlay({
             <Search aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-brand-gold" />
             <div>
               <div className="font-bold text-brand-text">{CUSTOMER_COPY.search.overlayTitle}</div>
-              <p className="mt-1 text-gray-500">{CUSTOMER_COPY.search.overlayBody}</p>
+              <p className="mt-1 text-gray-600 dark:text-gray-400">{CUSTOMER_COPY.search.overlayBody}</p>
             </div>
           </div>
         </div>
@@ -136,11 +150,11 @@ export default function CatalogSearchOverlay({
             {loading ? 'Aranıyor' : error ? error : `${items.length} öneri bulundu`}
           </div>
 
-          {loading ? <div role="status" className="p-4 text-sm text-gray-500">{CUSTOMER_COPY.search.searching}</div> : null}
+          {loading ? <div role="status" className="p-4 text-sm text-gray-600 dark:text-gray-400">{CUSTOMER_COPY.search.searching}</div> : null}
           {error ? <div role="alert" className="m-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div> : null}
 
           {!loading && !error && items.length === 0 ? (
-            <div className="p-4 text-sm text-gray-500">{CUSTOMER_COPY.search.noSuggestion}</div>
+            <div className="p-4 text-sm text-gray-600 dark:text-gray-400">{CUSTOMER_COPY.search.noSuggestion}</div>
           ) : null}
 
           {items.length > 0 ? (
@@ -160,7 +174,7 @@ export default function CatalogSearchOverlay({
                       <Icon aria-hidden="true" className="h-5 w-5 shrink-0 text-brand-gold" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-semibold">{item.label}</span>
-                        <span className="block text-xs text-gray-500">{typeLabel}</span>
+                        <span className="block text-xs text-gray-600 dark:text-gray-400">{typeLabel}</span>
                       </span>
                     </button>
                   </div>

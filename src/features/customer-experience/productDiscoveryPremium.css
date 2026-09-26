@@ -286,9 +286,7 @@
   }
 
   .go-product-recommendations__group-head > button {
-    max-width: 8rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    margin-top: .1rem;
   }
 
   .go-product-recommendations__item--premium {

@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import { publicCatalogUrl, type CatalogItem, type PublicCategory } from '../catalog/api';
+import { getPublicHomeCatalog, listPublicCategories, publicCatalogUrl, type CatalogItem, type PublicCategory } from '../catalog/api';
 import { normalizeProductHandlingProfile } from '../catalog/productHandlingApi';
 
 export const SUPPORTED_HOME_LOCALES = ['tr','en','de','fr','ku','ar'] as const;
@@ -101,6 +101,55 @@ function normalizeExperience(value:unknown):HomeExperience{
   const sections=value.sections.map((item,index)=>normalizeSection(item,index));if(sections.length>20||sections.filter(section=>!section.deferred).length>1)throw new Error('Ana sayfa ilk yükleme sınırı doğrulanamadı.');
   const categoryOrder=value.categoryOrder.map((item:any,index:number)=>{if(!isRecord(item))throw new Error(`${index+1}. kategori sırası doğrulanamadı.`);return{id:requiredText(item.id,'Kategori sıra kimliği',100),title:requiredText(item.title,'Kategori sıra başlığı',160),subtitle:optionalText(item.subtitle,240)||'',targetCategory:requiredText(item.targetCategory,'Kategori hedefi',220),icon:optionalText(item.icon,80),image:optionalText(item.image,1200)};});
   return{version,locale,generatedAt,updatedAt,cacheKey:requiredText(value.cacheKey,'Ana sayfa cache anahtarı',240),cachePolicy:{compositionMaxAgeSeconds:integer(value.cachePolicy.compositionMaxAgeSeconds,'Composition cache süresi',1,3600),categoriesMaxAgeSeconds:integer(value.cachePolicy.categoriesMaxAgeSeconds,'Kategori cache süresi',1,86400),productProjectionMaxAgeSeconds:integer(value.cachePolicy.productProjectionMaxAgeSeconds,'Ürün cache süresi',1,3600)},brand:{name:requiredText(value.brand.name,'Marka adı',120),slug:requiredText(value.brand.slug,'Marka bağlantısı',120),defaultLocale:requiredText(value.brand.defaultLocale,'Varsayılan dil',16),defaultCurrency:currency(value.brand.defaultCurrency)},interface:{heroTitle:requiredText(value.interface.heroTitle,'Vitrin başlığı',180),heroSubtitle:requiredText(value.interface.heroSubtitle,'Vitrin açıklaması',500),heroButtonText:requiredText(value.interface.heroButtonText,'Vitrin aksiyonu',80),featuredTitle:requiredText(value.interface.featuredTitle,'Öne çıkan başlığı',160),seasonalTitle:requiredText(value.interface.seasonalTitle,'Mevsimlik başlığı',160),categoriesTitle:requiredText(value.interface.categoriesTitle,'Kategori başlığı',160),footerText:optionalText(value.interface.footerText,500)},search:{enabled:booleanValue(value.search.enabled,'Arama durumu'),voiceEnabled:booleanValue(value.search.voiceEnabled,'Sesli arama durumu')},categories,categoryOrder,sections,campaign:normalizeCampaign(value.campaign),eventSpotlight:value.eventSpotlight,salesReadiness:{status:requiredText(value.salesReadiness.status,'Satış hazırlık durumu',100),message:requiredText(value.salesReadiness.message,'Satış hazırlık mesajı',500)}};
+}
+
+/** Cache keys of catalogue-backed fallback homes start with this, so they are never persisted as a real home. */
+export const CATALOG_FALLBACK_CACHE_PREFIX='fallback:catalog:';
+const CATALOG_FALLBACK_LIMIT=12;
+
+/**
+ * Build a minimal home from the public catalogue.
+ *
+ * Used only when get_public_home_experience_v1 cannot be loaded and no cached
+ * copy exists - a first-time visitor during a partial outage or a slow
+ * composition query. Without it that visitor saw an error screen even though
+ * the product catalogue itself was available.
+ *
+ * The result is assembled in the server's raw shape and passed through the
+ * same normalizeExperience the real home goes through, so the fallback cannot
+ * drift from, or bypass, the validation of the real contract.
+ *
+ * Deliberately conservative:
+ *   - one section, containing only products the catalogue marks as featured,
+ *     so the section's merchandising labels stay truthful. No featured
+ *     products means no fallback and the normal error screen
+ *   - no campaign, no event spotlight, no admin category shortcuts: those are
+ *     editorial choices this function cannot know
+ *   - categories with no products are dropped, as the real home does
+ */
+export function buildCatalogFallbackExperience(catalog:unknown,categories:unknown,locale:HomeLocale):HomeExperience{
+  if(!isRecord(catalog)||!Array.isArray(catalog.items))throw new Error('Ana katalog doğrulanamadı.');
+  const featured=catalog.items.filter(item=>isRecord(item)&&item.featured===true).slice(0,CATALOG_FALLBACK_LIMIT);
+  if(!featured.length)throw new Error('Ana sayfa için öne çıkan ürün bulunamadı.');
+  const generatedAt=typeof catalog.generatedAt==='string'&&!Number.isNaN(Date.parse(catalog.generatedAt))?catalog.generatedAt:new Date().toISOString();
+  const usableCategories=(Array.isArray(categories)?categories:[]).filter(item=>isRecord(item)&&typeof item.productCount==='number'&&item.productCount>=1);
+  return normalizeExperience({
+    version:2,locale,generatedAt,updatedAt:generatedAt,cacheKey:`${CATALOG_FALLBACK_CACHE_PREFIX}${generatedAt}`,
+    cachePolicy:{compositionMaxAgeSeconds:60,categoriesMaxAgeSeconds:300,productProjectionMaxAgeSeconds:30},
+    brand:{name:'Golden Oremar',slug:'golden-oremar',defaultLocale:'tr',defaultCurrency:'TRY'},
+    interface:{heroTitle:'Bugünün Önerisi',heroSubtitle:'Golden Oremar’ın seçkin ürünlerinden sizin için öne çıkanlar.',heroButtonText:'Öneriyi Keşfet',featuredTitle:'Öne Çıkan Ürünler',seasonalTitle:'Mevsimin Hasadı',categoriesTitle:'Kategoriler',footerText:null},
+    search:{enabled:true,voiceEnabled:true},
+    categories:usableCategories,categoryOrder:[],
+    sections:[{key:'featured',type:'product_carousel',title:'Öne Çıkan Ürünler',subtitle:'Golden Oremar vitrini için seçilmiş ürünler.',displayLimit:CATALOG_FALLBACK_LIMIT,source:{kind:'featured'},items:featured,deferred:false}],
+    campaign:null,eventSpotlight:{enabled:false},
+    salesReadiness:{status:'unknown',message:'Satış durumu şu anda doğrulanıyor.'},
+  });
+}
+
+/** Fetch the catalogue and build the fallback home. Categories are optional. */
+export async function loadCatalogFallbackExperience(locale:HomeLocale):Promise<HomeExperience>{
+  const[catalog,categories]=await Promise.all([getPublicHomeCatalog(),listPublicCategories().catch(()=>[])]);
+  return buildCatalogFallbackExperience(catalog,categories,locale);
 }
 
 export async function getPublicHomeExperience(locale:HomeLocale):Promise<HomeExperience>{

@@ -253,6 +253,58 @@ vercel.app'e doğrudan erişemez ama bu araçla erişilebilir.
   SPA'ya düşer, uygulama başlığı canlı veriyle günceller. Bu kabul edilen
   bir sınırdır; çözüm periyodik yeniden derlemedir (Vercel deploy hook).
 
+## Tüm ekranlar, tüm cihazlar - 2026-09-26
+
+Tarayıcı test düzeneği artık REPODA: `scripts/browser/` (kurulum `lib.mjs`
+başında). Bir önceki oturumun düzeneği, bulut ortamı sıfırlanınca kayboldu;
+bu yüzden kalıcı hale getirildi. Test verileri üretimden alındı:
+`scripts/browser/fixtures/`. Üç betik:
+
+- `responsive-check.mjs`: 6 ekran x 6 genişlik (320-1280). Sayfa taşması,
+  sağ kenardan taşan öğe, "…" çalışmadan kesilen metin, 24 pikselden küçük
+  dokunma alanı ve karta dokununca ürün sayfasının açılması. Gerçek veri ve
+  `FIXTURE=search_stress.json` (en uzun isimler, 7 haneli fiyat) ile 72/72
+- `resilience-check.mjs`: 7 kısmi kesinti senaryosu, 7/7
+- `a11y-check.mjs`: 6 ekranda tam axe taraması + açık arama paneli + ürün
+  sayfası video/iade kontrolleri, 19/19
+
+Bulunan ve düzeltilen gerçek hatalar:
+
+- **Alt menü 320 pikselde "Hesabım"ı kesiyordu.** 5 x 64 piksel zorunlu
+  genişlik sığmıyordu. Android'in ekran boyutu erişilebilirlik ayarı da
+  ekranı daralttığı için büyük yazı kullanan herkesi etkiliyordu
+- **Filtre sayıları yüklenemezse kategori sayfasındaki bütün ürünler
+  kayboluyordu** (Promise.all), ayrıca iki sorgu arasında bir ürün yayınlanırsa
+  toplamlar tutmadığı için liste hataya düşüyordu (yarış durumu). Artık
+  filtre sayıları ikincil: düşerse sadece sayılar gizlenir
+- **Ana sayfa tek hata noktasıydı.** Vitrin ayarı sorgusu düşünce, katalog
+  elde olsa bile ilk kez gelen müşteri hata ekranı görüyordu. Artık katalogdan
+  sade bir vitrin kurulur (sadece öne çıkan ürünler, gerçek vitrinle aynı
+  doğrulayıcıdan geçer, önbelleğe yazılmaz)
+- **Ürün satırında rozetler kelime ortasından kesikti** ("İmza s"):
+  `inline-flex` üzerinde text-overflow hiç çalışmaz. İsimler tek satıra
+  sıkışıyordu. Artık isim 2 satır (dar ekranda 3), rozet bütün, bölge
+  satırın kendi genişliğine göre "Yüksekova, Hakkâri" veya "Hakkâri"
+  (CSS container query; kurallar dosya SONUNDA olmalı, yoksa ezilir)
+- **Tüm kategori kartları aynı yaprak ikonunu gösteriyordu**; veritabanındaki
+  ikon (Fish, Droplet, Sun...) hiç kullanılmıyordu
+- **Öneriler başlığındaki buton** telefonda "Bal & Dağ Bitkileri kat" diye
+  kesik ve oksuzdu. Artık "Tümünü gör ›", ekran okuyucu tam cümleyi okur
+- **Arama kutusunda geçersiz ARIA** (`aria-expanded` searchbox'ta yasak,
+  axe "kritik"): artık WAI-ARIA combobox + dialog açılır alan kalıbı.
+  Açık öneri panelinde 7 kontrast hatası da düzeltildi
+- Sesli arama eklentisi iki yerde kaydediliyordu; tek modüle alındı
+  (`src/lib/nativeSpeechPlugin.ts`)
+
+Kilit: `responsive-resilience-contract-audit.mjs` (3 negatif kontrolle
+doğrulandı). Denetim sayısı: 51.
+
+**Tarayıcı testlerinden öğrenilen tuzaklar:** sabit test yanıtı kullanma,
+istemci sayfa boyutunu kendi isteğiyle karşılaştırıyor (limit/offset'i
+yansıt); marka ayarını mutlaka gerçek veriyle ver; `sr-only` öğeleri kesik
+sayma; aynı komut satırında `pkill -f "[v]ite preview"` ve sunucu başlatma
+olursa pkill kendi kabuğunu öldürür, ayrı komutlarda çalıştır.
+
 ## Tarayıcı testleri ve erişilebilirlik - 2026-09-25
 
 İshak görme engelli olduğu için cihaz testlerini yapamıyor; testleri Claude

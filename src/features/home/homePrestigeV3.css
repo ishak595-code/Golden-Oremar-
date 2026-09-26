@@ -23,7 +23,7 @@
 :root[data-app-tab="home"] .go-category-card{min-height:140px;border-color:#1b382c;border-radius:18px;background:linear-gradient(155deg,#0e241a 0%,#091b13 100%);box-shadow:0 8px 24px rgb(0 0 0 / .10),inset 0 1px 0 rgb(255 255 255 / .018);}
 :root[data-app-tab="home"] .go-category-card__media{height:80px;background:#0d2118;}
 :root[data-app-tab="home"] .go-category-card__copy{gap:4px;padding:11px 12px 12px;}
-:root[data-app-tab="home"] .go-category-card__copy strong{color:#f4eee3;font-size:13.5px;font-weight:760;line-height:1.28;-webkit-line-clamp:1;}
+:root[data-app-tab="home"] .go-category-card__copy strong{color:#f4eee3;font-size:13.5px;font-weight:760;line-height:1.28;-webkit-line-clamp:2;line-clamp:2;}
 :root[data-app-tab="home"] .go-category-card__copy span{color:#92a39a;font-size:10.75px;line-height:1.35;}
 :root[data-app-tab="home"] .go-category-card:active{border-color:#3b5749;background:linear-gradient(155deg,#122b20 0%,#0b2017 100%);transform:scale(.982);}
 :root[data-app-tab="home"] .go-product-section-v2{position:relative;margin-top:40px;}

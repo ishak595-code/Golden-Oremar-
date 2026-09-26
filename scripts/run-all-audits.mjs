@@ -14,6 +14,7 @@ const audits=[
  'media-upload-contract-audit.mjs',
  'consumer-rights-contract-audit.mjs',
  'theme-contract-audit.mjs',
+ 'responsive-resilience-contract-audit.mjs',
  'admin-data-contract-audit.mjs',
  'admin-user-role-contract-audit.mjs',
  'api-public-bridge-contract-audit.mjs',

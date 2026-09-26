@@ -2,6 +2,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Keyboard } from '@capacitor/keyboard';
 import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
+import { NativeSpeech } from './lib/nativeSpeechPlugin';
 
 export type NativeTheme = 'light' | 'dark';
 export type NativeAppUpdateMode = 'flexible' | 'immediate';
@@ -22,12 +23,6 @@ export type NativeAppUpdateState = {
   reason?: string;
 };
 
-type NativeSpeechResponse = { text?: string; matches?: string[] };
-type NativeSpeechBridge = {
-  available(options?: { language?: string }): Promise<{ available: boolean }>;
-  start(options?: { language?: string }): Promise<NativeSpeechResponse>;
-  stop(): Promise<void>;
-};
 type NativeAppUpdateBridge = {
   check(): Promise<NativeAppUpdateState>;
   start(options?: { mode?: NativeAppUpdateMode }): Promise<{ started: boolean; mode: NativeAppUpdateMode }>;
@@ -35,7 +30,6 @@ type NativeAppUpdateBridge = {
   addListener(eventName: 'state', listener: (state: Partial<NativeAppUpdateState>) => void): Promise<{ remove: () => Promise<void> }>;
 };
 
-const NativeSpeech = registerPlugin<NativeSpeechBridge>('NativeSpeech');
 const NativeAppUpdate = registerPlugin<NativeAppUpdateBridge>('NativeAppUpdate');
 let keyboardSignalsReady = false;
 let nativeSpeechAdapterReady = false;

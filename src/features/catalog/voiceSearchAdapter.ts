@@ -1,11 +1,6 @@
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import { Capacitor } from '@capacitor/core';
+import { NativeSpeech } from '../../lib/nativeSpeechPlugin';
 
-type NativeSpeechResult = { text?: unknown; matches?: unknown };
-type NativeSpeechPlugin = {
-  available(options?: { language?: string }): Promise<{ available?: boolean }>;
-  start(options?: { language?: string }): Promise<NativeSpeechResult>;
-  stop(): Promise<void>;
-};
 
 type WebSpeechRecognition = {
   lang: string;
@@ -24,7 +19,6 @@ type VoiceSearchOptions = {
   onInterim?: (text: string) => void;
 };
 
-const NativeSpeech = registerPlugin<NativeSpeechPlugin>('NativeSpeech');
 let activeWebRecognition: WebSpeechRecognition | null = null;
 let nativeActive = false;
 

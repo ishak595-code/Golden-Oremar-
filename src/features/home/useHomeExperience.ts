@@ -1,6 +1,6 @@
 import{useCallback,useEffect,useRef,useState}from'react';
 import{NETWORK_RESTORED_EVENT}from'../resilience/useConnectivity';
-import{browserHomeLocale,getPublicHomeExperience,getPublicHomeSection,type HomeExperience,type HomeLocale,type HomeSectionModel}from'./homeExperienceApi';
+import{browserHomeLocale,getPublicHomeExperience,getPublicHomeSection,type HomeExperience,type HomeLocale,type HomeSectionModel,loadCatalogFallbackExperience}from'./homeExperienceApi';
 
 type CacheEntry={value:HomeExperience;expiresAt:number;staleUntil:number};
 type SectionCacheEntry={value:HomeSectionModel;expiresAt:number;staleUntil:number};
@@ -88,9 +88,18 @@ export function useHomeExperience(locale:HomeLocale=browserHomeLocale()){
    persistExperience(locale,value,Date.now()+Math.max(CLIENT_FRESH_FALLBACK_MS,serverAge));
    setData(value);setError('');return value;
   }catch(err){
-   if(request===sequence.current){setError(cached?'':friendlyHomeError(err));if(cached)setData(cached.value);}
-   if(cached)return cached.value;
-   throw err;
+   if(cached){if(request===sequence.current){setError('');setData(cached.value);}return cached.value;}
+   // No cached home: a first-time visitor. Before showing an error, try a
+   // minimal home built from the public catalogue. It is never persisted, so
+   // the real home replaces it on the next successful load.
+   try{
+    const fallback=await loadCatalogFallbackExperience(locale);
+    if(request===sequence.current){setData(fallback);setError('');}
+    return fallback;
+   }catch{
+    if(request===sequence.current)setError(friendlyHomeError(err));
+    throw err;
+   }
   }finally{if(request===sequence.current)setLoading(false);}
  },[locale]);
 

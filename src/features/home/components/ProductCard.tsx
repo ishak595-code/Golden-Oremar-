@@ -12,6 +12,23 @@ function formatMinor(value:number,currency:string){
  try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency:normalized,minimumFractionDigits:2,maximumFractionDigits:2}).format(value/100);}catch{return`${amount} ${normalized}`;}
 }
 
+/**
+ * Short place name for the row: district and province ("Yüksekova, Hakkâri").
+ * The full origin ("Dağlıca - Yeşiltaş Köyü, Yüksekova, Hakkâri") cannot fit a
+ * phone row beside a badge and was always cut. The full origin still goes to
+ * screen readers through the accessible label.
+ */
+function compactRegion(region:string){
+ const parts=region.split(',').map(part=>part.trim()).filter(Boolean);
+ return parts.length>=3?`${parts[parts.length-2]}, ${parts[parts.length-1]}`:region;
+}
+
+/** Province alone ("Hakkâri"), for rows too narrow for district and province. */
+function shortRegion(region:string){
+ const parts=region.split(',').map(part=>part.trim()).filter(Boolean);
+ return parts.length>=2?parts[parts.length-1]:region;
+}
+
 function regionLabel(item:CatalogItem){
  const direct=typeof item.origin==='string'&&item.origin.trim()?item.origin.trim():null;
  if(direct)return direct;
@@ -70,7 +87,7 @@ export default function ProductCard({item,onClick,eager=false,merchandisingLabel
     <span className="go-product-row-v4__title">{item.name}</span>
     <span className="go-product-row-v4__meta text-sm text-gray-400">
      {merchandisingLabel?<span className="go-product-row-v4__badge">{merchandisingLabel}</span>:null}
-     <span className="go-product-row-v4__region">{region}</span>
+     <span className="go-product-row-v4__region"><span className="go-product-row-v4__region-full">{compactRegion(region)}</span><span className="go-product-row-v4__region-short">{shortRegion(region)}</span></span>
      {verification?<span className="go-product-row-v4__verification">{verification}</span>:null}
     </span>
    </span>

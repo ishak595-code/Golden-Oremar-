@@ -48,7 +48,7 @@ export default function HomeSection({onProductClick}:Props){
    {orderedCategories.length?<section className="go-home-section go-home-categories" aria-labelledby="home-categories-title" data-server-heading={experience.interface.categoriesTitle}>
     <SectionHeader id="home-categories-title" title={CUSTOMER_COPY.home.categoriesTitle} subtitle={CUSTOMER_COPY.home.categoriesSubtitle}/>
     <div className="go-category-rail hide-scrollbar" role="list" aria-label={CUSTOMER_COPY.home.categoriesTitle}>
-     {orderedCategories.map(({category,config})=>{const image=category.imagePath||config?.image||null;return<div role="listitem" key={category.id}><CategoryCard name={config?.title||category.name} subtitle={config?.subtitle||null} imageUrl={image?publicCatalogUrl(image):null} onClick={()=>navigateToCategories(category.slug)}/></div>;})}
+     {orderedCategories.map(({category,config})=>{const image=category.imagePath||config?.image||null;return<div role="listitem" key={category.id}><CategoryCard name={config?.title||category.name} subtitle={config?.subtitle||null} imageUrl={image?publicCatalogUrl(image):null} icon={config?.icon||category.icon} onClick={()=>navigateToCategories(category.slug)}/></div>;})}
     </div>
    </section>:null}
 
