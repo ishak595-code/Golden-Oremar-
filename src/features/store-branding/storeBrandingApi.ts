@@ -1,4 +1,5 @@
 import{supabase}from'../../lib/supabase';
+import { publicMediaUrl } from '../../lib/mediaUrl';
 
 export type StoreBrandingKind='logo'|'cover';
 export type StoreBrandingSnapshot={producerId:string;displayName:string;storeKind:string;status:string;verified:boolean;logoPath:string;coverPath:string;canEdit:boolean;logoBinaryVerified:boolean;coverBinaryVerified:boolean};
@@ -24,7 +25,7 @@ function normalizeId(value:string){const normalized=String(value||'').trim().toL
 function extension(mime:string){if(mime==='image/jpeg')return'jpg';if(mime==='image/png')return'png';if(mime==='image/webp')return'webp';throw new Error('Logo ve kapak yalnız JPEG, PNG veya WebP olabilir.');}
 function profilePathOwnedBy(producerId:string,path:string){return new RegExp(`^${producerId}/profile/(logo|cover)-[0-9a-f-]{36}[.](jpg|jpeg|png|webp)$`,'i').test(path);}
 
-export function storeBrandingAssetUrl(path:string){const normalized=storagePath(path,'Mağaza görseli');return normalized?supabase.storage.from('catalog-public').getPublicUrl(normalized).data.publicUrl:'';}
+export function storeBrandingAssetUrl(path:string){const normalized=storagePath(path,'Mağaza görseli');return normalized?publicMediaUrl('catalog-public',normalized):'';}
 export async function getStoreBranding(producerId:string){const id=normalizeId(producerId);const{data,error}=await supabase.rpc('get_store_branding_editor_v1',{p_producer_id:id});if(error)throw error;return normalizeSnapshot(data);}
 
 type DecodedImage={source:CanvasImageSource;width:number;height:number;dispose:()=>void};

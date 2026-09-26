@@ -484,6 +484,79 @@ taşınır. Erken taşıma, olmayan bir sorun için karmaşıklık eklemek olur.
 - [ ] E2E testleri canlı veritabanında test kullanıcısı oluşturup dosya
       yüklüyor (9 artık dosya). Doğru çözüm ayrı bir test Supabase projesi
 
+## Görseller Cloudflare R2'den - 2026-09-26
+
+İshak R2'yi açtı (ödeme yöntemi eklendi). "Burada da hemen dolmasın,
+10 GB'ı doldurmasın" şartıyla kuruldu. Önceki "yarım geçiş hiçbir ürünü
+yayınlatmaz" riski bu tasarımla YOK: Supabase kaynak olarak kalıyor.
+
+### Tasarım (tekrar tartışılmasın)
+
+- Supabase Storage tek doğru kaynak. Yükleme, RLS, `catalog-media-verify`
+  ve tüm SQL doğrulayıcıları DEĞİŞMEDİ
+- `media-cdn-sync` edge function genel görselleri R2'ye KOPYALAR, kaynağı
+  silinen kopyayı SİLER. Anahtar: `<bucket>/<dosya adı>`
+- İstemci R2 adresini kurar; R2'de yoksa (henüz kopyalanmadı, bütçe doldu)
+  görsel sessizce Supabase'den gelir. Sonra ikisi de yoksa eski yedekler
+- Hangi dosyanın kopyalanacağına veritabanı karar verir, fonksiyon sadece
+  bayt taşır ve baytın gerçekten o görsel türü olduğunu kontrol eder
+
+### 10 GB koruması (yapısal, "umarız" değil)
+
+- Sadece 3 genel kovadaki GÖRSELLER. Video ve özel kovalar asla
+- Her PUT'tan ÖNCE defterde rezervasyon: defter her zaman R2'nin üst
+  kümesi, yani R2 hiçbir zaman defterden büyük olamaz
+- Rezervasyon satır kilidiyle bütçeyi yeniden kontrol eder: varsayılan
+  8 GiB, CHECK ile tavan 9 GiB, uyarı 7 GiB
+- Tek dosya en fazla 5 MiB (sıkıştırılmış ürün fotoğrafı 200-400 KB)
+- Kaynağı silinen kopya bir sonraki turda silinir: yetim birikmez
+- Başarısız dosya 10/20 dk arayla en fazla 3 kez denenir, sonra durur
+- Etkinlik görselleri artık yüklemeden önce sıkıştırılıyor (1920 px)
+- Tur başına en fazla 25 yükleme, 5 dakikada bir, SADECE iş varken
+  (boşta hiç çağrı yok)
+
+### Yapılanlar
+
+- [x] Migration `20260926140000_add_media_cdn_mirror_v1.sql`
+      (md5 a87a74a4ae63ee92119ff82df66b3077), canlıda. `enabled=false`
+      ile KAPALI. Canlıda geri alınan işlemde test edildi: bütçe, yanlış
+      boyut/etag reddi, yetim silme, hata geri çekilmesi, güvensiz ad
+      reddi, yetkisiz erişim reddi, cron kaydı
+- [x] Edge function `media-cdn-sync` deploy edildi (verify_jwt=false,
+      vault sırrı `golden_oremar_media_cdn_worker` ile kimlik doğrular)
+- [x] `scripts/media-cdn/sync-local-test.ts`: gerçek fonksiyon, sahte
+      Supabase ve sahte R2 ile 15/15. Sahte R2 imzayı (AWS SigV4) KENDİ
+      koduyla doğrular; yanlış sır verildiğinde reddettiği de test edildi.
+      Çalıştırma: `npm i deno` sonra `deno run -A --no-config scripts/media-cdn/sync-local-test.ts`
+- [x] `src/lib/mediaUrl.ts`: tüm genel görsel adresleri tek yerden
+      (13 dosya). CDN adresi yoksa davranış birebir eskisi gibi
+- [x] `installCatalogMediaFallback`: CDN hatası pencere yakalama
+      aşamasında Supabase'e çevrilir ve olay durdurulur; bileşenlerin kendi
+      "Fotoğraf yakında" yedekleri sadece Supabase de hata verirse çalışır
+- [x] `scripts/media-cdn-contract-audit.mjs` (run-all'da, 52 denetim)
+- [x] `scripts/browser/media-cdn-check.mjs` 9/9: CDN sağlıklıyken Supabase
+      depolamaya SIFIR istek; CDN yokken tüm görseller Supabase'den geldi;
+      ikisi de yokken kırık görsel yok. Eski 4 tarayıcı testi de temiz
+
+### AÇMA SIRASI (kalanlar)
+
+1. [ ] Cloudflare panelinde: `golden-oremar-media` kovası (konum EEUR),
+       Public Development URL açık, kovaya özel "Object Read & Write"
+       anahtarı. Cloudflare MCP bunları yapamıyor (sadece kova oluşturur,
+       konum seçemez). İshak görme engelli: bunu CLAUDE tarayıcı üzerinden
+       yapacak, sohbet bilgisayara bağlanınca (Link to this computer)
+2. [ ] Supabase Edge Function secrets: `R2_ACCESS_KEY_ID`,
+       `R2_SECRET_ACCESS_KEY` (aynı tarayıcı oturumunda)
+3. [ ] `update private.media_cdn_settings set public_base_url='https://pub-....r2.dev', enabled=true`
+4. [ ] Supabase açık olmalı (402 bitmeli), sonra cron ilk turu yapar;
+       `super_admin_media_cdn_status_v1` / `last_run_detail` kontrol
+5. [ ] r2.dev adresinden bir görseli çek, 200 ve `cache-control: immutable` gör
+6. [ ] `CANONICAL_MEDIA_CDN_BASE` (src/lib/mediaUrl.ts) doldur, yayınla.
+       Yerel `npx vite build` ile media-cdn-check'i gerçek adresle tekrar koş
+7. [ ] İleride: `goldenoremar.com` Cloudflare'e alınınca
+       `media.goldenoremar.com` özel alan adı (önbellek, hız sınırı yok).
+       r2.dev'i KAPATMA: eski mobil sürümler onu kullanır; yedek zaten var
+
 ## İshak'ın yapması gerekenler (kod dışı)
 
 - [ ] Supabase Pro plana geçiş (kota kısıtlaması) - ÖNCE panelden

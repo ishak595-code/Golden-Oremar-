@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { publicMediaUrl } from '../../lib/mediaUrl';
 
 function unwrap<T>(data: T | null, error: any): T {
   if (error) throw error;
@@ -173,5 +174,5 @@ export function contentPublicUrl(path?: string | null) {
   if (/^[a-z][a-z0-9+.-]*:/i.test(raw)) return '';
   const normalized = raw.replace(/^\/+/, '');
   if (!normalized || normalized.split('/').some(part => part === '..' || part === '.' || !part)) return '';
-  return supabase.storage.from('content-public').getPublicUrl(normalized).data.publicUrl;
+  return publicMediaUrl('content-public',normalized);
 }

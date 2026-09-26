@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { publicMediaUrl } from '../lib/mediaUrl';
 
 export type StorefrontTier='standard'|'verified'|'signature';
 export type StorefrontTheme='heritage'|'emerald'|'midnight'|'ivory';
@@ -44,6 +45,6 @@ export async function uploadStorefrontAsset(producerId:string,kind:'logo'|'cover
  try{const{data,error}=await supabase.rpc('super_admin_update_storefront_media_v1',{p_producer_id:id,p_logo_path:nextLogo,p_cover_path:nextCover});return{result:unwrap<unknown>(data,error),path:storagePath};}catch(error){await supabase.storage.from('catalog-public').remove([storagePath]).catch(()=>undefined);throw error;}
 }
 
-export function storefrontAssetUrl(storagePath:string|null|undefined){if(!storagePath)return'';try{return supabase.storage.from('catalog-public').getPublicUrl(storagePath).data.publicUrl;}catch{return'';}}
+export function storefrontAssetUrl(storagePath:string|null|undefined){if(!storagePath)return'';try{return publicMediaUrl('catalog-public',storagePath);}catch{return'';}}
 
 export function storefrontAdminError(error:unknown,fallback='Mağaza vitrini işlemi tamamlanamadı.'){const message=String((error as any)?.message||'').trim();if(!message)return fallback;const map:Array<[string,string]>=[['super_admin_required','Bu işlem yalnız Süper Yönetici tarafından yapılabilir.'],['producer_not_found','Mağaza kaydı bulunamadı.'],['storefront_logo_storage_object_required','Profil görseli Storage alanında doğrulanamadı.'],['storefront_cover_storage_object_required','Kapak görseli Storage alanında doğrulanamadı.'],['invalid_launch_audience_count','Lansman topluluğu 0 ile 1 milyar arasında olmalıdır.'],['invalid_launch_audience_label','Lansman topluluğu etiketi geçersiz.'],['invalid_storefront_tier','Vitrin seviyesi geçersiz.'],['invalid_storefront_theme','Vitrin teması geçersiz.']];for(const[key,value]of map)if(message.includes(key))return value;return message.length<=280?message:fallback;}

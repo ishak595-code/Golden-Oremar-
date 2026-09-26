@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { publicMediaUrl } from '../lib/mediaUrl';
 
 export type ProducerEventSubmissionStatus='pending'|'needs_changes'|'approved'|'rejected'|'withdrawn';
 export type ProducerEventReviewDecision='approve'|'reject'|'needs_changes';
@@ -94,7 +95,7 @@ export async function adminReviewProducerEventSubmission(input:{submissionId:str
 
 export function producerEventSubmissionImageUrl(path:string|null){
   if(!path)return'';
-  return supabase.storage.from('event-public').getPublicUrl(path).data.publicUrl;
+  return publicMediaUrl('event-public',path);
 }
 export function producerEventAdminErrorMessage(error:unknown,fallback='Etkinlik başvurusu işlemi tamamlanamadı.'){
   const message=String((error as{message?:unknown}|null)?.message||'').trim();

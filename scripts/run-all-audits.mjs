@@ -12,6 +12,7 @@ const audits=[
  'public-route-contract-audit.mjs',
  'seo-contract-audit.mjs',
  'media-upload-contract-audit.mjs',
+ 'media-cdn-contract-audit.mjs',
  'consumer-rights-contract-audit.mjs',
  'theme-contract-audit.mjs',
  'responsive-resilience-contract-audit.mjs',

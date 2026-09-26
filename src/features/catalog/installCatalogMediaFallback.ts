@@ -1,3 +1,5 @@
+import { mediaOriginUrl } from '../../lib/mediaUrl';
+
 const FALLBACK_DATA_URI = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
 const CATALOG_PUBLIC_MARKER = '/storage/v1/object/public/catalog-public/';
 const LEGACY_PRODUCT_MARKER = '/images/products/';
@@ -25,6 +27,26 @@ function unavailableAlt(previousAlt: string) {
   if (!alt) return '';
   if (alt.includes(FALLBACK_LABEL)) return alt;
   return `${alt}. ${FALLBACK_LABEL}.`;
+}
+
+/**
+ * A CDN image that fails (not mirrored yet, or refused by the R2 budget) is
+ * retried once from Supabase, where every public image always exists.
+ *
+ * The retry happens in the window capture phase, the first stop of the error
+ * event, and the event is stopped there. Components with their own onError
+ * (hide the image, show "Fotoğraf yakında") therefore never hear about a CDN
+ * miss; they only react if the Supabase copy fails too, exactly as before.
+ */
+function retryFromOrigin(img: HTMLImageElement) {
+  if (img.dataset.goMediaOriginRetry === '1') return false;
+  const origin = mediaOriginUrl(catalogMediaSource(img));
+  if (!origin) return false;
+  img.dataset.goMediaOriginRetry = '1';
+  img.removeAttribute('srcset');
+  img.removeAttribute('sizes');
+  img.src = origin;
+  return true;
 }
 
 function applyFallback(img: HTMLImageElement) {
@@ -76,7 +98,12 @@ export function installCatalogMediaFallback() {
 
   const onError = (event: Event) => {
     const target = event.target;
-    if (target instanceof HTMLImageElement) applyFallback(target);
+    if (!(target instanceof HTMLImageElement)) return;
+    if (retryFromOrigin(target)) {
+      event.stopImmediatePropagation();
+      return;
+    }
+    applyFallback(target);
   };
   const onLoad = (event: Event) => {
     const target = event.target;

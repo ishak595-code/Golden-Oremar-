@@ -14,6 +14,7 @@
 //   BROWSER_TOOLS=/tmp/go-browser node scripts/browser/resilience-check.mjs
 //   BROWSER_TOOLS=/tmp/go-browser node scripts/browser/a11y-check.mjs
 //   BROWSER_TOOLS=/tmp/go-browser node scripts/browser/navigation-check.mjs
+//   (media-cdn-check.mjs needs its own build, see the top of that file)
 //
 // Why @sparticuz/chromium: in restricted sandboxes `playwright install` is
 // blocked, while the npm registry is reachable. The two arguments removed in

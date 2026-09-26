@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { compressImageForUpload, CATEGORY_IMAGE_COMPRESSION } from '../lib/compressImage';
+import { publicMediaUrl } from '../lib/mediaUrl';
 
 export type AdminCategory = {
   id: string;
@@ -261,5 +262,5 @@ export async function uploadCategoryImage(input: File) {
 export function categoryImageUrl(storagePath: string) {
   const normalized = String(storagePath || '').trim();
   if (!normalized) return '';
-  return supabase.storage.from('catalog-public').getPublicUrl(normalized).data.publicUrl;
+  return publicMediaUrl('catalog-public',normalized);
 }

@@ -25,6 +25,7 @@ import type {
   OrderPaymentStatus,
   OrderStatus,
 } from './types';
+import { publicMediaUrl } from '../../lib/mediaUrl';
 
 const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const ACCOUNT_ROLES=new Set<AccountRole>(['customer','producer','support','content_editor','operations','admin','super_admin']);
@@ -320,7 +321,7 @@ export async function updateNotificationPreferences(input:NotificationPreference
 export async function requestAccountClosure(reason:string){const normalized=reason.trim();if(normalized.length<5||normalized.length>2000)throw new Error('Hesap kapatma gerekçesi 5 ile 2000 karakter arasında olmalıdır.');const{data,error}=await supabase.rpc('request_account_closure_v1',{p_reason:normalized});return normalizeClosureRequest(unwrap<unknown>(data,error));}
 export async function cancelAccountClosure(){const{data,error}=await supabase.rpc('cancel_account_closure_v1');return normalizeClosureCancel(unwrap<unknown>(data,error));}
 
-export function catalogPublicUrl(path?:string|null){if(!path)return'';const raw=path.trim();if(/^https?:\/\//i.test(raw)){let url:URL;try{url=new URL(raw);}catch{return'';}return url.protocol==='https:'?url.toString():'';}const normalized=raw.replace(/^\/+/, '');if(!normalized||normalized.includes('..')||normalized.includes('\\'))return'';const{data}=supabase.storage.from('catalog-public').getPublicUrl(normalized);return data.publicUrl;}
+export function catalogPublicUrl(path?:string|null){if(!path)return'';const raw=path.trim();if(/^https?:\/\//i.test(raw)){let url:URL;try{url=new URL(raw);}catch{return'';}return url.protocol==='https:'?url.toString():'';}const normalized=raw.replace(/^\/+/, '');if(!normalized||normalized.includes('..')||normalized.includes('\\'))return'';return publicMediaUrl('catalog-public',normalized);}
 export async function getAccountHelpContent(locale='tr'){const normalizedLocale=requiredText(locale,'Yardım dili',8);if(!LOCALES.has(normalizedLocale))throw new Error('Yardım dili doğrulanamadı.');const{data,error}=await supabase.rpc('get_account_help_content_v1',{p_locale:normalizedLocale});return normalizeHelpContent(unwrap<unknown>(data,error));}
 export async function signOutCurrentDevice(){const{error}=await supabase.auth.signOut({scope:'local'});if(error)throw error;}
 export async function signOutOtherDevices(){const{error}=await supabase.auth.signOut({scope:'others'});if(error)throw error;}

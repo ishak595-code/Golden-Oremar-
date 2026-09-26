@@ -52,6 +52,10 @@ export type CompressOptions = {
 // same verifier, so they share the product rule.
 export const PRODUCT_IMAGE_COMPRESSION: CompressOptions = { maxLongEdge: 2000, minShortEdge: 1200, quality: 0.82, skipBelowBytes: 400 * 1024 };
 export const CATEGORY_IMAGE_COMPRESSION: CompressOptions = PRODUCT_IMAGE_COMPRESSION;
+// Event cover images have no server-side size floor, so only the long edge is
+// capped. Before this, a phone photo went up untouched at 3-8 MB, and at more
+// than 5 MB it could not even be mirrored to the CDN.
+export const EVENT_IMAGE_COMPRESSION: CompressOptions = { maxLongEdge: 1920, minShortEdge: 0, quality: 0.82, skipBelowBytes: 400 * 1024 };
 
 /** Scale factor for a given size: shrink toward maxLongEdge, never below the
  *  short-edge floor, never enlarge. Exported for the contract audit. */

@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import { getPaymentReadiness, listMyPaymentMethods, type PaymentReadiness, type SavedPaymentMethod } from '../payments/api';
+import { publicMediaUrl } from '../../lib/mediaUrl';
 
 export type CartSnapshot = {
   cartId: string | null;
@@ -350,5 +351,5 @@ export function publicCatalogUrl(path?: string | null) {
   if (!path) return '';
   if (/^https:\/\//i.test(path)) return path;
   if (/^http:\/\//i.test(path)) return '';
-  return supabase.storage.from('catalog-public').getPublicUrl(path.replace(/^\/+/, '')).data.publicUrl;
+  return publicMediaUrl('catalog-public',path.replace(/^\/+/, ''));
 }
