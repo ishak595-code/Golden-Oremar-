@@ -1,3 +1,4 @@
+import{userFacingError}from'../../lib/userFacingError';
 import React,{useEffect,useRef,useState}from'react';
 import{KeyRound,Loader2,LogOut,ShieldCheck}from'lucide-react';
 import{beginStaffTotpEnrollment,cancelStaffTotpEnrollment,listStaffTotpFactors,verifyExistingStaffTotp,verifyStaffTotpEnrollment,type StaffTotpEnrollment,type StaffTotpFactor}from'./mfaApi';
@@ -5,7 +6,7 @@ import{beginStaffTotpEnrollment,cancelStaffTotpEnrollment,listStaffTotpFactors,v
 type Props={factorEnrolled:boolean;onVerified:()=>Promise<void>|void;onLogout:()=>Promise<void>|void;};
 type GateMode='loading'|'enroll-start'|'enroll'|'challenge';
 
-function safeError(error:unknown){const message=error instanceof Error?error.message:'';if(!message)return'MFA işlemi tamamlanamadı. Lütfen yeniden deneyin.';if(message.length>500)return'MFA işlemi güvenli şekilde tamamlanamadı.';return message;}
+function safeError(error:unknown){const message=userFacingError(error,'');if(!message)return'MFA işlemi tamamlanamadı. Lütfen yeniden deneyin.';if(message.length>500)return'MFA işlemi güvenli şekilde tamamlanamadı.';return message;}
 
 export default function StaffMfaGate({factorEnrolled,onVerified,onLogout}:Props){
  const[mode,setMode]=useState<GateMode>('loading');

@@ -1,0 +1,73 @@
+name: Schema snapshot
+
+# The repo migrations cannot rebuild the live database on their own: 116 early
+# live migrations were never saved to supabase/migrations (see the roadmap,
+# "Şema kopukluğu"). Until a full baseline is committed, this job keeps a
+# weekly, schema-only copy of the live project so it can always be rebuilt.
+#
+# It needs one repository secret, SUPABASE_DB_URL: the Session pooler
+# connection string from Supabase > Connect (port 5432, IPv4). Without the
+# secret the job skips itself and says so. No data is dumped, only structure,
+# functions, policies and grants.
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schema-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check the database secret
+        id: secret
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::SUPABASE_DB_URL is not set, so no schema snapshot was taken."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install pg_dump 17 (matches the server)
+        if: steps.secret.outputs.configured == 'true'
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Dump the application schemas
+        if: steps.secret.outputs.configured == 'true'
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          mkdir -p snapshot
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" \
+            --schema-only --no-owner \
+            --schema=public --schema=private --schema=api_internal --schema=api_public_bridge \
+            --file=snapshot/schema.sql
+          test -s snapshot/schema.sql
+          grep -c "CREATE FUNCTION" snapshot/schema.sql | xargs -I{} echo "::notice::Snapshot has {} functions."
+          sha256sum snapshot/schema.sql | tee snapshot/schema.sql.sha256
+
+      - name: Keep the snapshot for 90 days
+        if: steps.secret.outputs.configured == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: schema-snapshot-${{ github.run_number }}
+          path: snapshot/
+          retention-days: 90
+          if-no-files-found: error

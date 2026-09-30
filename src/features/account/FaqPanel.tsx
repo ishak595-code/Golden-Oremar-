@@ -1,3 +1,4 @@
+import{userFacingError}from'../../lib/userFacingError';
 import React,{useEffect,useMemo,useState}from'react';
 import{Search,X}from'lucide-react';
 import{listPublicFaq,type PublicFaqItem}from'./faqApi';
@@ -7,7 +8,7 @@ function searchLocale(value:string){const normalized=String(value||'tr').trim().
 
 export default function FaqPanel({locale='tr'}:{locale?:string}){
  const[data,setData]=useState<{locale:string;fallbackUsed:boolean;items:PublicFaqItem[]}|null>(null);const[loading,setLoading]=useState(true);const[error,setError]=useState('');const[query,setQuery]=useState('');const[category,setCategory]=useState('Tümü');
- async function load(silent=false){try{if(!silent)setLoading(true);setError('');const result=await listPublicFaq(locale);setData({locale:result.locale,fallbackUsed:result.fallbackUsed,items:result.items});}catch(e:any){setError(e?.message||'Sık sorulan sorular yüklenemedi.');if(!silent)setData(null);}finally{if(!silent)setLoading(false);}}
+ async function load(silent=false){try{if(!silent)setLoading(true);setError('');const result=await listPublicFaq(locale);setData({locale:result.locale,fallbackUsed:result.fallbackUsed,items:result.items});}catch(e:any){setError(userFacingError(e,'Sık sorulan sorular yüklenemedi.'));if(!silent)setData(null);}finally{if(!silent)setLoading(false);}}
  useEffect(()=>{void load();},[locale]);
  useEffect(()=>{const restore=()=>void load(true);window.addEventListener(NETWORK_RESTORED_EVENT,restore);return()=>window.removeEventListener(NETWORK_RESTORED_EVENT,restore);},[locale]);
  const categories=useMemo(()=>['Tümü',...Array.from(new Set((data?.items||[]).map(item=>item.category).filter(Boolean)))],[data]);

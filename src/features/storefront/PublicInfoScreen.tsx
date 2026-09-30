@@ -1,3 +1,4 @@
+import{userFacingError}from'../../lib/userFacingError';
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, FileText, Info, Shield, Undo2 } from 'lucide-react';
 import SafePublishedBody from '../content/SafePublishedBody';
@@ -61,7 +62,7 @@ export default function PublicInfoScreen({
       } catch (err: any) {
         if (active) {
           setData(null);
-          setError(err?.message || 'Bilgilendirme sayfası yüklenemedi.');
+          setError(userFacingError(err,'Bilgilendirme sayfası yüklenemedi.'));
         }
       } finally {
         if (active) setLoading(false);

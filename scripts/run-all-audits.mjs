@@ -14,6 +14,8 @@ const audits=[
  'media-upload-contract-audit.mjs',
  'media-cdn-contract-audit.mjs',
  'consumer-rights-contract-audit.mjs',
+ 'rpc-existence-contract-audit.mjs',
+ 'user-facing-error-contract-audit.mjs',
  'theme-contract-audit.mjs',
  'responsive-resilience-contract-audit.mjs',
  'admin-data-contract-audit.mjs',

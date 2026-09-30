@@ -493,6 +493,58 @@ taşınır. Erken taşıma, olmayan bir sorun için karmaşıklık eklemek olur.
 - [ ] E2E testleri canlı veritabanında test kullanıcısı oluşturup dosya
       yüklüyor (9 artık dosya). Doğru çözüm ayrı bir test Supabase projesi
 
+## Eksik taraması - 2026-10-01
+
+İshak: "diğer eksiklere bak, uygulamayı en üst düzeyde tamamla". R2 ve
+Supabase kotası işi 3 gün sonraya bırakıldı. Bulunan ve kapatılanlar:
+
+- [x] **Satıcı izlenebilirlik (lot) ekranı açılmıyordu.** 21 Ağustos'ta
+      kaldırılan `get_my_producer_dashboard_v1`'i çağırıyordu; her satıcıda
+      hata. `get_my_producer_dashboard_v2`'ye çevrildi (aynı `profile`,
+      `inventory`, `batches` alanları canlı tanımla tek tek karşılaştırıldı).
+      Kullanılmayan ve kaldırılmış fonksiyonu çağıran `saveMyProducerPaymentKyc`
+      silindi
+- [x] **Yeni denetim `rpc-existence-contract-audit`:** uygulamanın çağırdığı
+      239 veritabanı fonksiyonunun her biri ya bir migration'da oluşturuluyor
+      ya da canlı katalog listesinde var (`supabase/schema/live_public_functions.txt`);
+      bir migration'ın kaldırdığı fonksiyonu çağırmak artık derlemeyi durdurur.
+      Eski hatayı yakaladığı denendi. Uygulamanın çağırdığı 13 edge function'ın
+      hepsi canlıda var
+- [x] **Ham hata metinleri müşteriye gösterilmiyor.** Bağlantı kopunca
+      "Failed to fetch", kota bitince İngilizce Supabase uyarısı, sunucu
+      korumalarında `active_profile_required` gibi kodlar ekrana düşüyordu.
+      Tek çevirmen: `src/lib/userFacingError.ts` (bağlantı, kota, oturum,
+      yetki, hız sınırı, giriş hataları Türkçe; makine metni yerine ekranın
+      kendi Türkçe cümlesi). 41 ekran yeri ve 6 alan eşleyicisi buna bağlandı.
+      Yeni denetim `user-facing-error-contract-audit` 16 gerçek hata örneğini
+      çalıştırır ve ham gösterimi geri gelirse durdurur
+- [x] **Satıcı ve müşteri metinlerinde iç jargon kaldırıldı:** "Super Admin
+      incelemesine" yerine "Golden Oremar ekibinin incelemesine" vb.; ödeme
+      ekranındaki "iyzico henüz Super Admin tarafından etkinleştirilmemiş"
+      yerine "Kartla ödeme şu anda kullanıma açık değil"; girişte "Supabase
+      tarafında" yazısı kaldırıldı. Yöneticinin kendi ekranları değişmedi
+- [x] Kontrol edildi, sorun yok: İngilizce arayüz metni yok; internet kesilme
+      durumu izleniyor; güvenlik taramasında yeni bulgu yok; performans
+      taramasında yalnız "kullanılmayan indeks" notları (henüz trafik yok,
+      silmek erken)
+
+### Şema kopukluğu (ÖNEMLİ, kod dışı adım gerekiyor)
+
+Canlı veritabanındaki 440 migration'ın 116'sı repo'da yok (ilk günlerin
+temel şeması, etkinlik ödemeleri ve üç "sync_batch3" dosyası). Repo bunu
+sonradan "sync_*" dosyalarıyla telafi etmeye çalışmış ama eksik: en az 21
+public fonksiyonu hiçbir migration oluşturmuyor. Sonuç: veritabanı bozulursa
+ya da E2E için ayrı test projesi kurulursa repo'dan tam kopya çıkmaz.
+
+- [x] Haftalık şema dökümü iş akışı hazır: `.github/workflows/schema-snapshot.yml`
+      (pg_dump 17, sadece yapı, veri yok, 90 gün saklanır). Sır yoksa
+      kendini atlar
+- [ ] GitHub > Settings > Secrets > Actions: `SUPABASE_DB_URL` = Supabase >
+      Connect > Session pooler bağlantı adresi (5432). Bilgisayar
+      bağlandığında CLAUDE yapar; şifre sohbete yazılmaz
+- [ ] İlk döküm alınınca repo'ya `supabase/schema/baseline.sql` olarak
+      eklenir ve test projesi bu tabandan kurulur
+
 ## Tüm görsel ve videolar Cloudflare R2'de - 2026-09-26
 
 İshak: "resim ve video oraya gitsin, veritabanı sadece diğer veriler.

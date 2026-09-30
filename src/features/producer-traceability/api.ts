@@ -215,7 +215,7 @@ function normalizeBatchEditor(value: unknown) {
 }
 
 export async function getProducerTraceabilityDashboard() {
-  const { data, error } = await supabase.rpc('get_my_producer_dashboard_v1');
+  const { data, error } = await supabase.rpc('get_my_producer_dashboard_v2');
   const payload = unwrap<unknown>(data, error);
   if (!isRecord(payload) || !isRecord(payload.profile)) throw new Error('Satıcı izlenebilirlik özeti doğrulanamadı.');
   if (!Array.isArray(payload.inventory) || payload.inventory.length > 5000) throw new Error('Satıcı stok listesi doğrulanamadı.');

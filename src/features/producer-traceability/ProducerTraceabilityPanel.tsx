@@ -1,3 +1,4 @@
+import{userFacingError}from'../../lib/userFacingError';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ClipboardCopy, Plus, RefreshCw, ShieldCheck } from 'lucide-react';
 import {
@@ -42,7 +43,7 @@ export default function ProducerTraceabilityPanel({ onBack, onChanged }: { onBac
       setError('');
       setDashboard(await getProducerTraceabilityDashboard());
     } catch (err: any) {
-      setError(err?.message || 'Lot bilgileri yüklenemedi.');
+      setError(userFacingError(err,'Lot bilgileri yüklenemedi.'));
     } finally {
       setLoading(false);
     }

@@ -1,3 +1,4 @@
+import{userFacingError}from'../../lib/userFacingError';
 import React,{useEffect,useMemo,useState}from'react';
 import{ArrowLeft,FileImage,RefreshCw,Trash2,UploadCloud}from'lucide-react';
 import{getOrderReturnOptions,removeReturnEvidence,requestCustomerReturnV3,uploadReturnEvidence,type OrderReturnOptions,type ReturnRequestResult}from'./returnsApi';
@@ -15,7 +16,7 @@ export default function ReturnRequestDialog({orderId,onClose,onSubmitted}:{order
  const[reason,setReason]=useState<ReturnReason|''>('');const[message,setMessage]=useState('');const[itemState,setItemState]=useState<Record<string,ItemState>>({});
  const dialogRef=useAccessibleDialog<HTMLDivElement>(!loading,()=>{if(!busy)onClose();});const loadingDialogRef=useAccessibleDialog<HTMLDivElement>(loading,onClose);
  const optionItems=options?.items??[];
- async function load(){try{setLoading(true);setError('');const data=await getOrderReturnOptions(orderId);setOptions(data);const next:Record<string,ItemState>={};for(const item of data.items)next[item.orderItemId]={selected:false,quantity:item.remainingQuantity>0?1:0,files:[]};setItemState(next);}catch(e:unknown){setOptions(null);setError(e instanceof Error?e.message:'İade seçenekleri yüklenemedi.');}finally{setLoading(false);}}
+ async function load(){try{setLoading(true);setError('');const data=await getOrderReturnOptions(orderId);setOptions(data);const next:Record<string,ItemState>={};for(const item of data.items)next[item.orderItemId]={selected:false,quantity:item.remainingQuantity>0?1:0,files:[]};setItemState(next);}catch(e:unknown){setOptions(null);setError(userFacingError(e,'İade seçenekleri yüklenemedi.'));}finally{setLoading(false);}}
  useEffect(()=>{void load();},[orderId]);
  const selectedItems=useMemo(()=>Object.entries(itemState).filter(([,value])=>value.selected),[itemState]);
  const totalFiles=useMemo(()=>Object.values(itemState).reduce((sum,value)=>sum+value.files.length,0),[itemState]);
@@ -33,7 +34,7 @@ export default function ReturnRequestDialog({orderId,onClose,onSubmitted}:{order
    setBusy(true);setError('');setStatus(totalFiles?'Kanıt dosyaları hazırlanıyor…':'İade talebi hazırlanıyor…');const payload:Array<{orderItemId:string;quantity:number;evidencePaths:string[]}>=[];
    for(const[orderItemId,state]of selectedItems){const item=optionItems.find(candidate=>candidate.orderItemId===orderItemId);if(!item)throw new Error('İade ürünü güncel sipariş seçeneklerinde bulunamadı.');if(!Number.isSafeInteger(state.quantity)||state.quantity<1||state.quantity>item.remainingQuantity||state.quantity>999)throw new Error(`${item.productName} için geçersiz iade adedi.`);const evidencePaths:string[]=[];for(const file of state.files){setStatus(`${file.name} yükleniyor…`);const path=await uploadReturnEvidence(orderId,file);uploaded.push(path);evidencePaths.push(path);}payload.push({orderItemId,quantity:state.quantity,evidencePaths});}
    setStatus('İade talebi oluşturuluyor…');const result=await requestCustomerReturnV3({orderId,items:payload,reasonCode:reason,message:trimmed});requestCreated=true;setStatus('İade talebiniz oluşturuldu.');onSubmitted(result);
-  }catch(e:unknown){if(uploaded.length&&!requestCreated){await removeReturnEvidence(uploaded).catch(()=>{});}setError(requestCreated?'İade talebi oluşturuldu ancak ekran güncellenirken hata oluştu. Siparişlerim ekranını yenileyin.':e instanceof Error?e.message:'İade talebi oluşturulamadı.');setStatus('');}
+  }catch(e:unknown){if(uploaded.length&&!requestCreated){await removeReturnEvidence(uploaded).catch(()=>{});}setError(requestCreated?'İade talebi oluşturuldu ancak ekran güncellenirken hata oluştu. Siparişlerim ekranını yenileyin.':userFacingError(e,'İade talebi oluşturulamadı.'));setStatus('');}
   finally{setBusy(false);}
  }
  if(loading)return<div role="dialog" aria-modal="true" aria-labelledby="return-loading-title" className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4"><div ref={loadingDialogRef} tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl outline-none dark:bg-gray-900"><div className="flex items-start justify-between gap-3"><h3 id="return-loading-title" className="text-lg font-bold">İade talebi</h3><button type="button" onClick={onClose} className="min-h-11 rounded-xl border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">Geri</button></div><LoadingState label="İade seçenekleri yükleniyor"/></div></div>;

@@ -1,3 +1,4 @@
+import { userFacingError } from '../../lib/userFacingError';
 import React, { useRef, useState } from 'react';
 import { Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react';
 import {
@@ -22,13 +23,13 @@ function authErrorMessage(raw: string) {
   if (value.includes('native_auth_redirect_not_configured')) return 'Mobil şifre sıfırlama bağlantısı henüz güvenli dönüş adresine bağlanmamış. Lütfen destek ile iletişime geçin.';
   if (value.includes('social_auth_redirect_not_configured')) return 'Sosyal giriş için güvenli uygulama dönüş adresi henüz yapılandırılmamış.';
   if (value.includes('social_provider_not_configured')) return 'Bu sosyal giriş sağlayıcısı henüz Golden Oremar hesabına güvenli biçimde bağlanmamış.';
-  if (value.includes('provider is not enabled') || value.includes('unsupported provider')) return 'Bu sosyal giriş sağlayıcısı Supabase tarafında henüz etkin değil.';
+  if (value.includes('provider is not enabled') || value.includes('unsupported provider')) return 'Bu giriş yöntemi şu anda kullanılamıyor. Lütfen e-posta ile giriş yapın.';
   if (value.includes('invalid login credentials')) return 'E-posta veya şifre hatalı.';
   if (value.includes('email not confirmed')) return 'E-posta adresinizi doğruladıktan sonra giriş yapabilirsiniz.';
   if (value.includes('password should be at least')) return 'Şifre yeterince güçlü değil.';
   if (value.includes('user already registered')) return 'Bu e-posta ile daha önce hesap oluşturulmuş.';
   if (value.includes('rate limit')) return 'Çok fazla deneme yapıldı. Bir süre sonra tekrar deneyin.';
-  return raw || 'Kimlik doğrulama işlemi tamamlanamadı.';
+  return userFacingError(raw, 'Kimlik doğrulama işlemi tamamlanamadı.');
 }
 
 function validEmail(value: string) {

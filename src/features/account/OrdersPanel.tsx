@@ -1,3 +1,4 @@
+import{userFacingError}from'../../lib/userFacingError';
 import React,{useEffect,useRef,useState}from'react';
 import{Check,Circle,Copy,ExternalLink,MessageCircle,RotateCcw,X}from'lucide-react';
 import{cancelOrder,getOrderDetail,listOrders}from'./api';

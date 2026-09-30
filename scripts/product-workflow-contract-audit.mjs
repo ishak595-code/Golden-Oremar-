@@ -16,7 +16,7 @@ if(seller){
  requirePattern(seller,/accept="image\/jpeg,image\/png,image\/webp,image\/avif"/,'Seller product images must be selected as device files.');
  requirePattern(seller,/accept="video\/mp4,video\/webm,video\/quicktime"/,'Seller product video must be selected as device files.');
  requirePattern(seller,/ProductPreview/,'Seller product flow must keep a customer-facing preview before submission.');
- requirePattern(seller,/Kaydet ve Super Admin incelemesine gönder/,'Seller product flow must submit through Super Admin review rather than publishing directly.');
+ requirePattern(seller,/Kaydet ve Golden Oremar ekibinin incelemesine gönder/,'Seller product flow must submit through Super Admin review rather than publishing directly.');
  forbid(seller,/type=["']url["']|https?:\/\/|videoUrl|imageUrl/,'Seller product wizard must not reintroduce link-based product media fields.');
  forbid(seller,/URL\.createObjectURL\([^)]*\)(?!;setUrl)/,'Seller media preview must not create unreclaimed object URLs directly during render.');
 }

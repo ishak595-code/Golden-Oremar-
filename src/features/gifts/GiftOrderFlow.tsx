@@ -1,3 +1,4 @@
+import{userFacingError}from'../../lib/userFacingError';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2,
@@ -419,7 +420,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
       setStatus('');
       onCreated?.(result);
     } catch (e: any) {
-      const raw = String(e?.message || '');
+      const raw = String(userFacingError(e,''));
       const code = raw.split(':')[0];
       const friendly = raw.includes('invalid_shipping_country') ? 'Teslimat ülkesini açıkça seçin.'
         : raw.includes('international_shipping_weight_missing') ? 'Bu ürün için yurt dışı gönderim bilgileri eksik olduğu için yurt dışı hediye siparişi açılamıyor.'

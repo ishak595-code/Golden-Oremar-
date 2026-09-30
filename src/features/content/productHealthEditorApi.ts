@@ -337,7 +337,7 @@ export async function rejectAdminProductHealthChange(requestId: string, reviewNo
 export function productHealthErrorMessage(error: unknown, fallback = 'Ürün bilgisi işlemi tamamlanamadı.') {
   const message = String((error as { message?: unknown } | null)?.message || '').trim();
   const map: Array<[string, string]> = [
-    ['super_admin_required', 'Bu işlem yalnız Super Admin tarafından yapılabilir.'],
+    ['super_admin_required', 'Bu işlem yalnız Golden Oremar yönetimi tarafından yapılabilir.'],
     ['producer_product_owner_required', 'Yalnız kendi ürününüzün bilgilerini düzenleyebilirsiniz.'],
     ['active_verified_producer_required', 'Ürün bilgisi göndermek için aktif ve doğrulanmış satıcı hesabı gerekir.'],
     ['unsupported_product_health_claim', 'Tedavi veya doğrulanmamış sağlık iddiası ürün bilgisine eklenemez.'],

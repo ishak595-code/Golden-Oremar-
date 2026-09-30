@@ -1,3 +1,4 @@
+import{userFacingError}from'../../lib/userFacingError';
 import React, { useEffect, useRef, useState } from 'react';
 import { Grid2X2, Package, Search, Store } from 'lucide-react';
 import { catalogSuggestions, type CatalogSuggestion } from './api';
@@ -86,7 +87,7 @@ export default function CatalogSearchOverlay({
       } catch (err: any) {
         if (requestId.current === current) {
           setItems([]);
-          setError(err?.message || 'Arama önerileri alınamadı.');
+          setError(userFacingError(err,'Arama önerileri alınamadı.'));
         }
       } finally {
         if (requestId.current === current) setLoading(false);

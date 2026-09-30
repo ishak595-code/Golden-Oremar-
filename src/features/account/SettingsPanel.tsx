@@ -1,3 +1,4 @@
+import{userFacingError}from'../../lib/userFacingError';
 import React,{useEffect,useState}from'react';
 import{ArrowLeft,Bell,ChevronRight,KeyRound,Mail,Palette,ShieldCheck,Trash2,Volume2}from'lucide-react';
 import{cancelAccountClosure,changeMyPassword,getMyNewsletterStatus,getNotificationPreferences,requestAccountClosure,signOutAllDevices,signOutOtherDevices,subscribeNewsletter,unsubscribeMyNewsletter,updateNotificationPreferences}from'./api';
