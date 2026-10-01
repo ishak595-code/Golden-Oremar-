@@ -151,9 +151,11 @@
 .go-stock-pill--in { color: #0b6b49; background: #e7f5ee; border-color: #bfe3d0; }
 .go-stock-pill--low { color: #8a4b00; background: #fff4e5; border-color: #f3d3a6; }
 .go-stock-pill--out { color: #9b1c1c; background: #fdecec; border-color: #f2c4c4; }
-:root[data-theme="dark"] .go-stock-pill--in { color: #8fe0b8; background: rgb(31 157 99 / .14); border-color: rgb(31 157 99 / .35); }
-:root[data-theme="dark"] .go-stock-pill--low { color: #ffd18a; background: rgb(255 180 60 / .12); border-color: rgb(255 180 60 / .3); }
-:root[data-theme="dark"] .go-stock-pill--out { color: #ffb4b4; background: rgb(220 60 60 / .14); border-color: rgb(220 60 60 / .32); }
+.go-stock-pill--preorder { color: #1d4f8a; background: #eaf2fc; border-color: #c4d8f2; }
+:root[data-color-scheme="dark"] .go-stock-pill--in { color: #8fe0b8; background: rgb(31 157 99 / .14); border-color: rgb(31 157 99 / .35); }
+:root[data-color-scheme="dark"] .go-stock-pill--low { color: #ffd18a; background: rgb(255 180 60 / .12); border-color: rgb(255 180 60 / .3); }
+:root[data-color-scheme="dark"] .go-stock-pill--out { color: #ffb4b4; background: rgb(220 60 60 / .14); border-color: rgb(220 60 60 / .32); }
+:root[data-color-scheme="dark"] .go-stock-pill--preorder { color: #a9cbf5; background: rgb(80 140 220 / .14); border-color: rgb(80 140 220 / .34); }
 
 /* Shipped representative photo in place of the drawn artwork. */
 .go-artwork--photo{background:var(--bg-card);}

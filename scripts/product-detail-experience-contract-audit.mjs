@@ -27,6 +27,7 @@ check(/<ProductGallery /.test(detail), 'The product images use ProductGallery.')
 check(!/go-return-line/.test(detail) && /<DetailAccordion id="returns"[^>]*İade ve Cayma Hakkı[^>]*teaser=\{withdrawal\.copy\.title\}/.test(detail), 'Return terms live in the "İade ve Cayma Hakkı" section, whose header always shows the condition (no line under the price).');
 check(!/[\u2600-\u27BF\u{1F300}-\u{1FAFF}]/u.test(detail), 'The product page uses no emoji; states are shown with line icons.');
 check(/go-stock-pill go-stock-pill--out/.test(detail) && /go-stock-pill go-stock-pill--low/.test(detail), 'Stock state is a pill with an icon.');
+check(/go-stock-pill go-stock-pill--preorder/.test(detail) && /specifications\?.preOrderTime/.test(detail), 'Pre-orders show an "Ön sipariş" pill and the stored harvest and dispatch sentence.');
 check(!/aria-labelledby="product-withdrawal-title" className=\{`mt-6 flex gap-3/.test(detail), 'The large always-open withdrawal box must not come back; the line and the section replace it.');
 
 const accordion = read('src/features/catalog/DetailAccordion.tsx');
