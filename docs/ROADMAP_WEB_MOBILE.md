@@ -781,9 +781,9 @@ Yapıldı:
 - Temsili ürün fotoğrafı hattı: `scripts/product-photos` (prompts.json, sources.json, import.mjs) ve `product-photos-import` iş akışı. Fotoğraf yalnız ürünün kendi fotoğrafı yoksa görünür ve ürün sayfasında "Temsili görsel" yazar.
 
 Açık:
-- Fotoğraflar: 50 üründen 4'ü hazır. ElevenLabs ücretsiz planı günde birkaç görselle sınırlı; kalan 46 için plan yükseltmesi ya da günlük devam gerekir.
-- 8 ürünün yayını: Admin > Ürün Onayları > "Tümünü onayla" + menşei kutusu (MFA ile).
+- Fotoğraflar: 50 üründen 4'ü hazır. ElevenLabs ücretsiz planı günde 4 görsel veriyor (tüm modeller için ortak). İshak plan yükseltmeyi istemedi; "Golden Oremar ürün fotoğrafları" zamanlanmış görevi her sabah 07:59'da (Zürih) sıradaki 4 ürünü üretir, siteye ekler, 50'ye ulaşınca kendini kapatır.
+- 8 ürün yayında (toplam 50): İshak sohbette açıkça onayladı, admin paneli 402 nedeniyle açılmadığı için migration 20261001174000 ile uygulandı; denetim kaydı bunu açıkça yazar.
+- Yaz ürünleri (çilek, domates, hıyar, kayısı, karpuz, erik, çağla) ön siparişte, hasat dönemi ürün sayfasında yazıyor.
 - Havale/EFT: İshak IBAN'ı admin ekranından ekleyince müşteriye görünür.
 - Ön bilgilendirme ve mesafeli satış metni, şirket kurulunca avukata okutulmalı (satıcı unvanı, adres, MERSİS).
 - Mobile Quality Gate customer-e2e: canlı Supabase 402 verdiği için kırmızı; plan yükseltilince düzelir.
-- Yaz ürünleri (domates, çilek, çağla, hıyar, kayısı, karpuz) Ekim'de stokta görünüyor; mevsim dışı stoklar sıfırlanmalı ya da ön sipariş yapılmalı.
