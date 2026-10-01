@@ -33,10 +33,16 @@ jobs:
         run: node scripts/product-photos/import.mjs
       - name: Commit
         run: |
+          set +e
+          report() { echo "::error title=$1::$(printf '%s' "$2" | tr '\n' ' ' | cut -c1-900)"; }
           git add public/product-photos src/features/media/productPhotoManifest.ts scripts/product-photos/sources.json
           if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
           git config user.name "golden-oremar-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "chore(product-photos): import representative photos"
-          git pull --rebase
-          git push
+          out=$(git commit -m "chore(product-photos): import representative photos" 2>&1) || { report commit "$out"; exit 1; }
+          for attempt in 1 2 3; do
+            out=$(git push origin HEAD:main 2>&1) && { echo "$out"; exit 0; }
+            report "push attempt $attempt" "$out"
+            git fetch --depth=50 origin main && git rebase origin/main || { report rebase "$(git status 2>&1)"; exit 1; }
+          done
+          exit 1
