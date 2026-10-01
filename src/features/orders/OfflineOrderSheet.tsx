@@ -3,6 +3,7 @@ import{Building2,Check,CircleCheck,Copy,Gift,Loader2,MessageCircle,ShieldCheck,U
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 import{formatMoney}from'../cart/checkoutHelpers';
 import{getOfflineOrderingConfig,newOrderRequestKey,offlineOrderErrorMessage,orderServiceUnavailable,submitOfflineOrder,whatsappDirectOrderUrl,validateOfflineCustomer,whatsappOrderUrl,type OfflineOrderCustomer,type OfflineOrderLineInput,type OfflineOrderMethod,type OfflineOrderReceipt,type OfflineOrderingConfig}from'./offlineOrderApi';
+import{isSnapshotMode}from'../../lib/offlineCatalog';
 import'./offlineOrder.css';
 
 export type OfflineOrderSummaryLine={key:string;productName:string;variantName:string;quantity:number;priceMinor:number;currency:string};
@@ -57,7 +58,8 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
  const[recipient,setRecipient]=useState('');
  const[giftMessage,setGiftMessage]=useState('');
  const[recipientError,setRecipientError]=useState('');
- const showJoin=authenticated===false&&Boolean(onLoginRequired);
+ /* No invitation while membership itself is down: it would lead to an error. */
+ const showJoin=authenticated===false&&Boolean(onLoginRequired)&&!isSnapshotMode();
  function join(){onClose();onLoginRequired?.();}
  const keyRef=useRef(newOrderRequestKey());
  const errorRef=useRef<HTMLDivElement>(null);
@@ -137,7 +139,7 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
 
    :<form className="go-order-body" onSubmit={submit} noValidate>
     <p className="go-order-lead">Kartla online ödeme açılana kadar siparişinizi WhatsApp veya Havale/EFT ile alıyoruz.{showJoin?' Üye olmadan da sipariş verebilirsiniz.':''}</p>
-    {showJoin?<aside className="go-order-join" aria-label="Üyelik"><p className="go-order-join__title"><UserPlus aria-hidden="true"/>Üye olun, ayrıcalıklar sizin olsun</p><ul><li><Check aria-hidden="true"/>Siparişleriniz hesabınıza kaydedilir, geçmişiniz kaybolmaz.</li><li><Check aria-hidden="true"/>Adresiniz hazır gelir; sonraki sipariş birkaç dokunuşta biter.</li><li><Check aria-hidden="true"/>Kampanyaları ve üyelere özel fırsatları ilk siz duyarsınız.</li><li><Check aria-hidden="true"/>Favorileriniz her cihazda sizinle olur.</li></ul><button type="button" onClick={join} className="go-order-secondary">Ücretsiz üye ol (1 dakika)</button><p className="go-order-join__skip">Şimdi istemiyorsanız aşağıdan üye olmadan devam edin.</p></aside>:null}
+    {showJoin?<aside className="go-order-join" aria-label="Üyelik"><p className="go-order-join__title"><UserPlus aria-hidden="true"/>Üye olun, ayrıcalıklar sizin olsun</p><p>Siparişleriniz hesabınıza kaydedilir, adresiniz hazır gelir, kampanyaları ve üyelere özel fırsatları ilk siz duyarsınız.</p><button type="button" onClick={join} className="go-order-secondary">Ücretsiz üye ol</button><p className="go-order-join__skip">İstemezseniz üye olmadan devam edin.</p></aside>:null}
     <ul className="go-order-lines" aria-label="Sipariş özeti">{lines.map(line=><li key={line.key}><span><strong>{line.quantity} x {line.productName}</strong>{line.variantName?<small>{line.variantName}</small>:null}</span><b>{formatMoney(line.priceMinor*line.quantity,line.currency)}</b></li>)}<li className="is-total"><span>Ara toplam</span><b>{formatMoney(subtotal,currency)}</b></li></ul>
 
     {configError?<div role="alert" className="go-order-alert">Sipariş seçenekleri yüklenemedi. Bağlantınızı kontrol edip yeniden açın.</div>
@@ -149,10 +151,10 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
     </fieldset>}
 
     <div className={`go-order-gift${isGift?' is-on':''}`}>
-     <label className="go-order-check"><input type="checkbox" checked={isGift} onChange={event=>{setIsGift(event.target.checked);setRecipientError('');}}/><span><strong><Gift aria-hidden="true"/>Bu sipariş bir hediye</strong><small>Sevdiğinizin adresine gönderelim; pakete fiyat konmaz.</small></span></label>
+     <label className="go-order-check"><input type="checkbox" checked={isGift} onChange={event=>{setIsGift(event.target.checked);setRecipientError('');}}/><span><strong><Gift aria-hidden="true"/>Bu sipariş bir hediye</strong><small>{isGift?'Köyden çıkan bir paket, sizin notunuzla sevdiğinizin kapısında. Pakete fiyat konmaz.':'Sevdiğinize köyden bir hediye gönderin: notunuzla, fiyat bilgisi olmadan.'}</small></span></label>
      {isGift?<div className="go-order-grid">
       <div className="go-order-field"><label htmlFor={`${titleId}-recipient`}>Hediyeyi alacak kişi</label><input id={`${titleId}-recipient`} value={recipient} onChange={event=>{setRecipient(event.target.value.slice(0,120));if(recipientError)setRecipientError('');}} maxLength={120} autoComplete="off" aria-invalid={recipientError?true:undefined} aria-describedby={recipientError?`${titleId}-recipient-error`:undefined}/>{recipientError?<em id={`${titleId}-recipient-error`}>{recipientError}</em>:null}</div>
-      <div className="go-order-field"><label htmlFor={`${titleId}-giftMessage`}>Hediye mesajı<small> (isteğe bağlı)</small></label><textarea id={`${titleId}-giftMessage`} value={giftMessage} onChange={event=>setGiftMessage(event.target.value.slice(0,300))} rows={2} maxLength={300} placeholder="Pakete eklenecek kısa not"/></div>
+      <div className="go-order-field"><label htmlFor={`${titleId}-giftMessage`}>Hediye mesajı<small> (isteğe bağlı)</small></label><textarea id={`${titleId}-giftMessage`} value={giftMessage} onChange={event=>setGiftMessage(event.target.value.slice(0,300))} rows={2} maxLength={300} placeholder="Örn. Afiyet olsun, seni seviyoruz."/></div>
      </div>:null}
     </div>
 

@@ -193,11 +193,26 @@ export async function consumeNativeAuthCallbackUrl(url: string): Promise<{
   throw new Error('Kimlik doğrulama bağlantısında geçerli oturum bilgisi bulunamadı.');
 }
 
+/**
+ * While the project is over its plan quota the gateway refuses most calls
+ * with HTTP 402 before they reach the auth service, and lets some through.
+ * A refused call changed nothing, so it is safe to try again a few times.
+ */
+async function withQuotaRetry<T extends { error: unknown }>(call: () => Promise<T>): Promise<T> {
+  let result = await call();
+  for (let attempt = 1; attempt < 4; attempt += 1) {
+    const error = result.error as { status?: unknown; message?: unknown } | null;
+    const refused = Boolean(error) && (error?.status === 402 || /restricted|quota|payment required/i.test(String(error?.message || '')));
+    if (!refused) break;
+    await new Promise(resolve => setTimeout(resolve, 500 * attempt));
+    result = await call();
+  }
+  return result;
+}
+
 export async function signInWithEmail(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: normalizeEmail(email),
-    password: validatePassword(password),
-  });
+  const credentials = { email: normalizeEmail(email), password: validatePassword(password) };
+  const { data, error } = await withQuotaRetry(() => supabase.auth.signInWithPassword(credentials));
   if (error) throw error;
   return data;
 }
@@ -215,7 +230,7 @@ export async function signUpWithEmail(input: {
   const displayName = normalizeDisplayName(input.displayName);
   const phone = normalizePhone(input.phone);
   const locale = normalizeLocale(input.locale);
-  const { data, error } = await supabase.auth.signUp({
+  const { data, error } = await withQuotaRetry(() => supabase.auth.signUp({
     email,
     password,
     options: {
@@ -226,7 +241,7 @@ export async function signUpWithEmail(input: {
         locale,
       },
     },
-  });
+  }));
   if (error) throw error;
   return data;
 }

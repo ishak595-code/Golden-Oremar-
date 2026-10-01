@@ -29,6 +29,7 @@ function authErrorMessage(raw: string) {
   if (value.includes('password should be at least')) return 'Şifre yeterince güçlü değil.';
   if (value.includes('user already registered')) return 'Bu e-posta ile daha önce hesap oluşturulmuş.';
   if (value.includes('rate limit')) return 'Çok fazla deneme yapıldı. Bir süre sonra tekrar deneyin.';
+  if (/\b402\b|payment required|restricted|quota/.test(value)) return 'Üyelik sistemimiz şu anda yoğun, isteğiniz tamamlanamadı. Birkaç dakika sonra tekrar deneyin. Bu sırada üye olmadan da sipariş verebilirsiniz.';
   return userFacingError(raw, 'Kimlik doğrulama işlemi tamamlanamadı.');
 }
 

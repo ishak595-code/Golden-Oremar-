@@ -63,3 +63,13 @@
  :root[data-app-tab="home"] .go-category-card,
  :root[data-app-tab="home"] .go-discover-all{transition:none!important;}
 }
+
+/* Home categories as compact chips: icon and name on one line, so the
+   whole shelf of categories reads in a glance and the products come sooner. */
+:root[data-app-tab="home"] .go-category-rail{grid-auto-columns:max-content;gap:8px;}
+:root[data-app-tab="home"] .go-category-card{flex-direction:row;align-items:center;gap:10px;min-height:56px;padding:6px 18px 6px 6px;border-width:1px;border-radius:999px;}
+:root[data-app-tab="home"] .go-category-card__media{width:44px;height:44px;flex-shrink:0;border-radius:999px;}
+:root[data-app-tab="home"] .go-category-card__icon svg{width:20px;height:20px;}
+:root[data-app-tab="home"] .go-category-card__copy{flex:0 1 auto;padding:0;}
+:root[data-app-tab="home"] .go-category-card__copy strong{display:block;font-size:14px;white-space:nowrap;}
+:root[data-app-tab="home"] .go-category-card__copy span{display:none;}

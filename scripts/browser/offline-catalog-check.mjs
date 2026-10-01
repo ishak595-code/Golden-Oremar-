@@ -15,7 +15,7 @@ const detail = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'detail.json'), 'u
 const home = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'home.json'), 'utf8'));
 const category = home.items[0].category.slug;
 const RAW = /Service for this project|restricted|exceeded usage|Failed to fetch|TypeError|402/;
-const NOTICE = /Mağazamız kısa bir bakımda/;
+const NOTICE = /Üyelik kısa bir bakımda/;
 
 const results = [];
 const check = (ok, label) => results.push([ok, label]);

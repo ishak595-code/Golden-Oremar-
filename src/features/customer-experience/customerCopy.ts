@@ -23,9 +23,9 @@ export const CUSTOMER_COPY={
   sectionRefreshError:'Bu bölüm şu anda yenilenemiyor.',
  },
  category:{
-  title:'Lezzetleri kendi ritminizde keşfedin',
-  intro:'Kategoriler arasında gezinin; size uygun ürünleri fiyat, stok ve ürün ayrıntılarıyla kolayca karşılaştırın.',
-  allProductsTitle:'Tüm ürünleri keşfet',
+  title:'Köyün sofrasından seçin',
+  intro:'Her biri kaynağı belli, özenle seçilmiş ürünler.',
+  allProductsTitle:'Tüm ürünler',
   allProductsSubtitle:'Katalogdaki tüm ürünlere birlikte göz atın.',
   loadingCategories:'Kategoriler hazırlanıyor…',
   loadingProducts:'Ürünler hazırlanıyor…',

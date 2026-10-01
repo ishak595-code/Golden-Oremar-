@@ -162,9 +162,50 @@
 .go-artwork--photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .go-artwork__note{position:absolute;left:12px;bottom:12px;z-index:1;padding:3px 9px;border-radius:999px;background:rgb(0 0 0 / .62);color:#fff;font-size:11px;font-weight:700;letter-spacing:.02em;}
 
-/* Stock as one calm line just above the descriptions. */
-.go-stock-line{display:flex;align-items:center;justify-content:space-between;gap:.75rem;min-height:3rem;padding:.55rem 1rem;border:1px solid var(--border-light);border-radius:1rem;background:var(--bg-card);white-space:nowrap;}
-.go-stock-line__label{font-size:.9rem;font-weight:800;color:var(--text-main);}
+/* Stock as one sentence just above the descriptions. */
+.go-stock-line{display:flex;align-items:center;gap:.6rem;margin-bottom:0;padding:.8rem 1rem;border:1px solid var(--border-light);border-radius:1rem;background:var(--bg-card);font-size:.95rem;font-weight:700;line-height:1.45;color:var(--text-main);}
+.go-stock-line svg{width:1.15rem;height:1.15rem;flex-shrink:0;}
+.go-stock-line--in svg{color:#1f9d63;}
+.go-stock-line--low{border-color:rgb(255 180 60 / .45);}
+.go-stock-line--low svg{color:#d98a00;}
+.go-stock-line--preorder svg{color:#4f8fdc;}
+
+/* Provenance under the product name: the village, then what is verified. */
+.go-origin-strip{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .5rem;margin-top:.7rem;}
+.go-origin-strip__place{display:inline-flex;align-items:center;gap:.35rem;flex-basis:100%;font-size:.92rem;font-weight:700;color:var(--text-muted);}
+.go-origin-strip__place svg{width:1rem;height:1rem;flex-shrink:0;color:var(--brand-gold);}
+.go-origin-strip__badge{display:inline-flex;align-items:center;gap:.3rem;padding:.3rem .65rem;border-radius:999px;border:1px solid color-mix(in srgb,var(--brand-gold) 40%,transparent);background:color-mix(in srgb,var(--brand-gold) 8%,transparent);font-size:.76rem;font-weight:800;color:var(--text-main);}
+.go-origin-strip__badge svg{width:.95rem;height:.95rem;color:var(--brand-gold);}
+
+/* The store: logo, name with its verification badge, one clear way in. */
+.go-store-card{display:flex;align-items:center;gap:.85rem;width:100%;min-height:4.5rem;padding:.85rem 1rem;border:1px solid var(--border-main);border-radius:1.25rem;background:var(--bg-card);text-align:left;color:var(--text-main);transition:border-color .15s ease;}
+.go-store-card:hover{border-color:var(--brand-gold);}
+.go-store-card:focus-visible,.go-store-ask:focus-visible{outline:2px solid var(--brand-gold);outline-offset:2px;}
+.go-store-card__logo{position:relative;display:grid;place-items:center;width:3rem;height:3rem;flex-shrink:0;overflow:hidden;border-radius:999px;border:1px solid color-mix(in srgb,var(--brand-gold) 55%,transparent);background:color-mix(in srgb,var(--brand-gold) 10%,transparent);}
+.go-store-card__logo svg{width:1.3rem;height:1.3rem;color:var(--brand-gold);}
+.go-store-card__logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.go-store-card__body{display:flex;flex-direction:column;gap:.15rem;min-width:0;flex:1;}
+.go-store-card__name{display:flex;align-items:center;gap:.35rem;font-size:1.05rem;font-weight:800;line-height:1.25;white-space:nowrap;}
+.go-store-card__name > span{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.go-store-card__verified{width:1.2rem;height:1.2rem;flex-shrink:0;color:#fff;fill:#2563eb;}
+.go-store-card__verified--ruby{fill:#be123c;}
+.go-store-card__meta{font-size:.82rem;line-height:1.4;color:var(--text-muted);}
+.go-store-card__go{display:inline-flex;align-items:center;gap:.1rem;flex-shrink:0;font-size:.85rem;font-weight:800;color:var(--brand-gold);white-space:nowrap;}
+.go-store-card__go svg{width:1.25rem;height:1.25rem;}
+.go-store-ask{display:flex;align-items:center;justify-content:center;gap:.5rem;width:100%;min-height:3rem;border:1px solid var(--border-main);border-radius:1rem;background:transparent;font-size:.95rem;font-weight:800;color:var(--text-main);}
+.go-store-ask svg{width:1.1rem;height:1.1rem;color:var(--brand-gold);}
+
+/* Two topics inside one section. */
+.go-detail-subhead{display:flex;align-items:center;gap:.45rem;margin:1.1rem 0 .6rem;font-size:.95rem;font-weight:800;color:var(--text-main);}
+.go-detail-subhead:first-child{margin-top:0;}
+.go-detail-subhead svg{width:1.05rem;height:1.05rem;color:var(--brand-gold);}
+.go-detail-features + *{margin-top:1rem;}
+
+/* Recommendations, always in view under the sections. */
+.go-detail-recos{margin-top:2.75rem;}
+.go-detail-recos__eyebrow{margin:0;font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-gold);}
+.go-detail-recos > h2{margin:.25rem 0 1.1rem;font-size:1.45rem;font-weight:800;line-height:1.2;color:var(--text-main);}
+.go-detail-recos .go-reco-embedded__title{display:none;}
 
 /* The product video as a gallery slide: centred on black, never cropped.
    A vertical video is sized by the slide height so it cannot overflow. */
@@ -173,3 +214,20 @@
 .go-gallery__video .aspect-\[9\/16\]{max-height:72%;width:auto;height:72cqh;}
 .go-gallery__video a{color:#fff;}
 .go-gallery__slide--video{container-type:size;}
+
+/* Compact cards in the always-visible recommendations: two and a bit fit
+   a phone screen, so the row reads as a shelf, not as one big poster. */
+.go-detail-recos .go-reco-embedded article{width:44vw;max-width:11.5rem;border-radius:1.1rem;}
+.go-detail-recos .go-reco-embedded article .aspect-\[4\/3\]{aspect-ratio:1/1;}
+.go-detail-recos .go-reco-embedded article .p-4{padding:.7rem .75rem .8rem;}
+.go-detail-recos .go-reco-embedded article h3{font-size:.9rem;line-height:1.25;}
+.go-detail-recos .go-product-recommendations__item--premium{width:44vw;max-width:11.5rem;border-radius:1.1rem;}
+.go-detail-recos .go-product-recommendations__media{aspect-ratio:1/1;}
+.go-detail-recos .go-product-recommendations--embedded{margin-top:1.75rem!important;}
+
+/* The same-store heading sits on the page background here, so it follows
+   the theme instead of the fixed dark-card colours. */
+.go-detail-recos .go-product-recommendations__group-head{padding-inline:0;}
+.go-detail-recos .go-product-recommendations__group-head > div > span{color:var(--text-muted);}
+.go-detail-recos .go-product-recommendations__group-head h3{color:var(--text-main);}
+.go-detail-recos .go-product-recommendations__group-head p{color:var(--text-muted);}

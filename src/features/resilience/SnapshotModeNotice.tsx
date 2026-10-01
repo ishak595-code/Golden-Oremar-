@@ -22,7 +22,7 @@ export function SnapshotModeNotice() {
       data-testid="snapshot-mode-notice"
       className="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-center text-sm font-semibold leading-snug text-amber-950 dark:border-amber-800 dark:bg-amber-950/70 dark:text-amber-100"
     >
-      Mağazamız kısa bir bakımda. Ürünleri inceleyebilirsiniz; sipariş ve hesap işlemleri çok yakında yeniden açılacak.
+      Siparişleri WhatsApp ve Havale/EFT ile alıyoruz. Üyelik kısa bir bakımda.
     </div>
   );
 }

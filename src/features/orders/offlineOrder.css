@@ -280,11 +280,13 @@
 .go-order-join .go-order-secondary { border-color: var(--brand-gold); background: var(--bg-card); }
 .go-order-join .go-order-join__skip { font-size: .82rem; text-align: center; }
 
-/* Gift: one tick, then who receives it and an optional message. */
-.go-order-gift { margin: 0 0 1rem; padding: .85rem .95rem; border: 2px solid var(--border-main); border-radius: 1rem; }
-.go-order-gift.is-on { border-color: var(--brand-gold); background: color-mix(in srgb, var(--brand-gold) 7%, transparent); }
-.go-order-gift .go-order-check > span { display: flex; flex-direction: column; gap: .15rem; }
-.go-order-gift .go-order-check strong { display: flex; align-items: center; gap: .4rem; font-size: .98rem; }
-.go-order-gift .go-order-check strong svg { width: 1.1rem; height: 1.1rem; color: var(--brand-gold); }
-.go-order-gift .go-order-check small { font-size: .84rem; color: var(--text-muted); }
-.go-order-gift .go-order-grid { margin: .8rem 0 0; }
+/* Gift: one tick, then who receives it and an optional message. Warm and
+   quiet: a gold hairline, a soft glow when chosen. */
+.go-order-gift { margin: 0 0 1rem; padding: 1rem; border: 1px solid color-mix(in srgb, var(--brand-gold) 38%, var(--border-main)); border-radius: 1.15rem; background: linear-gradient(150deg, color-mix(in srgb, var(--brand-gold) 7%, transparent), transparent 70%); transition: border-color .15s ease, box-shadow .15s ease; }
+.go-order-gift.is-on { border-color: var(--brand-gold); box-shadow: 0 0 0 1px var(--brand-gold), 0 12px 30px color-mix(in srgb, var(--brand-gold) 12%, transparent); }
+.go-order-gift .go-order-check > span { display: flex; flex-direction: column; gap: .25rem; }
+.go-order-gift .go-order-check strong { display: flex; align-items: center; gap: .45rem; font-size: 1.02rem; }
+.go-order-gift .go-order-check strong svg { width: 1.15rem; height: 1.15rem; color: var(--brand-gold); }
+.go-order-gift .go-order-check small { font-size: .88rem; line-height: 1.5; color: var(--text-muted); }
+.go-order-gift .go-order-check input { accent-color: var(--brand-gold); }
+.go-order-gift .go-order-grid { margin: .9rem 0 0; }
