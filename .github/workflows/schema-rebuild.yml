@@ -1,0 +1,53 @@
+name: Schema rebuild
+
+# Proves the repo can rebuild the production database schema from nothing:
+# a plain Postgres 17, the Supabase shim, supabase/schema/baseline.sql, then
+# every newer migration. The result must match the live fingerprint fact by
+# fact. Needs no secrets and never touches the live project.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'scripts/schema/**'
+      - '.github/workflows/schema-rebuild.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - 'scripts/schema/**'
+      - '.github/workflows/schema-rebuild.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schema-rebuild-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Rebuild from baseline and compare with live
+        run: node scripts/schema/rebuild-check.mjs

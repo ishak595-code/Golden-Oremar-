@@ -1,0 +1,8 @@
+{
+  "note": "supabase/schema/baseline.sql is the live application schema as of this export. Repo migrations up to coversRepoMigrationsThrough are contained in it; later ones are applied on top. Proven by scripts/schema/rebuild-check.mjs against live_fingerprint.json.",
+  "exportedAt": "2026-10-01",
+  "liveHistoryThrough": "20261001010454",
+  "liveMigrationCount": 441,
+  "coversRepoMigrationsThrough": "20261001120000",
+  "facts": 5163
+}

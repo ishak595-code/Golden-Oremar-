@@ -506,7 +506,7 @@ Supabase kotası işi 3 gün sonraya bırakıldı. Bulunan ve kapatılanlar:
       silindi
 - [x] **Yeni denetim `rpc-existence-contract-audit`:** uygulamanın çağırdığı
       239 veritabanı fonksiyonunun her biri ya bir migration'da oluşturuluyor
-      ya da canlı katalog listesinde var (`supabase/schema/live_public_functions.txt`);
+      ya da canlı şema tabanında var (`supabase/schema/baseline.sql`);
       bir migration'ın kaldırdığı fonksiyonu çağırmak artık derlemeyi durdurur.
       Eski hatayı yakaladığı denendi. Uygulamanın çağırdığı 13 edge function'ın
       hepsi canlıda var
@@ -528,22 +528,31 @@ Supabase kotası işi 3 gün sonraya bırakıldı. Bulunan ve kapatılanlar:
       taramasında yalnız "kullanılmayan indeks" notları (henüz trafik yok,
       silmek erken)
 
-### Şema kopukluğu (ÖNEMLİ, kod dışı adım gerekiyor)
+### Şema kopukluğu: KAPANDI (2026-10-01)
 
-Canlı veritabanındaki 440 migration'ın 116'sı repo'da yok (ilk günlerin
-temel şeması, etkinlik ödemeleri ve üç "sync_batch3" dosyası). Repo bunu
-sonradan "sync_*" dosyalarıyla telafi etmeye çalışmış ama eksik: en az 21
-public fonksiyonu hiçbir migration oluşturmuyor. Sonuç: veritabanı bozulursa
-ya da E2E için ayrı test projesi kurulursa repo'dan tam kopya çıkmaz.
+Sorun: canlıdaki 441 migration'ın 157'si repo'da yoktu, 21 public fonksiyonu
+hiçbir repo migration'ı oluşturmuyordu. Veritabanı kaybolsa repo'dan geri
+kurulamazdı.
 
-- [x] Haftalık şema dökümü iş akışı hazır: `.github/workflows/schema-snapshot.yml`
-      (pg_dump 17, sadece yapı, veri yok, 90 gün saklanır). Sır yoksa
-      kendini atlar
-- [ ] GitHub > Settings > Secrets > Actions: `SUPABASE_DB_URL` = Supabase >
-      Connect > Session pooler bağlantı adresi (5432). Bilgisayar
-      bağlandığında CLAUDE yapar; şifre sohbete yazılmaz
-- [ ] İlk döküm alınınca repo'ya `supabase/schema/baseline.sql` olarak
-      eklenir ve test projesi bu tabandan kurulur
+Çözüm (veritabanı şifresi veya panel adımı gerekmeden):
+- `supabase/schema/baseline.sql`: canlı uygulama şemasının birebir kopyası
+  (119 tablo, 999 fonksiyon, 106 politika, 78 tetikleyici, tüm yetkiler).
+  Katalogdan üretildi: `scripts/schema/export-catalog.sql` +
+  `scripts/schema/build-baseline.mjs`.
+- Kanıt: boş bir Postgres'e kurulup canlıyla 5.163 madde tek tek
+  karşılaştırıldı, hepsi aynı (`scripts/schema/rebuild-check.mjs`,
+  `supabase/schema/live_fingerprint.json`).
+- CI: `.github/workflows/schema-rebuild.yml` her şema değişikliğinde
+  Postgres 17 üzerinde tabanı kurar, canlıyla karşılaştırır, sonra tabandan
+  yeni her migration'ı uygular. Sır gerektirmez, canlıya dokunmaz.
+- Yeni projeye kurulum: Supabase projesinde `baseline.sql` çalıştırılır, sonra
+  `baseline.json` içindeki tarihten yeni migration'lar uygulanır.
+- RPC denetimi artık eski elle tutulan liste yerine bu tabanı kullanıyor.
+- Not: eski migration dosyaları tarih kaydı olarak duruyor; ilk günlerin veri
+  tohumları (kategori gibi) boş veritabanında tek başına çalışmadığı için
+  geri kurulum yolu tabandır, eski dosyaların sırayla oynatılması değil.
+- Haftalık pg_dump iş akışı (`schema-snapshot.yml`) isteğe bağlı ek güvence
+  olarak kaldı; `SUPABASE_DB_URL` sırrı eklenirse çalışır.
 
 ## Tüm görsel ve videolar Cloudflare R2'de - 2026-09-26
 

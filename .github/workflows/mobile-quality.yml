@@ -16,6 +16,7 @@ on:
       # cannot alter what the tests would observe.
       - 'docs/**'
       - 'supabase/migrations/**'
+      - 'supabase/schema/**'
       - 'scripts/generate-schema-ddl.sql'
       - '**/*.md'
   pull_request:
@@ -30,6 +31,7 @@ on:
       # cannot alter what the tests would observe.
       - 'docs/**'
       - 'supabase/migrations/**'
+      - 'supabase/schema/**'
       - 'scripts/generate-schema-ddl.sql'
       - '**/*.md'
 

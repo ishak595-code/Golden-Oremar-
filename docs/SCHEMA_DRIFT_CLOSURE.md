@@ -1,3 +1,16 @@
+# Schema drift closure
+
+**Status 2026-10-01: closed.** `supabase/schema/baseline.sql` is the exact live
+application schema, rebuilt on an empty Postgres and compared with production
+fact by fact (5,163 facts identical). CI re-proves it on every schema change:
+`.github/workflows/schema-rebuild.yml` runs `scripts/schema/rebuild-check.mjs`.
+To refresh after live changes: run `scripts/schema/export-catalog.sql` on the
+live project, then `node scripts/schema/build-baseline.mjs <export.json>` and
+`node scripts/schema/compare-catalog.mjs <export.json> --write-fingerprint
+supabase/schema/live_fingerprint.json`, and update `supabase/schema/baseline.json`.
+
+The notes below are the history of the earlier, partial approach.
+
 # Schema Drift Closure - Progress and Resume Instructions
 
 ## What this is
