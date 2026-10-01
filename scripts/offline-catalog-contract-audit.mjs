@@ -55,6 +55,9 @@ for (const [pattern, label] of [[/"(email|phone)":\s*"[^"]*@/i, 'e-mail fields o
   check(!pattern.test(rest), `The shipped copy contains ${label}.`);
 }
 
+// Shoppers must never read that the shop is a demo or test.
+check(!/\bdemo\b|\btest verisi\b/i.test(all), 'The shipped copy contains "demo" or "test verisi" wording that customers would read.');
+
 try { execSync('node scripts/offline-catalog/verify.mjs', { stdio: 'pipe' }); }
 catch (error) { failures.push(String(error.stderr || error.message).trim()); }
 

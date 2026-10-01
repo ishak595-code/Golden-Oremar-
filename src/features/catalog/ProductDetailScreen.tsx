@@ -11,7 +11,7 @@ import{buildProductUrl,buildSearchUrl,copyText,shareOrCopy}from'../navigation/ap
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 import ProductGallery,{type GallerySlide}from'./ProductGallery';
 import{isBrandFallbackImage}from'./ProductArtwork';
-import{DetailAccordion,DetailAccordionGroup}from'./DetailAccordion';
+import{DetailAccordion,DetailAccordionGroup,openDetailSection}from'./DetailAccordion';
 import ProductRecommendations from'./ProductRecommendations';
 import ProductRecommendationsRail from'./ProductRecommendationsRail';
 import ProductDetailConnections from'./ProductDetailConnections';
@@ -205,6 +205,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const productId=safeReference(detail?.id,160);
  const questionReady=Boolean(producerId&&productId);
  const cartAdded=status==='Sepete eklendi.'||status==='Sipariş sepete eklendi.';
+ const withdrawal=(()=>{const tier=withdrawalTier((detail as any)?.handlingProfile);return tier?{tier,copy:WITHDRAWAL_COPY[tier]}:null;})();
 
  const storyLine=(()=>{const text=safeText(experience.story,3000);const first=text.split(/(?<=[.!?…])\s+/)[0]||'';return first.length>=12&&first.length<=180?first:'';})();
  const gallerySlides:GallerySlide[]=[
@@ -252,6 +253,11 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
     {preorder?<div className="mt-3 flex items-start gap-2 rounded-2xl border-2 border-brand-gold/25 bg-brand-gold/5 p-3 text-sm font-semibold leading-relaxed text-brand-muted"><Truck aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold"/><span>{preorderLeadDays!==null&&preorderLeadDays>0?`Bu ürün siparişten sonra hazırlanır. Kayıtlı hazırlık süresi yaklaşık ${preorderLeadDays} gündür.`:'Bu ürün hazır stok mantığıyla değil, sipariş üzerine hazırlık akışıyla ilerler.'}</span></div>:null}
 
+    {/* Right of withdrawal, before purchase: one line here, like the big
+        marketplaces, with the full terms one tap away in "İade ve Cayma
+        Hakkı" below. The tier comes from the admin-classified handling
+        profile; if it is missing, no claim is made at all. */}
+    {withdrawal?<button type="button" onClick={()=>openDetailSection('returns')} className={`go-return-line${withdrawal.tier==='none'?' go-return-line--none':''}`} aria-label={`İade koşulları: ${withdrawal.copy.title}. Ayrıntıları aç`}><RotateCcw aria-hidden="true"/><span>{withdrawal.copy.title}</span><span className="go-return-line__more" aria-hidden="true">Ayrıntı</span></button>:null}
     {detail.producer?.id?<button type="button" onClick={()=>onProducer(String(detail.producer.id),safeText(detail.producer.slug,220)||String(detail.producer.id),safeText(detail.producer.name,240)||'Üretici')} className="mt-5 flex min-h-14 w-full items-center gap-3 rounded-2xl border border-brand-border bg-brand-card p-3 text-left"><Store aria-hidden="true" className="h-5 w-5 text-brand-gold"/><span className="min-w-0 flex-1"><span className="flex items-center gap-1.5 font-bold">{safeText(detail.producer.name,240)||'Üretici'}{detail.producer?.verified===true?<CheckCircle2 aria-hidden="true" className="h-4 w-4 text-brand-green"/>:null}</span>{producerLocation?<span className="mt-0.5 block text-sm text-brand-muted">{producerLocation}</span>:null}</span><span className="text-sm font-bold text-brand-green">Mağazaya git</span></button>:null}
 
     {questionReady?<button type="button" onClick={()=>{if(!authenticated){onLoginRequired();return;}setQuestionOpen(value=>!value);setError('');setStatus('');}} aria-expanded={questionOpen} className="mt-2 min-h-11 w-full rounded-xl border-2 border-brand-green bg-white px-4 font-bold text-brand-green shadow-sm transition-all hover:bg-brand-green/5 active:scale-[0.98] dark:bg-gray-900 dark:hover:bg-brand-green/10"><MessageCircle aria-hidden="true" className="mr-2 inline h-4 w-4"/>Üreticiye soru sor</button>:null}
@@ -262,13 +268,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    </section>
   </div>
 
-  {/* Right of withdrawal, shown before purchase. The regulation's exceptions
-      for perishable goods and opened hygiene-sealed food only protect the
-      seller if the customer was told beforehand, so this sits directly after
-      the purchase controls rather than inside a collapsed section. The tier
-      comes from the admin-classified handlingProfile; if it is missing, no
-      claim is made at all. */}
-  {(()=>{const tier=withdrawalTier((detail as any)?.handlingProfile);if(!tier)return null;const copy=WITHDRAWAL_COPY[tier];const warn=tier==='none';return<aside role="note" aria-labelledby="product-withdrawal-title" className={`mt-6 flex gap-3 rounded-2xl border p-4 ${warn?'border-amber-500/60 bg-amber-50 dark:border-amber-400/40 dark:bg-amber-950/30':'border-brand-green/25 bg-brand-card'}`}><RotateCcw aria-hidden="true" className={`mt-0.5 h-5 w-5 flex-shrink-0 ${warn?'text-amber-700 dark:text-amber-300':'text-brand-green dark:text-brand-gold'}`}/><div><p id="product-withdrawal-title" className={`font-bold ${warn?'text-amber-900 dark:text-amber-100':'text-brand-green dark:text-brand-gold'}`}>{copy.title}</p><p className="mt-1 text-sm leading-relaxed text-gray-800 dark:text-gray-200">{copy.body}</p></div></aside>;})()}
   {/* The product's own video, from detail v10. YouTube links (official store
       only, enforced in the database) play through the click-to-load facade;
       uploaded files play inline with nothing downloaded before play. The
@@ -286,6 +285,16 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    <DetailAccordion id="info" icon={InfoIcon} title="Ürün Bilgileri" teaser={[safeText(variant?.name,120)||safeText(detail?.unitLabel,120),formatWeight(safeInteger(variant?.weightGrams))].filter(Boolean).join(' · ')||'Birim, ağırlık ve menşe'}><ProductFacts detail={detail} variant={variant} categoryName={categoryName}/></DetailAccordion>
    <DetailAccordion id="safety" icon={ShieldCheck} title={detail?.handlingProfile?.safetyClass==='non_food_safety'?'Güvenli Kullanım':'Sağlık ve Güvenli Kullanım'} teaser={safeText(safetyContent?.summary,160)||'Saklama, hazırlama ve alerjen bilgisi'}><ProductSafetyPanel safety={safetyContent?.safety} summary={safetyContent?.summary} heading="Güvenli kullanım bilgileri"/></DetailAccordion>
    <DetailAccordion id="shipping" icon={Truck} title="Teslimat Bilgileri" teaser={preorder?'Sipariş üzerine hazırlanır':detail?.handlingProfile?.requiresColdChain?'Soğuk zincirle gönderilir':'Paketleme ve gönderim'}><ShippingReadiness detail={detail} variant={variant}/></DetailAccordion>
+   {withdrawal?<DetailAccordion id="returns" icon={RotateCcw} title="İade ve Cayma Hakkı" teaser={withdrawal.copy.title}>
+    <div className={`go-detail-returns${withdrawal.tier==='none'?' go-detail-returns--none':''}`}><p className="go-detail-returns__lead">{withdrawal.copy.body}</p>
+     <ol className="go-detail-returns__steps">
+      {withdrawal.tier!=='none'?<li><strong>Talep oluşturun.</strong> Hesabım &gt; Siparişlerim bölümünden ilgili siparişi açıp "İade talebi" seçin.</li>:<li><strong>Sorunu bildirin.</strong> Ürün bozuk, hasarlı, eksik veya açıklamaya uymuyorsa Hesabım &gt; Siparişlerim bölümünden "İade talebi" oluşturun.</li>}
+      <li><strong>Fotoğraf ekleyin.</strong> Ambalajın ve ürünün durumunu gösteren fotoğraflar talebin hızlı sonuçlanmasını sağlar.</li>
+      <li><strong>Sonucu takip edin.</strong> Onaylanan iadelerde ödemeniz kullandığınız ödeme yöntemine geri yapılır; durum Siparişlerim'de görünür.</li>
+     </ol>
+     {/ayıplı|bozuk/i.test(withdrawal.copy.body)?null:<p className="go-detail-returns__note">Ayıplı (bozuk, hasarlı, eksik veya açıklamaya uygun olmayan) ürün hakkınız her durumda saklıdır.</p>}
+    </div>
+   </DetailAccordion>:null}
    <DetailAccordion id="trace" icon={ScanLine} title="Lot ve İzlenebilirlik" teaser={hasTraceability?'Parti kodunu görün':'Yayınlanınca burada görünür'}><Traceability detail={detail} hasTraceability={hasTraceability} onCopy={copyTrace}/></DetailAccordion>
    {Array.isArray(detail.certifications)&&detail.certifications.length?<DetailAccordion id="certs" icon={Award} title="Sertifikalar" teaser={`${detail.certifications.length} belge`}><Certifications items={detail.certifications}/></DetailAccordion>:null}
    <DetailAccordion id="reviews" icon={Star} title="Müşteri Yorumları" teaser={reviewCount?`${averageRating!==null?averageRating.toFixed(1):'-'} puan · ${reviewCount} yorum`:'İlk yorumu siz yazın'}><Reviews reviews={reviews} reviewCount={reviewCount} averageRating={averageRating}/></DetailAccordion>

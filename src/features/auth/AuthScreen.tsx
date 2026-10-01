@@ -20,9 +20,9 @@ const providerLabels: Record<SocialAuthProvider, string> = {
 
 function authErrorMessage(raw: string) {
   const value = raw.toLowerCase();
-  if (value.includes('native_auth_redirect_not_configured')) return 'Mobil şifre sıfırlama bağlantısı henüz güvenli dönüş adresine bağlanmamış. Lütfen destek ile iletişime geçin.';
-  if (value.includes('social_auth_redirect_not_configured')) return 'Sosyal giriş için güvenli uygulama dönüş adresi henüz yapılandırılmamış.';
-  if (value.includes('social_provider_not_configured')) return 'Bu sosyal giriş sağlayıcısı henüz Golden Oremar hesabına güvenli biçimde bağlanmamış.';
+  if (value.includes('native_auth_redirect_not_configured')) return 'Şifre sıfırlama bağlantısı şu anda uygulamadan gönderilemiyor. Lütfen web sitesinden deneyin veya destek ile iletişime geçin.';
+  if (value.includes('social_auth_redirect_not_configured')) return 'Bu giriş yöntemi şu anda kullanılamıyor. Lütfen e-posta ile giriş yapın.';
+  if (value.includes('social_provider_not_configured')) return 'Bu giriş yöntemi şu anda kullanılamıyor. Lütfen e-posta ile giriş yapın.';
   if (value.includes('provider is not enabled') || value.includes('unsupported provider')) return 'Bu giriş yöntemi şu anda kullanılamıyor. Lütfen e-posta ile giriş yapın.';
   if (value.includes('invalid login credentials')) return 'E-posta veya şifre hatalı.';
   if (value.includes('email not confirmed')) return 'E-posta adresinizi doğruladıktan sonra giriş yapabilirsiniz.';
@@ -226,7 +226,7 @@ export default function AuthScreen({
         {mode === 'login' ? <button type="button" disabled={interactionBusy} onClick={() => switchMode('forgot')} className={`min-h-11 rounded-lg px-3 text-sm font-bold text-brand-green transition-all hover:bg-brand-gold/5 disabled:opacity-50 disabled:cursor-not-allowed ${focusClass}`}>Şifremi unuttum</button> : mode === 'forgot' ? <button type="button" disabled={interactionBusy} onClick={() => switchMode('login')} className={`min-h-11 rounded-lg px-3 text-sm font-bold text-brand-green transition-all hover:bg-brand-gold/5 disabled:opacity-50 disabled:cursor-not-allowed ${focusClass}`}>Giriş ekranına dön</button> : null}
       </div>
 
-      {!hasSocialAuth ? <div className="mt-5 rounded-xl border-2 border-blue-200 bg-blue-50 p-3 text-xs leading-relaxed text-blue-900 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-200">ℹ️ Google, Facebook ve Apple girişleri yalnız ilgili sağlayıcı Golden Oremar için gerçekten yapılandırıldığında görünür. Bu sürüm çalışmayan sosyal giriş butonu göstermez.</div> : null}
+      {/* No note when social sign-in is off: customers only ever see buttons that work. */}
     </section>
   </main>;
 }

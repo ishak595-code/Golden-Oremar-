@@ -705,6 +705,14 @@ Veri hatası düzeltildi (`20261001120000_product_option_schema_fixes_v1`, canl�
 - Önemli hata düzeltildi: /urun/<ürün> adresleri ana sayfa sanılıyordu. Bu yüzden ürün sayfasındaki satın alma çubuğu biçimsiz görünüyor ve alt menü sayfanın üstüne biniyordu. Artık sabit, düzgün bir satın alma çubuğu var; "Hemen Satın Al" yazısının kontrastı düzeltildi.
 - Denetim: `scripts/product-detail-experience-contract-audit.mjs` (56. denetim).
 
+## Müşteri metinleri ve iade satırı - 2026-10-01 (öğleden önce)
+
+- Giriş/kayıt ekranındaki "Google, Facebook ve Apple girişleri ... yapılandırıldığında görünür" notu kaldırıldı. Müşteri yalnız çalışan butonları görür, açıklama görmez.
+- Sosyal giriş ve şifre sıfırlama hata metinleri teknik dilden arındırıldı. Bildirim ayarındaki "bu sürümde" notu sade bir cümleyle değişti.
+- Ürün sayfasındaki büyük cayma kutusu, Trendyol tarzı tek satıra dönüştü ("Ambalajı açılmamışsa 14 gün içinde iade · Ayrıntı"). Dokununca yeni "İade ve Cayma Hakkı" bölümü açılıyor: koşul, 3 adımda iade nasıl yapılır, ayıplı ürün hakkı. Yasal bilgi satın almadan önce aynı sayfada kalıyor; sepet özetindeki bildirim aynen duruyor.
+- Yayındaki 42 ürünün hikâyesinde müşteriye "bu demo anlatıda" yazıyordu; bir sezon notunda "demo yoğun sezon" geçiyordu. Veritabanında düzeltildi (`20261001140000_remove_demo_wording_from_published_products_v1`), gömülü kopya canlıyla md5 eşleşti. Kopyada "demo" kelimesi bir daha geçerse denetim kırılıyor.
+- Taslaktaki 8 ürün hâlâ "demo kaydı" notları taşıyor; yayına alınmadan önce metinleri gözden geçirilmeli.
+
 ## İshak'ın yapması gerekenler (kod dışı)
 
 - [ ] Supabase Pro plana geçiş (kota kısıtlaması) - ÖNCE panelden

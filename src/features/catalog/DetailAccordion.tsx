@@ -1,4 +1,4 @@
-import React,{createContext,useCallback,useContext,useId,useRef,useState}from'react';
+import React,{createContext,useCallback,useContext,useEffect,useId,useRef,useState}from'react';
 import{ChevronDown,type LucideIcon}from'lucide-react';
 
 /**
@@ -17,11 +17,16 @@ import{ChevronDown,type LucideIcon}from'lucide-react';
  */
 
 type GroupState={open:string|null;toggle:(id:string)=>void};
+
+/** Opens a section from elsewhere on the page, e.g. the return line under the price. */
+export const OPEN_DETAIL_SECTION_EVENT='golden-oremar:open-detail-section';
+export function openDetailSection(id:string){window.dispatchEvent(new CustomEvent(OPEN_DETAIL_SECTION_EVENT,{detail:{id}}));}
 const GroupContext=createContext<GroupState|null>(null);
 
 export function DetailAccordionGroup({children,initialOpen=null,className=''}:{children:React.ReactNode;initialOpen?:string|null;className?:string}){
  const[open,setOpen]=useState<string|null>(initialOpen);
  const toggle=useCallback((id:string)=>setOpen(current=>current===id?null:id),[]);
+ useEffect(()=>{const onOpen=(event:Event)=>{const id=(event as CustomEvent<{id?:string}>).detail?.id;if(id)setOpen(id);};window.addEventListener(OPEN_DETAIL_SECTION_EVENT,onOpen);return()=>window.removeEventListener(OPEN_DETAIL_SECTION_EVENT,onOpen);},[]);
  return<GroupContext.Provider value={{open,toggle}}><div className={`go-detail-accordions ${className}`}>{children}</div></GroupContext.Provider>;
 }
 
@@ -33,25 +38,19 @@ export function DetailAccordion({id,title,teaser,icon:Icon,tone='default',childr
  const open=group?group.open===id:localOpen;
  const[mounted,setMounted]=useState(open);
  const headerRef=useRef<HTMLButtonElement>(null);
+ const wasOpen=useRef(open);
+ useEffect(()=>{
+  if(open&&!wasOpen.current){setMounted(true);window.setTimeout(()=>{const header=headerRef.current;if(!header)return;const top=header.getBoundingClientRect().top;if(top<72||top>window.innerHeight*0.6){const reduce=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;window.scrollTo({top:window.scrollY+top-84,behavior:reduce?'auto':'smooth'});}},230);}
+  wasOpen.current=open;
+ },[open]);
  const reactId=useId().replace(/:/g,'');
  const panelId=`detail-panel-${id}-${reactId}`,headerId=`detail-header-${id}-${reactId}`,teaserId=`detail-teaser-${id}-${reactId}`;
  function toggle(){
   const opening=!open;
   if(opening)setMounted(true);
   if(group)group.toggle(id);else setLocalOpen(opening);
-  if(opening){
-   // Wait for the previous section to start closing, then keep the header
-   // of the opened one in view. Respect reduced motion.
-   window.setTimeout(()=>{
-    const header=headerRef.current;if(!header)return;
-    const top=header.getBoundingClientRect().top;
-    if(top<72||top>window.innerHeight*0.6){
-     const reduce=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-     window.scrollTo({top:window.scrollY+top-84,behavior:reduce?'auto':'smooth'});
-    }
-   },230);
-  }
  }
+
  return<section className={`go-detail-accordion${open?' is-open':''}${tone==='gold'?' go-detail-accordion--gold':''}`} data-accordion-id={id}>
   <h2 className="go-detail-accordion__heading">
    <button ref={headerRef} type="button" id={headerId} aria-expanded={open} aria-controls={panelId} aria-describedby={teaser?teaserId:undefined} onClick={toggle} className="go-detail-accordion__header">
