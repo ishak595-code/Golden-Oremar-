@@ -40,7 +40,9 @@ async function load(file: string): Promise<any | null> {
     cache.set(file, (async () => {
       try {
         const response = await fetch(`${OFFLINE_CATALOG_BASE}${file}`, { cache: 'no-cache' });
-        if (!response.ok) return null;
+        // A host that answers a missing file with the app shell (200, HTML)
+        // must read as "no copy", not as a parse error further up.
+        if (!response.ok || /text\/html/i.test(response.headers.get('content-type') || '')) return null;
         return await response.json();
       } catch {
         return null;

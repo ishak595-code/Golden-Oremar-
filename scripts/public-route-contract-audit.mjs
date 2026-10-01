@@ -106,10 +106,22 @@ check([...routedPaths].every(p => applePaths.has(p)) && applePaths.size === rout
 //    destination is "/index.html" no longer resolves - every clean product URL
 //    returned 404 in production. Lock the shape so it cannot regress.
 const vercel = JSON.parse(fs.readFileSync('vercel.json', 'utf8'));
-const catchAll = (vercel.rewrites || []).find(rule => rule.source === '/(.*)');
-check(Boolean(catchAll), 'vercel.json must keep a /(.*) SPA fallback so clean URLs do not 404 on direct load or refresh.');
+// The fallback skips the static folders: a missing hashed chunk or catalogue
+// file must answer 404, not index.html with 200 (which the browser would try
+// to run as JavaScript or parse as JSON, and a cache would keep).
+const isCatchAll = rule => rule?.destination === '/' && /^\/\((\(\?!.*\))?\.\*\)$/.test(rule.source || '');
+const catchAll = (vercel.rewrites || []).find(isCatchAll);
+check(Boolean(catchAll), 'vercel.json must keep a catch-all SPA fallback to "/" so clean URLs do not 404 on direct load or refresh.');
 if (catchAll && vercel.cleanUrls) check(!/\.html$/i.test(catchAll.destination), 'With cleanUrls enabled the SPA fallback must target "/", not an .html path, or clean URLs 404 in production.');
-check(vercel.rewrites?.[vercel.rewrites.length - 1]?.source === '/(.*)', 'The SPA fallback must be the last rewrite so explicit rules above it still apply.');
+check(isCatchAll(vercel.rewrites?.[vercel.rewrites.length - 1]), 'The SPA fallback must be the last rewrite so explicit rules above it still apply.');
+for (const folder of ['assets/', 'offline-catalog/']) check(catchAll?.source.includes(folder), `The SPA fallback must not answer for /${folder}: a missing file there has to be a 404.`);
+const headerFor = (source, key) => (vercel.headers || []).find(rule => rule.source === source)?.headers?.find(h => h.key.toLowerCase() === key.toLowerCase())?.value || '';
+check(/immutable/.test(headerFor('/assets/(.*)', 'Cache-Control')) && /max-age=31536000/.test(headerFor('/assets/(.*)', 'Cache-Control')), 'Hashed /assets files must be cached as immutable for a year.');
+check(/stale-while-revalidate/.test(headerFor('/offline-catalog/(.*)', 'Cache-Control')), 'The offline catalogue must be served with stale-while-revalidate.');
+check(/must-revalidate/.test(headerFor('/(sw.js|registerSW.js|manifest.webmanifest)', 'Cache-Control')), 'The service worker must always be revalidated, or updates never reach customers.');
+check(headerFor('/(.*)', 'X-Content-Type-Options') === 'nosniff', 'Every response must carry X-Content-Type-Options: nosniff.');
+check(/microphone=\(self\)/.test(headerFor('/(.*)', 'Permissions-Policy')), 'Voice search needs microphone=(self) in Permissions-Policy.');
+check(!/payment=/.test(headerFor('/(.*)', 'Permissions-Policy')), 'Permissions-Policy must not restrict payment: the hosted payment form runs in a provider iframe.');
 
 // 9. Tab URLs are always rooted at "/". Five screens once built them from the
 //    current href without resetting the path, so from a product page "go to

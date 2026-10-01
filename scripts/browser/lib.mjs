@@ -43,10 +43,10 @@ async function load(name) {
   return mod.default ?? mod;
 }
 
-export async function launch() {
+export async function launch(extraArgs = []) {
   const chromium = await load('@sparticuz/chromium');
   const { chromium: pw } = await load('playwright-core');
-  const args = chromium.args.filter(arg => arg !== '--single-process' && arg !== '--no-zygote');
+  const args = [...chromium.args.filter(arg => arg !== '--single-process' && arg !== '--no-zygote'), ...extraArgs];
   return pw.launch({ executablePath: await chromium.executablePath(), args, headless: true });
 }
 

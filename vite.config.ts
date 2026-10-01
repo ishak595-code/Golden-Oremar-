@@ -45,6 +45,37 @@ export default defineConfig(() => ({
         // Back-office modules are lazy and excluded from customer precache. They are
         // fetched only after an authorized admin or producer opens the management UI.
         globIgnores: ['**/Admin*.js'],
+        // A new deploy takes over open tabs at once instead of waiting for
+        // every tab to close, so a fix reaches customers on their next tap.
+        clientsClaim: true,
+        skipWaiting: true,
+        // Prerendered SEO pages and the static data folders are real files;
+        // only app routes fall back to the shell.
+        navigateFallbackDenylist: [/^\/offline-catalog\//, /^\/assets\//, /^\/brand\//, /^\/\.well-known\//],
+        runtimeCaching: [
+          {
+            // The offline catalogue answers when Supabase is down. Network
+            // first keeps it current; the cached copy covers a phone with no
+            // signal at all, so the showcase still opens.
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/offline-catalog/'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'go-offline-catalog-v1',
+              networkTimeoutSeconds: 4,
+              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/brand/'),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'go-brand-v1',
+              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
       manifest: {
         id: '/',
