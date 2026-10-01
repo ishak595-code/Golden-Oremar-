@@ -683,7 +683,7 @@ Bakım:
 - API sağlıklıyken ürün veya fiyat değişince: `VITE_SUPABASE_URL=... VITE_SUPABASE_PUBLISHABLE_KEY=... node scripts/offline-catalog/export.mjs`
 - Denetim: `scripts/offline-catalog-contract-audit.mjs` (55. denetim), tarayıcı testi: `scripts/browser/offline-catalog-check.mjs` (18 kontrol).
 
-Veri hatası bulundu (düzeltilecek): yumurta, horoz, iç yağ ve sobalık odun ürünlerinin seçenekleri balık seçenekleri ("Av planı", "Temizleme: Fileto"). Ayrıca 42 ürünün hiçbirinde gerçek ürün fotoğrafı yok; hepsi marka logosunu gösteriyor.
+Veri hatası düzeltildi (`20261001120000_product_option_schema_fixes_v1`, canlıda): yumurta, horoz, oğlak, iç yağ ve sobalık odun balık seçenekleri ("Av planı", "Temizleme: Fileto") gösteriyordu; kuzu göbeği mantarı kuzu kesim seçenekleri gösteriyordu. Her biri kendi doğru seçeneklerine kavuştu, gömülü kopya da güncellendi ve canlıyla md5 eşleşti. Not: 42 ürünün hiçbirinde gerçek fotoğraf yok; fotoğraflar yüklenince kartlar otomatik fotoğrafa geçer.
 
 ## Ürün sayfası, kartlar ve mikrofon - 2026-10-01
 

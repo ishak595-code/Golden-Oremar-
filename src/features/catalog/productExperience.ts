@@ -96,6 +96,8 @@ function managedLead(input:ProductExperienceInput,schema:OrderOptionDefinition[]
 
 function fallbackCustomization(input:ProductExperienceInput):Pick<ProductExperience,'customizationKind'|'orderLead'|'optionSchema'> {
  const h=folded(`${input.name||''} ${input.category?.slug||''}`);
+ // Mushrooms first: "Kuzu Göbeği" is a mushroom, not lamb.
+ if(includesAny(h,['mantar','kuzu gobegi']))return{customizationKind:'mushroom',orderLead:'Boy ve paketleme tercihini seç.',optionSchema:[{key:'selection',label:'Boy seçimi',required:true,choices:[{value:'large_whole',label:'İri ve bütün ağırlıklı'},{value:'mixed',label:'Karışık boy'}]},{key:'packaging',label:'Paketleme',required:true,choices:[{value:'single_pack',label:'Tek paket'},{value:'small_portions',label:'Küçük porsiyon paketleri'}]}]};
  if(includesAny(h,['kuzu','oglak','keci','koyun']))return{customizationKind:'small_ruminant',orderLead:'Kasap hazırlığını ve paket düzenini sipariş vermeden önce belirle.',optionSchema:[
   {key:'preparation',label:'Hazırlama şekli',required:true,choices:[{value:'whole',label:'Bütün karkas'},{value:'butchered',label:'Kasap usulü parçalanmış'}]},
   {key:'cutStyle',label:'Parçalama stili',required:true,visibleWhen:{key:'preparation',equals:'butchered'},choices:[{value:'balanced',label:'Dengeli kasap kesimi'},{value:'grill',label:'Izgaralık ağırlıklı'},{value:'stew',label:'Tencerelik ağırlıklı'}]},
@@ -107,7 +109,6 @@ function fallbackCustomization(input:ProductExperienceInput):Pick<ProductExperie
   {key:'cleaning',label:'Temizleme',required:true,choices:[{value:'whole',label:'Bütün'},{value:'cleaned',label:'Temizlenmiş'},{value:'fillet',label:'Fileto'}]},
   {key:'packaging',label:'Soğuk paketleme',required:true,choices:[{value:'whole_cold',label:'Bütün soğuk paket'},{value:'portioned_cold',label:'Porsiyonlu soğuk paket'}]},
  ]};
- if(includesAny(h,['mantar','kuzu gobegi']))return{customizationKind:'mushroom',orderLead:'Boy ve paketleme tercihini seç.',optionSchema:[{key:'selection',label:'Boy seçimi',required:true,choices:[{value:'large_whole',label:'İri ve bütün ağırlıklı'},{value:'mixed',label:'Karışık boy'}]},{key:'packaging',label:'Paketleme',required:true,choices:[{value:'single_pack',label:'Tek paket'},{value:'small_portions',label:'Küçük porsiyon paketleri'}]}]};
  if(h.includes('ekmek'))return{customizationKind:'bread',orderLead:'Dilimleme tercihini seç.',optionSchema:[{key:'slicing',label:'Dilimleme',required:true,choices:[{value:'whole',label:'Bütün kalsın'},{value:'sliced',label:'Dilimlensin'}]}]};
  return{customizationKind:null,orderLead:'',optionSchema:[]};
 }
