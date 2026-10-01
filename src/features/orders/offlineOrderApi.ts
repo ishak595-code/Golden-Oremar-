@@ -172,7 +172,7 @@ export async function submitOfflineOrder(input: {
 }
 
 /** The message the customer sends; the order code lets the store find it. */
-export function whatsappOrderMessage(receipt: OfflineOrderReceipt) {
+export function whatsappOrderMessage(receipt: OfflineOrderReceipt, extra = '') {
   const lines = receipt.items.map(item => `- ${item.quantity} x ${item.productName} (${[item.variantName, item.options].filter(Boolean).join(', ')}) ${formatMoney(item.lineTotalMinor, receipt.currency)}`);
   const shipping = receipt.shippingMinor === null ? 'Kargo: onayda bildirilecek' : receipt.shippingMinor === 0 ? 'Kargo: ücretsiz' : `Kargo: ${formatMoney(receipt.shippingMinor, receipt.currency)}`;
   return [
@@ -181,13 +181,14 @@ export function whatsappOrderMessage(receipt: OfflineOrderReceipt) {
     ...lines,
     shipping,
     `Toplam: ${formatMoney(receipt.totalMinor, receipt.currency)}`,
+    ...(extra.trim() ? [extra.trim().slice(0, 600)] : []),
     receipt.method === 'bank_transfer' ? 'Ödemeyi Havale/EFT ile yapacağım.' : 'Siparişimi onaylar mısınız?',
   ].join('\n');
 }
 
-export function whatsappOrderUrl(receipt: OfflineOrderReceipt) {
+export function whatsappOrderUrl(receipt: OfflineOrderReceipt, extra = '') {
   if (!receipt.whatsappNumber) return null;
-  return `https://wa.me/${receipt.whatsappNumber}?text=${encodeURIComponent(whatsappOrderMessage(receipt))}`;
+  return `https://wa.me/${receipt.whatsappNumber}?text=${encodeURIComponent(whatsappOrderMessage(receipt, extra))}`;
 }
 
 /**

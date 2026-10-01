@@ -61,7 +61,7 @@ export default function GuestCartView({onBack,onOpenProduct,authSlot}:{onBack?:(
     <button type="button" onClick={()=>setSignIn(true)} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-4 font-bold text-brand-on-green shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><LogIn className="h-5 w-5" aria-hidden="true"/>Siparişi tamamla</button>
    </>}
   </section>
-  <OfflineOrderSheet open={offlineOpen} onClose={()=>{setOfflineOpen(false);if(orderPlaced){setOrderPlaced(false);clearGuestCart();}}} source="cart"
+  <OfflineOrderSheet open={offlineOpen} onClose={()=>{setOfflineOpen(false);if(orderPlaced){setOrderPlaced(false);clearGuestCart();}}} authenticated={false} onLoginRequired={()=>setSignIn(true)} source="cart"
    lines={lines.map(line=>({key:line.key,productName:line.productName,variantName:line.variantName,quantity:line.quantity,priceMinor:line.priceMinor,currency:line.currency}))}
    items={lines.map(line=>({variantId:line.variantId,quantity:line.quantity,selectedOptions:line.selectedOptions}))}
    onSubmitted={()=>setOrderPlaced(true)}/>

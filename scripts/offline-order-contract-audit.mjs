@@ -59,6 +59,11 @@ need(sheet, '/kullanim-sartlari', 'The consent must link to the sales terms.');
 need(sheet, 'role="dialog" aria-modal="true"', 'The order sheet must be an accessible dialog.');
 forbid(sheet, /[☀-➿\u{1F300}-\u{1FAFF}]/u, 'The order sheet must not use emojis.');
 
+need(sheet, 'Bu sipariş bir hediye', 'The order sheet must let anyone, guests included, send the order as a gift.');
+need(sheet, 'giftNoteText(recipient,giftMessage)', 'Gift details must travel with the order note.');
+need(sheet, 'Ücretsiz üye ol', 'Guests must be invited to join from the order sheet.');
+need(sheet, 'üye olmadan devam edin', 'The invitation to join must never block a guest order.');
+
 const detail = read('src/features/catalog/ProductDetailScreen.tsx');
 need(detail, '<OfflineOrderSheet', 'The product page must offer ordering without online payment.');
 need(detail, /async function buyNow\(\)[\s\S]{0,400}setOfflineOrderOpen\(true\)/, '"Hemen Satın Al" must open the order sheet while card payment is off.');

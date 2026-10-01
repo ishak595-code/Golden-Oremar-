@@ -71,11 +71,15 @@ for (const [name, path, overrides] of screens) {
   await routeSupabase(page);
   await page.goto(BASE + '/urun/daglica-karakovan-petek-bali-101');
   await page.waitForTimeout(2200);
-  record(await page.locator('#product-video-heading').count() === 1, 'video section present');
+  record(await page.locator('.go-gallery__slide--video').count() === 1 && await page.locator('#product-video-heading').count() === 0, 'video is a gallery slide, not a separate block');
   record(await page.locator('iframe').count() === 0 && youtube.length === 0, 'nothing loaded from YouTube before play');
   record(await page.locator('.aspect-\\[9\\/16\\]').count() === 1, 'Shorts shown in a vertical frame');
   const play = page.locator('button[aria-label*="videosunu oynat"]');
   record(await play.count() === 1, 'play button has an accessible name');
+  // The video is a slide: bring it into view first (hidden slides are inert).
+  const videoPosition = await page.evaluate(() => [...document.querySelectorAll('.go-gallery__slide')].findIndex(el => el.classList.contains('go-gallery__slide--video')) + 1);
+  await page.locator(`button[aria-label="${videoPosition}. slayta git"]`).click();
+  await page.waitForTimeout(900);
   await play.click();
   const frame = page.locator('iframe');
   await frame.waitFor({ timeout: 5000 }).catch(() => {});

@@ -260,3 +260,31 @@
 }
 .go-offline-order-cta p { margin: 0; font-size: .9rem; line-height: 1.5; color: var(--text-muted); }
 .go-offline-order-cta strong { color: var(--text-main); }
+
+/* Invitation to join: visible, warm, never in the way of ordering. */
+.go-order-join {
+  display: grid;
+  gap: .6rem;
+  margin: 0 0 1.1rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--brand-gold) 50%, transparent);
+  border-radius: 1.1rem;
+  background: color-mix(in srgb, var(--brand-gold) 9%, transparent);
+}
+.go-order-join p { margin: 0; font-size: .9rem; line-height: 1.5; color: var(--text-muted); }
+.go-order-join .go-order-join__title { display: flex; align-items: center; gap: .5rem; font-size: 1.02rem; font-weight: 800; color: var(--text-main); }
+.go-order-join__title svg { width: 1.2rem; height: 1.2rem; flex-shrink: 0; color: var(--brand-gold); }
+.go-order-join ul { display: grid; gap: .45rem; margin: 0; padding: 0; list-style: none; }
+.go-order-join li { display: flex; align-items: flex-start; gap: .5rem; font-size: .92rem; line-height: 1.45; color: var(--text-main); }
+.go-order-join li svg { width: 1.05rem; height: 1.05rem; margin-top: .15rem; flex-shrink: 0; color: var(--brand-green); }
+.go-order-join .go-order-secondary { border-color: var(--brand-gold); background: var(--bg-card); }
+.go-order-join .go-order-join__skip { font-size: .82rem; text-align: center; }
+
+/* Gift: one tick, then who receives it and an optional message. */
+.go-order-gift { margin: 0 0 1rem; padding: .85rem .95rem; border: 2px solid var(--border-main); border-radius: 1rem; }
+.go-order-gift.is-on { border-color: var(--brand-gold); background: color-mix(in srgb, var(--brand-gold) 7%, transparent); }
+.go-order-gift .go-order-check > span { display: flex; flex-direction: column; gap: .15rem; }
+.go-order-gift .go-order-check strong { display: flex; align-items: center; gap: .4rem; font-size: .98rem; }
+.go-order-gift .go-order-check strong svg { width: 1.1rem; height: 1.1rem; color: var(--brand-gold); }
+.go-order-gift .go-order-check small { font-size: .84rem; color: var(--text-muted); }
+.go-order-gift .go-order-grid { margin: .8rem 0 0; }

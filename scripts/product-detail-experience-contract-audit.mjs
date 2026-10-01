@@ -19,13 +19,17 @@ const read = file => fs.readFileSync(file, 'utf8');
 const detail = read('src/features/catalog/ProductDetailScreen.tsx');
 check(!/<details\b/.test(detail), 'ProductDetailScreen must not use always-styled <details>; sections go through DetailAccordion.');
 check(/<DetailAccordionGroup/.test(detail), 'Product sections must sit in one DetailAccordionGroup (one open at a time).');
-for (const [id, label] of [['story', 'Ürün Hikâyesi'], ['features', 'Ürün Özellikleri'], ['info', 'Ürün Bilgileri'], ['safety', 'Sağlık'], ['reviews', 'Müşteri Yorumları'], ['recommended', 'Önerilen Ürünler']]) {
+for (const [id, label] of [['story', 'Ürünün Hikâyesi'], ['features', 'Ürünün Özellikleri'], ['info', 'Ürünün Bilgileri'], ['safety', 'Sağlık'], ['reviews', 'Müşteri Yorumları'], ['recommended', 'Önerilen Ürünler']]) {
   check(new RegExp(`<DetailAccordion id="${id}"[^>]*title=[^>]*${label}`).test(detail), `The "${label}" section must be a DetailAccordion (id ${id}).`);
 }
 check(/<ProductRecommendations[^>]*embedded/.test(detail) && /<ProductRecommendationsRail embedded/.test(detail), 'Recommendations live inside the "Önerilen Ürünler" section.');
 check(/<ProductGallery /.test(detail), 'The product images use ProductGallery.');
 check(!/go-return-line/.test(detail) && /<DetailAccordion id="returns"[^>]*İade ve Cayma Hakkı[^>]*teaser=\{withdrawal\.copy\.title\}/.test(detail), 'Return terms live in the "İade ve Cayma Hakkı" section, whose header always shows the condition (no line under the price).');
 check(!/[\u2600-\u27BF\u{1F300}-\u{1FAFF}]/u.test(detail), 'The product page uses no emoji; states are shown with line icons.');
+check(/className="go-stock-line/.test(detail) && detail.indexOf('go-stock-line') < detail.indexOf('<DetailAccordionGroup') && detail.indexOf('go-stock-line') > detail.indexOf('product-detail-commerce-dock'), 'Stock is one line just above the descriptions, below the buy buttons.');
+check(!/Ürün Videosu<\/h2>/.test(detail) && /kind:'video'/.test(detail), 'The product video is a gallery slide, not a separate block.');
+check(/\{hasTraceability\?<DetailAccordion id="trace"/.test(detail), 'The traceability section is hidden while it has nothing to show.');
+check(/aria-label="Bu ürünü hediye gönder"/.test(detail) && /async function giftNow\(\)[\s\S]{0,500}setOfflineGift\(true\)/.test(detail), 'Gifting is offered at the top of the page and works for guests through the order sheet.');
 check(/go-stock-pill go-stock-pill--out/.test(detail) && /go-stock-pill go-stock-pill--low/.test(detail), 'Stock state is a pill with an icon.');
 check(/go-stock-pill go-stock-pill--preorder/.test(detail) && /specifications\?.preOrderTime/.test(detail), 'Pre-orders show an "Ön sipariş" pill and the stored harvest and dispatch sentence.');
 check(!/aria-labelledby="product-withdrawal-title" className=\{`mt-6 flex gap-3/.test(detail), 'The large always-open withdrawal box must not come back; the line and the section replace it.');

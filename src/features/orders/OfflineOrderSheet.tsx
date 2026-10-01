@@ -1,5 +1,5 @@
 import React,{useEffect,useId,useMemo,useRef,useState}from'react';
-import{Building2,Check,CircleCheck,Copy,Loader2,MessageCircle,ShieldCheck,X}from'lucide-react';
+import{Building2,Check,CircleCheck,Copy,Gift,Loader2,MessageCircle,ShieldCheck,UserPlus,X}from'lucide-react';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 import{formatMoney}from'../cart/checkoutHelpers';
 import{getOfflineOrderingConfig,newOrderRequestKey,offlineOrderErrorMessage,orderServiceUnavailable,submitOfflineOrder,whatsappDirectOrderUrl,validateOfflineCustomer,whatsappOrderUrl,type OfflineOrderCustomer,type OfflineOrderLineInput,type OfflineOrderMethod,type OfflineOrderReceipt,type OfflineOrderingConfig}from'./offlineOrderApi';
@@ -15,6 +15,11 @@ type Props={
  prefill?:Partial<OfflineOrderCustomer>;
  /** Called once the order is recorded (e.g. to empty the cart). */
  onSubmitted?:(receipt:OfflineOrderReceipt)=>void;
+ /** Open with "this is a gift" already ticked. */
+ gift?:boolean;
+ /** When false and onLoginRequired is given, the sheet invites the guest to join. */
+ authenticated?:boolean;
+ onLoginRequired?:()=>void;
 };
 
 const CONTACT_KEY='golden-oremar:order-contact:v1';
@@ -22,6 +27,9 @@ const EMPTY:OfflineOrderCustomer={name:'',phone:'',email:'',province:'',district
 
 function readSavedContact():Partial<OfflineOrderCustomer>{try{const raw=window.localStorage.getItem(CONTACT_KEY);if(!raw)return{};const value=JSON.parse(raw);if(!value||typeof value!=='object')return{};const pick=(key:keyof OfflineOrderCustomer,max:number)=>typeof value[key]==='string'?String(value[key]).slice(0,max):'';return{name:pick('name',120),phone:pick('phone',40),email:pick('email',254),province:pick('province',80),district:pick('district',80),addressLine:pick('addressLine',500)};}catch{return{};}}
 function saveContact(customer:OfflineOrderCustomer,remember:boolean){try{if(!remember){window.localStorage.removeItem(CONTACT_KEY);return;}const{note:_note,...rest}=customer;window.localStorage.setItem(CONTACT_KEY,JSON.stringify(rest));}catch{/* storage may be blocked */}}
+
+/** The gift details travel in the order note, so the store sees them with the order. */
+function giftNoteText(recipient:string,message:string){return['HEDİYE SİPARİŞİ',`Hediyeyi alacak kişi: ${recipient.trim()}`,message.trim()?`Hediye mesajı: ${message.trim()}`:'','Pakete fiyat bilgisi konmasın.'].filter(Boolean).join('. ');}
 
 async function copyText(value:string){try{await navigator.clipboard.writeText(value);return true;}catch{return false;}}
 
@@ -31,7 +39,7 @@ async function copyText(value:string){try{await navigator.clipboard.writeText(va
  * pre-contract information, get an order code. WhatsApp continues in the
  * chat with a prefilled message; bank transfer shows the IBAN to pay to.
  */
-export default function OfflineOrderSheet({open,onClose,source,lines,items,prefill,onSubmitted}:Props){
+export default function OfflineOrderSheet({open,onClose,source,lines,items,prefill,onSubmitted,gift=false,authenticated,onLoginRequired}:Props){
  const titleId=useId();
  const[config,setConfig]=useState<OfflineOrderingConfig|null>(null);
  const[configError,setConfigError]=useState(false);
@@ -45,13 +53,19 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
  const[receipt,setReceipt]=useState<OfflineOrderReceipt|null>(null);
  const[copied,setCopied]=useState('');
  const[directUrl,setDirectUrl]=useState<string|null>(null);
+ const[isGift,setIsGift]=useState(gift);
+ const[recipient,setRecipient]=useState('');
+ const[giftMessage,setGiftMessage]=useState('');
+ const[recipientError,setRecipientError]=useState('');
+ const showJoin=authenticated===false&&Boolean(onLoginRequired);
+ function join(){onClose();onLoginRequired?.();}
  const keyRef=useRef(newOrderRequestKey());
  const errorRef=useRef<HTMLDivElement>(null);
  const dialogRef=useAccessibleDialog<HTMLDivElement>(open,()=>{if(!busy)onClose();});
 
  useEffect(()=>{
   if(!open)return;
-  setReceipt(null);setError('');setDirectUrl(null);setErrors({});setConsent(false);setCopied('');keyRef.current=newOrderRequestKey();
+  setReceipt(null);setError('');setDirectUrl(null);setErrors({});setConsent(false);setCopied('');setIsGift(gift);setRecipient('');setGiftMessage('');setRecipientError('');keyRef.current=newOrderRequestKey();
   const saved=readSavedContact();
   setCustomer({...EMPTY,...saved,...Object.fromEntries(Object.entries(prefill||{}).filter(([,value])=>typeof value==='string'&&value.trim()))});
   let active=true;setConfigError(false);
@@ -65,7 +79,8 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
  useEffect(()=>{if(!directUrl)return;const frame=window.requestAnimationFrame(()=>{const el=errorRef.current;if(!el)return;const body=el.closest('.go-order-body') as HTMLElement|null;if(body)body.scrollTop+=el.getBoundingClientRect().top-body.getBoundingClientRect().top-8;el.focus({preventScroll:true});});return()=>window.cancelAnimationFrame(frame);},[directUrl]);
  const currency=lines[0]?.currency||'TRY';
  const subtotal=useMemo(()=>lines.reduce((sum,line)=>sum+line.priceMinor*line.quantity,0),[lines]);
- const waUrl=receipt?whatsappOrderUrl(receipt):null;
+ const giftLine=isGift&&recipient.trim()?giftNoteText(recipient,giftMessage):'';
+ const waUrl=receipt?whatsappOrderUrl(receipt,giftLine):null;
 
  function update<K extends keyof OfflineOrderCustomer>(key:K,value:string){setCustomer(current=>({...current,[key]:value}));if(errors[key])setErrors(current=>({...current,[key]:undefined}));}
 
@@ -73,17 +88,21 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
   event.preventDefault();if(busy)return;
   if(!method){setError('Bir sipariş yöntemi seçin.');return;}
   const nextErrors=validateOfflineCustomer(customer);setErrors(nextErrors);
+  const recipientMissing=isGift&&recipient.trim().length<2;setRecipientError(recipientMissing?'Hediyeyi alacak kişinin adını yazın.':'');
   const first=Object.keys(nextErrors)[0];
+  if(recipientMissing&&(!first||first==='note')){(document.getElementById(`${titleId}-recipient`) as HTMLElement|null)?.focus();return;}
   if(first){(document.getElementById(`${titleId}-${first}`) as HTMLElement|null)?.focus();return;}
   if(!consent){setError('Devam etmek için ön bilgilendirme onay kutusunu işaretleyin.');queueMicrotask(()=>errorRef.current?.focus());return;}
+  /* A gift keeps the buyer's contact details and adds who receives it. */
+  const orderCustomer:OfflineOrderCustomer=isGift?{...customer,note:[giftNoteText(recipient,giftMessage),customer.note.trim()].filter(Boolean).join(' | ').slice(0,1000)}:customer;
   try{
    setBusy(true);setError('');setDirectUrl(null);
-   const result=await submitOfflineOrder({idempotencyKey:keyRef.current,method,source,items,customer,consent});
+   const result=await submitOfflineOrder({idempotencyKey:keyRef.current,method,source,items,customer:orderCustomer,consent});
    saveContact(customer,remember);
    setReceipt(result);onSubmitted?.(result);
   }catch(err){
    const number=config?.whatsapp.number||null;
-   if(orderServiceUnavailable(err)&&number){setDirectUrl(whatsappDirectOrderUrl(number,lines,customer,method));setError(method==='bank_transfer'&&config?.bankTransfer.accounts.length?'Sipariş sistemimiz şu anda yanıt vermiyor. Siparişinizi aşağıdaki düğmeyle WhatsApp\'tan gönderin; kargo dahil toplam tutar onaylanınca aşağıdaki hesaba ödeme yapabilirsiniz.':'Sipariş sistemimiz şu anda yanıt vermiyor. Siparişinizi aşağıdaki düğmeyle doğrudan WhatsApp\'tan gönderin; ürünler ve teslimat bilgileriniz mesajda hazır.');saveContact(customer,remember);}
+   if(orderServiceUnavailable(err)&&number){setDirectUrl(whatsappDirectOrderUrl(number,lines,orderCustomer,method));setError(method==='bank_transfer'&&config?.bankTransfer.accounts.length?'Sipariş sistemimiz şu anda yanıt vermiyor. Siparişinizi aşağıdaki düğmeyle WhatsApp\'tan gönderin; kargo dahil toplam tutar onaylanınca aşağıdaki hesaba ödeme yapabilirsiniz.':'Sipariş sistemimiz şu anda yanıt vermiyor. Siparişinizi aşağıdaki düğmeyle doğrudan WhatsApp\'tan gönderin; ürünler ve teslimat bilgileriniz mesajda hazır.');saveContact(customer,remember);}
    else setError(offlineOrderErrorMessage(err));
    if(!orderServiceUnavailable(err)||!config?.whatsapp.number)queueMicrotask(()=>errorRef.current?.focus());
   }
@@ -98,7 +117,7 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
  return<div className="go-order-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)onClose();}}>
   <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="go-order-sheet">
    <header className="go-order-head">
-    <div><p className="go-order-eyebrow">{receipt?'Sipariş kodu':'Güvenli sipariş'}</p><h2 id={titleId}>{receipt?'Siparişiniz alındı':'Siparişi tamamla'}</h2></div>
+    <div><p className="go-order-eyebrow">{receipt?'Sipariş kodu':'Güvenli sipariş'}</p><h2 id={titleId}>{receipt?'Siparişiniz alındı':isGift?'Hediye gönder':'Siparişi tamamla'}</h2></div>
     <button type="button" onClick={onClose} disabled={busy} aria-label="Kapat" className="go-order-close"><X aria-hidden="true"/></button>
    </header>
 
@@ -109,6 +128,7 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
      {receipt.bankTransfer.accounts.map(account=><article key={account.iban}><p className="go-order-bank__name"><Building2 aria-hidden="true"/>{account.bankName}{account.branch?<small> · {account.branch}</small>:null}</p><p className="go-order-bank__holder">{account.accountHolder}</p><p className="go-order-bank__iban">{account.iban}</p><button type="button" className="go-order-copy" onClick={()=>void copy(account.iban,account.iban.replace(/\s/g,''))}>{copied===account.iban?<Check aria-hidden="true"/>:<Copy aria-hidden="true"/>}<span>{copied===account.iban?'Kopyalandı':'IBAN kopyala'}</span></button></article>)}
      <p className="go-order-hint">Açıklama alanına yalnız <strong>{receipt.reference}</strong> yazın. Ödeme {receipt.bankTransfer.paymentWindowHours} saat içinde ulaşmazsa sipariş iptal edilebilir; ürünler ödeme onayından sonra hazırlanır.</p>
     </section>:null}
+    {showJoin?<aside className="go-order-join" aria-label="Üyelik"><p className="go-order-join__title"><UserPlus aria-hidden="true"/>Bir sonraki sipariş daha kolay olsun</p><p>Ücretsiz üye olun; adresiniz kayıtlı kalsın, favorileriniz ve kampanyalar sizi beklesin.</p><button type="button" onClick={join} className="go-order-secondary">Ücretsiz üye ol</button></aside>:null}
     <div className="go-order-actions">
      {waUrl?<a href={waUrl} target="_blank" rel="noopener noreferrer" className="go-order-primary"><MessageCircle aria-hidden="true"/>{receipt.method==='whatsapp'?'WhatsApp\'ta gönder':'Dekontu WhatsApp\'tan gönder'}</a>:null}
      <button type="button" onClick={onClose} className="go-order-secondary">Alışverişe dön</button>
@@ -116,7 +136,8 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
    </div>
 
    :<form className="go-order-body" onSubmit={submit} noValidate>
-    <p className="go-order-lead">Kartla online ödeme açılana kadar siparişinizi WhatsApp veya Havale/EFT ile alıyoruz. Üyelik gerekmez.</p>
+    <p className="go-order-lead">Kartla online ödeme açılana kadar siparişinizi WhatsApp veya Havale/EFT ile alıyoruz.{showJoin?' Üye olmadan da sipariş verebilirsiniz.':''}</p>
+    {showJoin?<aside className="go-order-join" aria-label="Üyelik"><p className="go-order-join__title"><UserPlus aria-hidden="true"/>Üye olun, ayrıcalıklar sizin olsun</p><ul><li><Check aria-hidden="true"/>Siparişleriniz hesabınıza kaydedilir, geçmişiniz kaybolmaz.</li><li><Check aria-hidden="true"/>Adresiniz hazır gelir; sonraki sipariş birkaç dokunuşta biter.</li><li><Check aria-hidden="true"/>Kampanyaları ve üyelere özel fırsatları ilk siz duyarsınız.</li><li><Check aria-hidden="true"/>Favorileriniz her cihazda sizinle olur.</li></ul><button type="button" onClick={join} className="go-order-secondary">Ücretsiz üye ol (1 dakika)</button><p className="go-order-join__skip">Şimdi istemiyorsanız aşağıdan üye olmadan devam edin.</p></aside>:null}
     <ul className="go-order-lines" aria-label="Sipariş özeti">{lines.map(line=><li key={line.key}><span><strong>{line.quantity} x {line.productName}</strong>{line.variantName?<small>{line.variantName}</small>:null}</span><b>{formatMoney(line.priceMinor*line.quantity,line.currency)}</b></li>)}<li className="is-total"><span>Ara toplam</span><b>{formatMoney(subtotal,currency)}</b></li></ul>
 
     {configError?<div role="alert" className="go-order-alert">Sipariş seçenekleri yüklenemedi. Bağlantınızı kontrol edip yeniden açın.</div>
@@ -127,12 +148,20 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
      {!config.whatsapp.enabled&&!config.bankTransfer.enabled?<p className="go-order-hint">Şu anda sipariş kabul edilemiyor. Lütfen daha sonra tekrar deneyin.</p>:null}
     </fieldset>}
 
-    <fieldset className="go-order-grid"><legend>Teslimat ve iletişim</legend>
+    <div className={`go-order-gift${isGift?' is-on':''}`}>
+     <label className="go-order-check"><input type="checkbox" checked={isGift} onChange={event=>{setIsGift(event.target.checked);setRecipientError('');}}/><span><strong><Gift aria-hidden="true"/>Bu sipariş bir hediye</strong><small>Sevdiğinizin adresine gönderelim; pakete fiyat konmaz.</small></span></label>
+     {isGift?<div className="go-order-grid">
+      <div className="go-order-field"><label htmlFor={`${titleId}-recipient`}>Hediyeyi alacak kişi</label><input id={`${titleId}-recipient`} value={recipient} onChange={event=>{setRecipient(event.target.value.slice(0,120));if(recipientError)setRecipientError('');}} maxLength={120} autoComplete="off" aria-invalid={recipientError?true:undefined} aria-describedby={recipientError?`${titleId}-recipient-error`:undefined}/>{recipientError?<em id={`${titleId}-recipient-error`}>{recipientError}</em>:null}</div>
+      <div className="go-order-field"><label htmlFor={`${titleId}-giftMessage`}>Hediye mesajı<small> (isteğe bağlı)</small></label><textarea id={`${titleId}-giftMessage`} value={giftMessage} onChange={event=>setGiftMessage(event.target.value.slice(0,300))} rows={2} maxLength={300} placeholder="Pakete eklenecek kısa not"/></div>
+     </div>:null}
+    </div>
+
+    <fieldset className="go-order-grid"><legend>{isGift?'Sizin bilgileriniz ve hediyenin adresi':'Teslimat ve iletişim'}</legend>
      {field('name','Ad soyad',{autoComplete:'name',maxLength:120,required:true})}
      {field('phone','Telefon',{autoComplete:'tel',inputMode:'tel',maxLength:20,required:true,placeholder:'05xx xxx xx xx'})}
      {field('email','E-posta',{autoComplete:'email',inputMode:'email',maxLength:254},true)}
      <div className="go-order-pair">{field('province','İl',{autoComplete:'address-level1',maxLength:80,required:true})}{field('district','İlçe',{autoComplete:'address-level2',maxLength:80,required:true})}</div>
-     <div className="go-order-field"><label htmlFor={`${titleId}-addressLine`}>Açık adres</label><textarea id={`${titleId}-addressLine`} value={customer.addressLine} onChange={event=>update('addressLine',event.target.value.slice(0,500))} rows={3} autoComplete="street-address" aria-invalid={errors.addressLine?true:undefined} aria-describedby={errors.addressLine?`${titleId}-addressLine-error`:undefined}/>{errors.addressLine?<em id={`${titleId}-addressLine-error`}>{errors.addressLine}</em>:null}</div>
+     <div className="go-order-field"><label htmlFor={`${titleId}-addressLine`}>{isGift?'Hediyenin gideceği açık adres':'Açık adres'}</label><textarea id={`${titleId}-addressLine`} value={customer.addressLine} onChange={event=>update('addressLine',event.target.value.slice(0,500))} rows={3} autoComplete="street-address" aria-invalid={errors.addressLine?true:undefined} aria-describedby={errors.addressLine?`${titleId}-addressLine-error`:undefined}/>{errors.addressLine?<em id={`${titleId}-addressLine-error`}>{errors.addressLine}</em>:null}</div>
      <div className="go-order-field"><label htmlFor={`${titleId}-note`}>Sipariş notu<small> (isteğe bağlı)</small></label><textarea id={`${titleId}-note`} value={customer.note} onChange={event=>update('note',event.target.value.slice(0,1000))} rows={2} placeholder="Teslimat saati, kapı kodu gibi"/></div>
      <label className="go-order-check"><input type="checkbox" checked={remember} onChange={event=>setRemember(event.target.checked)}/><span>Bilgilerimi bu cihazda hatırla</span></label>
     </fieldset>

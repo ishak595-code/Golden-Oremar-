@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useRef,useState}from'react';
 import{ChevronLeft,ChevronRight,MapPin,Mountain,Quote,ZoomIn}from'lucide-react';
 import ProductArtwork,{shippedProductPhoto}from'./ProductArtwork';
+import ProductVideo from'../media/ProductVideo';
 
 /**
  * The product page slider.
@@ -17,6 +18,7 @@ export type GallerySlide=
  |{kind:'photo';key:string;src:string;alt:string;path:string}
  |{kind:'artwork';key:string}
  |{kind:'origin';key:string;origin:string;producer:string}
+ |{kind:'video';key:string;url:string}
  |{kind:'story';key:string;kicker:string;line:string};
 
 type Props={
@@ -62,12 +64,13 @@ export default function ProductGallery({slides,productName,categorySlug,category
 
  return<section className="go-gallery" aria-roledescription="görsel kaydırıcı" aria-label={`${productName} görselleri`} onKeyDown={onKeyDown}>
   <div ref={trackRef} className="go-gallery__track" onScroll={onScroll} tabIndex={0} aria-label={count>1?'Kaydırarak veya ok tuşlarıyla gezinin':undefined}>
-   {slides.map((slide,position)=><div key={slide.key} className={`go-gallery__slide go-gallery__slide--${slide.kind}`} role="group" aria-roledescription="slayt" aria-label={`${position+1} / ${count}`} aria-hidden={position!==index?true:undefined}>
+   {slides.map((slide,position)=><div key={slide.key} className={`go-gallery__slide go-gallery__slide--${slide.kind}`} role="group" aria-roledescription="slayt" aria-label={`${position+1} / ${count}`} aria-hidden={position!==index?true:undefined} inert={position!==index?true:undefined}>
     {slide.kind==='photo'&&!failed[slide.key]?<button type="button" className="go-gallery__photo" onClick={()=>onOpenPhoto(slide.path)} aria-label={`${productName} görselini tam ekran aç`} tabIndex={position===index?0:-1}>
      <img src={slide.src} alt={slide.alt} loading={position===0?'eager':'lazy'} fetchPriority={position===0?'high':'auto'} decoding="async" onError={()=>setFailed(current=>({...current,[slide.key]:true}))}/>
      <span className="go-gallery__zoom" aria-hidden="true"><ZoomIn/></span>
     </button>:null}
     {slide.kind==='artwork'||(slide.kind==='photo'&&failed[slide.key])?<ProductArtwork name={productName} categorySlug={categorySlug} categoryName={categoryName} productType={productType} safetyClass={safetyClass} variant="hero" slug={productSlug} label={shippedProductPhoto(productSlug)?`${productName}, temsili görsel`:`${productName} için çizim görsel; ürün fotoğrafı yakında eklenecek`}/>:null}
+    {slide.kind==='video'?<div className="go-gallery__video"><ProductVideo url={slide.url} title={productName} allowExternalLink/></div>:null}
     {slide.kind==='origin'?<div className="go-gallery__story-card go-gallery__story-card--origin">
      <Mountain aria-hidden="true" className="go-gallery__story-mark"/>
      <span className="go-gallery__eyebrow"><MapPin aria-hidden="true"/>Kökeni</span>
@@ -78,7 +81,7 @@ export default function ProductGallery({slides,productName,categorySlug,category
      <Quote aria-hidden="true" className="go-gallery__story-mark"/>
      <span className="go-gallery__eyebrow">{slide.kicker||'Ürünün hikâyesi'}</span>
      <strong>{slide.line}</strong>
-     <span className="go-gallery__story-sub">Hikâyenin tamamı aşağıda, "Ürün Hikâyesi" bölümünde.</span>
+     <span className="go-gallery__story-sub">Hikâyenin tamamı aşağıda, "Ürünün Hikâyesi" bölümünde.</span>
     </div>:null}
    </div>)}
   </div>

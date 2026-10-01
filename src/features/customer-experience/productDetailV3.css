@@ -161,3 +161,15 @@
 .go-artwork--photo{background:var(--bg-card);}
 .go-artwork--photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .go-artwork__note{position:absolute;left:12px;bottom:12px;z-index:1;padding:3px 9px;border-radius:999px;background:rgb(0 0 0 / .62);color:#fff;font-size:11px;font-weight:700;letter-spacing:.02em;}
+
+/* Stock as one calm line just above the descriptions. */
+.go-stock-line{display:flex;align-items:center;justify-content:space-between;gap:.75rem;min-height:3rem;padding:.55rem 1rem;border:1px solid var(--border-light);border-radius:1rem;background:var(--bg-card);white-space:nowrap;}
+.go-stock-line__label{font-size:.9rem;font-weight:800;color:var(--text-main);}
+
+/* The product video as a gallery slide: centred on black, never cropped.
+   A vertical video is sized by the slide height so it cannot overflow. */
+.go-gallery__video{display:grid;align-content:center;justify-items:stretch;gap:.25rem;height:100%;padding:.75rem;background:#000;overflow:hidden;}
+.go-gallery__video > div{min-width:0;}
+.go-gallery__video .aspect-\[9\/16\]{max-height:72%;width:auto;height:72cqh;}
+.go-gallery__video a{color:#fff;}
+.go-gallery__slide--video{container-type:size;}

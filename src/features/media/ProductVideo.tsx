@@ -98,7 +98,7 @@ export default function ProductVideo({ url, title, allowExternalLink = false }: 
         className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-semibold text-brand-green underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:text-brand-gold"
       >
         <ExternalLink aria-hidden="true" className="h-4 w-4" />
-        YouTube'da aç
+        Ürünün videosunu YouTube'da izleyin
       </a>}
     </div>
   );
