@@ -1,0 +1,259 @@
+{
+ "model": "bytedance-seedream-5-pro",
+ "aspect_ratio": "1:1",
+ "resolution": "2K",
+ "style": "Square editorial still-life photograph, shot on a full-frame camera with a 50mm lens at f/2.8, soft natural window light, rustic weathered wooden table and coarse undyed linen, shallow depth of field, true-to-life colours, subtle film grain, natural imperfections, calm earthy mood of a mountain village. No text, no labels, no logos, no people. Not over-saturated, not glossy, not CGI.",
+ "how": "Generate one image per product with subject + ' ' + style, put the full-size download link in sources.json and push; the product-photos-import workflow does the rest. Links expire after 2 hours.",
+ "products": [
+  {
+   "slug": "abidin-in-yayla-kuzusu-302",
+   "subject": "Fresh raw lamb cuts (a rack of lamb chops and a leg piece) on a worn wooden butcher board with coarse salt, a sprig of wild thyme and garlic, clean professional butcher presentation, appetizing not bloody",
+   "done": false
+  },
+  {
+   "slug": "amine-nin-cifte-sari-koy-yumurtasi-305",
+   "subject": "A rustic wire basket of brown free-range village eggs of uneven sizes with a few small straw pieces, one egg cracked open in a small clay bowl showing two deep orange yolks",
+   "done": false
+  },
+  {
+   "slug": "ata-tohumu-dag-kekigi-suyu-distile-807",
+   "subject": "A plain unlabeled clear glass bottle of thyme hydrosol water, a small glass beside it, bundles of fresh wild thyme around it, soft clean light",
+   "done": false
+  },
+  {
+   "slug": "avasin-cam-damacana-suyu-401",
+   "subject": "A large clear glass water demijohn bottle of crystal clear spring water standing on a stone ledge, a full glass of water beside it with tiny bubbles, cool morning light, green mountain background softly blurred",
+   "done": false
+  },
+  {
+   "slug": "avasin-deresi-canli-alabaligi-ozel-hasat-301",
+   "subject": "Two fresh whole river trout with speckled skin and bright clear eyes on wet dark stone with crushed ice, lemon slices and fresh dill, droplets of cold water, mountain stream freshness",
+   "done": false
+  },
+  {
+   "slug": "avasin-mese-bali-103",
+   "subject": "A plain unlabeled glass jar of very dark amber oak honeydew honey with a simple metal lid set aside, a wooden honey dipper resting across the open jar with a thick slow drip, a few dry oak leaves and two acorns beside it",
+   "done": true
+  },
+  {
+   "slug": "bercelan-yaylasi-bahar-cicek-bali-102",
+   "subject": "A plain unlabeled glass jar of clear golden spring wildflower honey catching the light, a small spoon with honey on a ceramic saucer, a few tiny wild mountain flowers (white and pale yellow) scattered beside it",
+   "done": true
+  },
+  {
+   "slug": "buyuk-iskender-corek-otu-tohumu-705",
+   "subject": "A small undyed cotton drawstring sack spilling matte black nigella seeds onto the table, a little wooden scoop full of seeds, a few seeds scattered naturally",
+   "done": false
+  },
+  {
+   "slug": "dag-cilegi-yabani-803",
+   "subject": "A small woven basket filled with tiny bright red wild mountain strawberries with their little leaves, a few strawberries scattered on the table",
+   "done": false
+  },
+  {
+   "slug": "daglica-karakovan-petek-bali-101",
+   "subject": "A thick irregular slab of natural dark-golden honeycomb from a traditional log hive in a simple wooden box, one corner cut open with honey slowly oozing, a few wax crumbs, no frames, wild and uneven comb cells",
+   "done": false
+  },
+  {
+   "slug": "eksi-karadut-suyu-804",
+   "subject": "A plain unlabeled glass bottle and a glass of very dark purple black mulberry juice, a small bowl of fresh black mulberries beside it with purple stains on the linen",
+   "done": false
+  },
+  {
+   "slug": "el-isciligi-mese-palamudu-ekmegi-505",
+   "subject": "A big round rustic dark-brown sourdough loaf with a cracked floured crust, one slice cut showing a dense moist crumb, a few acorns and an old linen cloth beside it",
+   "done": false
+  },
+  {
+   "slug": "el-islemesi-tahta-kasik-ve-yayik-tokmagi-704",
+   "subject": "A hand-carved juniper wood spoon and a traditional wooden butter churn dasher (long handle with a cross-shaped head), both with visible chisel marks and natural wood grain, lying side by side",
+   "done": false
+  },
+  {
+   "slug": "fahrettin-in-sutten-kesilmis-oglagi-303",
+   "subject": "Fresh raw young goat meat cuts (shoulder and chops) on a wooden butcher board with coarse salt, rosemary and wild thyme, clean professional presentation, pale pink meat, appetizing",
+   "done": false
+  },
+  {
+   "slug": "gunes-sirri-guzu-yagi-ic-yag-701",
+   "subject": "A small clay pot of rendered creamy-white lamb tallow with a wooden spoon, a few pieces of crisp golden cracklings in a dish beside it, warm kitchen light",
+   "done": false
+  },
+  {
+   "slug": "gunluk-taze-civik-sut-sagimdan-kapiya-204",
+   "subject": "A plain glass bottle of fresh creamy whole milk with a thin cream line at the top, a full glass of milk beside it, early morning light, a small metal milk pail in the background",
+   "done": false
+  },
+  {
+   "slug": "hakkari-dag-elmasi-801",
+   "subject": "A pile of crisp red-and-yellow mountain apples of uneven sizes in an old wooden crate, one apple cut in half showing the juicy white flesh, a few apple leaves",
+   "done": false
+  },
+  {
+   "slug": "hakkari-dag-erigi-902",
+   "subject": "A shallow wooden crate of small fresh purple-red mountain plums with natural bloom on the skin, a few plums with leaves, one cut showing yellow flesh",
+   "done": false
+  },
+  {
+   "slug": "hakkari-ham-propolisi-907",
+   "subject": "Several rough raw chunks of dark brown and reddish propolis resin with tiny bits of beeswax, on a piece of weathered wood next to an old wooden beehive frame edge, close-up showing the sticky resinous texture",
+   "done": true
+  },
+  {
+   "slug": "hakkari-yayla-karpuzu-905",
+   "subject": "A whole dark green striped watermelon and a thick slice cut from it showing deep red juicy flesh and black seeds, on a wooden table outdoors in soft afternoon light",
+   "done": false
+  },
+  {
+   "slug": "hardaliye-geleneksel-805",
+   "subject": "A plain unlabeled glass bottle and a glass of deep red traditional grape drink, a bunch of dark red grapes and a few grape leaves beside it",
+   "done": false
+  },
+  {
+   "slug": "hatun-ana-nin-eksi-maya-gunesi-tarhana-501",
+   "subject": "Homemade sun-dried tarhana in coarse crumbled pieces and small chunks in a linen bag and a wooden bowl, beside a steaming clay bowl of red tarhana soup with a drizzle of butter and dried mint",
+   "done": false
+  },
+  {
+   "slug": "havahan-in-otlu-dag-peyniri-203",
+   "subject": "A block of white herb cheese with visible green wild mountain herbs inside, one slice cut, on a wooden board with a few fresh herb sprigs, slightly crumbly texture",
+   "done": false
+  },
+  {
+   "slug": "husnu-dayi-nin-kagit-kabuklu-cevizi-504",
+   "subject": "A pile of large thin-shelled walnuts in a mesh bag and on the table, a few cracked open showing light golden kernels, an old iron nutcracker",
+   "done": false
+  },
+  {
+   "slug": "isli-kaya-uzumleri-tane-kuru-506",
+   "subject": "A heap of dark sun-dried village raisins with some stems, in a cotton pouch and spilling onto the table, a small brass bowl full of raisins",
+   "done": false
+  },
+  {
+   "slug": "kadin-imecesi-odun-atesi-pekmezi-503",
+   "subject": "A plain unlabeled glass jar of very dark, thick grape molasses (pekmez), a spoon lifting a glossy ribbon of molasses, a small bunch of dark grapes beside it",
+   "done": false
+  },
+  {
+   "slug": "kan-kirmizi-yabani-kizilcik-surubu-seti-602",
+   "subject": "A plain unlabeled glass bottle of deep blood-red cornelian cherry syrup, a glass of diluted bright red drink with ice, a small bowl of fresh glossy red cornelian cherries",
+   "done": false
+  },
+  {
+   "slug": "kekik-aromali-kesik-yogurt-kurud-703",
+   "subject": "Rough hand-pressed balls and chunks of dried strained yogurt (kurut), off-white with dried thyme specks, in a cotton bag and on the table",
+   "done": false
+  },
+  {
+   "slug": "kekik-aromali-visne-kompostosu-809",
+   "subject": "A plain unlabeled glass bottle and a glass of dark red sour cherry compote with whole cherries inside, a sprig of fresh thyme and a few fresh sour cherries on the table",
+   "done": false
+  },
+  {
+   "slug": "kirik-tas-kaya-tuzu-blogu-kristal-603",
+   "subject": "Several large rough translucent rock salt crystal chunks, white and slightly pinkish, piled on dark slate, one chunk catching the light, a coarse jute sack edge visible",
+   "done": false
+  },
+  {
+   "slug": "kislik-kurutulmus-cennet-hurmasi-808",
+   "subject": "Several sun-dried persimmons, wrinkled amber-orange with a light natural sugar bloom, threaded on a cotton string, some resting on a linen cloth",
+   "done": false
+  },
+  {
+   "slug": "kitir-taze-cagla-badem-806",
+   "subject": "A small basket of fresh fuzzy green almonds (cagla) with a few leaves, one almond cut in half showing the soft white young interior, a little dish of coarse salt",
+   "done": false
+  },
+  {
+   "slug": "koylu-isi-aci-kirmizi-biber-706",
+   "subject": "Coarse sun-dried crushed red pepper flakes, deep red and glossy with oil, in a plain unlabeled glass jar and a small wooden bowl, a few whole dried red chili peppers on a string",
+   "done": false
+  },
+  {
+   "slug": "koyun-efsanevi-beyaz-isitma-pres-tasi-402",
+   "subject": "A smooth oval white river stone, hand-shaped, about the size of a loaf of bread, resting on a folded wool village blanket, soft shadows showing its weight and texture",
+   "done": false
+  },
+  {
+   "slug": "kusburnu-marmelati-707",
+   "subject": "A plain unlabeled glass jar of thick deep orange-red rosehip marmalade, a spoon on a saucer, a small branch of fresh red rosehips beside it",
+   "done": false
+  },
+  {
+   "slug": "merez-hatun-un-magara-tulum-peyniri-201",
+   "subject": "Crumbly aged white tulum cheese in coarse pieces in a small clay bowl and on a wooden board, a few walnuts and a sprig of thyme beside it, cool cave-like moody light",
+   "done": false
+  },
+  {
+   "slug": "naciye-nin-yayik-tereyagi-202",
+   "subject": "A thick hand-shaped log of pale yellow village churned butter on parchment paper, a curl of butter on a knife, beads of buttermilk on the surface, a wooden butter churn softly blurred behind",
+   "done": false
+  },
+  {
+   "slug": "sabir-kurutmasi-cicek-bamyasi-702",
+   "subject": "A long string of tiny dried okra pods threaded on cotton thread, hanging and partly coiled on the table, pale green-beige, delicate and handmade",
+   "done": false
+  },
+  {
+   "slug": "salih-in-meralik-ozgur-horozu-304",
+   "subject": "A whole raw free-range rooster carcass, plucked and cleaned, with natural yellow skin, trussed with kitchen twine on a wooden board with garlic, bay leaves and coarse salt, professional butcher presentation",
+   "done": false
+  },
+  {
+   "slug": "sami-usta-nin-kurutulmus-dag-dutlari-502",
+   "subject": "A generous pile of pale golden sun-dried white mulberries in a woven straw tray, a handful spilled on the table, crinkled natural texture",
+   "done": false
+  },
+  {
+   "slug": "sessiz-orman-kuzu-gobegi-mantari-601",
+   "subject": "A handful of fresh wild morel mushrooms with honeycomb caps and a little forest soil on the stems, on a woven willow basket lined with moss and fallen leaves",
+   "done": true
+  },
+  {
+   "slug": "sobalik-mese-yarigi-403",
+   "subject": "A neat stack of split dry oak firewood logs with bark and visible growth rings, next to an old cast-iron wood stove with a faint warm glow, cozy village house corner",
+   "done": false
+  },
+  {
+   "slug": "tas-degirmen-yuksekova-bulguru-908",
+   "subject": "Coarse golden bulgur wheat in an open cotton sack and a wooden scoop, a few wheat ears beside it, an old stone hand mill in the background softly out of focus",
+   "done": false
+  },
+  {
+   "slug": "taze-yayik-ayrani-canli-kultur-205",
+   "subject": "A plain glass bottle and a copper cup of frothy fresh churned ayran with a thick foam on top, a few fresh mint leaves, a wooden butter churn softly blurred behind",
+   "done": false
+  },
+  {
+   "slug": "yuksekova-sonbahar-armudu-901",
+   "subject": "A wooden crate of ripe local autumn pears, golden-green with a red blush and natural speckles, a few with stems and leaves, one pear cut showing juicy flesh",
+   "done": false
+  },
+  {
+   "slug": "yuksekova-yayla-domatesi-802",
+   "subject": "Ripe irregular pinkish-red heirloom village tomatoes with green stems, one sliced open showing juicy seeds, a few fresh basil leaves and coarse salt",
+   "done": false
+  },
+  {
+   "slug": "yuksekova-yayla-kayisisi-903",
+   "subject": "Small fresh orange apricots with a red blush in a shallow wooden crate lined with leaves, one apricot split open with its stone",
+   "done": false
+  },
+  {
+   "slug": "yuksekova-yayla-poleni-906",
+   "subject": "A small ceramic bowl filled with colourful dried bee pollen granules in yellow, orange, ochre and a few purple grains, some granules scattered, a small wooden spoon, a sprig of wild mountain flowers",
+   "done": false
+  },
+  {
+   "slug": "yuksekova-yaz-hiyari-904",
+   "subject": "Fresh small crunchy village cucumbers with thin dark green skin and tiny bumps, a few still with flowers, one sliced on a board, morning dew drops",
+   "done": false
+  },
+  {
+   "slug": "zahter-harmani-dag-kekigi-507",
+   "subject": "Bundles of dried wild mountain thyme with tiny leaves, and a small bowl of crumbled dried thyme leaves, a few purple thyme flowers, rough stone surface",
+   "done": false
+  }
+ ]
+}

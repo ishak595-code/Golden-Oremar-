@@ -769,3 +769,21 @@ Yeni testler: `checkout-contract-audit.mjs`, `catalog-snapshot-contract-audit.mj
 - Push sayısı gereksiz artırılmaz: E2E testleri canlı Supabase'e bağlanır
   ve kota tüketir. Belge ve migration değişiklikleri artık testi
   tetiklemez (`paths-ignore`), ama uygulama kodu değişiklikleri tetikler.
+
+## Sipariş, ürün sayfası ve fotoğraflar - 2026-10-01 (akşam)
+
+Yapıldı:
+- Ürün sayfasında emoji yok; stok bilgisi sade rozet (Stokta, Son N adet, Stokta yok). 14 günlük cayma notu "İade ve Cayma Hakkı" bölümünde.
+- Online ödeme kapalıyken "Hemen Satın Al", üye sepeti ve misafir sepeti aynı sipariş ekranını açar: WhatsApp veya Havale/EFT, üyelik gerekmez. Fiyat, stok, seçenek ve kargo sunucuda hesaplanır (`submit_order_request_v1`), müşteri GO-YYMMDD-XXXX kodunu alır.
+- Süper Admin: "WhatsApp ve Havale Siparişleri" ekranı. IBAN (mod-97 kontrollü), WhatsApp numarası, ödeme süresi; talepleri onayla (stok düşer), iptal et (stok geri), not ekle. Her değişiklik denetim kaydına yazılır.
+- Backend kapalıyken (402) WhatsApp siparişi gönderilen iletişim bilgisinden çalışmaya devam eder; kayıt başarısız olursa sipariş tam metniyle WhatsApp'a gider.
+- 8 ürün metin, stok, SKU, seçenek adı, saklama/güvenlik paketi ve kaynak kaydıyla hazır, "review" durumunda. Yayın kararı Süper Admin AAL2 onayında. Toplu onayda "resmi mağaza menşei onayı" kutusu eklendi; "Tümünü onayla" artık gerçekten bekleyen ürünleri gönderiyor.
+- Temsili ürün fotoğrafı hattı: `scripts/product-photos` (prompts.json, sources.json, import.mjs) ve `product-photos-import` iş akışı. Fotoğraf yalnız ürünün kendi fotoğrafı yoksa görünür ve ürün sayfasında "Temsili görsel" yazar.
+
+Açık:
+- Fotoğraflar: 50 üründen 4'ü hazır. ElevenLabs ücretsiz planı günde birkaç görselle sınırlı; kalan 46 için plan yükseltmesi ya da günlük devam gerekir.
+- 8 ürünün yayını: Admin > Ürün Onayları > "Tümünü onayla" + menşei kutusu (MFA ile).
+- Havale/EFT: İshak IBAN'ı admin ekranından ekleyince müşteriye görünür.
+- Ön bilgilendirme ve mesafeli satış metni, şirket kurulunca avukata okutulmalı (satıcı unvanı, adres, MERSİS).
+- Mobile Quality Gate customer-e2e: canlı Supabase 402 verdiği için kırmızı; plan yükseltilince düzelir.
+- Yaz ürünleri (domates, çilek, çağla, hıyar, kayısı, karpuz) Ekim'de stokta görünüyor; mevsim dışı stoklar sıfırlanmalı ya da ön sipariş yapılmalı.

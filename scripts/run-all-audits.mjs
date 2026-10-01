@@ -19,6 +19,7 @@ const audits=[
  'catalog-snapshot-contract-audit.mjs',
  'checkout-contract-audit.mjs',
  'offline-order-contract-audit.mjs',
+ 'product-photos-contract-audit.mjs',
  'user-facing-error-contract-audit.mjs',
  'offline-catalog-contract-audit.mjs',
  'product-detail-experience-contract-audit.mjs',
