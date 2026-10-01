@@ -1,0 +1,44 @@
+name: Offline catalogue refresh
+
+# Keeps the catalogue copy the storefront falls back to (public/offline-catalog)
+# in step with the live shop. Every product, price, story or safety note a
+# seller publishes reaches the copy within a few hours, and the next Vercel
+# deploy ships it. Uses only the public API key the app already ships. When
+# the API is down the last good copy is kept and nothing is committed.
+
+on:
+  schedule:
+    - cron: '23 */4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: offline-catalog-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Export the live catalogue
+        run: node scripts/offline-catalog/export.mjs
+      - name: Verify and commit real changes only
+        run: |
+          if git diff --quiet -- public/offline-catalog scripts/offline-catalog/manifest.json && [ -z "$(git ls-files --others --exclude-standard public/offline-catalog)" ]; then
+            echo "No catalogue changes."
+            exit 0
+          fi
+          node scripts/offline-catalog/verify.mjs
+          node scripts/offline-catalog-contract-audit.mjs
+          git config user.name "golden-oremar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A public/offline-catalog scripts/offline-catalog/manifest.json
+          git commit -m "chore(offline-catalog): refresh from the live shop"
+          git push

@@ -688,8 +688,9 @@ Sorun: Supabase kotası dolunca her API çağrısı 402 döndü, ana sayfa vitri
 - Kopya kullanılırken üstte sakin bir bilgi şeridi görünür: "Mağazamız kısa bir bakımda...".
 - SEO ön-üretimi de API kapalıysa bu kopyayı kullanır: 42 ürün, 9 kategori, 1 mağaza sayfası ve site haritası üretilir.
 
-Bakım:
-- API sağlıklıyken ürün veya fiyat değişince: `VITE_SUPABASE_URL=... VITE_SUPABASE_PUBLISHABLE_KEY=... node scripts/offline-catalog/export.mjs`
+Bakım (otomatik):
+- `.github/workflows/offline-catalog-refresh.yml` her 4 saatte bir canlı mağazadan kopyayı yeniler. Yeni ürün, fiyat, hikâye ve sağlık bilgisi kendiliğinden kopyaya girer; yalnız gerçek değişiklik olunca commit atar, Vercel yeniden yayınlar. API kapalıysa son sağlam kopya korunur.
+- Elle: `node scripts/offline-catalog/export.mjs` (`--check` yalnız eski mi diye bakar).
 - Denetim: `scripts/offline-catalog-contract-audit.mjs` (55. denetim), tarayıcı testi: `scripts/browser/offline-catalog-check.mjs` (18 kontrol).
 
 Veri hatası düzeltildi (`20261001120000_product_option_schema_fixes_v1`, canlıda): yumurta, horoz, oğlak, iç yağ ve sobalık odun balık seçenekleri ("Av planı", "Temizleme: Fileto") gösteriyordu; kuzu göbeği mantarı kuzu kesim seçenekleri gösteriyordu. Her biri kendi doğru seçeneklerine kavuştu, gömülü kopya da güncellendi ve canlıyla md5 eşleşti. Not: 42 ürünün hiçbirinde gerçek fotoğraf yok; fotoğraflar yüklenince kartlar otomatik fotoğrafa geçer.
