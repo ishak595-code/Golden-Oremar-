@@ -713,6 +713,29 @@ Veri hatası düzeltildi (`20261001120000_product_option_schema_fixes_v1`, canl�
 - Yayındaki 42 ürünün hikâyesinde müşteriye "bu demo anlatıda" yazıyordu; bir sezon notunda "demo yoğun sezon" geçiyordu. Veritabanında düzeltildi (`20261001140000_remove_demo_wording_from_published_products_v1`), gömülü kopya canlıyla md5 eşleşti. Kopyada "demo" kelimesi bir daha geçerse denetim kırılıyor.
 - Taslaktaki 8 ürün hâlâ "demo kaydı" notları taşıyor; yayına alınmadan önce metinleri gözden geçirilmeli.
 
+## Trafik, sepet, arama, mağaza, hesap - 2026-10-01 (öğleden sonra)
+
+Hız ve ölçek (veritabanı süresi, canlıda ölçüldü):
+- Ürün kartları anlık kopyada tutuluyor (pg_cron, 30 saniye; satıcı düzenleyince hemen geçersiz, yarış korumalı). Ana sayfa 155 ms'den 6 ms'ye, bölüm 24'ten 1 ms'ye, kategoriler 22'den 0,7 ms'ye. Çıktılar öncesiyle birebir aynı (md5).
+- Arama 64 ms'den 6,5 ms'ye. Uzun açıklama metninde işe yaramayan benzerlik hesabı kaldırıldı; "bal" artık bütün et ve balık ürünlerini getirmiyor, "yumurta" yumurtayı ilk sırada gösteriyor.
+- Ürün sayfası tüm kataloğu iki kez indirmek yerine tek küçük çağrı (`get_public_product_context_v1`): 108 KB yerine 16 KB; 500 ürün sınırında bölümlerin kaybolma riski bitti.
+- Barındırma: /assets bir yıl önbellek, katalog kopyası stale-while-revalidate, güvenlik başlıkları, eksik dosya artık 404 (uygulama kabuğu değil). Servis çalışanı katalog kopyasını saklıyor: sinyal hiç yokken bile vitrin açılıyor.
+- cron.job_run_details haftalık temizleniyor (69 bin satır birikmişti).
+
+Sepet ve ödeme:
+- Misafir sepeti: giriş yapmadan sepete ekleme; giriş yapınca hesaba aktarım (adetler toplanır, stokta olmayanlar isimle bildirilir, bağlantı koparsa misafir sepeti korunur).
+- Ödeme altyapısı hazır ve dürüstçe kapalı: iyzico anahtarları girilince kendiliğinden açılır. O zamana kadar "Kartla online ödeme çok yakında" ve sepeti hazır yazılmış WhatsApp ile sipariş.
+- Düzeltilen gerçek hatalar: yanlış kupon siparişi kalıcı kilitliyordu (artık kaldırılabiliyor); ödeme servisi aksayınca tüm sepet açılmıyordu.
+- Yeni: ücretsiz kargo çubuğu ve teslim süresi (kargo cevabı eşiği taşıyor), "Son N adet", satıştan kalkan ürün uyarısı, ülke listesi (Türkiye ilk), il/ilçe ve 5 haneli posta kodu, T.C. kimlik kontrol hanesi, telefonda alta sabit toplam çubuğu.
+
+Ekranlar:
+- Arama telefonda sıra kartlarıyla (ekran başına 3 kat ürün).
+- Mağaza: kapakta çakışan yazılar düzeldi, çizim görseller, her üründe "Sepete ekle", kategori çipleri ve "Tümünü gör" mağazaya filtreli aramayı açıyor (sayfa 42 üründen 12'sini gösteriyordu).
+- Hesabım: kenar boşluğu, siparişler ve mesajlar en üstte.
+- 5 temanın hepsinde okunabilirlik: açık temalarda alt menü yazıları (2,4:1), ana sayfa arama kutusu (1,1:1) ve soluk metinler düzeldi. Uygulamada tek `<main>` kaldı (11 ekran ikinci bir tane açıyordu).
+
+Yeni testler: `checkout-contract-audit.mjs`, `catalog-snapshot-contract-audit.mjs`; tarayıcıda `checkout-check` (40), `console-check` (45 ziyaret), `service-worker-check`, `theme-contrast-check` (9 ekran x 5 tema). Toplam 59 denetim.
+
 ## İshak'ın yapması gerekenler (kod dışı)
 
 - [ ] Supabase Pro plana geçiş (kota kısıtlaması) - ÖNCE panelden
