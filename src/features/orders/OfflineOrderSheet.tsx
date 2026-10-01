@@ -2,7 +2,7 @@ import React,{useEffect,useId,useMemo,useRef,useState}from'react';
 import{Building2,Check,CircleCheck,Copy,Loader2,MessageCircle,ShieldCheck,X}from'lucide-react';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 import{formatMoney}from'../cart/checkoutHelpers';
-import{getOfflineOrderingConfig,newOrderRequestKey,offlineOrderErrorMessage,submitOfflineOrder,validateOfflineCustomer,whatsappOrderUrl,type OfflineOrderCustomer,type OfflineOrderLineInput,type OfflineOrderMethod,type OfflineOrderReceipt,type OfflineOrderingConfig}from'./offlineOrderApi';
+import{getOfflineOrderingConfig,newOrderRequestKey,offlineOrderErrorMessage,orderServiceUnavailable,submitOfflineOrder,whatsappDirectOrderUrl,validateOfflineCustomer,whatsappOrderUrl,type OfflineOrderCustomer,type OfflineOrderLineInput,type OfflineOrderMethod,type OfflineOrderReceipt,type OfflineOrderingConfig}from'./offlineOrderApi';
 import'./offlineOrder.css';
 
 export type OfflineOrderSummaryLine={key:string;productName:string;variantName:string;quantity:number;priceMinor:number;currency:string};
@@ -44,13 +44,14 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
  const[error,setError]=useState('');
  const[receipt,setReceipt]=useState<OfflineOrderReceipt|null>(null);
  const[copied,setCopied]=useState('');
+ const[directUrl,setDirectUrl]=useState<string|null>(null);
  const keyRef=useRef(newOrderRequestKey());
  const errorRef=useRef<HTMLDivElement>(null);
  const dialogRef=useAccessibleDialog<HTMLDivElement>(open,()=>{if(!busy)onClose();});
 
  useEffect(()=>{
   if(!open)return;
-  setReceipt(null);setError('');setErrors({});setConsent(false);setCopied('');keyRef.current=newOrderRequestKey();
+  setReceipt(null);setError('');setDirectUrl(null);setErrors({});setConsent(false);setCopied('');keyRef.current=newOrderRequestKey();
   const saved=readSavedContact();
   setCustomer({...EMPTY,...saved,...Object.fromEntries(Object.entries(prefill||{}).filter(([,value])=>typeof value==='string'&&value.trim()))});
   let active=true;setConfigError(false);
@@ -73,11 +74,16 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
   if(first){(document.getElementById(`${titleId}-${first}`) as HTMLElement|null)?.focus();return;}
   if(!consent){setError('Devam etmek için ön bilgilendirme onay kutusunu işaretleyin.');queueMicrotask(()=>errorRef.current?.focus());return;}
   try{
-   setBusy(true);setError('');
+   setBusy(true);setError('');setDirectUrl(null);
    const result=await submitOfflineOrder({idempotencyKey:keyRef.current,method,source,items,customer,consent});
    saveContact(customer,remember);
    setReceipt(result);onSubmitted?.(result);
-  }catch(err){setError(offlineOrderErrorMessage(err));queueMicrotask(()=>errorRef.current?.focus());}
+  }catch(err){
+   const number=config?.whatsapp.number||null;
+   if(orderServiceUnavailable(err)&&number){setDirectUrl(whatsappDirectOrderUrl(number,lines,customer,method));setError('Sipariş sistemimiz şu anda yanıt vermiyor. Siparişinizi aşağıdaki düğmeyle doğrudan WhatsApp\'tan gönderin; ürünler ve teslimat bilgileriniz mesajda hazır.');saveContact(customer,remember);}
+   else setError(offlineOrderErrorMessage(err));
+   queueMicrotask(()=>errorRef.current?.focus());
+  }
   finally{setBusy(false);}
  }
 
@@ -138,6 +144,7 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
     <label className="go-order-check go-order-consent"><input type="checkbox" checked={consent} onChange={event=>{setConsent(event.target.checked);if(event.target.checked)setError('');}}/><span>Ön bilgilendirme özetini ve <a href="/kullanim-sartlari" target="_blank" rel="noopener noreferrer">Kullanım ve Mesafeli Satış Esasları</a>'nı okudum, onaylıyorum.</span></label>
 
     {error?<div ref={errorRef} tabIndex={-1} role="alert" className="go-order-alert">{error}</div>:null}
+    {directUrl?<a href={directUrl} target="_blank" rel="noopener noreferrer" className="go-order-primary mb-3"><MessageCircle aria-hidden="true"/>WhatsApp'tan sipariş gönder</a>:null}
     <div className="go-order-actions go-order-actions--sticky">
      <button type="submit" disabled={busy||!config||!method} className="go-order-primary">{busy?<><Loader2 aria-hidden="true" className="go-spin"/>Kaydediliyor…</>:method==='bank_transfer'?<><Building2 aria-hidden="true"/>Siparişi oluştur ve IBAN'ı gör</>:<><MessageCircle aria-hidden="true"/>Siparişi oluştur</>}</button>
      <p className="go-order-secure"><ShieldCheck aria-hidden="true"/>Bilgileriniz yalnız bu siparişin teslimatı için kullanılır.</p>

@@ -190,6 +190,36 @@ export function whatsappOrderUrl(receipt: OfflineOrderReceipt) {
   return `https://wa.me/${receipt.whatsappNumber}?text=${encodeURIComponent(whatsappOrderMessage(receipt))}`;
 }
 
+/**
+ * The order service itself is unreachable (offline, quota or server outage),
+ * as opposed to the customer's input being refused. In that case the sheet
+ * offers sending the order straight to WhatsApp so the sale is not lost.
+ */
+export function orderServiceUnavailable(error: unknown) {
+  const e = (error || {}) as { message?: unknown; status?: unknown; code?: unknown };
+  const message = String(e.message || '');
+  if (typeof e.status === 'number' && (e.status === 402 || e.status >= 500)) return true;
+  if (/^(?:invalid_|order_|insufficient_stock|product_not_available|duplicate_order_items|rate_limit_exceeded|mixed_currency)/.test(message)) return false;
+  return /restricted|quota|fetch|network|timeout|upstream|unavailable|Load failed|ECONN/i.test(message);
+}
+
+/** A complete order written into a WhatsApp message, for when the service is down. */
+export function whatsappDirectOrderUrl(number: string, lines: Array<{ productName: string; variantName: string; quantity: number; priceMinor: number; currency: string }>, customer: OfflineOrderCustomer, method: OfflineOrderMethod) {
+  const currency = lines[0]?.currency || 'TRY';
+  const subtotal = lines.reduce((sum, line) => sum + line.priceMinor * line.quantity, 0);
+  const text = [
+    `Merhaba, Golden Oremar'dan sipariş vermek istiyorum.`,
+    ...lines.map(line => `- ${line.quantity} x ${line.productName}${line.variantName ? ` (${line.variantName})` : ''} ${formatMoney(line.priceMinor * line.quantity, line.currency)}`),
+    `Ara toplam: ${formatMoney(subtotal, currency)} (kargo ve kesin tutarı onaylarsınız)`,
+    `Ad soyad: ${customer.name.trim()}`,
+    `Telefon: ${normalizeCustomerPhone(customer.phone) || customer.phone.trim()}`,
+    `Adres: ${customer.addressLine.trim()}, ${customer.district.trim()} / ${customer.province.trim()}`,
+    customer.note.trim() ? `Not: ${customer.note.trim()}` : '',
+    method === 'bank_transfer' ? 'Ödemeyi Havale/EFT ile yapmak istiyorum, IBAN bilgisini iletir misiniz?' : 'Siparişimi onaylar mısınız?',
+  ].filter(Boolean).join('\n');
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+}
+
 export function offlineOrderErrorMessage(error: unknown) {
   const message = String((error as { message?: unknown })?.message || '').trim();
   const stock = message.match(/insufficient_stock:(\d+)/);

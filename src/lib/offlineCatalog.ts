@@ -148,6 +148,15 @@ const RESOLVERS: Record<string, Resolver> = {
   get_public_home_section_v1: args => load(`sections/${safeFile(args.p_key)}.json`),
   get_public_storefront_config_v2: () => load('storefront_config.json'),
   get_public_contact_config_v1: () => load('contact_config.json'),
+  // While the backend is down, ordering by WhatsApp still works: the number
+  // comes from the shipped contact details. Bank transfer needs the live
+  // IBAN settings, so it stays hidden until the backend answers again.
+  get_public_offline_ordering_v1: async () => {
+    const contact = await load('contact_config.json');
+    const digits = String(contact?.whatsapp ?? '').replace(/\D/g, '');
+    if (!/^\d{10,15}$/.test(digits)) return undefined;
+    return { whatsapp: { enabled: true, number: digits }, bankTransfer: { enabled: false, accounts: [], paymentWindowHours: 48 }, note: null };
+  },
   list_public_events_v1: args => load(args.p_include_past === true ? 'events_all.json' : 'events_upcoming.json'),
   get_public_producer_profile_v3: async args => {
     const index = await load('producers.json');

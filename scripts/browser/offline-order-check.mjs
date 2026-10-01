@@ -210,6 +210,32 @@ for (const colorScheme of ['dark', 'light']) {
   await context.close();
 }
 
+// 5. Backend down (quota/outage): the product page comes from the shipped
+//    copy, WhatsApp is still offered from the shipped contact details, and a
+//    failed submit turns into a complete order message on WhatsApp.
+{
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: 'tr-TR', colorScheme: 'dark' });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await routeSupabase(page, {}, { quota: true, offlineCatalog: 'shipped' });
+  await page.goto(BASE + '/urun/avasin-mese-bali-103', { waitUntil: 'networkidle' });
+  await page.waitForTimeout(1500);
+  await page.locator('.product-detail-commerce-buy').first().click();
+  await page.waitForTimeout(900);
+  const text = await sheet(page).innerText().catch(() => '');
+  check(/WhatsApp ile sipariş/.test(text) && !/Havale \/ EFT/.test(text), 'outage: the sheet still opens with WhatsApp (no IBAN without the live settings)');
+  await fill(page);
+  await sheet(page).locator('.go-order-consent input').check();
+  await sheet(page).getByRole('button', { name: /Siparişi oluştur/ }).click();
+  await page.waitForTimeout(900);
+  const direct = sheet(page).locator('a[href^="https://wa.me/905379594851?text="]');
+  const href = decodeURIComponent(await direct.getAttribute('href').catch(() => '') || '');
+  check(/yanıt vermiyor/.test(await sheet(page).innerText()) && href.includes('Avaşin') && href.includes('Zeynep Kaya') && href.includes('İpekyolu / Van'), 'outage: a failed submit offers the whole order on WhatsApp');
+  check(!errors.length, `outage: no page errors (${errors.join(' | ') || 'none'})`);
+  await context.close();
+}
+
 await browser.close();
 const failed = results.filter(([ok]) => !ok);
 console.log(`\n${results.length - failed.length}/${results.length} offline order checks passed.`);

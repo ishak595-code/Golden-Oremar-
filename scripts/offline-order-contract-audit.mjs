@@ -62,6 +62,9 @@ const guest = read('src/features/cart/GuestCartView.tsx');
 need(guest, '<OfflineOrderSheet', 'The guest cart must let visitors order without an account.');
 need(guest, 'onSubmitted={()=>setOrderPlaced(true)}', 'The guest cart must empty only after the receipt is closed.');
 
+need(sheet, 'orderServiceUnavailable(err)', 'When the order service is down, the sheet must offer the order on WhatsApp.');
+need(read('src/lib/offlineCatalog.ts'), 'get_public_offline_ordering_v1:', 'WhatsApp ordering must stay available from the shipped contact details during an outage.');
+
 const tabs = read('src/admin/adminCapabilities.ts');
 need(tabs, "'order-requests':'order.read'", 'The order requests admin tab must require order.read.');
 need(read('src/pages/AdminPage.tsx'), "case'order-requests':return<AdminOrderRequests/>", 'The admin panel must render the order requests screen.');
