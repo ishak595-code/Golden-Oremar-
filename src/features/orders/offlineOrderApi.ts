@@ -215,7 +215,7 @@ export function whatsappDirectOrderUrl(number: string, lines: Array<{ productNam
     `Telefon: ${normalizeCustomerPhone(customer.phone) || customer.phone.trim()}`,
     `Adres: ${customer.addressLine.trim()}, ${customer.district.trim()} / ${customer.province.trim()}`,
     customer.note.trim() ? `Not: ${customer.note.trim()}` : '',
-    method === 'bank_transfer' ? 'Ödemeyi Havale/EFT ile yapmak istiyorum, IBAN bilgisini iletir misiniz?' : 'Siparişimi onaylar mısınız?',
+    method === 'bank_transfer' ? 'Ödemeyi Havale/EFT ile yapacağım. Kargo dahil toplam tutarı onaylar mısınız?' : 'Siparişimi onaylar mısınız?',
   ].filter(Boolean).join('\n');
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 }

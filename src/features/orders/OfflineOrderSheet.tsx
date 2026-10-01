@@ -60,6 +60,9 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
   // eslint-disable-next-line react-hooks/exhaustive-deps
  },[open]);
 
+ // When the order service is down the sheet switches to "send on WhatsApp":
+ // bring that message, its button and the IBAN to the top of the sheet.
+ useEffect(()=>{if(!directUrl)return;const frame=window.requestAnimationFrame(()=>{const el=errorRef.current;if(!el)return;const body=el.closest('.go-order-body') as HTMLElement|null;if(body)body.scrollTop+=el.getBoundingClientRect().top-body.getBoundingClientRect().top-8;el.focus({preventScroll:true});});return()=>window.cancelAnimationFrame(frame);},[directUrl]);
  const currency=lines[0]?.currency||'TRY';
  const subtotal=useMemo(()=>lines.reduce((sum,line)=>sum+line.priceMinor*line.quantity,0),[lines]);
  const waUrl=receipt?whatsappOrderUrl(receipt):null;
@@ -80,9 +83,9 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
    setReceipt(result);onSubmitted?.(result);
   }catch(err){
    const number=config?.whatsapp.number||null;
-   if(orderServiceUnavailable(err)&&number){setDirectUrl(whatsappDirectOrderUrl(number,lines,customer,method));setError('Sipariş sistemimiz şu anda yanıt vermiyor. Siparişinizi aşağıdaki düğmeyle doğrudan WhatsApp\'tan gönderin; ürünler ve teslimat bilgileriniz mesajda hazır.');saveContact(customer,remember);}
+   if(orderServiceUnavailable(err)&&number){setDirectUrl(whatsappDirectOrderUrl(number,lines,customer,method));setError(method==='bank_transfer'&&config?.bankTransfer.accounts.length?'Sipariş sistemimiz şu anda yanıt vermiyor. Siparişinizi aşağıdaki düğmeyle WhatsApp\'tan gönderin; kargo dahil toplam tutar onaylanınca aşağıdaki hesaba ödeme yapabilirsiniz.':'Sipariş sistemimiz şu anda yanıt vermiyor. Siparişinizi aşağıdaki düğmeyle doğrudan WhatsApp\'tan gönderin; ürünler ve teslimat bilgileriniz mesajda hazır.');saveContact(customer,remember);}
    else setError(offlineOrderErrorMessage(err));
-   queueMicrotask(()=>errorRef.current?.focus());
+   if(!orderServiceUnavailable(err)||!config?.whatsapp.number)queueMicrotask(()=>errorRef.current?.focus());
   }
   finally{setBusy(false);}
  }
@@ -145,10 +148,11 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
 
     {error?<div ref={errorRef} tabIndex={-1} role="alert" className="go-order-alert">{error}</div>:null}
     {directUrl?<a href={directUrl} target="_blank" rel="noopener noreferrer" className="go-order-primary mb-3"><MessageCircle aria-hidden="true"/>WhatsApp'tan sipariş gönder</a>:null}
-    <div className="go-order-actions go-order-actions--sticky">
+    {directUrl&&method==='bank_transfer'&&config?.bankTransfer.accounts.length?<section className="go-order-bank" aria-label="Havale ve EFT bilgileri">{config.bankTransfer.accounts.map(account=><article key={account.iban}><p className="go-order-bank__name"><Building2 aria-hidden="true"/>{account.bankName}{account.branch?<small> · {account.branch}</small>:null}</p><p className="go-order-bank__holder">{account.accountHolder}</p><p className="go-order-bank__iban">{account.iban}</p><button type="button" className="go-order-copy" onClick={()=>void copy(account.iban,account.iban.replace(/\s/g,''))}>{copied===account.iban?<Check aria-hidden="true"/>:<Copy aria-hidden="true"/>}<span>{copied===account.iban?'Kopyalandı':'IBAN kopyala'}</span></button></article>)}<p className="go-order-hint">Açıklama alanına adınızı ve soyadınızı yazın. Ödemeden önce toplam tutarı WhatsApp'ta onaylatın.</p></section>:null}
+    {directUrl?null:<div className="go-order-actions go-order-actions--sticky">
      <button type="submit" disabled={busy||!config||!method} className="go-order-primary">{busy?<><Loader2 aria-hidden="true" className="go-spin"/>Kaydediliyor…</>:method==='bank_transfer'?<><Building2 aria-hidden="true"/>Siparişi oluştur ve IBAN'ı gör</>:<><MessageCircle aria-hidden="true"/>Siparişi oluştur</>}</button>
      <p className="go-order-secure"><ShieldCheck aria-hidden="true"/>Bilgileriniz yalnız bu siparişin teslimatı için kullanılır.</p>
-    </div>
+    </div>}
    </form>}
   </div>
  </div>;

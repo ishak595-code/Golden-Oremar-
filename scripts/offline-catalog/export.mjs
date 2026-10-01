@@ -55,6 +55,7 @@ async function collect() {
     'home_experience.json': await rpc('get_public_home_experience_v1', { p_locale: 'tr' }),
     'storefront_config.json': await rpc('get_public_storefront_config_v2', { p_locale: 'tr' }),
     'contact_config.json': await rpc('get_public_contact_config_v1'),
+    'offline_ordering.json': await rpc('get_public_offline_ordering_v1'),
     'events_upcoming.json': await rpc('list_public_events_v1', { p_include_past: false }),
     'events_all.json': await rpc('list_public_events_v1', { p_include_past: true }),
   };

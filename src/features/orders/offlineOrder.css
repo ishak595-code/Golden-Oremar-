@@ -150,6 +150,7 @@
 .go-order-info strong { color: var(--text-main); }
 
 .go-order-alert {
+  scroll-margin-top: .5rem;
   margin: .4rem 0 .8rem;
   padding: .8rem .9rem;
   border: 1px solid #f5c26b;

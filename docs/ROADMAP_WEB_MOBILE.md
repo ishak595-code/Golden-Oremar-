@@ -784,6 +784,6 @@ Açık:
 - Fotoğraflar: 50 üründen 4'ü hazır. ElevenLabs ücretsiz planı günde 4 görsel veriyor (tüm modeller için ortak). İshak plan yükseltmeyi istemedi; "Golden Oremar ürün fotoğrafları" zamanlanmış görevi her sabah 07:59'da (Zürih) sıradaki 4 ürünü üretir, siteye ekler, 50'ye ulaşınca kendini kapatır.
 - 8 ürün yayında (toplam 50): İshak sohbette açıkça onayladı, admin paneli 402 nedeniyle açılmadığı için migration 20261001174000 ile uygulandı; denetim kaydı bunu açıkça yazar.
 - Yaz ürünleri (çilek, domates, hıyar, kayısı, karpuz, erik, çağla) ön siparişte, hasat dönemi ürün sayfasında yazıyor.
-- Havale/EFT: İshak IBAN'ı admin ekranından ekleyince müşteriye görünür.
+- Havale/EFT açık: Türkiye İş Bankası hesabı (Abidin Alper) eklendi, IBAN mod-97 ve banka kodu (00064) doğrulandı. Backend kapalıyken de yedek kopyadan (offline_ordering.json, noindex) gösterilir; kayıt yapılamazsa sipariş WhatsApp'a gider ve müşteriye önce toplam tutarı onaylatması söylenir.
 - Ön bilgilendirme ve mesafeli satış metni, şirket kurulunca avukata okutulmalı (satıcı unvanı, adres, MERSİS).
 - Mobile Quality Gate customer-e2e: canlı Supabase 402 verdiği için kırmızı; plan yükseltilince düzelir.

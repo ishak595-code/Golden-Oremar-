@@ -224,7 +224,7 @@ for (const colorScheme of ['dark', 'light']) {
   await page.locator('.product-detail-commerce-buy').first().click();
   await page.waitForTimeout(900);
   const text = await sheet(page).innerText().catch(() => '');
-  check(/WhatsApp ile sipariş/.test(text) && !/Havale \/ EFT/.test(text), 'outage: the sheet still opens with WhatsApp (no IBAN without the live settings)');
+  check(/WhatsApp ile sipariş/.test(text) && /Havale \/ EFT/.test(text), 'outage: both methods still offered from the shipped ordering channels');
   await fill(page);
   await sheet(page).locator('.go-order-consent input').check();
   await sheet(page).getByRole('button', { name: /Siparişi oluştur/ }).click();
@@ -232,6 +232,20 @@ for (const colorScheme of ['dark', 'light']) {
   const direct = sheet(page).locator('a[href^="https://wa.me/905379594851?text="]');
   const href = decodeURIComponent(await direct.getAttribute('href').catch(() => '') || '');
   check(/yanıt vermiyor/.test(await sheet(page).innerText()) && href.includes('Avaşin') && href.includes('Zeynep Kaya') && href.includes('İpekyolu / Van'), 'outage: a failed submit offers the whole order on WhatsApp');
+  // Bank transfer during the outage: the order goes to WhatsApp and the IBAN is shown.
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  await page.locator('.product-detail-commerce-buy').first().click();
+  await page.waitForTimeout(800);
+  await sheet(page).getByText('Havale / EFT').click();
+  await fill(page);
+  await sheet(page).locator('.go-order-consent input').check();
+  await sheet(page).getByRole('button', { name: /IBAN/ }).click();
+  await page.waitForTimeout(900);
+  const bankText = await sheet(page).innerText();
+  const bankHref = decodeURIComponent(await sheet(page).locator('a[href^="https://wa.me/905379594851?text="]').getAttribute('href').catch(() => '') || '');
+  check(/TR98 0006 4000 0018 5100 5337 70/.test(bankText) && /Abidin Alper/.test(bankText) && /İş Bankası/.test(bankText) && /toplam tutar onaylanınca/.test(bankText), 'outage: bank transfer shows the IBAN with the advice to confirm the total first');
+  check(bankHref.includes('Havale/EFT ile yapacağım') && bankHref.includes('Avaşin'), 'outage: the WhatsApp message says the customer pays by bank transfer');
   check(!errors.length, `outage: no page errors (${errors.join(' | ') || 'none'})`);
   await context.close();
 }

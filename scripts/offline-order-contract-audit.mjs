@@ -65,6 +65,16 @@ need(guest, 'onSubmitted={()=>setOrderPlaced(true)}', 'The guest cart must empty
 need(sheet, 'orderServiceUnavailable(err)', 'When the order service is down, the sheet must offer the order on WhatsApp.');
 need(read('src/lib/offlineCatalog.ts'), 'get_public_offline_ordering_v1:', 'WhatsApp ordering must stay available from the shipped contact details during an outage.');
 
+const shippedOrdering = JSON.parse(read('public/offline-catalog/offline_ordering.json'));
+if (!shippedOrdering?.whatsapp?.enabled || !Array.isArray(shippedOrdering?.bankTransfer?.accounts)) failures.push('The shipped ordering channels (offline_ordering.json) must hold WhatsApp and the bank accounts for outages.');
+for (const account of shippedOrdering?.bankTransfer?.accounts || []) {
+  const iban = String(account.iban || '').replace(/\s/g, '');
+  const digits = (iban.slice(4) + iban.slice(0, 4)).replace(/[A-Z]/g, ch => String(ch.charCodeAt(0) - 55));
+  let rest = 0; for (const d of digits) rest = (rest * 10 + Number(d)) % 97;
+  if (!/^TR\d{24}$/.test(iban) || rest !== 1) failures.push(`Shipped IBAN ${account.iban} fails the mod-97 check.`);
+}
+need(read('scripts/offline-catalog/export.mjs'), "'offline_ordering.json': await rpc('get_public_offline_ordering_v1')", 'The catalogue export must refresh the shipped ordering channels.');
+
 const tabs = read('src/admin/adminCapabilities.ts');
 need(tabs, "'order-requests':'order.read'", 'The order requests admin tab must require order.read.');
 need(read('src/pages/AdminPage.tsx'), "case'order-requests':return<AdminOrderRequests/>", 'The admin panel must render the order requests screen.');

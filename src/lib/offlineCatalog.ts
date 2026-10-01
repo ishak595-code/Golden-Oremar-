@@ -148,10 +148,12 @@ const RESOLVERS: Record<string, Resolver> = {
   get_public_home_section_v1: args => load(`sections/${safeFile(args.p_key)}.json`),
   get_public_storefront_config_v2: () => load('storefront_config.json'),
   get_public_contact_config_v1: () => load('contact_config.json'),
-  // While the backend is down, ordering by WhatsApp still works: the number
-  // comes from the shipped contact details. Bank transfer needs the live
-  // IBAN settings, so it stays hidden until the backend answers again.
+  // While the backend is down, ordering still works: the shipped copy of the
+  // ordering channels (WhatsApp number, bank accounts) answers, and without
+  // it the WhatsApp number from the shipped contact details.
   get_public_offline_ordering_v1: async () => {
+    const shipped = await load('offline_ordering.json');
+    if (shipped && typeof shipped === 'object' && shipped.whatsapp && shipped.bankTransfer) return shipped;
     const contact = await load('contact_config.json');
     const digits = String(contact?.whatsapp ?? '').replace(/\D/g, '');
     if (!/^\d{10,15}$/.test(digits)) return undefined;

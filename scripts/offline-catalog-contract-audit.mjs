@@ -48,7 +48,17 @@ for (const section of experience.sections || []) {
 for (const producer of JSON.parse(read(path.join(OUT, 'producers.json')))) check(fs.existsSync(path.join(OUT, 'producer', `${producer.slug}.json`)), `Producer copy missing for ${producer.slug}.`);
 
 // Nothing private is shipped.
-const all = execSync(`cat $(find ${OUT} -type f -name '*.json')`, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+// The one exception is offline_ordering.json: the bank account customers pay
+// into is public by design (every visitor choosing Havale/EFT sees it), so it
+// is checked on its own and kept out of search engines (X-Robots-Tag below).
+const all = execSync(`cat $(find ${OUT} -type f -name '*.json' ! -name 'offline_ordering.json')`, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+{
+  const ordering = JSON.parse(read(path.join(OUT, 'offline_ordering.json')));
+  const keys = value => value && typeof value === 'object' ? Object.entries(value).flatMap(([k, v]) => [k, ...keys(v)]) : [];
+  const allowed = new Set(['note', 'whatsapp', 'number', 'enabled', 'bankTransfer', 'accounts', 'iban', 'branch', 'bankName', 'accountHolder', 'paymentWindowHours', '0', '1', '2', '3', '4']);
+  check(keys(ordering).every(k => allowed.has(k)), 'offline_ordering.json may only hold the public ordering channels.');
+  check(/X-Robots-Tag[\s\S]{0,80}noindex/.test(read('vercel.json')), 'The shipped copy must be kept out of search engines (X-Robots-Tag: noindex).');
+}
 for (const [pattern, label] of [[/"(email|phone)":\s*"[^"]*@/i, 'e-mail fields other than the public contact card'], [/"(user_id|owner_id|auth_user_id|iban|tax_number|national_id)"/i, 'private identifiers'], [/service_role|sb_secret_/i, 'secrets']]) {
   const contact = read(path.join(OUT, 'contact_config.json'));
   const rest = all.replace(contact, '');
