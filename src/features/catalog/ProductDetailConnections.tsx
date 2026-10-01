@@ -1,7 +1,7 @@
 import React,{useEffect,useMemo,useState}from'react';
 import{ChevronRight,MapPin,Store,Tag}from'lucide-react';
 import{buildProducerUrl,buildSearchUrl,parsePublicRoute}from'../navigation/appUrl';
-import{useLiveHomeCatalog}from'./useLiveHomeCatalog';
+import{useProductContext}from'./useProductContext';
 import{buildTabUrl}from'../navigation/appUrl';
 
 const ROUTE_EVENT='golden-oremar:route-change';
@@ -10,10 +10,10 @@ function categoryUrl(slug:string){return buildTabUrl('categories',{category:slug
 
 export default function ProductDetailConnections({embedded=false}:{embedded?:boolean}={}){
  const[routeVersion,setRouteVersion]=useState(0);
- const{products,loading}=useLiveHomeCatalog();
  useEffect(()=>{const refresh=()=>setRouteVersion(value=>value+1);window.addEventListener(ROUTE_EVENT,refresh);window.addEventListener('popstate',refresh);return()=>{window.removeEventListener(ROUTE_EVENT,refresh);window.removeEventListener('popstate',refresh);};},[]);
  const route=useMemo(()=>parsePublicRoute(),[routeVersion]);
- const product=useMemo(()=>{if(route.tab!=='product-detail'||!route.productReference)return null;return products.find(item=>item.slug===route.productReference||item.id===route.productReference||item.legacyId===route.productReference)||null;},[products,route]);
+ const{context,loading}=useProductContext(route.tab==='product-detail'?route.productReference:null);
+ const product=context?.product||null;
  if(loading||!product)return null;
  const origin=String(product.origin||'').trim();
  return<section className={`go-product-context-links${embedded?' go-product-context-links--embedded':''}`} aria-labelledby={embedded?undefined:'product-context-links-title'} aria-label={embedded?'Bu ürünün bağlantıları':undefined}>{embedded?null:<div className="go-product-context-links__intro"><span>Bu ürünün dünyası</span><h2 id="product-context-links-title">Detaydan keşfe, tek dokunuşla.</h2><p>Kategoriyi, mağazayı veya aynı menşei taşıyan ürünleri ayrı ayrı keşfedin.</p></div>}<div className="go-product-context-links__actions"><button type="button" onClick={()=>pushRoute(categoryUrl(product.categorySlug),'categories')}><span className="go-product-context-links__icon"><Tag aria-hidden="true"/></span><span><small>Kategori</small><strong>{product.category}</strong></span><ChevronRight aria-hidden="true"/></button><button type="button" onClick={()=>pushRoute(buildProducerUrl(product.producerId),'producer-profile')}><span className="go-product-context-links__icon"><Store aria-hidden="true"/></span><span><small>Mağaza</small><strong>{product.producerName}</strong></span><ChevronRight aria-hidden="true"/></button>{origin?<button type="button" onClick={()=>pushRoute(buildSearchUrl({query:origin}),'search-results')}><span className="go-product-context-links__icon"><MapPin aria-hidden="true"/></span><span><small>Menşe</small><strong>{origin}</strong></span><ChevronRight aria-hidden="true"/></button>:null}</div></section>;

@@ -56,6 +56,15 @@ check(/parsePublicRoute\(window\.location\.href\)\.tab/.test(routeState), 'The s
 const main = read('src/main.tsx');
 check(!/<ProductDetailConnections|<ProductRecommendationsRail/.test(main), 'Recommendation rails must not be mounted globally after the app; they belong to the product page.');
 
+// The product page's rails read one small context call, never the whole
+// catalogue (which grows with every product and was fetched twice per visit).
+for (const file of ['src/features/catalog/ProductDetailConnections.tsx', 'src/features/catalog/ProductRecommendationsRail.tsx']) {
+  const source = read(file);
+  check(/useProductContext\(/.test(source), `${file} must use useProductContext.`);
+  check(!/useLiveHomeCatalog\(|getPublicHomeCatalog\(/.test(source), `${file} must not download the whole catalogue.`);
+}
+check(/get_public_product_context_v1/.test(read('src/lib/offlineCatalog.ts')), 'The product context call needs an offline answer too.');
+
 if (failures.length) {
   console.error('Product detail experience contract audit failed:');
   for (const failure of failures) console.error(`- ${failure}`);

@@ -108,6 +108,15 @@ export async function routeSupabase(page, overrides = {}, options = {}) {
       const limit = request.p_limit ?? 20, offset = request.p_offset ?? 0;
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...base, items: offset === 0 ? base.items.slice(0, limit) : [], limit, offset, total: base.items.length }) });
     }
+    if (rpc === 'get_public_product_context_v1' && map.get_public_home_catalog_v3 !== 'fail') {
+      const request = route.request().postDataJSON() || {};
+      const items = JSON.parse(fixtureBody(map.get_public_home_catalog_v3)).items || [];
+      const ref = String(request.p_reference || '');
+      const product = items.find(item => item.slug === ref || item.id === ref || String(item.legacyId ?? '') === ref) || null;
+      const others = product ? items.filter(item => item.id !== product.id) : [];
+      const body = { product, sameCategory: product ? others.filter(item => item.category?.id === product.category?.id).slice(0, 8) : [], sameStore: product ? others.filter(item => item.producer?.id === product.producer?.id && item.category?.id !== product.category?.id).slice(0, 8) : [] };
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    }
     // Fixture products use the store logo, which the app now replaces with
     // drawn artwork. Checks about real photos (media-cdn-check) ask for
     // photo paths instead.

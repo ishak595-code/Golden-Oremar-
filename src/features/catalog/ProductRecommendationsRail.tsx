@@ -1,7 +1,8 @@
 import React,{useEffect,useMemo,useState}from'react';
 import{ChevronRight,Gem,Leaf,Star}from'lucide-react';
 import{buildProductUrl,parsePublicRoute}from'../navigation/appUrl';
-import{useLiveHomeCatalog,type LegacyHomeProduct}from'./useLiveHomeCatalog';
+import{type LegacyHomeProduct}from'./useLiveHomeCatalog';
+import{useProductContext}from'./useProductContext';
 import ProductArtwork,{isBrandFallbackImage}from'./ProductArtwork';
 import{buildTabUrl}from'../navigation/appUrl';
 
@@ -14,21 +15,14 @@ function uniqueProducts(items:LegacyHomeProduct[]){return Array.from(new Map(ite
 
 export default function ProductRecommendationsRail({embedded=false}:{embedded?:boolean}={}){
  const[routeVersion,setRouteVersion]=useState(0);
- const{products,loading}=useLiveHomeCatalog();
  useEffect(()=>{const refresh=()=>setRouteVersion(value=>value+1);window.addEventListener(ROUTE_EVENT,refresh);window.addEventListener('popstate',refresh);return()=>{window.removeEventListener(ROUTE_EVENT,refresh);window.removeEventListener('popstate',refresh);};},[]);
  const route=useMemo(()=>parsePublicRoute(),[routeVersion]);
  const reference=route.tab==='product-detail'?route.productReference:null;
+ const{context:productContext,loading}=useProductContext(reference);
  const context=useMemo(()=>{
-  if(!reference||!products.length)return null;
-  const current=products.find(item=>item.slug===reference||item.id===reference||item.legacyId===reference);
-  if(!current)return null;
-  const alternatives=uniqueProducts(products.filter(item=>item.id!==current.id&&item.categorySlug===current.categorySlug)).slice(0,8);
-  const sameStore=uniqueProducts([
-   ...products.filter(item=>item.id!==current.id&&item.categorySlug!==current.categorySlug&&item.producerId===current.producerId&&item.is_featured),
-   ...products.filter(item=>item.id!==current.id&&item.categorySlug!==current.categorySlug&&item.producerId===current.producerId),
-  ]).slice(0,8);
-  return{current,alternatives,sameStore};
- },[products,reference]);
+  if(!productContext)return null;
+  return{current:productContext.product,alternatives:uniqueProducts(productContext.sameCategory).slice(0,8),sameStore:uniqueProducts(productContext.sameStore).slice(0,8)};
+ },[productContext]);
  if(!reference||loading||!context||(!context.alternatives.length&&!context.sameStore.length)||(embedded&&!context.sameStore.length))return null;
  function openProduct(product:LegacyHomeProduct){const target=referenceOf(product);if(!target)return;const currentDepth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(currentDepth)&&currentDepth>=0?currentDepth+1:1;const url=buildProductUrl(target);const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'product-detail'};window.history.pushState(state,'',url);window.dispatchEvent(new PopStateEvent('popstate',{state}));window.dispatchEvent(new Event(ROUTE_EVENT));window.scrollTo({top:0,behavior:'auto'});}
  function openCategory(){const slug=context.current.categorySlug;if(!slug)return;const url=buildTabUrl('categories',{category:slug});const currentDepth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(currentDepth)&&currentDepth>=0?currentDepth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.dispatchEvent(new Event(ROUTE_EVENT));window.scrollTo({top:0,behavior:'auto'});}

@@ -163,6 +163,21 @@ const RESOLVERS: Record<string, Resolver> = {
     const slug = await slugFor(args.p_reference);
     return slug ? load(`safety/${slug}.json`) : undefined;
   },
+  // The home catalogue is already in the server's order (featured, newest, name).
+  get_public_product_context_v1: async args => {
+    const items = await catalogItems();
+    if (!items) return undefined;
+    const ref = String(args.p_reference ?? '').trim();
+    const limit = Math.min(12, Math.max(1, Number(args.p_limit) || 8));
+    const product = items.find(item => item.slug === trLower(ref) || item.id === ref || String(item.legacyId ?? '') === ref);
+    if (!product) return { product: null, sameCategory: [], sameStore: [] };
+    const others = items.filter(item => item.id !== product.id);
+    return {
+      product,
+      sameCategory: others.filter(item => item.category?.id === product.category?.id).slice(0, limit),
+      sameStore: others.filter(item => item.producer?.id === product.producer?.id && item.category?.id !== product.category?.id).slice(0, limit),
+    };
+  },
   get_product_reviews_v1: async () => (await catalogItems()) ? ({ items: [], summary: { count: 0, rating1: 0, rating2: 0, rating3: 0, rating4: 0, rating5: 0, averageRating: 0 } }) : undefined,
   get_public_product_handling_profiles_v1: async args => {
     const wanted = new Set<string>(Array.isArray(args.p_product_ids) ? args.p_product_ids : []);
