@@ -16,6 +16,7 @@ const audits=[
  'consumer-rights-contract-audit.mjs',
  'rpc-existence-contract-audit.mjs',
  'schema-baseline-contract-audit.mjs',
+ 'catalog-snapshot-contract-audit.mjs',
  'user-facing-error-contract-audit.mjs',
  'offline-catalog-contract-audit.mjs',
  'product-detail-experience-contract-audit.mjs',
