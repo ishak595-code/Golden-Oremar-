@@ -202,7 +202,7 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
       setError('');
       setStatus('Ürünler hazırlanıyor olarak işaretleniyor...');
       const next = await markProducerOrderItemsProcessing(detail.id, selectedProcessing);
-      setStatus('✓ Seçili ürünler hazırlanıyor olarak işaretlendi. Müşteri bilgilendirildi.');
+      setStatus('Seçili ürünler hazırlanıyor olarak işaretlendi. Müşteri bilgilendirildi.');
       await onChanged(next);
     } catch (err: unknown) {
       setError(friendly(err));
@@ -271,7 +271,7 @@ function OrderDetail({ detail, onBack, onChanged }: { detail: ProducerOrderDetai
       setTracking('');
       setTrackingUrl('');
       setEta('');
-      setStatus('✓ Kargo kaydı başarıyla oluşturuldu. Müşteriye takip numarası ve tahmini teslim bildirimi gönderildi.');
+      setStatus('Kargo kaydı başarıyla oluşturuldu. Müşteriye takip numarası ve tahmini teslim bildirimi gönderildi.');
       await onChanged(next);
     } catch (err: unknown) {
       setStatus('');

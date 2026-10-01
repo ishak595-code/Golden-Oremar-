@@ -142,7 +142,7 @@ export function AdminReviews() {
         <button type="button" onClick={() => void load()} disabled={loading} className="min-h-11 rounded-xl border-2 border-gray-200 bg-white px-4 py-2 flex items-center justify-center gap-2 font-bold text-gray-700 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /> Yenile</button>
       </div>
 
-      {error && <div ref={errorRef} tabIndex={-1} role="alert" aria-live="assertive" className="rounded-xl border-2 border-red-200 bg-red-50 p-4 text-sm font-semibold leading-relaxed text-red-800 outline-none dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">⚠️ {error}</div>}
+      {error && <div ref={errorRef} tabIndex={-1} role="alert" aria-live="assertive" className="rounded-xl border-2 border-red-200 bg-red-50 p-4 text-sm font-semibold leading-relaxed text-red-800 outline-none dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</div>}
 
       <div className="overflow-hidden rounded-2xl border-2 border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
         <div className="flex flex-col gap-3 border-b-2 border-gray-100 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/50 sm:flex-row sm:items-center sm:justify-between">

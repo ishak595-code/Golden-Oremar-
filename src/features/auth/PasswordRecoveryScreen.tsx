@@ -99,12 +99,12 @@ export default function PasswordRecoveryScreen({
         <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
           {error ? (
             <div ref={errorRef} tabIndex={-1} role="alert" className="rounded-xl border-2 border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 outline-none dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">
-              ⚠ {error}
+              {error}
             </div>
           ) : null}
           {success ? (
             <div role="status" aria-live="polite" className="rounded-xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">
-              ✓ Şifreniz başarıyla güncellendi! Yönlendiriliyorsunuz…
+              Şifreniz başarıyla güncellendi! Yönlendiriliyorsunuz…
             </div>
           ) : null}
 
@@ -159,7 +159,7 @@ export default function PasswordRecoveryScreen({
           </label>
 
           <button type="submit" disabled={busy || success} className="min-h-12 w-full rounded-xl border-2 border-brand-green bg-brand-green px-4 font-bold text-white shadow-lg transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
-            {busy ? 'Şifre ve oturum doğrulanıyor…' : success ? 'Şifre güncellendi ✓' : 'Şifremi Güncelle'}
+            {busy ? 'Şifre ve oturum doğrulanıyor…' : success ? 'Şifre güncellendi ' : 'Şifremi Güncelle'}
           </button>
           <button type="button" disabled={busy || success} onClick={cancelRecovery} className="min-h-11 w-full rounded-xl border-2 border-gray-200 px-4 text-sm font-bold transition-all hover:border-brand-gold/30 hover:bg-brand-gold/5 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">
             İşlemi İptal Et ve Bu Cihazdan Çıkış Yap

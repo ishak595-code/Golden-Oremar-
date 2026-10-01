@@ -204,8 +204,8 @@ export default function AuthScreen({
 
       <div id="auth-form-panel" role={mode === 'forgot' ? undefined : 'tabpanel'} aria-labelledby={mode === 'forgot' ? undefined : panelLabelId}>
       <form onSubmit={submit} className="mt-5 space-y-4" noValidate>
-        {error ? <div ref={errorRef} tabIndex={-1} role="alert" className="rounded-xl border-2 border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 outline-none dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">⚠ {error}</div> : null}
-        {message ? <div role="status" aria-live="polite" className="rounded-xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">✓ {message}</div> : null}
+        {error ? <div ref={errorRef} tabIndex={-1} role="alert" className="rounded-xl border-2 border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 outline-none dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div> : null}
+        {message ? <div role="status" aria-live="polite" className="rounded-xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">{message}</div> : null}
 
         {mode === 'register' ? <>
           <label htmlFor="auth-display-name" className="block"><span className="text-sm font-bold">Ad Soyad <span className="text-red-500" aria-label="zorunlu">*</span></span><div className="relative mt-1"><UserRound aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" /><input id="auth-display-name" name="name" value={displayName} onChange={e => setDisplayName(e.target.value.slice(0,120))} minLength={2} maxLength={120} autoComplete="name" required disabled={interactionBusy} placeholder="Adınız ve soyadınız" className={`min-h-12 w-full rounded-xl border-2 border-brand-border bg-transparent pl-11 pr-3 transition-colors hover:border-brand-gold/30 focus:border-brand-green disabled:opacity-60 disabled:cursor-not-allowed ${focusClass}`} /></div></label>

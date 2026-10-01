@@ -81,7 +81,7 @@ export default function ProfilePanel({ overview, onChanged }: {
       setUploadProgress('Profil bilgisi güncelleniyor…');
       await onChanged();
       setUploadProgress('');
-      setMessage('✓ Profil fotoğrafınız güncellendi.');
+      setMessage('Profil fotoğrafınız güncellendi.');
     } catch (err: unknown) {
       setUploadProgress('');
       const message = err instanceof Error ? err.message.toLowerCase() : '';
@@ -110,7 +110,7 @@ export default function ProfilePanel({ overview, onChanged }: {
       await removeCustomerAvatar(p.avatar_path);
       setAvatarConfirmOpen(false);
       await onChanged();
-      setMessage('✓ Profil fotoğrafınız kaldırıldı.');
+      setMessage('Profil fotoğrafınız kaldırıldı.');
     } catch {
       setAvatarConfirmOpen(false);
       setError('Profil fotoğrafı şu anda kaldırılamadı. Lütfen yeniden deneyin.');
@@ -162,7 +162,7 @@ export default function ProfilePanel({ overview, onChanged }: {
       await onChanged();
       setDisplayName(normalizedName);
       setPhone(normalizedPhone);
-      setMessage('✓ Profil bilgileriniz güncellendi.');
+      setMessage('Profil bilgileriniz güncellendi.');
     } catch {
       setError('Profil bilgileriniz şu anda güncellenemedi. Lütfen yeniden deneyin.');
     } finally {

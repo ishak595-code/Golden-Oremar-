@@ -82,7 +82,7 @@ for (const [name, path, overrides] of screens) {
   record(((await frame.getAttribute('src')) || '').startsWith('https://www.youtube-nocookie.com/embed/'), 'privacy-enhanced embed after play');
   record((await frame.getAttribute('allowfullscreen')) !== null && ((await frame.getAttribute('allow')) || '').includes('fullscreen'), 'player allowed to go full screen');
   record((await frame.getAttribute('referrerpolicy')) === 'strict-origin-when-cross-origin', 'referrer policy YouTube requires');
-  record(await page.locator('.go-return-line', { hasText: 'Ambalajı açılmamışsa 14 gün içinde iade' }).count() === 1, 'honey: sealed-packaging withdrawal notice');
+  record(await page.locator('[data-accordion-id="returns"] .go-detail-accordion__teaser', { hasText: 'Ambalajı açılmamışsa 14 gün içinde iade' }).count() === 1, 'honey: sealed-packaging withdrawal notice');
   await context.close();
 }
 {
@@ -91,7 +91,7 @@ for (const [name, path, overrides] of screens) {
   await routeSupabase(page, { get_public_product_detail_v6: 'detail_perishable.json' });
   await page.goto(BASE + '/urun/daglica-karakovan-petek-bali-101');
   await page.waitForTimeout(2200);
-  record(await page.locator('.go-return-line', { hasText: 'Bu üründe cayma hakkı yoktur' }).count() === 1, 'raw milk: no-withdrawal notice');
+  record(await page.locator('[data-accordion-id="returns"] .go-detail-accordion__teaser', { hasText: 'Bu üründe cayma hakkı yoktur' }).count() === 1, 'raw milk: no-withdrawal notice');
   record(await page.locator('#product-video-heading').count() === 0, 'no video section when the product has none');
   await context.close();
 }

@@ -24,7 +24,9 @@ for (const [id, label] of [['story', 'Ürün Hikâyesi'], ['features', 'Ürün �
 }
 check(/<ProductRecommendations[^>]*embedded/.test(detail) && /<ProductRecommendationsRail embedded/.test(detail), 'Recommendations live inside the "Önerilen Ürünler" section.');
 check(/<ProductGallery /.test(detail), 'The product images use ProductGallery.');
-check(/className=\{`go-return-line/.test(detail) && /openDetailSection\('returns'\)/.test(detail) && /<DetailAccordion id="returns"[^>]*İade ve Cayma Hakkı/.test(detail), 'The return terms show as one line under the purchase controls that opens the "İade ve Cayma Hakkı" section.');
+check(!/go-return-line/.test(detail) && /<DetailAccordion id="returns"[^>]*İade ve Cayma Hakkı[^>]*teaser=\{withdrawal\.copy\.title\}/.test(detail), 'Return terms live in the "İade ve Cayma Hakkı" section, whose header always shows the condition (no line under the price).');
+check(!/[\u2600-\u27BF\u{1F300}-\u{1FAFF}]/u.test(detail), 'The product page uses no emoji; states are shown with line icons.');
+check(/go-stock-pill go-stock-pill--out/.test(detail) && /go-stock-pill go-stock-pill--low/.test(detail), 'Stock state is a pill with an icon.');
 check(!/aria-labelledby="product-withdrawal-title" className=\{`mt-6 flex gap-3/.test(detail), 'The large always-open withdrawal box must not come back; the line and the section replace it.');
 
 const accordion = read('src/features/catalog/DetailAccordion.tsx');

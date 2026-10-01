@@ -34,7 +34,7 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
   
   return (
     <div ref={errorRef} tabIndex={-1} role="alert" className="rounded-xl border-2 border-red-200 bg-red-50 p-4 text-sm font-semibold leading-relaxed text-red-800 outline-none dark:border-red-900/70 dark:bg-red-950/30 dark:text-red-200">
-      <p>⚠️ {message}</p>
+      <p>{message}</p>
       {onRetry ? <button type="button" onClick={handleRetry} className="mt-3 min-h-11 rounded-lg border-2 border-red-300 bg-white px-4 font-bold transition-all hover:border-red-400 hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 dark:border-red-800 dark:bg-red-950/30 dark:hover:bg-red-900/30">Tekrar dene</button> : null}
     </div>
   );

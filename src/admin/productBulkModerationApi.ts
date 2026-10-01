@@ -30,6 +30,16 @@ export async function superAdminBulkReviewProducts(input:{approve:boolean;reason
  return normalize(data);
 }
 
+export async function superAdminConfirmOfficialOrigin(productIds:string[],reason?:string){
+ const ids=productIds.filter(Boolean);
+ if(!ids.length)throw new Error('Menşei onayı için en az bir ürün seçin.');
+ if(ids.length>500)throw new Error('Tek işlemde en fazla 500 ürün işlenebilir.');
+ const{data,error}=await supabase.rpc('super_admin_confirm_official_product_origin_v1',{p_product_ids:ids,p_reason:String(reason||'').trim()||null});
+ if(error)throw error;
+ if(!record(data)||typeof data.confirmedCount!=='number'||!Array.isArray(data.skipped))throw new Error('Menşei onayı sonucu doğrulanamadı.');
+ return{confirmedCount:data.confirmedCount,skippedCount:data.skipped.length};
+}
+
 export function bulkModerationErrorMessage(error:unknown){
  const message=String((error as{message?:unknown})?.message||'').trim();
  const map:Array<[string,string]>=[

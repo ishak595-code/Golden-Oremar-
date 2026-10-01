@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, Smartphone, X } from 'lucide-react';
+import { Check, Download, Smartphone, X } from 'lucide-react';
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -115,9 +115,9 @@ export default function PwaInstallPrompt() {
         </div>
         <div className="space-y-3 p-4">
           <ul className="space-y-2 text-sm leading-relaxed text-gray-700 dark:text-gray-300">
-            <li className="flex gap-2"><span className="text-brand-green">✓</span><span>Tek dokunuşla açılır</span></li>
-            <li className="flex gap-2"><span className="text-brand-green">✓</span><span>Daha hızlı yüklenir</span></li>
-            <li className="flex gap-2"><span className="text-brand-green">✓</span><span>Tam ekran deneyim</span></li>
+            <li className="flex gap-2"><Check aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-green"/><span>Tek dokunuşla açılır</span></li>
+            <li className="flex gap-2"><Check aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-green"/><span>Daha hızlı yüklenir</span></li>
+            <li className="flex gap-2"><Check aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-green"/><span>Tam ekran deneyim</span></li>
           </ul>
           <button type="button" onClick={handleInstall} disabled={installing} className="min-h-12 w-full rounded-xl border-2 border-brand-green bg-brand-green px-4 font-bold text-white shadow-lg transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none">
             <span className="flex items-center justify-center gap-2">
