@@ -668,6 +668,23 @@ tasarımı bu istekle DEĞİŞTİ. Güncel tasarım aşağıda (tekrar tartış�
 12. [ ] İleride: `media.goldenoremar.com` özel alan adı. r2.dev'i KAPATMA,
         eski mobil sürümler onu kullanır
 
+## Vitrinler kesintide de açık: gömülü katalog kopyası - 2026-10-01
+
+Sorun: Supabase kotası dolunca her API çağrısı 402 döndü, ana sayfa vitrinleri, kategori ve ürün sayfaları boş kaldı.
+
+Çözüm:
+- `src/lib/offlineCatalog.ts`: Supabase istemcisinin `fetch`i. Yalnız herkese açık, salt okunur katalog çağrıları (18 adet) 402, 5xx veya ağ hatasında uygulamayla gelen kopyadan cevaplanır. Sepet, sipariş, giriş, mesaj gibi yazan çağrılar asla buradan cevaplanmaz.
+- `public/offline-catalog/`: 99 dosya (ana sayfa, 5 vitrin, 42 ürün detayı, 42 sağlık/saklama belgesi, kategoriler, mağaza, etkinlikler). Arama, filtre, öneriler bu kopyadan türetilir.
+- Her dosya canlı veritabanıyla md5 ile birebir doğrulandı (`scripts/offline-catalog/manifest.json`). Tek fark: `0.00` puan değeri `0` olarak saklanır, zaman damgaları değişkendir.
+- Kopya kullanılırken üstte sakin bir bilgi şeridi görünür: "Mağazamız kısa bir bakımda...".
+- SEO ön-üretimi de API kapalıysa bu kopyayı kullanır: 42 ürün, 9 kategori, 1 mağaza sayfası ve site haritası üretilir.
+
+Bakım:
+- API sağlıklıyken ürün veya fiyat değişince: `VITE_SUPABASE_URL=... VITE_SUPABASE_PUBLISHABLE_KEY=... node scripts/offline-catalog/export.mjs`
+- Denetim: `scripts/offline-catalog-contract-audit.mjs` (55. denetim), tarayıcı testi: `scripts/browser/offline-catalog-check.mjs` (18 kontrol).
+
+Veri hatası bulundu (düzeltilecek): yumurta, horoz, iç yağ ve sobalık odun ürünlerinin seçenekleri balık seçenekleri ("Av planı", "Temizleme: Fileto"). Ayrıca 42 ürünün hiçbirinde gerçek ürün fotoğrafı yok; hepsi marka logosunu gösteriyor.
+
 ## İshak'ın yapması gerekenler (kod dışı)
 
 - [ ] Supabase Pro plana geçiş (kota kısıtlaması) - ÖNCE panelden

@@ -62,7 +62,25 @@ const fixture = name => fs.readFileSync(path.join(FIXTURES, name));
  * limit and offset, because the client rejects a page that does not match its
  * own request.
  */
-export async function routeSupabase(page, overrides = {}) {
+/**
+ * The shipped catalogue copy (public/offline-catalog, src/lib/offlineCatalog.ts)
+ * answers when Supabase fails. Checks that test the failure screens hide it
+ * (the default); offline-catalog-check.mjs serves it from these fixtures
+ * ('fixtures') and from the real exported files ('shipped').
+ */
+function offlineCatalogFixture(pathname) {
+  const file = pathname.replace(/^\/offline-catalog\//, '');
+  const detail = JSON.parse(fixture('detail.json'));
+  if (file === 'home_catalog.json') return fixture('home.json');
+  if (file === 'home_experience.json') return fixture('home_experience.json');
+  if (file === 'categories.json') return fixture('categories.json');
+  if (file === 'brand.json') return fixture('brand.json');
+  if (file === `product/${detail.slug}.json`) return fixture('detail.json');
+  return null;
+}
+
+export async function routeSupabase(page, overrides = {}, options = {}) {
+  const offlineCatalog = options.offlineCatalog || 'absent';
   const defaults = {
     get_public_brand_appearance_v1: 'brand.json',
     get_public_home_experience_v1: 'home_experience.json',
@@ -77,6 +95,8 @@ export async function routeSupabase(page, overrides = {}) {
   await page.route('**/*', route => {
     const url = route.request().url();
     const rpc = url.match(/\/rpc\/([a-z0-9_]+)/)?.[1];
+    // The September 2026 outage: every API call answered 402.
+    if (options.quota && (rpc || url.includes('.supabase.co'))) return route.fulfill({ status: 402, contentType: 'application/json', body: '{"message":"Service for this project is restricted due to exceeded usage quota"}' });
     if (rpc && map[rpc] === 'fail') return route.fulfill({ status: 503, contentType: 'application/json', body: '{"message":"upstream timeout"}' });
     if (rpc === 'search_catalog_v3') {
       const request = route.request().postDataJSON() || {};
@@ -87,6 +107,11 @@ export async function routeSupabase(page, overrides = {}) {
     if (rpc && map[rpc]) return route.fulfill({ status: 200, contentType: 'application/json', body: fixture(map[rpc]) });
     if (url.includes('/storage/v1/')) return route.fulfill({ status: 200, contentType: 'image/jpeg', body: fixture('product.jpg') });
     if (url.includes('.supabase.co')) return route.fulfill({ status: 200, contentType: 'application/json', body: rpc ? 'null' : '[]' });
+    if (url.startsWith(BASE) && new URL(url).pathname.startsWith('/offline-catalog/')) {
+      if (offlineCatalog === 'shipped') return route.continue();
+      const body = offlineCatalog === 'fixtures' ? offlineCatalogFixture(new URL(url).pathname) : null;
+      return body ? route.fulfill({ status: 200, contentType: 'application/json', body }) : route.fulfill({ status: 404, body: '' });
+    }
     if (url.startsWith(BASE)) return route.continue();
     return route.abort();
   });

@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { createClient } from '@supabase/supabase-js';
+import { resilientFetch } from './offlineCatalog';
 
 // Supabase project URL and publishable keys are public client configuration, not secrets.
 // Environment variables remain authoritative for CI/native/store builds. The canonical
@@ -47,6 +48,9 @@ export const goldenOremarDeviceId = resolveDeviceId();
 export const supabase = createClient(url, publishableKey, {
   global: {
     headers: goldenOremarDeviceId ? { 'x-golden-device-id': goldenOremarDeviceId } : {},
+    // Public catalogue reads fall back to the copy shipped with the app when
+    // the backend answers 402/5xx or is unreachable (src/lib/offlineCatalog.ts).
+    fetch: resilientFetch,
   },
   auth: {
     persistSession: true,

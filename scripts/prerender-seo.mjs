@@ -96,6 +96,19 @@ async function loadCatalogue() {
   return { home, categories, producers };
 }
 
+// The catalogue copy the app itself falls back to (src/lib/offlineCatalog.ts),
+// so product pages keep their titles and sitemap entries during an outage.
+function shippedCatalogue() {
+  try {
+    const dir = new URL('../public/offline-catalog/', import.meta.url);
+    const read = file => JSON.parse(fs.readFileSync(new URL(file, dir), 'utf8'));
+    const producers = read('producers.json').map(row => read(`producer/${row.slug}.json`));
+    return { home: read('home_catalog.json'), categories: read('categories.json'), producers: { items: producers } };
+  } catch {
+    return null;
+  }
+}
+
 // Same rule as src/lib/mediaUrl.ts: product images are served from the R2 CDN
 // once a base is configured (build variable, else the constant in that file).
 function mediaCdnBase() {
@@ -249,7 +262,11 @@ async function main() {
   try {
     data = await loadCatalogue();
   } catch (error) {
-    warn(`catalogue unavailable (${error?.message || error}); shipping without product pages.`);
+    data = shippedCatalogue();
+    if (data) warn(`catalogue unavailable (${error?.message || error}); using the shipped copy in public/offline-catalog.`);
+  }
+  if (!data) {
+    warn('catalogue unavailable and no shipped copy; shipping without product pages.');
     writeSitemap(origin, urls);
     writeRobots(origin);
     return;
