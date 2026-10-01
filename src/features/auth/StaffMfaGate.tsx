@@ -39,7 +39,7 @@ export default function StaffMfaGate({factorEnrolled,onVerified,onLogout}:Props)
  async function verify(){if(busy||!/^[0-9]{6}$/.test(code))return;setBusy(true);setError('');try{if(mode==='enroll'&&enrollment)await verifyStaffTotpEnrollment(enrollment.factorId,code);else await verifyExistingStaffTotp(code,selectedFactorId||undefined);setSuccess(true);await onVerified();}catch(next){setSuccess(false);setError(safeError(next));setCode('');}finally{setBusy(false);}}
 
  return<div className="min-h-screen bg-brand-main px-4 py-8 text-brand-text sm:px-6">
-  <main className="mx-auto max-w-xl rounded-3xl border border-brand-border bg-brand-card p-5 shadow-xl sm:p-7" aria-labelledby="staff-mfa-title" aria-describedby="staff-mfa-intro">
+  <section className="mx-auto max-w-xl rounded-3xl border border-brand-border bg-brand-card p-5 shadow-xl sm:p-7" aria-labelledby="staff-mfa-title" aria-describedby="staff-mfa-intro">
    <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-green/10 text-brand-green"><ShieldCheck aria-hidden="true" className="h-7 w-7"/></div>
    <h1 ref={titleRef} tabIndex={-1} id="staff-mfa-title" className="mt-4 text-center text-2xl font-black outline-none focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2">Yönetim için iki aşamalı doğrulama</h1>
    <p id="staff-mfa-intro" className="mt-2 text-center text-sm leading-6 text-brand-muted">Yönetim yetkileri yalnız ikinci faktörle doğrulanmış AAL2 oturumunda açılır. Bu kontrol sunucudaki capability katmanında da uygulanır.</p>
@@ -56,7 +56,7 @@ export default function StaffMfaGate({factorEnrolled,onVerified,onLogout}:Props)
    {mode==='challenge'?<section className="mt-6 space-y-4" aria-labelledby="staff-mfa-challenge-title">{factors.length>1?<label className="block"><span className="mb-1 block text-sm font-bold">Authenticator</span><select value={selectedFactorId} onChange={event=>setSelectedFactorId(event.target.value)} disabled={busy} className="min-h-11 w-full rounded-xl border border-brand-border bg-brand-card px-3 outline-none focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2">{factors.map(factor=><option key={factor.id} value={factor.id}>{factor.friendlyName}</option>)}</select></label>:null}<div className="rounded-2xl border border-brand-border p-4"><div id="staff-mfa-challenge-title" className="flex items-center gap-2 font-black"><KeyRound aria-hidden="true" className="h-5 w-5 text-brand-green"/>Authenticator kodunu girin</div><p className="mt-2 text-sm leading-6 text-brand-muted">Kayıtlı uygulamanızdaki güncel 6 haneli kod doğrulandıktan sonra yönetim capability'leri açılır.</p></div><CodeForm code={code} setCode={setCode} busy={busy} onVerify={verify} label="AAL2 ile doğrula" hasError={Boolean(error)}/></section>:null}
 
    <button type="button" onClick={()=>void onLogout()} disabled={busy} className="mt-6 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-brand-border px-4 font-bold outline-none focus-visible:ring-2 focus-visible:ring-brand-green focus-visible:ring-offset-2 disabled:opacity-50"><LogOut aria-hidden="true" className="h-4 w-4"/>Güvenli çıkış yap</button>
-  </main>
+  </section>
  </div>;
 }
 

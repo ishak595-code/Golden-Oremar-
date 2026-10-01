@@ -19,7 +19,7 @@
   --color-gray-200: #D5DDD8;
   --color-gray-300: #B8C9C0;
   --color-gray-400: #95A89E;
-  --color-gray-500: #667A70;
+  --color-gray-500: #566960;
   --color-gray-600: #4B6156;
   --color-gray-700: #35483F;
   --color-gray-800: #24332D;
@@ -337,4 +337,12 @@ nav[aria-label="Ana gezinme"] button > span.relative > span[aria-hidden="true"] 
   @page {
     margin: 1.5cm;
   }
+}
+
+/* Readable muted text in the dark scheme. Tailwind's gray-500 is tuned for
+   light backgrounds and drops below 4.5:1 on the dark cards; where a screen
+   did not give it a dark: variant of its own, it follows the theme's muted
+   token instead. */
+:where([data-color-scheme="dark"], [data-theme="dark"]) .text-gray-500:not([class*="dark:text-"]) {
+  color: var(--text-muted);
 }

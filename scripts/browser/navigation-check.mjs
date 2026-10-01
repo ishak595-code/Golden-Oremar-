@@ -36,7 +36,7 @@ const PRODUCT = '/urun/daglica-karakovan-petek-bali-101';
 // Visitors fill a guest cart and stay where they are; the account is asked
 // for at checkout (see checkout-check.mjs).
 const guestLines = page => page.evaluate(() => JSON.parse(localStorage.getItem('golden_oremar_guest_cart_v1') || '[]').length);
-await step('category page: add to cart, signed out', '/kategori/bal-sifa', p => p.locator('button:has-text("Sepete Ekle")').first().click(), async p => ({ ok: (await guestLines(p)) === 1 && addressOf(p) === '/kategori/bal-sifa', detail: `${addressOf(p)}, guest cart lines=${await guestLines(p)}` }));
+await step('category page: add to cart, signed out', '/kategori/bal-sifa', p => p.locator('button[aria-label$="sepete ekle"], button:has-text("Sepete Ekle")').first().click(), async p => ({ ok: (await guestLines(p)) === 1 && addressOf(p) === '/kategori/bal-sifa', detail: `${addressOf(p)}, guest cart lines=${await guestLines(p)}` }));
 await step('category page: favourite, signed out', '/kategori/bal-sifa', p => p.locator('button[aria-label="Favorilere ekle"]').first().click(), async p => ({ ok: await loginShown(p), detail: `${addressOf(p)}, sign-in shown=${await loginShown(p)}` }));
 await step('category page: product card', '/kategori/bal-sifa', p => p.locator('.go-product-card__media > button').first().click(), async p => ({ ok: addressOf(p).startsWith('/urun/'), detail: addressOf(p) }));
 await step('product page: add to cart, signed out', PRODUCT, async p => { const b = p.locator('button', { hasText: /Sepete ekle/i }).first(); await b.scrollIntoViewIfNeeded(); await b.click(); }, async p => ({ ok: (await guestLines(p)) === 1 && addressOf(p) === PRODUCT, detail: `${addressOf(p)}, guest cart lines=${await guestLines(p)}` }));

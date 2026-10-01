@@ -182,7 +182,7 @@ export default function AuthScreen({
   const focusClass = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold';
   const panelLabelId = mode === 'register' ? 'auth-register-tab' : 'auth-login-tab';
 
-  return <main className="mx-auto flex min-h-[70vh] max-w-lg items-center p-4 sm:p-6" aria-labelledby="auth-title">
+  return <section className="mx-auto flex min-h-[70vh] max-w-lg items-center p-4 sm:p-6" aria-labelledby="auth-title">
     <section className="w-full rounded-3xl border-2 border-gray-200 bg-white p-5 shadow-lg dark:border-gray-700 dark:bg-gray-900 sm:p-7" aria-busy={interactionBusy}>
       <div className="text-center">
         <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-brand-green/10 text-brand-green"><LockKeyhole aria-hidden="true" className="h-8 w-8" /></div>
@@ -228,5 +228,5 @@ export default function AuthScreen({
 
       {/* No note when social sign-in is off: customers only ever see buttons that work. */}
     </section>
-  </main>;
+  </section>;
 }

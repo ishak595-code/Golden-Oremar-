@@ -87,7 +87,7 @@ export default function PublicInfoScreen({
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6 sm:py-8" aria-labelledby="public-info-title">
+    <section className="mx-auto max-w-4xl px-4 py-6 sm:py-8" aria-labelledby="public-info-title">
       <div className="mb-5 flex items-start gap-3">
         {onBack ? <button type="button" onClick={onBack} className="min-h-11 rounded-xl border-2 border-gray-200 bg-white px-4 font-bold shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600" aria-label="Önceki ekrana dön"><ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4" />Geri</button> : null}
         <div className="min-w-0">
@@ -108,6 +108,6 @@ export default function PublicInfoScreen({
       {error ? <div role="alert" className="rounded-xl border-2 border-red-200 bg-red-50 p-4 font-semibold leading-relaxed text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">⚠️ {error}</div> : null}
       {!loading && !error && !item ? <div role="status" className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-900/60 dark:bg-amber-950/30"><h2 className="font-black text-amber-900 dark:text-amber-100">Bu metin henüz yayınlanmadı</h2><p className="mt-2 text-sm leading-relaxed text-amber-800 dark:text-amber-200">Golden Oremar doğrulanmamış veya eksik bir hukuk metnini kullanıcıya nihai metin gibi göstermiyor.</p></div> : null}
       {!loading && !error && item ? <article className="rounded-2xl border-2 border-gray-200 bg-white p-5 shadow-lg dark:border-gray-700 dark:bg-gray-900 sm:p-7">{source ? <SafePublishedBody source={source} /> : <div role="status" className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4 font-semibold leading-relaxed text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">⚠️ Yayın kaydının içerik gövdesi doğrulanamadı.</div>}<p className="mt-6 border-t-2 border-gray-200 pt-4 text-xs font-semibold text-gray-500 dark:border-gray-700 dark:text-gray-400">Yayın kaydı: {publicationDate || 'Tarih doğrulanamadı'}</p></article> : null}
-    </main>
+    </section>
   );
 }

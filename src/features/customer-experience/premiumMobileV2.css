@@ -142,3 +142,8 @@ nav[aria-label="Ana gezinme"] button svg{width:22px!important;height:22px!import
 @media(pointer:coarse){:root[data-app-tab="home"] header,nav[aria-label="Ana gezinme"]{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}.go-category-card:hover{transform:none}}
 @media(hover:hover){.go-category-card:hover{border-color:var(--go-border);background:var(--go-forest-800)}}
 @media(prefers-reduced-motion:reduce){.go-category-card,.go-premium-image img,.go-search-bar input,.go-search-bar__clear,.go-search-bar__voice,:root[data-app-tab="home"] header>div:last-child>div,:root[data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"] img{transition:none!important}.go-premium-image__skeleton,.go-heading-skeleton,.go-category-skeleton,.go-product-skeleton>span,.go-product-skeleton i,.go-search-bar__voice::after{animation:none!important}}
+
+/* The tab bar is always dark forest, in every theme. Its labels follow the
+   button colour; a light-theme text class on the label (gray-600 on forest,
+   2.4:1) made them unreadable in the light themes. */
+nav[aria-label="Ana gezinme"] button span.truncate{color:inherit!important;}

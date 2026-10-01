@@ -138,7 +138,7 @@ export default function PublicHealthScreen({ onBack, authenticated, locale = 'tr
   const activeTotal = totals[active];
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+    <section className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
       <button type="button" onClick={onBack} className="mb-5 min-h-11 rounded-xl border-2 border-brand-border bg-brand-card px-4 font-semibold transition-all hover:border-brand-gold/30 hover:bg-brand-gold/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4" />Geri</button>
       <header className="overflow-hidden rounded-3xl border-2 border-brand-green bg-brand-green p-5 text-white shadow-lg sm:p-6"><div className="text-xs font-bold uppercase tracking-[0.16em] text-brand-gold">Golden Oremar Bilgi Merkezi</div><h1 className="mt-1 text-3xl font-bold">Sağlık & Tarifler</h1><p className="mt-2 max-w-3xl text-white/80">Ürün güvenliği, saklama/kullanım rehberleri ve Golden Oremar tarifleri. Sağlık içerikleri tanı veya tedavi iddiası olarak sunulmaz.</p></header>
 
@@ -178,7 +178,7 @@ export default function PublicHealthScreen({ onBack, authenticated, locale = 'tr
 
       {detailLoading ? <ContentLoadingDialog onClose={cancelDetailLoading} /> : null}
       {detail ? <ContentDialog detail={detail} onClose={() => setDetail(null)} onOpenProduct={onOpenProduct} /> : null}
-    </main>
+    </section>
   );
 }
 

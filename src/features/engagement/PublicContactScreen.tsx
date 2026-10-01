@@ -99,7 +99,7 @@ export default function PublicContactScreen({ onBack, currentUser, locale = 'tr'
   const publishedPhone = directChannelsReady ? safePhone(config?.phone) : '';
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+    <section className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
       <button type="button" onClick={onBack} className="mb-5 min-h-11 rounded-xl border px-4 font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4" />Geri</button>
       <header className="overflow-hidden rounded-3xl bg-brand-green p-5 text-white shadow-sm sm:p-6">
         <div className="text-xs font-bold uppercase tracking-[0.16em] text-brand-gold">Golden Oremar Destek</div>
@@ -136,6 +136,6 @@ export default function PublicContactScreen({ onBack, currentUser, locale = 'tr'
           </form>
         </section>
       </div>
-    </main>
+    </section>
   );
 }

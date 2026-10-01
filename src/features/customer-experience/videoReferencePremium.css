@@ -233,8 +233,11 @@
 
 :root[data-app-tab="home"] header input[aria-label="Ürün, üretici veya köy ara"] {
   border-radius: 999px !important;
-  border-color: color-mix(in srgb, var(--border-main) 86%, transparent) !important;
-  background: color-mix(in srgb, var(--bg-card) 88%, var(--brand-green) 12%) !important;
+  /* The home shell is forest dark in every theme, so the field keeps the
+     search bar's own dark surface; a theme card colour here put ivory text
+     on a light field (1.1:1) in the light themes. */
+  border-color: var(--go-border) !important;
+  background: var(--go-forest-800) !important;
 }
 
 /* Product detail: local app bar, large visual, compact commerce controls and calm disclosures. */

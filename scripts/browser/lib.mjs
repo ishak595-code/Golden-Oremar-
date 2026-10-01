@@ -89,6 +89,7 @@ export async function routeSupabase(page, overrides = {}, options = {}) {
     catalog_search_facets_v1: 'facets.json',
     get_public_product_detail_v6: 'detail.json',
     search_catalog_v3: 'search.json',
+    get_public_producer_profile_v3: 'producer.json',
     catalog_search_suggestions_v1: 'suggestions.json',
   };
   const map = { ...defaults, ...overrides };
@@ -189,7 +190,12 @@ export async function signedIn(page, { cart = [], addresses = [], payments = { h
     },
     remove_my_cart_item_v1: body => { state.lines = state.lines.filter(line => line.cartItemId !== body.p_cart_item_id); return snapshot(); },
     clear_my_cart_v1: () => { state.lines = []; return snapshot(); },
-    get_my_account_overview_v1: () => ({ addresses: state.addresses, profile: { display_name: 'Ayşe Yılmaz', phone: '+905551112233' } }),
+    get_my_account_overview_v1: () => ({
+      profile: { id: userId, email: 'musteri@example.com', display_name: 'Ayşe Yılmaz', phone: '+905551112233', avatar_path: null, locale: 'tr', status: 'active', marketing_consent: false, marketing_consent_at: null, created_at: '2026-09-01T10:00:00Z', last_seen_at: null },
+      roles: ['customer'], addresses: state.addresses,
+      summary: { favorite_count: 0, address_count: state.addresses.length, order_count: 0, active_order_count: 0, return_count: 0, gift_count: 0, followed_producer_count: 0, unread_notification_count: 0 },
+      recent_orders: [], producer: null, account_closure: null,
+    }),
     get_checkout_payment_readiness_v3: () => readiness,
     list_my_payment_methods_v1: () => [],
     preview_my_checkout_v1: body => {

@@ -86,7 +86,7 @@ export default function PasswordRecoveryScreen({
   }
 
   return (
-    <main className="mx-auto flex min-h-[70vh] max-w-lg items-center p-4 sm:p-6" aria-labelledby="password-recovery-title">
+    <section className="mx-auto flex min-h-[70vh] max-w-lg items-center p-4 sm:p-6" aria-labelledby="password-recovery-title">
       <section className="w-full rounded-3xl border-2 border-gray-200 bg-white p-5 shadow-lg dark:border-gray-700 dark:bg-gray-900 sm:p-7" aria-busy={busy}>
         <div className="text-center">
           <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-brand-gold/10 text-brand-gold" aria-hidden="true">
@@ -166,6 +166,6 @@ export default function PasswordRecoveryScreen({
           </button>
         </form>
       </section>
-    </main>
+    </section>
   );
 }
