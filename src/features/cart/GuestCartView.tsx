@@ -1,20 +1,29 @@
-import React,{useState}from'react';
-import{ArrowLeft,LogIn,Minus,Plus,ShieldCheck,ShoppingCart,Trash2}from'lucide-react';
+import React,{useEffect,useState}from'react';
+import{ArrowLeft,LogIn,MessageCircle,Minus,Plus,ShieldCheck,ShoppingCart,Trash2}from'lucide-react';
 import{publicCatalogUrl}from'./api';
 import{formatMoney}from'./checkoutHelpers';
-import{removeGuestCartLines,setGuestCartQuantity,useGuestCart}from'./guestCart';
+import{clearGuestCart,removeGuestCartLines,setGuestCartQuantity,useGuestCart}from'./guestCart';
+import OfflineOrderSheet from'../orders/OfflineOrderSheet';
+import{getOfflineOrderingConfig,offlineOrderingAvailable}from'../orders/offlineOrderApi';
 import'./cart.css';
 
 /**
- * The cart of a visitor who has not signed in. Everything can be done here
- * except paying: the account is asked for only at "Siparişi tamamla", and
- * the choices move into the account cart as soon as the visitor signs in.
+ * The cart of a visitor who has not signed in. While card payment is off the
+ * visitor can finish the order right here (WhatsApp or bank transfer, no
+ * account needed); otherwise the account is asked for at "Siparişi tamamla",
+ * and the choices move into the account cart as soon as the visitor signs in.
  * Prices shown here are the ones seen when the item was added; the account
  * cart re-reads them from the server.
  */
 export default function GuestCartView({onBack,onOpenProduct,authSlot}:{onBack?:()=>void;onOpenProduct?:(slug:string)=>void;authSlot:React.ReactNode}){
  const lines=useGuestCart();
  const[signIn,setSignIn]=useState(false);
+ const[offlineReady,setOfflineReady]=useState(false);
+ const[offlineOpen,setOfflineOpen]=useState(false);
+ // The cart empties when the receipt is closed, not at submit, so the order
+ // code and IBAN stay on screen until the customer is done with them.
+ const[orderPlaced,setOrderPlaced]=useState(false);
+ useEffect(()=>{let active=true;void getOfflineOrderingConfig().then(config=>{if(active)setOfflineReady(offlineOrderingAvailable(config));}).catch(()=>{});return()=>{active=false;};},[]);
  const currency=lines[0]?.currency||'TRY';
  const count=lines.reduce((total,line)=>total+line.quantity,0);
  const subtotal=lines.reduce((total,line)=>total+line.priceMinor*line.quantity,0);
@@ -42,8 +51,18 @@ export default function GuestCartView({onBack,onOpenProduct,authSlot}:{onBack?:(
   <section className="rounded-3xl border-2 border-gray-200 bg-white p-5 shadow-lg dark:border-gray-700 dark:bg-gray-900 sm:p-6" aria-labelledby="guest-cart-summary"><h2 id="guest-cart-summary" className="text-lg font-bold">Sipariş özeti</h2>
    {mixedCurrency?null:<div className="mt-5 flex justify-between text-lg"><span className="font-bold">Ara toplam</span><strong className="font-black">{formatMoney(subtotal,currency)}</strong></div>}
    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">Kargo, kupon ve güncel fiyatlar bir sonraki adımda hesaplanır.</p>
-   <div className="mt-5 flex gap-3 rounded-2xl border-2 border-brand-green/20 bg-brand-green/5 p-4 text-sm font-semibold leading-relaxed dark:border-brand-green/30"><ShieldCheck className="h-5 w-5 shrink-0 text-brand-green" aria-hidden="true"/><p>Siparişi tamamlamak için giriş yapın veya ücretsiz hesap oluşturun. Sepetinizdeki ürünler hesabınıza otomatik aktarılır.</p></div>
-   <button type="button" onClick={()=>setSignIn(true)} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-4 font-bold text-brand-on-green shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><LogIn className="h-5 w-5" aria-hidden="true"/>Siparişi tamamla</button>
+   {offlineReady&&!mixedCurrency?<>
+    <div className="mt-5 flex gap-3 rounded-2xl border-2 border-brand-green/20 bg-brand-green/5 p-4 text-sm font-semibold leading-relaxed dark:border-brand-green/30"><ShieldCheck className="h-5 w-5 shrink-0 text-brand-green" aria-hidden="true"/><p>Üye olmadan sipariş verebilirsiniz: WhatsApp veya Havale/EFT ile. Sipariş kodunuz anında oluşur; tutar ve kargo kesinleşmiş olarak gösterilir.</p></div>
+    <button type="button" onClick={()=>setOfflineOpen(true)} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-4 font-bold text-brand-on-green shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><MessageCircle className="h-5 w-5" aria-hidden="true"/>Siparişi tamamla</button>
+    <button type="button" onClick={()=>setSignIn(true)} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 font-semibold"><LogIn className="h-4 w-4" aria-hidden="true"/>Hesabıma giriş yap</button>
+   </>:<>
+    <div className="mt-5 flex gap-3 rounded-2xl border-2 border-brand-green/20 bg-brand-green/5 p-4 text-sm font-semibold leading-relaxed dark:border-brand-green/30"><ShieldCheck className="h-5 w-5 shrink-0 text-brand-green" aria-hidden="true"/><p>Siparişi tamamlamak için giriş yapın veya ücretsiz hesap oluşturun. Sepetinizdeki ürünler hesabınıza otomatik aktarılır.</p></div>
+    <button type="button" onClick={()=>setSignIn(true)} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-4 font-bold text-brand-on-green shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><LogIn className="h-5 w-5" aria-hidden="true"/>Siparişi tamamla</button>
+   </>}
   </section>
+  <OfflineOrderSheet open={offlineOpen} onClose={()=>{setOfflineOpen(false);if(orderPlaced){setOrderPlaced(false);clearGuestCart();}}} source="cart"
+   lines={lines.map(line=>({key:line.key,productName:line.productName,variantName:line.variantName,quantity:line.quantity,priceMinor:line.priceMinor,currency:line.currency}))}
+   items={lines.map(line=>({variantId:line.variantId,quantity:line.quantity,selectedOptions:line.selectedOptions}))}
+   onSubmitted={()=>setOrderPlaced(true)}/>
  </div>;
 }

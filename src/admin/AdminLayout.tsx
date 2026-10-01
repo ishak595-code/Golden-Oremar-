@@ -32,6 +32,7 @@ import {
   Users,
   X,
   Megaphone,
+  MessageCircle,
 } from 'lucide-react';
 import { useCustomerSession } from '../features/auth/useCustomerSession';
 import { useAuthorization } from '../features/auth/AuthorizationContext';
@@ -53,6 +54,7 @@ const ADMIN_MENU_GROUPS: MenuGroup[] = [
     { id: 'product-removal', label: 'Güvenli Ürün Kaldırma', icon: Trash2 },
     { id: 'categories', label: 'Kategoriler', icon: Tags },
     { id: 'orders', label: 'Siparişler', icon: Package },
+    { id: 'order-requests', label: 'WhatsApp ve Havale Siparişleri', icon: MessageCircle },
     { id: 'returns', label: 'İadeler', icon: RotateCcw },
     { id: 'stock', label: 'Stok Gözetimi', icon: TrendingUp },
     { id: 'shipping-readiness', label: 'Kargo Hazırlığı', icon: Package },
