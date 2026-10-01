@@ -48,7 +48,7 @@ const ACCOUNT_VIEWS = new Set([
 const SELLER_SUBVIEWS = new Set(['dashboard', 'orders', 'messages', 'traceability', 'finance', 'events', 'product-health']);
 const ADMIN_VIEWS = new Set([
   'dashboard', 'production-readiness', 'business-compliance', 'official-store-products', 'product-health', 'products',
-  'product-approvals', 'product-removal', 'orders', 'returns', 'stock', 'shipping-readiness', 'finance',
+  'product-approvals', 'product-removal', 'orders', 'order-requests', 'returns', 'stock', 'shipping-readiness', 'finance',
   'producer-payouts', 'payment-controls', 'transactional-emails', 'users', 'account-erasure', 'role-governance',
   'system-errors', 'content', 'settings', 'categories', 'vendors', 'storefronts', 'reviews', 'campaigns',
   'notifications', 'vendor-applications', 'events', 'producer-event-submissions',

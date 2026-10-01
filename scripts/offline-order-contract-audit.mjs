@@ -40,6 +40,14 @@ need(base, "available_quantity + (line->>'quantity')::integer", 'Cancelling a co
 need(base, "i.available_quantity - coalesce(i.reserved_quantity, 0) >= (line->>'quantity')::integer", 'Confirming must never push stock below zero.');
 need(base, "write_admin_audit_v2('order_request.updated'", 'Staff changes to order requests must be audited.');
 
+const staff = read('supabase/migrations/20261001175000_order_request_staff_notifications_v1.sql');
+need(staff, /after insert on private\.order_requests\s+for each row execute function private\.notify_staff_new_order_request_v1\(\)/, 'Every new order request must notify staff.');
+need(staff, "private.user_has_permission_v1(staff.user_id, 'order.read')", 'Only staff who may read orders may be told about a new order request.');
+need(staff, "exception when others then", 'A notification failure must never lose the customer order.');
+forbid(staff.slice(0, staff.indexOf('create or replace function private.process_product_sales_windows_v1')), /new\.(phone|address_line|customer_name|email)/, 'Staff notices must not carry the customer name, phone, e-mail or address (push previews show on locked screens).');
+forbid(staff.slice(staff.indexOf('create or replace function private.process_product_sales_windows_v1')), "'product_preorder_open', 'Sipariş", 'Pre-order notices must use an allowed notification type.');
+need(read('src/features/navigation/appUrl.ts'), "'order-requests'", 'The /admin/order-requests link in staff notices must open the order requests screen.');
+
 const api = read('src/features/orders/offlineOrderApi.ts');
 need(api, "supabase.rpc('submit_order_request_v1'", 'The storefront must submit through submit_order_request_v1.');
 forbid(api.slice(api.indexOf('export async function submitOfflineOrder')), /p_items:[^;]*priceMinor/, 'The client must not send prices.');
