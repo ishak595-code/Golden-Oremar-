@@ -22,5 +22,11 @@ need(/is distinct from \(excluded\.\*\)/.test(sql), 'Rebuilds must write only ch
 need(/cron\.schedule\('golden-oremar-catalog-card-snapshot','30 seconds'/.test(sql), 'The snapshot must be rebuilt every 30 seconds.');
 need(!/grant [^;]* to (anon|authenticated)/i.test(sql), 'Snapshot objects must not be granted to anon or authenticated.');
 
+const search = fs.readFileSync('supabase/migrations/20261001165000_search_catalog_snapshot_v1.sql', 'utf8');
+need(/from private\.catalog_public_card_rows_v1\(\)/.test(search), 'Search must read the card snapshot, not rebuild every product.');
+need(!/similarity\(\s*cards\.product_search_text/.test(search), 'Search must not run trigram similarity on the long search text (cost without ranking value).');
+need(/regexp_replace\(q,/.test(search), 'The query must be escaped before it is used in a regular expression.');
+need(/char_length\(q\)>=4/.test(search), 'Short queries must match whole words in category and description text.');
+
 if (failures.length) { console.error('Catalogue snapshot contract audit failed:'); for (const f of failures) console.error(`- ${f}`); process.exit(1); }
 console.log('Catalogue snapshot contract audit passed: fresh-or-live reads, instant invalidation on edits, race-safe rebuilds every 30 seconds, no public grants.');
