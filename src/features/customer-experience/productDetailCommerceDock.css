@@ -111,3 +111,27 @@
     font-size: .68rem;
   }
 }
+
+/* The safety centre button (report/block, required for user content) stays
+   reachable everywhere without covering the page: an icon above the tab bar
+   on phones, lifted above the purchase and checkout bars where they show. */
+.go-safety-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  min-width: 2.75rem;
+  padding: 0 .7rem;
+  bottom: calc(5.6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+}
+.go-safety-fab__label { display: none; }
+@media (min-width: 1024px) {
+  .go-safety-fab { padding: 0 1rem; bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
+  .go-safety-fab__label { display: inline; }
+}
+@media (max-width: 1023px) {
+  :root[data-app-tab="product-detail"] .go-safety-fab,
+  :root[data-cart-dock="on"] .go-safety-fab {
+    bottom: calc(6.6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  }
+}

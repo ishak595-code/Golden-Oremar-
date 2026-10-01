@@ -1,4 +1,5 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
+import{addToGuestCart}from'../cart/guestCart';
 import{ArrowLeft,Award,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Compass,Copy,ExternalLink,Gift,Heart,Info as InfoIcon,MapPin,MessageCircle,Minus,PackageCheck,Plus,QrCode,ScanLine,Share2,ShieldCheck,ShoppingCart,Sparkles,Star,Store,Truck,X,ZoomIn}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProductFavorite}from'./api';
 import PremiumOrderConfigurator from'./PremiumOrderConfigurator';
@@ -160,9 +161,14 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  function purchaseIssueMessage(){if(orderConfigurationError)return orderConfigurationError;if(soldOut)return'Bu ürün şu anda stokta yok. Stok güncellemesi için lütfen daha sonra tekrar kontrol edin.';if(!priceReady)return'Fiyat bilgisi şu anda gösterilemiyor. Lütfen sayfayı yenileyin.';if(!stockReady)return'Stok bilgisi yenileniyor. Lütfen birkaç saniye bekleyin.';return'Bu seçenek şu anda satın alınamıyor. Lütfen farklı bir seçenek deneyin.';}
  function moveImage(delta:number){if(images.length<2)return;const next=(selectedImageIndex+delta+images.length)%images.length;setSelectedImagePath(safeText(images[next]?.path,1200));}
  function selectedOptionsPayload(){const customization=buildOrderCustomization(experience,selectedOrderOptions);return customization?{orderCustomization:customization}:{};}
+ // A visitor's choice goes to the cart on this device; signing in moves it
+ // into the account cart (see cart/guestCart.ts).
+ function addToGuestCartFromPage(){
+  addToGuestCart({variantId:variantReference!,selectedOptions:selectedOptionsPayload(),productSlug:safeText(detail?.slug,220)||safeText(detail?.id,160),productName:safeText(detail?.name,300),variantName:safeText(variant?.name,240),producerName:safeText(detail?.producer?.name,240),priceMinor:priceMinor!,currency:currency!,imagePath:safeText((images.find((item:any)=>item?.primary===true)||images[0])?.path,1000)||null},quantity);
+ }
  async function addToCart(){
-  if(!authenticated){onLoginRequired();return;}
   if(!purchaseReady||!variantReference){setError(purchaseIssueMessage());return;}
+  if(!authenticated){try{setError('');addToGuestCartFromPage();setStatus(preorder?'Sipariş sepete eklendi.':'Sepete eklendi.');}catch(err){setError(err instanceof Error&&err.message?err.message:'Ürün sepete eklenemedi.');}return;}
   try{setBusy(true);setError('');setStatus('');await setCartItem({variantId:variantReference,quantity,selectedOptions:selectedOptionsPayload()});await onCartChanged?.();setStatus(preorder?'Sipariş sepete eklendi.':'Sepete eklendi.');}
   catch(err){setError(err instanceof Error&&err.message?err.message:'Ürün sepete eklenemedi. Lütfen tekrar deneyin.');}
   finally{setBusy(false);}
@@ -171,8 +177,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  function navigateToCart(){pushInternalRoute(buildTabUrl('cart'),'cart');}
  function navigateToCategory(slug:string){pushInternalRoute(buildSearchUrl({query:'',categorySlug:slug,producerId:null}),'search-results');}
  async function buyNow(){
-  if(!authenticated){onLoginRequired();return;}
   if(!purchaseReady||!variantReference){setError(purchaseIssueMessage());return;}
+  if(!authenticated){try{setError('');addToGuestCartFromPage();navigateToCart();}catch(err){setError(err instanceof Error&&err.message?err.message:'Satın alma işlemi başlatılamadı.');}return;}
   try{setBusy(true);setError('');setStatus('');await setCartItem({variantId:variantReference,quantity,selectedOptions:selectedOptionsPayload()});await onCartChanged?.();navigateToCart();}
   catch(err){setError(err instanceof Error&&err.message?err.message:'Satın alma işlemi başlatılamadı. Lütfen tekrar deneyin.');}
   finally{setBusy(false);}

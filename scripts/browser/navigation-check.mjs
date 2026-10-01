@@ -33,10 +33,13 @@ async function step(label, path, act, verify) {
 
 const PRODUCT = '/urun/daglica-karakovan-petek-bali-101';
 
-await step('category page: add to cart, signed out', '/kategori/bal-sifa', p => p.locator('button:has-text("Sepete Ekle")').first().click(), async p => ({ ok: await loginShown(p), detail: `${addressOf(p)}, sign-in shown=${await loginShown(p)}` }));
+// Visitors fill a guest cart and stay where they are; the account is asked
+// for at checkout (see checkout-check.mjs).
+const guestLines = page => page.evaluate(() => JSON.parse(localStorage.getItem('golden_oremar_guest_cart_v1') || '[]').length);
+await step('category page: add to cart, signed out', '/kategori/bal-sifa', p => p.locator('button:has-text("Sepete Ekle")').first().click(), async p => ({ ok: (await guestLines(p)) === 1 && addressOf(p) === '/kategori/bal-sifa', detail: `${addressOf(p)}, guest cart lines=${await guestLines(p)}` }));
 await step('category page: favourite, signed out', '/kategori/bal-sifa', p => p.locator('button[aria-label="Favorilere ekle"]').first().click(), async p => ({ ok: await loginShown(p), detail: `${addressOf(p)}, sign-in shown=${await loginShown(p)}` }));
 await step('category page: product card', '/kategori/bal-sifa', p => p.locator('.go-product-card__media > button').first().click(), async p => ({ ok: addressOf(p).startsWith('/urun/'), detail: addressOf(p) }));
-await step('product page: add to cart, signed out', PRODUCT, async p => { const b = p.locator('button', { hasText: /Sepete ekle/i }).first(); await b.scrollIntoViewIfNeeded(); await b.click(); }, async p => ({ ok: await loginShown(p), detail: `${addressOf(p)}, sign-in shown=${await loginShown(p)}` }));
+await step('product page: add to cart, signed out', PRODUCT, async p => { const b = p.locator('button', { hasText: /Sepete ekle/i }).first(); await b.scrollIntoViewIfNeeded(); await b.click(); }, async p => ({ ok: (await guestLines(p)) === 1 && addressOf(p) === PRODUCT, detail: `${addressOf(p)}, guest cart lines=${await guestLines(p)}` }));
 await step('product page: category chip', PRODUCT, p => p.locator('button', { hasText: /Bal & Dağ Bitkileri/i }).first().click(), async p => ({ ok: addressOf(p) === '/kategori/bal-sifa', detail: addressOf(p) }));
 await step('product page: "Bu Ürünün Dünyası" > Kategori, then reload', PRODUCT, async p => { await p.getByRole('button', { name: /Bu Ürünün Dünyası/ }).click(); await p.waitForTimeout(600); await p.locator('.go-product-context-links__actions > button').first().click(); await p.waitForTimeout(1200); await p.reload(); await p.waitForTimeout(2300); }, async p => ({ ok: addressOf(p) === '/?tab=categories&category=bal-sifa' && await tabOf(p) === 'categories', detail: `${addressOf(p)}, tab after reload=${await tabOf(p)}` }));
 await step('product page: back button', '/', async p => { await p.locator('[data-product-link="true"]').first().click(); await p.waitForTimeout(1200); await p.locator('button[aria-label*="Geri"], button[aria-label*="geri"]').first().click(); }, async p => ({ ok: addressOf(p) === '/' || addressOf(p).startsWith('/?'), detail: addressOf(p) }));
