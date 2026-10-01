@@ -1,4 +1,5 @@
-import React from'react';
+import React,{useState}from'react';
+import{SHIPPED_PRODUCT_PHOTOS}from'../media/productPhotoManifest';
 import{Apple,Beef,Cherry,CupSoda,Droplets,Drumstick,Egg,Fish,Flame,Gem,Grape,Hammer,Hexagon,Leaf,Milk,Mountain,Nut,Salad,Sprout,TreePine,Wheat,type LucideIcon}from'lucide-react';
 
 /**
@@ -9,7 +10,21 @@ import{Apple,Beef,Cherry,CupSoda,Droplets,Drumstick,Egg,Fish,Flame,Gem,Grape,Ham
  * are uploaded, each product gets a drawn tile instead: the colours of its
  * category, an icon for what it is, and the mountain line of Hakkâri. It is
  * clearly an illustration, never presented as a photo of the product.
+ *
+ * When a representative photo has been shipped for the product
+ * (public/product-photos, see scripts/product-photos), that photo is shown
+ * instead, marked "Temsili görsel" on the product page. A real photo uploaded
+ * by the store never reaches this component, so it always wins.
  */
+
+const SHIPPED=new Set(SHIPPED_PRODUCT_PHOTOS);
+
+/** The shipped representative photo for a product, or null. */
+export function shippedProductPhoto(slug:unknown,size:'large'|'small'='large'):string|null{
+ const key=typeof slug==='string'?slug.trim():'';
+ if(!key||!SHIPPED.has(key))return null;
+ return`/product-photos/${key}${size==='small'?'-480':''}.webp`;
+}
 
 const BRAND_FALLBACK=/(^|\/)brand\/official-store\/golden-oremar-(profile|cover)\.webp(\?|#|$)|\/brand\/golden-oremar-official-store-(profile|cover)\.webp(\?|#|$)/;
 
@@ -73,9 +88,17 @@ type Props={
  className?:string;
  /** Spoken name; omit when the surrounding control already names the product. */
  label?:string;
+ /** Product slug, to use its shipped representative photo when there is one. */
+ slug?:string|null;
 };
 
-export default function ProductArtwork({name,categorySlug,categoryName,productType,safetyClass,variant='card',className='',label}:Props){
+export default function ProductArtwork({name,categorySlug,categoryName,productType,safetyClass,variant='card',className='',label,slug}:Props){
+ const[photoFailed,setPhotoFailed]=useState(false);
+ const photo=photoFailed?null:shippedProductPhoto(slug,variant==='hero'?'large':'small');
+ if(photo)return<span className={`go-artwork go-artwork--photo go-artwork--${variant} ${className}`} data-product-artwork="photo">
+  <img src={photo} alt={label||''} loading={variant==='hero'?'eager':'lazy'} decoding="async" draggable={false} onError={()=>setPhotoFailed(true)}/>
+  {variant==='hero'?<span className="go-artwork__note">Temsili görsel</span>:null}
+ </span>;
  const theme=THEMES[String(categorySlug||'')]||DEFAULT_THEME;
  const Icon=productArtworkIcon({name,productType,safetyClass,categorySlug:categorySlug||''});
  const style={'--art-from':theme.from,'--art-to':theme.to,'--art-glow':theme.glow,'--art-ink':theme.ink} as React.CSSProperties;

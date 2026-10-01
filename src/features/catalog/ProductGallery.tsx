@@ -1,6 +1,6 @@
 import React,{useCallback,useEffect,useRef,useState}from'react';
 import{ChevronLeft,ChevronRight,MapPin,Mountain,Quote,ZoomIn}from'lucide-react';
-import ProductArtwork from'./ProductArtwork';
+import ProductArtwork,{shippedProductPhoto}from'./ProductArtwork';
 
 /**
  * The product page slider.
@@ -28,9 +28,11 @@ type Props={
  safetyClass?:string|null;
  onOpenPhoto:(path:string)=>void;
  onSlideChange?:(slide:GallerySlide)=>void;
+ /** For the shipped representative photo, when the product has no photo of its own. */
+ productSlug?:string|null;
 };
 
-export default function ProductGallery({slides,productName,categorySlug,categoryName,productType,safetyClass,onOpenPhoto,onSlideChange}:Props){
+export default function ProductGallery({slides,productName,categorySlug,categoryName,productType,safetyClass,onOpenPhoto,onSlideChange,productSlug}:Props){
  const trackRef=useRef<HTMLDivElement>(null);
  const[index,setIndex]=useState(0);
  const[failed,setFailed]=useState<Record<string,true>>({});
@@ -65,7 +67,7 @@ export default function ProductGallery({slides,productName,categorySlug,category
      <img src={slide.src} alt={slide.alt} loading={position===0?'eager':'lazy'} fetchPriority={position===0?'high':'auto'} decoding="async" onError={()=>setFailed(current=>({...current,[slide.key]:true}))}/>
      <span className="go-gallery__zoom" aria-hidden="true"><ZoomIn/></span>
     </button>:null}
-    {slide.kind==='artwork'||(slide.kind==='photo'&&failed[slide.key])?<ProductArtwork name={productName} categorySlug={categorySlug} categoryName={categoryName} productType={productType} safetyClass={safetyClass} variant="hero" label={`${productName} için çizim görsel; ürün fotoğrafı yakında eklenecek`}/>:null}
+    {slide.kind==='artwork'||(slide.kind==='photo'&&failed[slide.key])?<ProductArtwork name={productName} categorySlug={categorySlug} categoryName={categoryName} productType={productType} safetyClass={safetyClass} variant="hero" slug={productSlug} label={shippedProductPhoto(productSlug)?`${productName}, temsili görsel`:`${productName} için çizim görsel; ürün fotoğrafı yakında eklenecek`}/>:null}
     {slide.kind==='origin'?<div className="go-gallery__story-card go-gallery__story-card--origin">
      <Mountain aria-hidden="true" className="go-gallery__story-mark"/>
      <span className="go-gallery__eyebrow"><MapPin aria-hidden="true"/>Kökeni</span>

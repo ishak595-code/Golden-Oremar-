@@ -72,7 +72,7 @@ function ProductRowImage({src,eager,item}:{src:string|null|undefined;eager:boole
  const[stage,setStage]=useState<'optimized'|'original'|'failed'>('optimized');
  useEffect(()=>setStage('optimized'),[trimmed]);
  const current=stage==='optimized'?optimized:stage==='original'?trimmed:'';
- if(!current)return<ProductArtwork name={item.name} categorySlug={item.category?.slug} categoryName={item.category?.name} productType={item.handlingProfile?.productType} safetyClass={item.handlingProfile?.safetyClass} variant="tile" className="go-product-row-v4__placeholder go-product-row-v4__artwork flex-shrink-0"/>;
+ if(!current)return<ProductArtwork name={item.name} slug={item.slug} categorySlug={item.category?.slug} categoryName={item.category?.name} productType={item.handlingProfile?.productType} safetyClass={item.handlingProfile?.safetyClass} variant="tile" className="go-product-row-v4__placeholder go-product-row-v4__artwork flex-shrink-0"/>;
  return<img src={current} alt="" aria-hidden="true" loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'auto'} decoding="async" onError={()=>setStage(prev=>prev==='optimized'&&optimized!==trimmed?'original':'failed')} className="go-product-row-v4__image object-cover rounded-xl w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0"/>;
 }
 

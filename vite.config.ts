@@ -51,7 +51,7 @@ export default defineConfig(() => ({
         skipWaiting: true,
         // Prerendered SEO pages and the static data folders are real files;
         // only app routes fall back to the shell.
-        navigateFallbackDenylist: [/^\/offline-catalog\//, /^\/assets\//, /^\/brand\//, /^\/\.well-known\//],
+        navigateFallbackDenylist: [/^\/offline-catalog\//, /^\/assets\//, /^\/brand\//, /^\/product-photos\//, /^\/\.well-known\//],
         runtimeCaching: [
           {
             // The offline catalogue answers when Supabase is down. Network
@@ -63,6 +63,17 @@ export default defineConfig(() => ({
               cacheName: 'go-offline-catalog-v1',
               networkTimeoutSeconds: 4,
               expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
+            // Representative product photos: large, rarely changing, and
+            // seen again on every visit, so they come from the cache first.
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/product-photos/'),
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'go-product-photos-v1',
+              expiration: { maxEntries: 160, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [200] },
             },
           },

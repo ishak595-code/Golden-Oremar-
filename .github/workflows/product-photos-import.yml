@@ -1,0 +1,42 @@
+name: Product photos import
+
+# Downloads the representative product photos listed in
+# scripts/product-photos/sources.json (short-lived links), converts them to
+# square WebP in public/product-photos and commits them, so the next Vercel
+# deploy ships them. See scripts/product-photos/import.mjs.
+
+on:
+  push:
+    branches: [main]
+    paths: ['scripts/product-photos/sources.json']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: product-photos-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - name: Install the image converter
+        run: npm install --no-save --no-package-lock sharp@0.35.5
+      - name: Import photos
+        run: node scripts/product-photos/import.mjs
+      - name: Commit
+        run: |
+          git add public/product-photos src/features/media/productPhotoManifest.ts scripts/product-photos/sources.json
+          if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
+          git config user.name "golden-oremar-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(product-photos): import representative photos"
+          git pull --rebase
+          git push

@@ -10,7 +10,7 @@
       "destination": "/kullanim-sartlari/index.html"
     },
     {
-      "source": "/((?!assets/|offline-catalog/|brand/|\\.well-known/).*)",
+      "source": "/((?!assets/|offline-catalog/|brand/|product-photos/|\\.well-known/).*)",
       "destination": "/"
     }
   ],
@@ -36,6 +36,12 @@
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=300, stale-while-revalidate=86400" },
         { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    },
+    {
+      "source": "/product-photos/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
       ]
     },
     {
