@@ -28,7 +28,7 @@ async function visit(route, { cdn, origin }) {
   const context = await browser.newContext({ viewport: { width: 412, height: 915 }, locale: 'tr-TR' });
   const page = await context.newPage();
   const seen = { cdn: 0, origin: 0 };
-  await routeSupabase(page);
+  await routeSupabase(page, {}, { photos: true });
   await page.route(`${CDN}/**`, r => { seen.cdn++; return cdn ? r.fulfill({ status: 200, contentType: 'image/jpeg', body: image }) : r.fulfill({ status: 404, body: 'missing' }); });
   await page.route('**/storage/v1/**', r => { seen.origin++; return origin ? r.fulfill({ status: 200, contentType: 'image/jpeg', body: image }) : r.fulfill({ status: 404, body: '{}' }); });
   await page.goto(BASE + route);

@@ -38,12 +38,20 @@ await step('category page: favourite, signed out', '/kategori/bal-sifa', p => p.
 await step('category page: product card', '/kategori/bal-sifa', p => p.locator('.go-product-card__media > button').first().click(), async p => ({ ok: addressOf(p).startsWith('/urun/'), detail: addressOf(p) }));
 await step('product page: add to cart, signed out', PRODUCT, async p => { const b = p.locator('button', { hasText: /Sepete ekle/i }).first(); await b.scrollIntoViewIfNeeded(); await b.click(); }, async p => ({ ok: await loginShown(p), detail: `${addressOf(p)}, sign-in shown=${await loginShown(p)}` }));
 await step('product page: category chip', PRODUCT, p => p.locator('button', { hasText: /Bal & Dağ Bitkileri/i }).first().click(), async p => ({ ok: addressOf(p) === '/kategori/bal-sifa', detail: addressOf(p) }));
-await step('product page: "Tümünü gör", then reload', PRODUCT, async p => { await p.locator('.go-product-recommendations__group-head > button').first().click(); await p.waitForTimeout(1200); await p.reload(); await p.waitForTimeout(2300); }, async p => ({ ok: addressOf(p) === '/?tab=categories&category=bal-sifa' && await tabOf(p) === 'categories', detail: `${addressOf(p)}, tab after reload=${await tabOf(p)}` }));
+await step('product page: "Bu Ürünün Dünyası" > Kategori, then reload', PRODUCT, async p => { await p.getByRole('button', { name: /Bu Ürünün Dünyası/ }).click(); await p.waitForTimeout(600); await p.locator('.go-product-context-links__actions > button').first().click(); await p.waitForTimeout(1200); await p.reload(); await p.waitForTimeout(2300); }, async p => ({ ok: addressOf(p) === '/?tab=categories&category=bal-sifa' && await tabOf(p) === 'categories', detail: `${addressOf(p)}, tab after reload=${await tabOf(p)}` }));
 await step('product page: back button', '/', async p => { await p.locator('[data-product-link="true"]').first().click(); await p.waitForTimeout(1200); await p.locator('button[aria-label*="Geri"], button[aria-label*="geri"]').first().click(); }, async p => ({ ok: addressOf(p) === '/' || addressOf(p).startsWith('/?'), detail: addressOf(p) }));
 await step('home: category card', '/', p => p.locator('.go-category-card').first().click(), async p => ({ ok: addressOf(p) === '/?tab=categories&category=bal-sifa', detail: addressOf(p) }));
 await step('home: product row', '/', p => p.locator('[data-product-link="true"]').first().click(), async p => ({ ok: addressOf(p).startsWith('/urun/'), detail: addressOf(p) }));
+// The product page swaps the tab bar for its purchase dock (it has its own
+// back button). The address-bar regression is checked from a category page,
+// which has a clean path (/kategori/<slug>) just like a product page.
+await step('product page: purchase dock replaces the tab bar', PRODUCT, async () => {}, async p => {
+  const navVisible = await p.locator('nav[aria-label="Ana gezinme"]').isVisible().catch(() => false);
+  const dock = await p.locator('.product-detail-commerce-dock').evaluate(el => getComputedStyle(el).position).catch(() => '');
+  return { ok: !navVisible && dock === 'fixed' && await tabOf(p) === 'product-detail', detail: `tab bar visible=${navVisible}, dock=${dock}, tab=${await tabOf(p)}` };
+});
 for (const [tab, expected] of [['Kategoriler', '/?tab=categories'], ['Favoriler', '/?tab=account'], ['Sepet', '/?tab=cart'], ['Hesabım', '/?tab=account'], ['Ana Sayfa', '/?tab=home']]) {
-  await step(`bottom navigation from a product page: ${tab}`, PRODUCT, p => p.locator(`nav[aria-label="Ana gezinme"] button[aria-label^="${tab}"]`).click(), async p => ({ ok: addressOf(p) === expected, detail: addressOf(p) }));
+  await step(`bottom navigation from a category page: ${tab}`, '/kategori/bal-sifa', p => p.locator(`nav[aria-label="Ana gezinme"] button[aria-label^="${tab}"]`).click(), async p => ({ ok: addressOf(p) === expected, detail: addressOf(p) }));
 }
 await browser.close();
 

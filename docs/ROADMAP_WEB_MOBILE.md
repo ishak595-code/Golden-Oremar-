@@ -685,6 +685,16 @@ Bakım:
 
 Veri hatası bulundu (düzeltilecek): yumurta, horoz, iç yağ ve sobalık odun ürünlerinin seçenekleri balık seçenekleri ("Av planı", "Temizleme: Fileto"). Ayrıca 42 ürünün hiçbirinde gerçek ürün fotoğrafı yok; hepsi marka logosunu gösteriyor.
 
+## Ürün sayfası, kartlar ve mikrofon - 2026-10-01
+
+- Ürün sayfası bölümleri artık dokununca açılıyor, aynı anda tek bölüm açık kalıyor ve açılan bölüm kendini ekrana getiriyor: Ürün Hikâyesi, Ürün Özellikleri, Ürün Bilgileri (yeni: birim, ağırlık, menşe, saklama, ürün kodu, etiketler), Sağlık ve Güvenli Kullanım, Teslimat, Lot ve İzlenebilirlik, Müşteri Yorumları, Önerilen Ürünler, Bu Ürünün Dünyası. Öneriler yalnız açılınca yükleniyor.
+- Görsel kaydırıcı: parmakla kaydırma, noktalar, sayaç, ok tuşları. Fotoğraf yoksa ürünün kendi çizim görseli, ardından "Kökeni" ve hikâyenin ilk cümlesi slaytları.
+- Fotoğrafı olmayan 42 ürünün hepsi aynı mağaza logosunu gösteriyordu. Artık her ürün kategorisinin renginde, ne olduğunu anlatan simgeli bir çizim gösteriyor (ana sayfa satırları, kategori kartları, öneri kartları, ürün sayfası). Gerçek fotoğraf yüklenince otomatik olarak fotoğraf görünür.
+- "Hazırlama tercihleri" kutusu kapalı geliyor, seçimlerin özeti tek satırda; "Değiştir" ile açılıyor.
+- Mikrofon: ekran okuyucu "Sesli mikrofon" diyor ("kapalı" demiyor), üstü çizili simge kaldırıldı, altın mühür tasarımı.
+- Önemli hata düzeltildi: /urun/<ürün> adresleri ana sayfa sanılıyordu. Bu yüzden ürün sayfasındaki satın alma çubuğu biçimsiz görünüyor ve alt menü sayfanın üstüne biniyordu. Artık sabit, düzgün bir satın alma çubuğu var; "Hemen Satın Al" yazısının kontrastı düzeltildi.
+- Denetim: `scripts/product-detail-experience-contract-audit.mjs` (56. denetim).
+
 ## İshak'ın yapması gerekenler (kod dışı)
 
 - [ ] Supabase Pro plana geçiş (kota kısıtlaması) - ÖNCE panelden

@@ -1,5 +1,5 @@
 import React,{useEffect,useState}from'react';
-import{Bell,BellOff,Check,Loader2,PackageCheck,Sparkles}from'lucide-react';
+import{Bell,BellOff,Check,ChevronDown,Loader2,PackageCheck,Sparkles}from'lucide-react';
 import type{OrderOptionDefinition,SelectedOrderOptions}from'./productExperience';
 import{selectOrderOption,visibleOrderOptions}from'./productExperience';
 import{currentProductReference,getProductAvailabilityState,setProductAvailabilitySubscription}from'./productAvailabilityApi';
@@ -8,12 +8,27 @@ type Props={lead:string;schema:OrderOptionDefinition[];selected:SelectedOrderOpt
 
 export default function PremiumOrderConfigurator({lead,schema,selected,onChange,disabled=false}:Props){
  const visible=visibleOrderOptions(schema,selected);
+ // Closed by default when every choice already has a value: the customer
+ // sees a one-line summary and opens it only to change something. A missing
+ // required choice keeps it open, so nothing blocks the purchase unseen.
+ const missing=visible.some(option=>option.required&&!selected[option.key]);
+ const[open,setOpen]=useState(missing);
+ useEffect(()=>{if(missing)setOpen(true);},[missing]);
  if(!visible.length)return null;
- return<section aria-labelledby="premium-order-configurator-title" className="mt-5 overflow-hidden rounded-3xl border border-brand-gold/35 bg-gradient-to-br from-brand-gold/10 via-brand-card to-brand-card shadow-sm">
-  <div className="border-b border-brand-gold/20 p-4 sm:p-5"><div className="flex items-start gap-3"><span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand-gold/15 text-brand-gold"><Sparkles className="h-5 w-5"/></span><div className="min-w-0"><div className="text-[11px] font-black uppercase tracking-[0.16em] text-brand-gold">Sana göre hazırlansın</div><h2 id="premium-order-configurator-title" className="mt-1 text-lg font-black text-brand-green dark:text-brand-gold">Siparişini nasıl hazırlayalım?</h2>{lead?<p className="mt-1 text-sm leading-6 text-brand-muted">{lead}</p>:null}</div></div></div>
-  <AvailabilityReminder/>
-  <div className="space-y-5 p-4 sm:p-5">{visible.map(option=><OptionGroup key={option.key} option={option} value={selected[option.key]||''} disabled={disabled} onSelect={value=>onChange(selectOrderOption(schema,selected,option.key,value))}/>)}</div>
-  <div className="flex items-center gap-2 border-t border-brand-gold/20 bg-brand-card/70 px-4 py-3 text-xs font-semibold leading-5 text-brand-muted sm:px-5"><PackageCheck aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-green"/><span>Seçimlerin sipariş kaydına eklenir; sepet, sipariş ve üretici hazırlık ekranında aynı biçimde korunur.</span></div>
+ const summary=visible.map(option=>option.choices.find(choice=>choice.value===selected[option.key])?.label).filter(Boolean).join(' · ');
+ return<section aria-labelledby="premium-order-configurator-title" className={`go-order-config mt-5 overflow-hidden rounded-3xl border border-brand-gold/35 bg-gradient-to-br from-brand-gold/10 via-brand-card to-brand-card shadow-sm${open?' is-open':''}`}>
+  <button type="button" onClick={()=>setOpen(value=>!value)} aria-expanded={open} aria-controls="premium-order-configurator-body" className="go-order-config__header flex w-full items-center gap-3 p-4 text-left sm:p-5">
+   <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand-gold/15 text-brand-gold"><Sparkles className="h-5 w-5"/></span>
+   <span className="min-w-0 flex-1"><span className="block text-[11px] font-black uppercase tracking-[0.16em] text-brand-gold">Sana göre hazırlansın</span><span id="premium-order-configurator-title" className="mt-0.5 block text-base font-black text-brand-text">Hazırlama tercihleri</span><span className="mt-0.5 block truncate text-sm text-brand-muted">{summary||'Seçim yapın'}</span></span>
+   <span className="go-order-config__change shrink-0 text-xs font-black text-brand-gold">{open?'Kapat':'Değiştir'}</span>
+   <ChevronDown aria-hidden="true" className="go-order-config__chevron h-5 w-5 shrink-0 text-brand-gold"/>
+  </button>
+  <div id="premium-order-configurator-body" hidden={!open}>
+   {lead?<p className="border-t border-brand-gold/20 px-4 pt-3 text-sm leading-6 text-brand-muted sm:px-5">{lead}</p>:null}
+   <AvailabilityReminder/>
+   <div className="space-y-5 p-4 sm:p-5">{visible.map(option=><OptionGroup key={option.key} option={option} value={selected[option.key]||''} disabled={disabled} onSelect={value=>onChange(selectOrderOption(schema,selected,option.key,value))}/>)}</div>
+   <div className="flex items-center gap-2 border-t border-brand-gold/20 bg-brand-card/70 px-4 py-3 text-xs font-semibold leading-5 text-brand-muted sm:px-5"><PackageCheck aria-hidden="true" className="h-4 w-4 shrink-0 text-brand-green"/><span>Seçimlerin sipariş kaydına eklenir; sepet, sipariş ve üretici hazırlık ekranında aynı biçimde korunur.</span></div>
+  </div>
  </section>;
 }
 

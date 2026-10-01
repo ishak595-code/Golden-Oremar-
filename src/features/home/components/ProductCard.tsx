@@ -3,6 +3,7 @@ import{ChevronRight}from'lucide-react';
 import type{CatalogItem}from'../../catalog/api';
 import{buildProductCardAccessibilityLabel}from'../../accessibility/productCardAccessibility';
 import{buildProductUrl}from'../../navigation/appUrl';
+import ProductArtwork,{isBrandFallbackImage}from'../../catalog/ProductArtwork';
 import'./ProductCard.css';
 
 function formatMinor(value:number,currency:string){
@@ -54,7 +55,7 @@ function optimizedCatalogImageUrl(src:string){
  }catch{return src;}
 }
 
-function ProductRowImage({src,eager}:{src:string|null|undefined;eager:boolean}){
+function ProductRowImage({src,eager,item}:{src:string|null|undefined;eager:boolean;item:CatalogItem}){
  // Two-stage load. The transformed URL is tried first because it is a small
  // fraction of the original's bytes - the row thumbnail renders at 64-80px, so
  // shipping a full-size photo there is pure egress waste once real product
@@ -66,12 +67,12 @@ function ProductRowImage({src,eager}:{src:string|null|undefined;eager:boolean}){
  // placeholder. The placeholder is reserved for the case where the original
  // itself fails. This keeps images visible on every plan instead of silently
  // blanking the whole home screen when the transform is unavailable.
- const trimmed=typeof src==='string'?src.trim():'';
+ const trimmed=typeof src==='string'&&!isBrandFallbackImage(src)?src.trim():'';
  const optimized=useMemo(()=>trimmed?optimizedCatalogImageUrl(trimmed):'',[trimmed]);
  const[stage,setStage]=useState<'optimized'|'original'|'failed'>('optimized');
  useEffect(()=>setStage('optimized'),[trimmed]);
  const current=stage==='optimized'?optimized:stage==='original'?trimmed:'';
- if(!current)return<span className="go-product-row-v4__placeholder rounded-xl w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0" aria-hidden="true"/>;
+ if(!current)return<ProductArtwork name={item.name} categorySlug={item.category?.slug} categoryName={item.category?.name} productType={item.handlingProfile?.productType} safetyClass={item.handlingProfile?.safetyClass} variant="tile" className="go-product-row-v4__placeholder go-product-row-v4__artwork flex-shrink-0"/>;
  return<img src={current} alt="" aria-hidden="true" loading={eager?'eager':'lazy'} fetchPriority={eager?'high':'auto'} decoding="async" onError={()=>setStage(prev=>prev==='optimized'&&optimized!==trimmed?'original':'failed')} className="go-product-row-v4__image object-cover rounded-xl w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0"/>;
 }
 
@@ -82,7 +83,7 @@ export default function ProductCard({item,onClick,eager=false,merchandisingLabel
  const accessibleLabel=buildProductCardAccessibilityLabel({name:item.name,price:item.variant.priceMinor/100,currency:item.currency,compareAtPrice:compareMinor!==null?compareMinor/100:null,statuses:[merchandisingLabel,item.producer.name,region,verification]});
  return<li className="go-product-row-v4__item w-full" data-product-id={item.id} data-product-reference={item.slug} data-row-layout="horizontal-list" data-home-row-contract="single-link-v4" data-native-feature-marker="go-product-card-v2">
   <a href={buildProductUrl(item.slug)} onClick={event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;event.preventDefault();onClick();}} className="go-product-row-v4 w-full flex flex-row items-center justify-between hover:bg-[#112217] transition-all cursor-pointer" aria-label={accessibleLabel} data-product-link="true">
-   <ProductRowImage src={item.imagePath} eager={eager}/>
+   <ProductRowImage src={item.imagePath} eager={eager} item={item}/>
    <span className="go-product-row-v4__middle min-w-0 flex-1" aria-hidden="true">
     <span className="go-product-row-v4__title">{item.name}</span>
     <span className="go-product-row-v4__meta text-sm text-gray-400">

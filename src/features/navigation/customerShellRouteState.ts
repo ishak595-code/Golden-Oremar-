@@ -1,8 +1,14 @@
+import{parsePublicRoute}from'./appUrl';
+
 const PATCH_FLAG='__goldenOremarCustomerRoutePatched__';
 const ROUTE_EVENT='golden-oremar:route-change';
 
+// The tab comes from the same parser the app routes with. Reading only
+// ?tab= missed clean paths such as /urun/<slug>, so the product page was
+// tagged "home": its purchase dock lost its styling and the tab bar covered
+// the page.
 function currentTab(){
-  try{return new URL(window.location.href).searchParams.get('tab')||'home';}
+  try{return parsePublicRoute(window.location.href).tab||'home';}
   catch{return'home';}
 }
 

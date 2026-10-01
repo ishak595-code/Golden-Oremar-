@@ -75,7 +75,7 @@
 :root[data-app-tab="product-detail"] .product-detail-commerce-buy {
   border: 1px solid var(--brand-green, #0f5132);
   background: var(--brand-green, #0f5132);
-  color: var(--brand-on-green, #fff);
+  color: var(--text-on-green, #05120d);
   box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-green, #0f5132) 22%, transparent);
 }
 

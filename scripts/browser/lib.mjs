@@ -92,6 +92,10 @@ export async function routeSupabase(page, overrides = {}, options = {}) {
     catalog_search_suggestions_v1: 'suggestions.json',
   };
   const map = { ...defaults, ...overrides };
+  const fixtureBody = name => {
+    const raw = String(fixture(name));
+    return options.photos ? raw.replaceAll('brand/official-store/golden-oremar-profile.webp', '42e1f398-0125-409a-8bc3-040d594d0635/products/fixture-photo.webp') : raw;
+  };
   await page.route('**/*', route => {
     const url = route.request().url();
     const rpc = url.match(/\/rpc\/([a-z0-9_]+)/)?.[1];
@@ -100,11 +104,14 @@ export async function routeSupabase(page, overrides = {}, options = {}) {
     if (rpc && map[rpc] === 'fail') return route.fulfill({ status: 503, contentType: 'application/json', body: '{"message":"upstream timeout"}' });
     if (rpc === 'search_catalog_v3') {
       const request = route.request().postDataJSON() || {};
-      const base = JSON.parse(fixture(map.search_catalog_v3));
+      const base = JSON.parse(fixtureBody(map.search_catalog_v3));
       const limit = request.p_limit ?? 20, offset = request.p_offset ?? 0;
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...base, items: offset === 0 ? base.items.slice(0, limit) : [], limit, offset, total: base.items.length }) });
     }
-    if (rpc && map[rpc]) return route.fulfill({ status: 200, contentType: 'application/json', body: fixture(map[rpc]) });
+    // Fixture products use the store logo, which the app now replaces with
+    // drawn artwork. Checks about real photos (media-cdn-check) ask for
+    // photo paths instead.
+    if (rpc && map[rpc]) return route.fulfill({ status: 200, contentType: 'application/json', body: fixtureBody(map[rpc]) });
     if (url.includes('/storage/v1/')) return route.fulfill({ status: 200, contentType: 'image/jpeg', body: fixture('product.jpg') });
     if (url.includes('.supabase.co')) return route.fulfill({ status: 200, contentType: 'application/json', body: rpc ? 'null' : '[]' });
     if (url.startsWith(BASE) && new URL(url).pathname.startsWith('/offline-catalog/')) {

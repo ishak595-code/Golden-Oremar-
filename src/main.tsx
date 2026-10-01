@@ -15,6 +15,7 @@ import './features/customer-experience/productDiscoveryPremium.css';
 import './features/customer-experience/productDetailConnectionsPremium.css';
 import './features/customer-experience/productDetailPrestige.css';
 import './features/customer-experience/premiumMobileV2.css';
+import './features/customer-experience/productDetailV3.css';
 import { initNativeFeatures } from './native';
 import { initNativePushListeners } from './features/notifications/nativePush';
 import { applyThemeToDocument, resolveInitialTheme } from './features/appearance/theme';
@@ -25,8 +26,6 @@ import { installGlobalErrorTelemetry, sendClientError } from './lib/errorTelemet
 import {installBackendPerformanceHints} from './lib/performanceHints';
 const StoreComplianceControls = lazy(() => import('./features/store/StoreComplianceControls'));
 import NativeAppUpdateBanner from './features/app-update/NativeAppUpdateBanner';
-import ProductDetailConnections from './features/catalog/ProductDetailConnections';
-import ProductRecommendationsRail from './features/catalog/ProductRecommendationsRail';
 import {installCatalogMediaFallback} from './features/catalog/installCatalogMediaFallback';
 import {AuthorizationProvider} from './features/auth/AuthorizationContext';
 
@@ -58,8 +57,6 @@ createRoot(document.getElementById('root')!).render(
           <PwaInstallPrompt />
         </Suspense>
         <App />
-        <ProductDetailConnections />
-        <ProductRecommendationsRail />
         <Suspense fallback={null}>
           <StoreComplianceControls />
         </Suspense>

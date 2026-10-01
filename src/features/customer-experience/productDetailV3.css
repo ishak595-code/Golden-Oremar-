@@ -1,0 +1,128 @@
+/* Product page v3 (2026-10-01): drawn artwork for products without photos,
+   a swipeable gallery, and sections that open on tap one at a time.
+   Uses the theme variables (--bg-card, --text-main, --brand-gold ...) so it
+   follows light, dark and brand themes. */
+
+/* ---------- Product artwork ---------- */
+.go-artwork{position:relative;display:grid;place-items:center;overflow:hidden;isolation:isolate;width:100%;height:100%;min-height:0;
+ background:radial-gradient(120% 90% at 50% 18%,color-mix(in srgb,var(--art-glow) 26%,transparent),transparent 62%),linear-gradient(160deg,var(--art-from),var(--art-to));color:var(--art-ink);}
+.go-artwork.hidden{display:none;}
+.go-artwork::before{content:"";position:absolute;inset:0;z-index:-1;opacity:.5;
+ background-image:radial-gradient(circle at 1px 1px,color-mix(in srgb,var(--art-ink) 18%,transparent) 1px,transparent 0);background-size:14px 14px;
+ mask-image:linear-gradient(to bottom,#000,transparent 70%);-webkit-mask-image:linear-gradient(to bottom,#000,transparent 70%);}
+.go-artwork__ridge{position:absolute;inset:auto 0 0 0;width:100%;height:38%;z-index:-1;}
+.go-artwork__ridge path:first-child{fill:color-mix(in srgb,var(--art-to) 70%,#000);opacity:.85;}
+.go-artwork__ridge-line{stroke:color-mix(in srgb,var(--art-glow) 55%,transparent);stroke-width:1.4;vector-effect:non-scaling-stroke;}
+.go-artwork__seal{display:grid;place-items:center;width:44%;max-width:120px;aspect-ratio:1;border-radius:999px;
+ background:radial-gradient(circle at 32% 28%,color-mix(in srgb,var(--art-glow) 30%,transparent),color-mix(in srgb,var(--art-from) 70%,transparent) 72%);
+ box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--art-glow) 60%,transparent),0 0 0 6px color-mix(in srgb,var(--art-glow) 8%,transparent),0 14px 30px rgb(0 0 0 / .35);}
+.go-artwork__seal svg{width:46%;height:46%;stroke-width:1.6;filter:drop-shadow(0 2px 6px rgb(0 0 0 / .35));}
+.go-artwork__caption{position:absolute;left:0;right:0;bottom:10px;display:grid;justify-items:center;gap:2px;padding:0 12px;text-align:center;}
+.go-artwork__caption small{font-size:10px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;opacity:.82;}
+.go-artwork__caption strong{font-family:var(--font-serif,Georgia,serif);font-size:clamp(1.05rem,4.6vw,1.45rem);font-weight:700;line-height:1.2;color:var(--art-ink);text-shadow:0 2px 12px rgb(0 0 0 / .45);}
+.go-artwork--tile .go-artwork__seal{width:62%;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--art-glow) 60%,transparent);}
+.go-artwork--tile .go-artwork__ridge{height:34%;}
+.go-artwork--tile::before{display:none;}
+.go-artwork--hero .go-artwork__seal{width:34%;max-width:150px;margin-bottom:18%;}
+.go-artwork--hero .go-artwork__caption{bottom:clamp(18px,7%,34px);}
+.go-artwork--card .go-artwork__seal{margin-bottom:16%;}
+
+/* ---------- Gallery ---------- */
+.go-gallery{position:relative;min-width:0;max-width:100%;border-radius:28px;overflow:hidden;border:1px solid color-mix(in srgb,var(--brand-gold) 28%,var(--border-main));background:var(--bg-card);box-shadow:0 18px 40px rgb(0 0 0 / .28);}
+.go-gallery__track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;outline:none;}
+.go-gallery__track::-webkit-scrollbar{display:none;}
+.go-gallery__track:focus-visible{box-shadow:inset 0 0 0 3px var(--brand-gold);}
+.go-gallery__slide{flex:0 0 100%;aspect-ratio:1/1;scroll-snap-align:center;scroll-snap-stop:always;position:relative;display:grid;}
+@media (min-width:640px){.go-gallery__slide{aspect-ratio:4/3;}}
+@media (min-width:1024px){.go-gallery__slide{aspect-ratio:1/1;}}
+.go-gallery__photo{position:relative;display:block;width:100%;height:100%;padding:0;border:0;background:#0b1712;cursor:zoom-in;}
+.go-gallery__photo img{width:100%;height:100%;object-fit:contain;}
+.go-gallery__zoom{position:absolute;right:14px;top:14px;display:grid;place-items:center;width:40px;height:40px;border-radius:999px;background:rgb(0 0 0 / .5);color:#fff;backdrop-filter:blur(6px);}
+.go-gallery__zoom svg{width:18px;height:18px;}
+.go-gallery__story-card{display:grid;align-content:center;justify-items:start;gap:12px;padding:clamp(22px,7vw,40px);height:100%;position:relative;overflow:hidden;
+ background:radial-gradient(90% 70% at 85% 10%,color-mix(in srgb,var(--brand-gold) 22%,transparent),transparent 60%),linear-gradient(155deg,color-mix(in srgb,var(--brand-green) 26%,var(--bg-card)),var(--bg-card));color:var(--text-main);}
+.go-gallery__story-mark{position:absolute;right:-18px;bottom:-22px;width:58%;height:auto;color:color-mix(in srgb,var(--brand-gold) 16%,transparent);stroke-width:1;}
+.go-gallery__eyebrow{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:900;letter-spacing:.16em;text-transform:uppercase;color:var(--brand-gold);}
+.go-gallery__eyebrow svg{width:14px;height:14px;}
+.go-gallery__story-card strong{font-family:var(--font-serif,Georgia,serif);font-size:clamp(1.35rem,6vw,2rem);line-height:1.25;font-weight:700;max-width:22ch;}
+.go-gallery__story-sub{font-size:13px;line-height:1.5;color:var(--text-muted);max-width:32ch;}
+.go-gallery__arrow{position:absolute;top:50%;z-index:2;display:grid;place-items:center;width:44px;height:44px;margin-top:-22px;border-radius:999px;border:1px solid rgb(255 255 255 / .18);background:rgb(0 0 0 / .45);color:#fff;backdrop-filter:blur(8px);opacity:0;transition:opacity .2s ease,transform .2s ease;}
+.go-gallery__arrow svg{width:20px;height:20px;}
+.go-gallery__arrow--prev{left:12px}.go-gallery__arrow--next{right:12px}
+.go-gallery:hover .go-gallery__arrow,.go-gallery__arrow:focus-visible{opacity:1;}
+@media (hover:none){.go-gallery__arrow{display:none;}}
+.go-gallery__footer{position:absolute;left:0;right:0;bottom:12px;z-index:2;display:flex;align-items:center;justify-content:center;gap:10px;pointer-events:none;}
+.go-gallery__counter{position:absolute;right:14px;bottom:0;padding:4px 10px;border-radius:999px;background:rgb(0 0 0 / .5);color:#fff;font-size:12px;font-weight:800;backdrop-filter:blur(6px);}
+.go-gallery__dots{display:flex;gap:0;padding:0 6px;border-radius:999px;background:rgb(0 0 0 / .32);backdrop-filter:blur(6px);pointer-events:auto;}
+.go-gallery__dot{position:relative;display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;border-radius:999px;background:transparent;transition:width .25s ease;}
+.go-gallery__dot::after{content:"";width:8px;height:8px;border-radius:999px;background:rgb(255 255 255 / .5);transition:width .25s ease,background-color .25s ease;}
+.go-gallery__dot.is-active{width:32px;}
+.go-gallery__dot.is-active::after{width:22px;background:var(--brand-gold);}
+
+/* ---------- Accordions ---------- */
+.go-detail-accordions{display:grid;gap:10px;}
+.go-detail-accordion{border:1px solid var(--border-main);border-radius:22px;background:var(--bg-card);overflow:hidden;transition:border-color .25s ease,box-shadow .25s ease,background-color .25s ease;}
+.go-detail-accordion.is-open{border-color:color-mix(in srgb,var(--brand-gold) 45%,var(--border-main));box-shadow:0 14px 34px rgb(0 0 0 / .22);}
+.go-detail-accordion--gold{background:linear-gradient(155deg,color-mix(in srgb,var(--brand-gold) 10%,var(--bg-card)),var(--bg-card) 60%);}
+.go-detail-accordion__heading{margin:0;font:inherit;}
+.go-detail-accordion__header{display:flex;width:100%;min-height:64px;align-items:center;gap:12px;padding:12px 14px 12px 12px;border:0;background:transparent;color:var(--text-main);text-align:left;cursor:pointer;}
+.go-detail-accordion__header:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--brand-gold);border-radius:22px;}
+.go-detail-accordion__icon{display:grid;flex:0 0 auto;place-items:center;width:40px;height:40px;border-radius:14px;color:var(--brand-gold);background:color-mix(in srgb,var(--brand-gold) 12%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--brand-gold) 24%,transparent);transition:transform .3s ease,background-color .3s ease;}
+.go-detail-accordion__icon svg{width:19px;height:19px;}
+.go-detail-accordion.is-open .go-detail-accordion__icon{background:var(--brand-gold);color:var(--text-on-gold,#16120a);transform:rotate(-6deg);}
+.go-detail-accordion__titles{display:grid;flex:1;min-width:0;gap:2px;}
+.go-detail-accordion__title{font-size:1rem;font-weight:900;line-height:1.25;}
+.go-detail-accordion__teaser{overflow:hidden;font-size:.8rem;font-weight:600;line-height:1.35;color:var(--text-muted);text-overflow:ellipsis;white-space:nowrap;}
+.go-detail-accordion__chevron{flex:0 0 auto;width:20px;height:20px;color:var(--brand-gold);transition:transform .3s cubic-bezier(.2,.8,.2,1);}
+.go-detail-accordion.is-open .go-detail-accordion__chevron{transform:rotate(180deg);}
+.go-detail-accordion__panel{display:grid;grid-template-rows:0fr;transition:grid-template-rows .32s cubic-bezier(.2,.8,.2,1);}
+.go-detail-accordion.is-open .go-detail-accordion__panel{grid-template-rows:1fr;}
+.go-detail-accordion__clip{min-height:0;overflow:hidden;}
+.go-detail-accordion__body{padding:2px 16px 18px;opacity:0;transform:translateY(-6px);transition:opacity .25s ease,transform .3s ease;}
+.go-detail-accordion.is-open .go-detail-accordion__body{opacity:1;transform:none;transition-delay:.06s;}
+@media (prefers-reduced-motion:reduce){.go-detail-accordion__panel,.go-detail-accordion__body,.go-detail-accordion__chevron,.go-detail-accordion__icon,.go-gallery__dot,.go-gallery__arrow{transition:none!important;}}
+
+/* Section content */
+.go-detail-story{white-space:pre-wrap;font-size:15px;line-height:1.85;color:var(--text-muted);}
+.go-detail-story::first-letter{float:left;margin:4px 8px 0 0;font-family:var(--font-serif,Georgia,serif);font-size:3.1em;line-height:.8;color:var(--brand-gold);}
+.go-detail-origin{display:flex;align-items:center;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid color-mix(in srgb,var(--brand-gold) 20%,transparent);font-size:14px;font-weight:800;color:var(--text-main);}
+.go-detail-origin svg{width:16px;height:16px;color:var(--brand-gold);}
+.go-detail-features{display:grid;gap:8px;margin:0;padding:0;list-style:none;}
+@media (min-width:640px){.go-detail-features{grid-template-columns:1fr 1fr;}}
+.go-detail-features li{display:flex;align-items:flex-start;gap:10px;padding:12px;border-radius:14px;background:color-mix(in srgb,var(--brand-gold) 6%,transparent);font-size:14px;line-height:1.45;color:var(--text-main);}
+.go-detail-features svg{flex:0 0 auto;width:18px;height:18px;margin-top:1px;color:var(--brand-gold);}
+.go-detail-facts{display:grid;margin:0;border-radius:16px;overflow:hidden;border:1px solid var(--border-main);}
+.go-detail-facts>div{display:grid;grid-template-columns:minmax(110px,38%) 1fr;gap:12px;padding:11px 14px;font-size:14px;}
+.go-detail-facts>div+div{border-top:1px solid var(--border-main);}
+.go-detail-facts>div:nth-child(odd){background:color-mix(in srgb,var(--brand-gold) 4%,transparent);}
+.go-detail-facts dt{font-weight:700;color:var(--text-muted);}
+.go-detail-facts dd{margin:0;font-weight:800;color:var(--text-main);}
+.go-detail-chips-block{margin-top:14px;}
+.go-detail-chips-title{margin-bottom:8px;font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-gold);}
+.go-detail-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.go-detail-chips span{padding:6px 11px;border-radius:999px;border:1px solid color-mix(in srgb,var(--brand-gold) 30%,transparent);font-size:12px;font-weight:800;color:var(--text-main);}
+
+/* Recommendations inside the "Önerilen Ürünler" section */
+.go-reco-embedded__title{margin:0 0 10px;font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--brand-gold);}
+.go-reco-loading{display:flex;gap:12px;overflow:hidden;}
+.go-reco-loading span:not(.sr-only){flex:0 0 62%;height:190px;border-radius:18px;background:linear-gradient(90deg,var(--bg-card),color-mix(in srgb,var(--brand-gold) 8%,var(--bg-card)),var(--bg-card));background-size:200% 100%;animation:go-reco-shimmer 1.3s linear infinite;}
+@keyframes go-reco-shimmer{to{background-position:-200% 0;}}
+@media (prefers-reduced-motion:reduce){.go-reco-loading span{animation:none!important;}}
+.go-product-recommendations--embedded{margin:18px 0 0!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;}
+.go-product-recommendations--embedded .go-product-recommendations__group{margin-top:0!important;}
+.go-product-context-links--embedded{margin:0!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;}
+
+/* Order preferences: a one-line summary until opened */
+.go-order-config__header{border:0;background:transparent;color:inherit;cursor:pointer;}
+.go-order-config__header:focus-visible{outline:none;box-shadow:inset 0 0 0 2px var(--brand-gold);border-radius:24px;}
+.go-order-config__chevron{transition:transform .3s ease;}
+.go-order-config.is-open .go-order-config__chevron{transform:rotate(180deg);}
+
+/* Home rows: the drawn tile sits where the photo would. */
+/* Size comes from the row's own placeholder rules (64/56/80px by width). */
+.go-artwork.go-product-row-v4__artwork{width:64px;height:64px;flex:0 0 64px;border-radius:14px;}
+:root .go-artwork.go-product-row-v4__placeholder{display:grid;background:radial-gradient(120% 90% at 50% 18%,color-mix(in srgb,var(--art-glow) 26%,transparent),transparent 62%),linear-gradient(160deg,var(--art-from),var(--art-to));}
+
+/* Global touch-target rules give every button 44px; the dots keep a 36px
+   invisible hit area through ::before instead. */
+.go-gallery .go-gallery__dot{min-height:0!important;min-width:0!important;height:24px!important;}
