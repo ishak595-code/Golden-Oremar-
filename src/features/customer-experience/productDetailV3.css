@@ -110,7 +110,6 @@
 @media (prefers-reduced-motion:reduce){.go-reco-loading span{animation:none!important;}}
 .go-product-recommendations--embedded{margin:18px 0 0!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;}
 .go-product-recommendations--embedded .go-product-recommendations__group{margin-top:0!important;}
-.go-product-context-links--embedded{margin:0!important;padding:0!important;background:none!important;border:0!important;box-shadow:none!important;}
 
 /* Order preferences: a one-line summary until opened */
 .go-order-config__header{border:0;background:transparent;color:inherit;cursor:pointer;}
@@ -243,9 +242,6 @@
 
 /* Maker line under the product name, and the künye: origin, seller,
    verification and stock in one paragraph, each said once. */
-.go-maker-line { display: flex; align-items: baseline; gap: .5rem; margin: .55rem 0 0; }
-.go-maker-line span { font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); }
-.go-maker-line strong { font-family: var(--font-serif, Georgia, serif); font-style: italic; font-size: 1.2rem; font-weight: 700; color: var(--brand-gold); }
 .go-kunye { list-style: none; padding: 0; margin: .75rem 0 0; border: 1px solid var(--border-main); border-radius: 1.15rem; background: var(--bg-card); overflow: hidden; }
 .go-kunye__row { display: flex; align-items: center; gap: .85rem; min-height: 3.6rem; padding: .7rem 1rem; color: var(--text-main); text-decoration: none; }
 .go-kunye li + li { border-top: 1px solid var(--border-light, var(--border-main)); }

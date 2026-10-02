@@ -12,7 +12,6 @@ import './features/customer-experience/premiumCompatibility.css';
 import './features/customer-experience/videoRecordingExact.css';
 import './features/customer-experience/storefrontNarrativePremium.css';
 import './features/customer-experience/productDiscoveryPremium.css';
-import './features/customer-experience/productDetailConnectionsPremium.css';
 import './features/customer-experience/productDetailPrestige.css';
 import './features/customer-experience/premiumMobileV2.css';
 import './features/customer-experience/productDetailV3.css';

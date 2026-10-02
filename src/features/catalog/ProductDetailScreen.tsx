@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{addToGuestCart}from'../cart/guestCart';
-import{ArrowLeft,Award,CircleSlash,BadgeCheck,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Compass,Copy,ExternalLink,Gift,Heart,Info as InfoIcon,MessageCircle,Minus,PackageCheck,Plus,QrCode,ScanLine,Share2,ShieldCheck,ShoppingCart,Sparkles,Star,Store,Truck,X,ZoomIn,MapPin,User}from'lucide-react';
+import{ArrowLeft,Award,CircleSlash,BadgeCheck,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,Gift,Heart,Info as InfoIcon,MessageCircle,Minus,PackageCheck,Plus,QrCode,ScanLine,Share2,ShieldCheck,ShoppingCart,Sparkles,Star,Store,Truck,X,ZoomIn,MapPin,User}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProductFavorite}from'./api';
 import PremiumOrderConfigurator from'./PremiumOrderConfigurator';
 import{buildOrderCustomization,buildProductExperience,defaultOrderOptions,validateOrderOptions,type SelectedOrderOptions}from'./productExperience';
@@ -19,7 +19,6 @@ import{isBrandFallbackImage}from'./ProductArtwork';
 import{DetailAccordion,DetailAccordionGroup}from'./DetailAccordion';
 import ProductRecommendations from'./ProductRecommendations';
 import ProductRecommendationsRail from'./ProductRecommendationsRail';
-import ProductDetailConnections from'./ProductDetailConnections';
 import{productSeo,type SeoAvailability}from'../seo/seoModel';
 import{applySeo,clearSeoStructuredData,publicSeoOrigin}from'../seo/applySeo';
 import{withdrawalTier,WITHDRAWAL_COPY}from'./withdrawalRight';
@@ -270,9 +269,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
     {categoryName?categorySlug?<button type="button" onClick={()=>onCategory?onCategory(categorySlug,categoryName):navigateToCategory(categorySlug)} aria-label={`${categoryName} kategorisini aç`} className="group inline-flex min-h-11 items-center gap-1 rounded-full border border-brand-gold/35 bg-brand-gold/5 px-3 text-xs font-black uppercase tracking-[0.12em] text-brand-gold transition hover:border-brand-gold hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span>{categoryName}</span><ChevronRight aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"/></button>:<div className="text-xs font-black uppercase tracking-[0.14em] text-brand-gold">{categoryName}</div>:null}
     <div className="mt-3 text-xs font-black tracking-[0.08em] text-brand-gold">{experience.kicker}</div>
     <h1 className="mt-1 text-3xl font-black leading-tight text-brand-green dark:text-brand-gold">{detailName}</h1>
-    {/* The maker's name, when the store has confirmed one, sits under the
-        product name: a person is the strongest reason to trust a village product. */}
-    {maker||makerVillage?<p className="go-maker-line"><span>Üreten</span><strong>{maker||`${makerVillage} üreticileri`}</strong></p>:null}
 
     <div className="mt-4 rounded-3xl border-2 border-brand-border bg-brand-card p-4 shadow-lg"><div className="flex items-end justify-between gap-3"><div>{priceReady?<div><div className="text-2xl font-black text-brand-green dark:text-brand-gold">{money(priceMinor,currency)}</div>{compareAtPriceReady?<div className="mt-1 text-sm font-semibold text-brand-muted line-through">Önce {money(compareAtPriceMinor,currency)}</div>:null}</div>:<div className="font-bold text-brand-muted">Fiyat şu anda gösterilemiyor</div>}{preorder?<div className="mt-1 text-xs font-black uppercase tracking-wider text-brand-gold">Sipariş üzerine hazırlanır</div>:null}</div>{soldOut?<span className="go-stock-pill go-stock-pill--out"><CircleSlash aria-hidden="true"/>Stokta yok</span>:null}</div></div>
 
@@ -340,7 +336,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    {hasTraceability?<DetailAccordion id="trace" icon={ScanLine} title="Lot ve İzlenebilirlik" teaser="Parti kodunu görün"><Traceability detail={detail} hasTraceability={hasTraceability} onCopy={copyTrace}/></DetailAccordion>:null}
    {Array.isArray(detail.certifications)&&detail.certifications.length?<DetailAccordion id="certs" icon={Award} title="Sertifikalar" teaser={`${detail.certifications.length} belge`}><Certifications items={detail.certifications}/></DetailAccordion>:null}
    <DetailAccordion id="reviews" icon={Star} title="Müşteri Yorumları" teaser={reviewCount?`${averageRating!==null?averageRating.toFixed(1):'-'} puan · ${reviewCount} yorum`:'Tadına bakan ilk siz olun, ilk yorumu siz yazın'}><Reviews reviews={reviews} reviewCount={reviewCount} averageRating={averageRating}/></DetailAccordion>
-   <DetailAccordion id="world" icon={Compass} title="Bu Ürünün Dünyası" teaser="Kategori, mağaza ve aynı menşe"><ProductDetailConnections embedded/></DetailAccordion>
   </DetailAccordionGroup>
 
   {/* Recommendations are always in view, not behind a tap: products that
@@ -371,9 +366,8 @@ function ProductFacts({detail,variant,categoryName}:{detail:any;variant:any;cate
  const rows:Array<[string,string]>=[
   ['Birim',safeText(variant?.name,160)||safeText(detail?.unitLabel,160)],
   ['Ağırlık (paketli)',formatWeight(safeInteger(variant?.weightGrams))],
-  ['Kategori',categoryName],
-  ['Menşe',safeText(detail?.origin,240)],
-  ['Üretici',safeText(detail?.producer?.name,240)],
+  // Category, origin and seller are not repeated here: the chip above the
+  // name, the store card and the künye already say them.
   ['Satış şekli',stockMode==='preorder'?'Sipariş üzerine hazırlanır':stockMode==='seasonal'?'Mevsimlik üretim':stockMode==='tracked'?'Hazır stoktan':''],
   ['Saklama',handling.requiresColdChain===true?'Soğuk zincir gerekir':handling.isPerishable===true?'Bozulabilir, serin tutun':handling.isPerishable===false?'Oda sıcaklığında saklanabilir':''],
   ['Ürün kodu',safeText(variant?.sku,80)],
