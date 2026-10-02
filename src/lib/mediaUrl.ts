@@ -25,7 +25,7 @@ import { supabase } from './supabase';
 
 // Filled in once the R2 public address exists. Native builds read this
 // constant, so they do not depend on a build-time variable being set.
-const CANONICAL_MEDIA_CDN_BASE = '';
+const CANONICAL_MEDIA_CDN_BASE = 'https://golden-oremar-media.ishak595.workers.dev';
 
 export const MIRRORED_BUCKETS = ['catalog-public', 'content-public', 'event-public'] as const;
 type MirroredBucket = (typeof MIRRORED_BUCKETS)[number];
