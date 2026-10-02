@@ -13,7 +13,7 @@ import OfflineOrderSheet from'../orders/OfflineOrderSheet';
 import{getOfflineOrderingConfig,offlineOrderingAvailable}from'../orders/offlineOrderApi';
 import{buildProductUrl,buildSearchUrl,copyText,shareOrCopy}from'../navigation/appUrl';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
-import{productMaker}from'./productMakers';
+import{productMaker,shortOrigin}from'./productMakers';
 import ProductGallery,{type GallerySlide}from'./ProductGallery';
 import{isBrandFallbackImage}from'./ProductArtwork';
 import{DetailAccordion,DetailAccordionGroup}from'./DetailAccordion';
@@ -225,6 +225,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const categorySlug=safeReference(detail?.category?.slug,220);
  const producerLocation=safeText(detail?.producer?.locationLabel,240)||safeText(detail?.origin,240);
  const maker=productMaker(detail?.slug);
+ // No confirmed person yet: name the village's producers, which the origin record supports. Never a guessed person.
+ const makerVillage=maker?'':shortOrigin(detail?.origin,true);
  const kunye:{label:string;text:string;tone?:'low'}[]=[];
  if(producerLocation)kunye.push({label:'Köken',text:producerLocation});
  {const seller=safeText(detail?.producer?.name,240);const official=detail?.producer?.storeKind==='official';const notes=[detail?.producer?.verified===true?(official?'doğrulanmış resmi mağaza':'doğrulanmış üretici'):'',detail?.producer?.originVerified===true?'menşei doğrulandı':''].filter(Boolean);if(seller)kunye.push({label:'Satıcı',text:notes.length?`${seller}, ${notes.join(', ')}`:seller});}
@@ -268,7 +270,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
     <h1 className="mt-1 text-3xl font-black leading-tight text-brand-green dark:text-brand-gold">{detailName}</h1>
     {/* The maker's name, when the store has confirmed one, sits under the
         product name: a person is the strongest reason to trust a village product. */}
-    {maker?<p className="go-maker-line"><span>Üreten</span><strong>{maker}</strong></p>:null}
+    {maker||makerVillage?<p className="go-maker-line"><span>Üreten</span><strong>{maker||`${makerVillage} üreticileri`}</strong></p>:null}
 
     <div className="mt-4 rounded-3xl border-2 border-brand-border bg-brand-card p-4 shadow-lg"><div className="flex items-end justify-between gap-3"><div>{priceReady?<div><div className="text-2xl font-black text-brand-green dark:text-brand-gold">{money(priceMinor,currency)}</div>{compareAtPriceReady?<div className="mt-1 text-sm font-semibold text-brand-muted line-through">Önce {money(compareAtPriceMinor,currency)}</div>:null}</div>:<div className="font-bold text-brand-muted">Fiyat şu anda gösterilemiyor</div>}{preorder?<div className="mt-1 text-xs font-black uppercase tracking-wider text-brand-gold">Sipariş üzerine hazırlanır</div>:null}</div>{soldOut?<span className="go-stock-pill go-stock-pill--out"><CircleSlash aria-hidden="true"/>Stokta yok</span>:null}</div></div>
 
