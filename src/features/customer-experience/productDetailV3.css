@@ -231,3 +231,22 @@
 .go-detail-recos .go-product-recommendations__group-head > div > span{color:var(--text-muted);}
 .go-detail-recos .go-product-recommendations__group-head h3{color:var(--text-main);}
 .go-detail-recos .go-product-recommendations__group-head p{color:var(--text-muted);}
+
+/* Card source line: who made it and where, once. The maker's name carries the
+   weight; the place sits quietly beside it. */
+.go-product-card__source { margin: .3rem 0 0; font-size: .8rem; line-height: 1.35; color: var(--text-muted); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.go-product-card__maker { font-family: var(--font-serif, Georgia, serif); font-style: italic; font-weight: 700; color: var(--brand-gold); }
+.go-product-card__unit { font-size: .72rem; color: var(--text-muted); }
+.go-product-card__badge--out { background: #4b5563; color: #fff; }
+.go-product-card__badge--icon { padding: .3rem; border-radius: 999px; }
+.go-product-card--compact .go-product-card__media > .absolute.right-3 { flex-direction: row; align-items: center; }
+
+/* Maker line under the product name, and the künye: origin, seller,
+   verification and stock in one paragraph, each said once. */
+.go-maker-line { display: flex; align-items: baseline; gap: .5rem; margin: .55rem 0 0; }
+.go-maker-line span { font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); }
+.go-maker-line strong { font-family: var(--font-serif, Georgia, serif); font-style: italic; font-size: 1.2rem; font-weight: 700; color: var(--brand-gold); }
+.go-kunye { margin: 1rem 0 0; padding: .95rem 1.05rem; border-left: 3px solid var(--brand-gold); border-radius: .35rem 1rem 1rem .35rem; background: color-mix(in srgb, var(--brand-gold) 6%, var(--bg-card)); font-size: .95rem; line-height: 1.75; color: var(--text-muted); }
+.go-kunye b { font-weight: 800; color: var(--text-main); }
+.go-kunye__part--low b, .go-kunye__part--low { color: #e3a52c; }
+.go-product-card__badge { white-space: nowrap; }

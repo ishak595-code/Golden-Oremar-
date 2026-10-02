@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{addToGuestCart}from'../cart/guestCart';
-import{ArrowLeft,Award,CalendarClock,CircleCheck,CircleSlash,Hourglass,BadgeCheck,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Compass,Copy,ExternalLink,Gift,Heart,Info as InfoIcon,MapPin,MessageCircle,Minus,PackageCheck,Plus,QrCode,ScanLine,Share2,ShieldCheck,ShoppingCart,Sparkles,Star,Store,Truck,X,ZoomIn}from'lucide-react';
+import{ArrowLeft,Award,CircleSlash,BadgeCheck,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Compass,Copy,ExternalLink,Gift,Heart,Info as InfoIcon,MessageCircle,Minus,PackageCheck,Plus,QrCode,ScanLine,Share2,ShieldCheck,ShoppingCart,Sparkles,Star,Store,Truck,X,ZoomIn}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProductFavorite}from'./api';
 import PremiumOrderConfigurator from'./PremiumOrderConfigurator';
 import{buildOrderCustomization,buildProductExperience,defaultOrderOptions,validateOrderOptions,type SelectedOrderOptions}from'./productExperience';
@@ -13,6 +13,7 @@ import OfflineOrderSheet from'../orders/OfflineOrderSheet';
 import{getOfflineOrderingConfig,offlineOrderingAvailable}from'../orders/offlineOrderApi';
 import{buildProductUrl,buildSearchUrl,copyText,shareOrCopy}from'../navigation/appUrl';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
+import{productMaker}from'./productMakers';
 import ProductGallery,{type GallerySlide}from'./ProductGallery';
 import{isBrandFallbackImage}from'./ProductArtwork';
 import{DetailAccordion,DetailAccordionGroup}from'./DetailAccordion';
@@ -223,6 +224,13 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const categoryName=safeText(detail?.category?.name,160);
  const categorySlug=safeReference(detail?.category?.slug,220);
  const producerLocation=safeText(detail?.producer?.locationLabel,240)||safeText(detail?.origin,240);
+ const maker=productMaker(detail?.slug);
+ const kunye:{label:string;text:string;tone?:'low'}[]=[];
+ if(producerLocation)kunye.push({label:'Köken',text:producerLocation});
+ {const seller=safeText(detail?.producer?.name,240);const official=detail?.producer?.storeKind==='official';const notes=[detail?.producer?.verified===true?(official?'doğrulanmış resmi mağaza':'doğrulanmış üretici'):'',detail?.producer?.originVerified===true?'menşei doğrulandı':''].filter(Boolean);if(seller)kunye.push({label:'Satıcı',text:notes.length?`${seller}, ${notes.join(', ')}`:seller});}
+ // Sold out is the pill beside the price and pre-order is the line under it; neither is said again here.
+ if(!soldOut&&!preorder)kunye.push(tracked&&variantStock!==null&&variantStock<=5?{label:'Stok',text:`son ${variantStock} adet`,tone:'low'}:{label:'Stok',text:'var'});
+ {const extra=activeBadges.filter((badge:any)=>!['official_store','verified_origin'].includes(safeText(badge.key,80))).map((badge:any)=>safeText(badge.label,120)).filter(Boolean).slice(0,3);if(extra.length)kunye.push({label:'Belgeler',text:extra.join(', ')});}
  const producerId=safeReference(detail?.producer?.id,160);
  const productId=safeReference(detail?.id,160);
  const questionReady=Boolean(producerId&&productId);
@@ -238,7 +246,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
     not a separate block further down. */
  const productVideoUrl=(()=>{const v:any=(detail as any)?.video;return v?.kind==='youtube'?safeText(v.url,600):v?.kind==='file'?(typeof v.url==='string'&&/^https:\/\//.test(v.url)?v.url:publicCatalogUrl(v.path)):null;})();
  if(productVideoUrl)gallerySlides.push({kind:'video',key:`video:${productVideoUrl}`,url:productVideoUrl});
- if(safeText(detail?.origin,240))gallerySlides.push({kind:'origin',key:'origin',origin:safeText(detail.origin,240),producer:safeText(detail?.producer?.name,240)});
  if(storyLine)gallerySlides.push({kind:'story',key:'story',kicker:safeText(experience.kicker,160),line:storyLine});
 
  return<article className="mx-auto max-w-6xl px-4 pb-28 sm:px-6">
@@ -259,13 +266,17 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
     {categoryName?categorySlug?<button type="button" onClick={()=>onCategory?onCategory(categorySlug,categoryName):navigateToCategory(categorySlug)} aria-label={`${categoryName} kategorisini aç`} className="group inline-flex min-h-11 items-center gap-1 rounded-full border border-brand-gold/35 bg-brand-gold/5 px-3 text-xs font-black uppercase tracking-[0.12em] text-brand-gold transition hover:border-brand-gold hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span>{categoryName}</span><ChevronRight aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"/></button>:<div className="text-xs font-black uppercase tracking-[0.14em] text-brand-gold">{categoryName}</div>:null}
     <div className="mt-3 text-xs font-black tracking-[0.08em] text-brand-gold">{experience.kicker}</div>
     <h1 className="mt-1 text-3xl font-black leading-tight text-brand-green dark:text-brand-gold">{detailName}</h1>
-    {/* Where it comes from, and what has been verified, sit right under the
-        name: provenance is the reason to buy a village product. */}
-    {producerLocation||activeBadges.length?<div className="go-origin-strip">{producerLocation?<span className="go-origin-strip__place"><MapPin aria-hidden="true"/>{producerLocation}</span>:null}{activeBadges.slice(0,4).map((badge:any)=><span key={safeText(badge.key,80)||safeText(badge.label,120)} className="go-origin-strip__badge"><BadgeCheck aria-hidden="true"/>{safeText(badge.label,120)}</span>)}</div>:null}
+    {/* The maker's name, when the store has confirmed one, sits under the
+        product name: a person is the strongest reason to trust a village product. */}
+    {maker?<p className="go-maker-line"><span>Üreten</span><strong>{maker}</strong></p>:null}
 
     <div className="mt-4 rounded-3xl border-2 border-brand-border bg-brand-card p-4 shadow-lg"><div className="flex items-end justify-between gap-3"><div>{priceReady?<div><div className="text-2xl font-black text-brand-green dark:text-brand-gold">{money(priceMinor,currency)}</div>{compareAtPriceReady?<div className="mt-1 text-sm font-semibold text-brand-muted line-through">Önce {money(compareAtPriceMinor,currency)}</div>:null}</div>:<div className="font-bold text-brand-muted">Fiyat şu anda gösterilemiyor</div>}{preorder?<div className="mt-1 text-xs font-black uppercase tracking-wider text-brand-gold">Sipariş üzerine hazırlanır</div>:null}</div>{soldOut?<span className="go-stock-pill go-stock-pill--out"><CircleSlash aria-hidden="true"/>Stokta yok</span>:null}</div></div>
 
     {safeText(detail.shortDescription,1000)?<p className="mt-4 text-[15px] leading-7 text-brand-muted">{safeText(detail.shortDescription,1000)}</p>:null}
+
+    {/* Künye: origin, seller, verification and stock, said once, in one
+        paragraph. Nothing here is repeated elsewhere on the page. */}
+    {kunye.length?<p className="go-kunye" data-product-kunye="true">{kunye.map((part,index)=><React.Fragment key={part.label}>{index?' ':null}<span className={part.tone?`go-kunye__part go-kunye__part--${part.tone}`:'go-kunye__part'}><b>{part.label}:</b> {part.text}.</span></React.Fragment>)}</p>:null}
 
     {Array.isArray(detail.variants)&&detail.variants.length>1?<label className="mt-5 block"><span className="text-sm font-black">Paket / seçenek <span className="text-red-500" aria-label="zorunlu">*</span></span><select value={variantId} onChange={event=>setVariantId(event.target.value)} className="input mt-2">{detail.variants.map((item:any)=>{const id=safeReference(item?.id,160)||'';return<option key={id||safeText(item?.name,240)} value={id} disabled={item?.available===false}>{safeText(item?.name,240)||'Seçenek'}{item?.available===false?' (Stokta yok)':''}</option>;})}</select></label>:null}
 
@@ -287,8 +298,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
         profile; if it is missing, no claim is made at all. */}
     {detail.producer?.id?<button type="button" onClick={()=>onProducer(String(detail.producer.id),safeText(detail.producer.slug,220)||String(detail.producer.id),safeText(detail.producer.name,240)||'Üretici')} className="go-store-card mt-5" aria-label={`${safeText(detail.producer.name,240)||'Üretici'} mağazasına git`}>
      <span className="go-store-card__logo" aria-hidden="true">{safeText(detail.producer.logoPath,600)&&publicCatalogUrl(safeText(detail.producer.logoPath,600))?<img src={publicCatalogUrl(safeText(detail.producer.logoPath,600))||undefined} alt="" loading="lazy" decoding="async" onError={event=>{event.currentTarget.style.display='none';}}/>:null}<Store/></span>
-     <span className="go-store-card__body"><span className="go-store-card__name"><span>{safeText(detail.producer.name,240)||'Üretici'}</span>{detail.producer?.verified===true?<BadgeCheck aria-hidden="true" className={`go-store-card__verified${detail.producer?.badgeTone==='ruby'?' go-store-card__verified--ruby':''}`}/>:null}</span>
-      <span className="go-store-card__meta">{detail.producer?.verified===true?(detail.producer?.storeKind==='official'?'Doğrulanmış resmi mağaza':'Doğrulanmış üretici'):producerLocation||'Üretici mağazası'}</span></span>
+     <span className="go-store-card__body"><span className="go-store-card__name"><span>{safeText(detail.producer.name,240)||'Üretici'}</span></span>
+      <span className="go-store-card__meta">Mağazanın tüm ürünlerini gör</span></span>
      <span className="go-store-card__go"><ChevronRight aria-hidden="true"/></span>
     </button>:null}
 
@@ -299,14 +310,10 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    </section>
   </div>
 
-  {/* Stock sits here, just above the descriptions, as one calm line: the
-      top of the page stays about the product and its price. Only "sold
-      out" stays next to the price, because it explains the disabled buttons. */}
-  {soldOut?null:<p className={`go-stock-line mt-8 go-stock-line--${tracked&&variantStock!==null&&variantStock<=5?'low':preorder?'preorder':'in'}`}>{tracked&&variantStock!==null&&variantStock<=5?<><Hourglass aria-hidden="true"/><span>Stokta son {variantStock} adet kaldı, tükenmeden sipariş verin.</span></>:preorder?<><CalendarClock aria-hidden="true"/><span>Ön siparişe açık; siparişinizle birlikte sizin için hazırlanır.</span></>:<><CircleCheck aria-hidden="true"/><span>{tracked?'Stokta var, hemen sipariş verebilirsiniz.':'Satışta, hemen sipariş verebilirsiniz.'}</span></>}</p>}
 
-  <DetailAccordionGroup className={soldOut?'mt-8':'mt-3'}>
+  <DetailAccordionGroup className="mt-8">
    <DetailAccordion id="story" icon={BookOpen} tone="gold" title="Ürünün Hikâyesi" teaser={safeText(experience.kicker,160)||'Sofranıza gelene kadarki yolculuğu'}>
-    <p className="go-detail-story">{experience.story}</p>{safeText(detail.origin,240)?<div className="go-detail-origin"><MapPin aria-hidden="true"/>{safeText(detail.origin,240)}</div>:null}
+    <p className="go-detail-story">{experience.story}</p>
    </DetailAccordion>
    <DetailAccordion id="info" icon={Sparkles} title="Ürünün Bilgi ve Özellikleri" teaser={[safeText(variant?.name,120)||safeText(detail?.unitLabel,120),formatWeight(safeInteger(variant?.weightGrams)),featureItems.length?`${featureItems.length} özellik`:''].filter(Boolean).join(' · ')||'Onu farklı kılan her şey'}>
     {featureItems.length?<ul className="go-detail-features">{featureItems.map((item,index)=><li key={`${item}-${index}`}><CheckCircle2 aria-hidden="true"/><span>{item}</span></li>)}</ul>:null}

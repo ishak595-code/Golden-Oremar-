@@ -47,6 +47,9 @@ const THEMES:Record<string,Theme>={
 };
 const DEFAULT_THEME:Theme={from:'#123326',to:'#06130e',glow:'#d3b45a',ink:'#e0c46e'};
 
+/** The colours a category is drawn in, for artwork and for the category directory. */
+export function categoryTheme(slug:string|null|undefined):Theme{return THEMES[String(slug||'')]||DEFAULT_THEME;}
+
 const has=(text:string,...words:string[])=>words.some(word=>text.includes(word));
 
 /** The icon that says what the product is, from its handling profile and name. */
@@ -106,6 +109,7 @@ export default function ProductArtwork({name,categorySlug,categoryName,productTy
  return<span className={`go-artwork go-artwork--${variant} ${className}`} style={style} data-product-artwork="true" {...a11y}>
   <svg className="go-artwork__ridge" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true"><path d="M0 120 L0 86 L48 60 L82 74 L130 30 L170 58 L206 40 L250 76 L292 48 L338 70 L372 52 L400 64 L400 120 Z"/><path className="go-artwork__ridge-line" d="M0 96 L54 76 L96 88 L140 56 L186 80 L224 66 L268 92 L312 70 L356 86 L400 78" fill="none"/></svg>
   <span className="go-artwork__seal"><Icon aria-hidden="true"/></span>
-  {variant!=='tile'?<span className="go-artwork__caption">{variant==='hero'?<><small>{categoryName||'Golden Oremar'}</small><strong>{name}</strong></>:<small>{categoryName||'Golden Oremar'}</small>}</span>:null}
+  {/* Cards already name the category beside the artwork; only the product page captions it. */}
+  {variant==='hero'?<span className="go-artwork__caption"><small>{categoryName||'Golden Oremar'}</small><strong>{name}</strong></span>:null}
  </span>;
 }

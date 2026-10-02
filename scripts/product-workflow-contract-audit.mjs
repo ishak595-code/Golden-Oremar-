@@ -98,8 +98,8 @@ if(moderation){
 
 const card=file('src/features/catalog/CatalogProductCard.tsx');
 if(card){
- requirePattern(card,/producerBadgeTone==='ruby'/,'Official catalog card must understand the ruby verification tone.');
- requirePattern(card,/producerStoreKind==='official'\?'ruby':'blue'/,'Official store cards must default to ruby while independent verified sellers stay blue.');
+ // The owner asked for the seller's verification to be stated once, on the product page, not on every card.
+ if(/producerBadgeTone|producerVerified\?/.test(card))failures.push('Catalog cards must not repeat the seller verification badge; it is stated once in the product page künye.');
  forbid(card,/producerStoreKind==='official'\?'emerald'/,'Official catalog verification must not regress to emerald.');
 }
 

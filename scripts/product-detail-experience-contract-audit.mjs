@@ -26,14 +26,14 @@ check(/<\/DetailAccordionGroup>[\s\S]*className="go-detail-recos"[\s\S]*<Product
 check(/<ProductGallery /.test(detail), 'The product images use ProductGallery.');
 check(!/go-return-line/.test(detail) && /<DetailAccordion id="returns"[^>]*Kargolama ve İade[^>]*teaser=\{withdrawal\?withdrawal\.copy\.title/.test(detail), 'Shipping and return terms share the "Kargolama ve İade" section, whose header always shows the withdrawal condition (no line under the price).');
 check(!/[\u2600-\u27BF\u{1F300}-\u{1FAFF}]/u.test(detail), 'The product page uses no emoji; states are shown with line icons.');
-check(/className=\{`go-stock-line /.test(detail) && detail.indexOf('go-stock-line') < detail.indexOf('<DetailAccordionGroup') && detail.indexOf('go-stock-line') > detail.indexOf('product-detail-commerce-dock') && /Stokta son \{variantStock\} adet kaldı/.test(detail), 'Stock is one sentence just above the descriptions, below the buy buttons.');
-check(/go-origin-strip/.test(detail) && detail.indexOf('go-origin-strip') < detail.indexOf('{money(priceMinor,currency)}'), 'The village and the verified badges sit under the product name, above the price.');
-check(/go-store-card__verified--ruby/.test(detail), 'The store card shows the verification badge in the store tone (ruby for the official store).');
+check(/className="go-kunye"/.test(detail) && detail.indexOf('className="go-kunye"') > detail.indexOf('{money(priceMinor,currency)}') && detail.indexOf('className="go-kunye"') < detail.indexOf('<DetailAccordionGroup') && !/go-stock-line/.test(detail) && !/go-origin-strip/.test(detail) && !/go-detail-origin/.test(detail) && !/kind:'origin'/.test(detail), 'Origin, seller, verification and stock are one paragraph (the künye) under the price; none of them is repeated as a strip, a line, a slide or a footer.');
+check(/go-maker-line/.test(detail) && detail.indexOf('go-maker-line') < detail.indexOf('{money(priceMinor,currency)}') && /productMaker\(detail\?\.slug\)/.test(detail), 'The confirmed maker, when there is one, is named under the product name; no maker is invented.');
+check(!/go-store-card__verified/.test(detail) && !/Doğrulanmış resmi mağaza/.test(detail), 'The store card is a plain link to the store; verification is stated once, in the künye.');
 check(!/Ürün Videosu<\/h2>/.test(detail) && /kind:'video'/.test(detail), 'The product video is a gallery slide, not a separate block.');
 check(/\{hasTraceability\?<DetailAccordion id="trace"/.test(detail), 'The traceability section is hidden while it has nothing to show.');
 check(!/aria-label="Bu ürünü hediye gönder"/.test(detail) && /async function giftNow\(\)[\s\S]{0,500}setOfflineGift\(true\)/.test(detail), 'One gift button (in the buy bar); it works for guests through the order sheet.');
-check(/go-stock-pill go-stock-pill--out/.test(detail) && /go-stock-line--\$\{/.test(detail), 'Sold out is a pill next to the price; other stock states are one sentence with an icon.');
-check(/Ön siparişe açık/.test(detail) && /specifications\?.preOrderTime/.test(detail), 'Pre-orders say so in the stock sentence and show the stored harvest and dispatch sentence.');
+check(/go-stock-pill go-stock-pill--out/.test(detail) && /if\(!soldOut&&!preorder\)kunye\.push/.test(detail), 'Sold out is a pill next to the price; in-stock and low-stock are said in the künye.');
+check(/Sipariş üzerine hazırlanır/.test(detail) && /specifications\?.preOrderTime/.test(detail), 'Pre-orders say so under the price and show the stored harvest and dispatch sentence.');
 check(!/aria-labelledby="product-withdrawal-title" className=\{`mt-6 flex gap-3/.test(detail), 'The large always-open withdrawal box must not come back; the line and the section replace it.');
 
 const accordion = read('src/features/catalog/DetailAccordion.tsx');

@@ -4,6 +4,7 @@ import type{CatalogItem}from'../../catalog/api';
 import{buildProductCardAccessibilityLabel}from'../../accessibility/productCardAccessibility';
 import{buildProductUrl}from'../../navigation/appUrl';
 import ProductArtwork,{isBrandFallbackImage}from'../../catalog/ProductArtwork';
+import{productMaker}from'../../catalog/productMakers';
 import'./ProductCard.css';
 
 function formatMinor(value:number,currency:string){
@@ -78,9 +79,11 @@ function ProductRowImage({src,eager,item}:{src:string|null|undefined;eager:boole
 
 export default function ProductCard({item,onClick,eager=false,merchandisingLabel=null}:{item:CatalogItem;onClick:()=>void;eager?:boolean;merchandisingLabel?:string|null}){
  const region=regionLabel(item);
+ // The maker's name, when confirmed, says more than the province every row shares.
+ const maker=productMaker(item.slug);
  const verification=verificationLabel(item);
  const compareMinor=typeof item.variant.compareAtPriceMinor==='number'&&Number.isSafeInteger(item.variant.compareAtPriceMinor)?item.variant.compareAtPriceMinor:null;
- const accessibleLabel=buildProductCardAccessibilityLabel({name:item.name,price:item.variant.priceMinor/100,currency:item.currency,compareAtPrice:compareMinor!==null?compareMinor/100:null,statuses:[merchandisingLabel,item.producer.name,region,verification]});
+ const accessibleLabel=buildProductCardAccessibilityLabel({name:item.name,price:item.variant.priceMinor/100,currency:item.currency,compareAtPrice:compareMinor!==null?compareMinor/100:null,statuses:[merchandisingLabel,maker?`Üreten ${maker}`:null,item.producer.name,region,verification]});
  return<li className="go-product-row-v4__item w-full" data-product-id={item.id} data-product-reference={item.slug} data-row-layout="horizontal-list" data-home-row-contract="single-link-v4" data-native-feature-marker="go-product-card-v2">
   <a href={buildProductUrl(item.slug)} onClick={event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;event.preventDefault();onClick();}} className="go-product-row-v4 w-full flex flex-row items-center justify-between hover:bg-[#112217] transition-all cursor-pointer" aria-label={accessibleLabel} data-product-link="true">
    <ProductRowImage src={item.imagePath} eager={eager} item={item}/>
@@ -88,7 +91,7 @@ export default function ProductCard({item,onClick,eager=false,merchandisingLabel
     <span className="go-product-row-v4__title">{item.name}</span>
     <span className="go-product-row-v4__meta text-sm text-gray-400">
      {merchandisingLabel?<span className="go-product-row-v4__badge">{merchandisingLabel}</span>:null}
-     <span className="go-product-row-v4__region"><span className="go-product-row-v4__region-full">{compactRegion(region)}</span><span className="go-product-row-v4__region-short">{shortRegion(region)}</span></span>
+     <span className="go-product-row-v4__region"><span className="go-product-row-v4__region-full">{maker||compactRegion(region)}</span><span className="go-product-row-v4__region-short">{maker||shortRegion(region)}</span></span>
      {verification?<span className="go-product-row-v4__verification">{verification}</span>:null}
     </span>
    </span>
