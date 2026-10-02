@@ -63,7 +63,6 @@ function seasonalKicker(input:ProductExperienceInput){
  const start=safeMonth(input.commerce?.seasonality?.startMonth),end=safeMonth(input.commerce?.seasonality?.endMonth);
  if(mode==='seasonal'&&start!==null&&end!==null)return`${monthName(start)} ile ${monthName(end)} arasındaki kısa sezonun seçkisi`;
  if(mode==='made_to_order')return'Siparişinle başlayan hazırlık';
- if(note&&mode==='year_round')return'Yeni sezonu ayrı, ustalığı yıl boyu yaşayan ürün';
  const haystack=folded(`${input.name||''} ${input.category?.slug||''} ${input.category?.name||''}`);
  if(includesAny(haystack,['bahar','cagla','kuzu gobegi']))return'İlkbaharın ilk armağanı';
  if(includesAny(haystack,['tarhana','hurma','pekmez','kuru','kurut','ceviz','bamya','kislik','elma','armut']))return'Sonbaharın kışa bıraktığı lezzet';
@@ -75,12 +74,12 @@ function seasonalKicker(input:ProductExperienceInput){
  return'Toprağın ve emeğin izini taşıyan seçki';
 }
 
+// The story is shown exactly as the store wrote it (super admin product
+// editor, "Hikâye"). It used to be wrapped in a fixed template whenever it
+// was shorter than 480 characters, which made every product read the same.
+// With no story, the product's own description is used; nothing is invented.
 function storyOf(input:ProductExperienceInput){
- const existing=text(input.story,12000);
- if(existing.length>=480)return existing;
- const name=text(input.name,300)||'Bu ürün',location=locationOf(input),note=text(input.commerce?.seasonality?.note,500);
- const source=existing||text(input.description,1800)||text(input.shortDescription,1000);
- return`${seasonalKicker(input)}. ${location} çevresinde ${name} hazırlanırken ürünün kendi ritmini zorlamamak temel yaklaşımdır. Köyde üretim bilgisi yalnız ölçüyle değil; hava, su, toprak, koku, doku ve o günkü malzemenin verdiği işaretlerle birlikte okunur. ${source?`${source} `:''}Ayıklama, dinlendirme, hazırlanma ve paketleme küçük partiler halinde yürütülür; yolculuğa uygun olmayan parçalar ayrılır ve müşterinin sipariş sırasında seçtiği hazırlama tercihleri üreticiye aynı kayıt üzerinden iletilir. ${note?`${note} `:''}Buradaki anlatının amacı ürüne doğrulanmamış bir efsane yüklemek değil, neden mevsime bağlı olabildiğini ve el emeğinin hangi aşamalarda devreye girdiğini görünür kılmaktır. Golden Oremar’da ürün sayfasındaki mevsim, hazırlık ve sipariş seçenekleri yönetim panelindeki aynı veri kaynağından gelir; gerçek üretici veya saha bilgisi güncellendiğinde müşteri tarafı da aynı kayıtla güncellenir.`;
+ return text(input.story,12000)||text(input.description,1800)||text(input.shortDescription,1000);
 }
 
 function managedLead(input:ProductExperienceInput,schema:OrderOptionDefinition[]){
