@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{addToGuestCart}from'../cart/guestCart';
-import{ArrowLeft,Award,CircleSlash,BadgeCheck,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Compass,Copy,ExternalLink,Gift,Heart,Info as InfoIcon,MessageCircle,Minus,PackageCheck,Plus,QrCode,ScanLine,Share2,ShieldCheck,ShoppingCart,Sparkles,Star,Store,Truck,X,ZoomIn}from'lucide-react';
+import{ArrowLeft,Award,CircleSlash,BadgeCheck,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Compass,Copy,ExternalLink,Gift,Heart,Info as InfoIcon,MessageCircle,Minus,PackageCheck,Plus,QrCode,ScanLine,Share2,ShieldCheck,ShoppingCart,Sparkles,Star,Store,Truck,X,ZoomIn,MapPin,User}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProductFavorite}from'./api';
 import PremiumOrderConfigurator from'./PremiumOrderConfigurator';
 import{buildOrderCustomization,buildProductExperience,defaultOrderOptions,validateOrderOptions,type SelectedOrderOptions}from'./productExperience';
@@ -227,12 +227,14 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const maker=productMaker(detail?.slug,detail?.makerName);
  // No confirmed person yet: name the village's producers, which the origin record supports. Never a guessed person.
  const makerVillage=maker?'':shortOrigin(detail?.origin,true);
- const kunye:{label:string;text:string;tone?:'low'}[]=[];
- if(producerLocation)kunye.push({label:'Köken',text:producerLocation});
- {const seller=safeText(detail?.producer?.name,240);const official=detail?.producer?.storeKind==='official';const notes=[detail?.producer?.verified===true?(official?'doğrulanmış resmi mağaza':'doğrulanmış üretici'):'',detail?.producer?.originVerified===true?'menşei doğrulandı':''].filter(Boolean);if(seller)kunye.push({label:'Satıcı',text:notes.length?`${seller}, ${notes.join(', ')}`:seller});}
+ // Künye: who made it, where, what is verified, what is in stock. One row
+ // each, under the store card. The village row opens the place on a map.
+ const kunye:{key:string;label:string;text:string;href?:string;tone?:'low'}[]=[];
+ if(maker||makerVillage)kunye.push({key:'maker',label:'Üreten',text:maker||`${makerVillage} üreticileri`});
+ if(producerLocation){const place=producerLocation.split(',').map(part=>part.trim()).filter(Boolean).map((part,index)=>index===0&&part.includes(' - ')?part.split(' - ').pop()!.trim():part).join(', ');kunye.push({key:'village',label:'Köy',text:producerLocation,href:`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`});}
+ {const official=detail?.producer?.storeKind==='official';const notes=[detail?.producer?.originVerified===true?'Menşei doğrulandı':'',detail?.producer?.verified===true?(official?'resmi mağaza':'doğrulanmış üretici'):'',...activeBadges.filter((badge:any)=>!['official_store','verified_origin'].includes(safeText(badge.key,80))).map((badge:any)=>safeText(badge.label,120)).filter(Boolean).slice(0,3)].filter(Boolean);if(notes.length)kunye.push({key:'verified',label:'Doğrulama',text:notes.join(', ')});}
  // Sold out is the pill beside the price and pre-order is the line under it; neither is said again here.
- if(!soldOut&&!preorder)kunye.push(tracked&&variantStock!==null&&variantStock<=5?{label:'Stok',text:`son ${variantStock} adet`,tone:'low'}:{label:'Stok',text:'var'});
- {const extra=activeBadges.filter((badge:any)=>!['official_store','verified_origin'].includes(safeText(badge.key,80))).map((badge:any)=>safeText(badge.label,120)).filter(Boolean).slice(0,3);if(extra.length)kunye.push({label:'Belgeler',text:extra.join(', ')});}
+ if(!soldOut&&!preorder)kunye.push(tracked&&variantStock!==null&&variantStock<=5?{key:'stock',label:'Stok',text:`Son ${variantStock} adet`,tone:'low'}:{key:'stock',label:'Stok',text:'Var'});
  const producerId=safeReference(detail?.producer?.id,160);
  const productId=safeReference(detail?.id,160);
  const questionReady=Boolean(producerId&&productId);
@@ -276,9 +278,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
     {safeText(detail.shortDescription,1000)?<p className="mt-4 text-[15px] leading-7 text-brand-muted">{safeText(detail.shortDescription,1000)}</p>:null}
 
-    {/* Künye: origin, seller, verification and stock, said once, in one
-        paragraph. Nothing here is repeated elsewhere on the page. */}
-    {kunye.length?<p className="go-kunye" data-product-kunye="true">{kunye.map((part,index)=><React.Fragment key={part.label}>{index?' ':null}<span className={part.tone?`go-kunye__part go-kunye__part--${part.tone}`:'go-kunye__part'}><b>{part.label}:</b> {part.text}.</span></React.Fragment>)}</p>:null}
 
     {Array.isArray(detail.variants)&&detail.variants.length>1?<label className="mt-5 block"><span className="text-sm font-black">Paket / seçenek <span className="text-red-500" aria-label="zorunlu">*</span></span><select value={variantId} onChange={event=>setVariantId(event.target.value)} className="input mt-2">{detail.variants.map((item:any)=>{const id=safeReference(item?.id,160)||'';return<option key={id||safeText(item?.name,240)} value={id} disabled={item?.available===false}>{safeText(item?.name,240)||'Seçenek'}{item?.available===false?' (Stokta yok)':''}</option>;})}</select></label>:null}
 
@@ -307,6 +306,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
     {questionReady?<button type="button" onClick={()=>{if(!authenticated){onLoginRequired();return;}setQuestionOpen(value=>!value);setError('');setStatus('');}} aria-expanded={questionOpen} className="go-store-ask mt-2"><MessageCircle aria-hidden="true"/>Üreticiye soru sor</button>:null}
     {questionOpen&&producerId&&productId?<ProducerQuestionComposer className="mt-3" context={{kind:'product',producerId,productId,productName:detailName}} onCancel={()=>setQuestionOpen(false)} onStarted={()=>{setQuestionOpen(false);setStatus('Sorunuz üreticiye gönderildi. Yanıtı Hesabım > Mesajlarım bölümünden takip edebilirsiniz.');}}/>:null}
+
+    {kunye.length?<ul className="go-kunye" data-product-kunye="true" aria-label="Ürün künyesi">{kunye.map(row=>{const Icon=({maker:User,village:MapPin,verified:BadgeCheck,stock:PackageCheck} as Record<string,typeof MapPin>)[row.key];const body=<><span className="go-kunye__icon" aria-hidden="true"><Icon/></span><span className="go-kunye__text"><span className="go-kunye__label">{row.label}</span><span className="go-kunye__value">{row.text}</span></span>{row.href?<span className="go-kunye__go" aria-hidden="true"><span>Haritada aç</span><ExternalLink/></span>:null}</>;return<li key={row.key}>{row.href?<a href={row.href} target="_blank" rel="noopener noreferrer" className={`go-kunye__row go-kunye__row--link`} aria-label={`${row.label}: ${row.text}. Haritada aç`}>{body}</a>:<div className={`go-kunye__row${row.tone?` go-kunye__row--${row.tone}`:''}`}>{body}</div>}</li>;})}</ul>:null}
 
     {reviewCount!==null&&reviewCount>0?<div className="mt-4 flex items-center gap-2 text-sm"><Star aria-hidden="true" className="h-5 w-5 fill-brand-gold text-brand-gold"/><strong>{averageRating!==null?averageRating.toFixed(1):'-'}</strong><span className="text-brand-muted">{reviewCount} yorum</span></div>:null}
    </section>
