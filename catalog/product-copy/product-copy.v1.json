@@ -1,0 +1,433 @@
+{
+ "note": "Ürün kısa açıklaması (s), hikâyesi (t), üreten kişi (m), özellikler (f) ve etiketler (g). 2026-10-02 tarihinde canlı veritabanına ve gömülü katalog kopyasına uygulandı. Bundan sonra süper admin panelinden düzenlenir; bu dosya kayıt içindir.",
+ "rows": [
+  {
+   "slug": "abidin-in-yayla-kuzusu-302",
+   "s": "Yayla otuyla büyüyen bütün kuzu; siparişinize göre kesilir ve istediğiniz gibi parçalanır.",
+   "t": "Yaylada acele yoktur, kuzu da acele etmez. Abidin sürüsünü yazın Yeşiltaş'ın üstündeki yaylaya çıkarır; hayvan gün boyu yürür, otunu kendi seçer. Kuzu hazır beklemez: siz sipariş verince adınıza ayrılır, helal usulle kesilir ve nasıl parçalansın isterseniz öyle hazırlanır. Bütün kuzu ortalama 16-20 kilo gelir; kışlık kavurma yapanlar, kalabalık sofra kuranlar için düşünülmüştür.",
+   "m": "Abidin",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "amine-nin-cifte-sari-koy-yumurtasi-305",
+   "s": "Yaşlı tavukların iri, çifte sarılı yumurtaları; Amine Yenge tek tek seçer, otuzluk kolide gelir.",
+   "t": "Kümesin en yaşlı tavukları en iri yumurtayı bırakır. Amine Yenge sabah folluğu dolaşır, iri olanları ayırır; çifte sarı çıkanlar bu koliye girer. Kabuğu çatlak ya da ince olan yola çıkmaz. Otuz yumurta viyole dizilir, darbe almasın diye sıkı paketlenir. Tavayı kırdığınızda iki sarıyı yan yana görürsünüz; boyu ve rengi yumurtadan yumurtaya değişir, çünkü hiçbiri kalıptan çıkmadı.",
+   "m": "Amine Yenge",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "ata-tohumu-dag-kekigi-suyu-distile-807",
+   "s": "Dağ kekiğinin imbikten geçirilmiş suyu; yarım litrelik cam şişede.",
+   "t": "Kekik kaynar, buharı soğur, damla damla şişeye iner. Zübeyde kekiği yaz başında, çiçeğe durduğu günlerde yamaçtan toplar ve gölgede bekletir. Sonra imbik kurulur; bir kazan kekikten çıkan su azdır, iş de yavaştır. Şişeyi açtığınızda yamacın kokusu gelir. Tadı keskindir, bu yüzden az kullanılır.",
+   "m": "Zübeyde",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "avasin-cam-damacana-suyu-401",
+   "s": "Avaşin'in kaynak suyu, on dokuz litrelik cam damacanada; sipariş üzerine doldurulur.",
+   "t": "Su dağdan gelir, cama girer, başka bir şeye değmez. Resul damacanaları kaynağın başında doldurur; plastik yerine cam kullanmamızın sebebi suyun tadına koku karışmamasıdır. Cam ağırdır ve kırılır, bu yüzden her damacana korumalı taşınır ve sipariş üzerine hazırlanır.",
+   "m": "Resul",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "avasin-deresi-canli-alabaligi-ozel-hasat-301",
+   "s": "Avaşin deresinin akar suyunda büyüyen alabalık; siparişle tutulur, soğuk zincirle gelir.",
+   "t": "Dere hızlı akar, balık da ona karşı yüzer. Avaşin'in suyu yazın bile soğuktur; alabalık bu akıntıda büyüdüğü için eti sıkıdır. Tahir balığı önceden tutup bekletmez; sipariş gelince dereye iner, temizler ve buzla paketler. Her balık bir buçuk ile iki kilo arasındadır. Bütün olarak ya da temizlenmiş olarak isteyebilirsiniz.",
+   "m": "Tahir",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "avasin-mese-bali-103",
+   "s": "Avaşin vadisinin meşe ormanından koyu renkli, ağır kıvamlı bal; bir kiloluk cam kavanozda.",
+   "t": "Bu bal çiçekten değil, meşeden gelir. Cahit kovanlarını Avaşin vadisindeki meşeliğin kıyısına koyar; arı yaz sonunda meşenin salgısını toplar. Bu yüzden rengi koyudur, kıvamı ağırdır, tadında çiçek balındaki o hafif tatlılık yerine daha tok bir tat vardır. Kavanoza süzüldüğü gibi girer. Her yılın balı bir öncekinden biraz farklı çıkar; fark ormanın o yılki halinden gelir.",
+   "m": "Cahit",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "bercelan-yaylasi-bahar-cicek-bali-102",
+   "s": "Berçelan yaylasının bahar çiçeklerinden açık renkli süzme bal; bir kiloluk cam kavanozda.",
+   "t": "Kar çekilir, yayla bir gecede çiçeğe durur. Fatma Ana kovanlarını o günlerde Berçelan'a çıkarır; arı ilk nektarını bahar çiçeklerinden alır. Bal açık renklidir, kokusu hafiftir. Zamanla kavanozda şekerlenebilir; bu, gerçek balın huyudur, bozulduğunu göstermez. Ilık suda bekletirseniz yeniden akar.",
+   "m": "Fatma Ana",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "buyuk-iskender-corek-otu-tohumu-705",
+   "s": "Köy tarlasından elenmiş, iri taneli çörek otu; yarım kiloluk bez kesede.",
+   "t": "Küçük siyah tane, büyük koku. Hanife çörek otunu yaz sonunda biçer, harmanda döver, rüzgârda savurur. Sonra elekten geçirir; taş, sap ve boş tane ayrılır. Keseye giren tane iridir ve kurudur. Ekmeğin üstüne, peynirin yanına, turşunun içine girer. Avucunuzda ezdiğinizde kokusunu hemen alırsınız.",
+   "m": "Hanife",
+   "f": [
+    "İri ve kuru tane",
+    "Elle elenir, taşı ayıklanır",
+    "Bez kesede"
+   ],
+   "g": [
+    "Tohum",
+    "Elenmiş"
+   ]
+  },
+  {
+   "slug": "dag-cilegi-yabani-803",
+   "s": "Yamaçta kendiliğinden yetişen küçük, kokulu yaban çileği; mevsiminde, sipariş üzerine toplanır.",
+   "t": "Bu çileği kimse ekmedi. Yeşiltaş'ın üstündeki yamaçlarda, kar suyunun geçtiği yerlerde kendi biter. Tanesi küçüktür, bahçe çileğinin yarısı kadar; kokusu ise ondan çok daha güçlüdür. Leyla sabah serinliğinde çıkar, tek tek toplar. Çabuk ezilir, bu yüzden beklemez: sipariş gelince toplanır ve aynı gün yola çıkar. Mevsimi kısadır, bittiğinde bir sonraki yaza kalır.",
+   "m": "Leyla",
+   "f": [
+    "Yabani, kendiliğinden yetişir",
+    "Elle, sabah serinliğinde toplanır",
+    "Mevsimi kısa, sipariş üzerine"
+   ],
+   "g": null
+  },
+  {
+   "slug": "daglica-karakovan-petek-bali-101",
+   "s": "Dağlıca'nın karakovanlarından kesilmiş doğal petek bal; bir kiloluk ahşap kutuda.",
+   "t": "Karakovanda arıya hazır petek verilmez; peteği arı kendi örer. Süleyman Usta kovanlarını Dağlıca'nın sarp yamaçlarına yerleştirir ve yıl boyu dokunmaz. Hasat yılda bir kez yapılır, çıkan bal azdır. Petek olduğu gibi kesilir, ahşap kutuya yerleştirilir. Mumuyla birlikte yenir. Fiyatı bu yüzden yüksektir: az çıkar, zor çıkar.",
+   "m": "Süleyman Usta",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "eksi-karadut-suyu-804",
+   "s": "Ekşi karadutun odun ateşinde kaynatılmış koyu suyu; şeker eklenmez, bir litrelik cam şişede.",
+   "t": "Karadut ele bulaşır, lekesi günlerce çıkmaz. Nergis ağacın altına bez serer, dalı silkeler; dut bezin üstüne dökülür. Sonra kazan kurulur, dut odun ateşinde ağır ağır kaynar ve koyulaşır. İçine şeker girmez; ekşiliği duttan gelir. Yoğundur, suyla açılarak içilir. Bir şişe uzun süre yeter.",
+   "m": "Nergis",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "el-isciligi-mese-palamudu-ekmegi-505",
+   "s": "Meşe palamudu unuyla yoğrulan, beş günde hazırlanan esmer köy somunu; sipariş üzerine pişer.",
+   "t": "Bu ekmek bir günde olmaz. Ayşe Teyze palamudu önce kavurur, acısı gitsin diye bekletir, sonra un haline getirir. Hamur ekşi mayayla tutulur ve günlerce dinlenir. Fırından çıkan somun ağırdır, kabuğu serttir, içi koyu renklidir. Bir buçuk kilo gelir. Dilimleyip dondurursanız aylarca dayanır. Her gün yapılmaz; siparişiniz gelince hamur tutulur.",
+   "m": "Ayşe Teyze",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "el-islemesi-tahta-kasik-ve-yayik-tokmagi-704",
+   "s": "Ardıç ve şimşirden elle oyulmuş tahta kaşık ve yayık tokmağı; vernik ve boya sürülmez.",
+   "t": "Selim Usta ağacı önce bekletir, sonra oyar. Kaşık ve tokmak ardıç ile şimşirden çıkar; ikisi de sıkı dokulu, yemeğe tat vermeyen ağaçlardır. Bir takım yaklaşık bir haftada biter. Üstüne vernik ya da boya sürülmez; ağaç olduğu gibi bırakılır. Elde yıkanır, bulaşık makinesine girmez. Ara sıra yağlanırsa yıllarca kullanılır. Her parçanın damarı farklıdır, iki kaşık birbirinin aynısı olmaz.",
+   "m": "Selim Usta",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "fahrettin-in-sutten-kesilmis-oglagi-303",
+   "s": "Sütten yeni kesilmiş bütün oğlak; siparişinize göre kesilir, soğuk zincirle gelir.",
+   "t": "Oğlak eti yumuşaktır ve kokusu hafiftir. Fahrettin Usta keçilerini dağ yamacında otlatır; oğlak sütten kesildiği günlerde, taze ota yeni başlamışken ayrılır. Hazır bekletilmez: siz sipariş verince kesilir, isteğinize göre bütün bırakılır ya da parçalanır. On ile on dört kilo arasında gelir. Soğuk zincirle taşınır.",
+   "m": "Fahrettin Usta",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "gunes-sirri-guzu-yagi-ic-yag-701",
+   "s": "Kuzunun iç yağı, eritilip süzülmüş; kavurma ve sıcak yemekler için bir kiloluk kavanozda.",
+   "t": "Eski mutfakta yemeğin tadı bu yağdan gelirdi. Cemal iç yağı kesimden sonra ayırır, kısık ateşte eritir ve bezden süzer. Soğuyunca beyazlaşır ve katılaşır. Kavurmaya, pilava, hamur işine girer; tereyağından daha ağır, daha tok bir tat verir. Soğukta saklanır. Her mevsim bulunmaz, kesim zamanına bağlıdır.",
+   "m": "Cemal",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "gunluk-taze-civik-sut-sagimdan-kapiya-204",
+   "s": "Şafakta sağılan, kaynatılmamış çiğ inek sütü; üç litrelik cam şişede, sipariş üzerine.",
+   "t": "Süt sabah sağılır, aynı gün yola çıkar. Amine Ana ineklerini merada otlatır ve şafak vakti elle sağar. Süt kaynatılmaz, işlem görmez; cam şişeye girdiği gibi gelir. Bu yüzden çiğ süttür: içmeden önce kaynatmanız gerekir. Kaynayınca üstünde kalın bir kaymak tutar. Raf ömrü kısadır, sipariş üzerine hazırlanır ve soğuk taşınır.",
+   "m": "Amine Ana",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "hakkari-dag-elmasi-801",
+   "s": "İki bin metrenin üstünde yetişen sert, sulu ve kokulu dağ elması; ilaçsız, bir kiloluk filede.",
+   "t": "Bu elma sıcağı sevmez. İki bin metrenin üstünde gündüz güneş vurur, gece ayaz keser; elma bu farkla sertleşir ve kokusunu toplar. Hasan ağaçlarına ilaç atmaz. Bu yüzden elmalar market elması gibi parlak ve aynı boyda değildir; kimi küçük, kimi lekelidir. Isırdığınızda sesi çıkar. Serin yerde uzun süre dayanır.",
+   "m": "Hasan",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "hakkari-dag-erigi-902",
+   "s": "Ekşisiyle tatlısı dengede, ince kabuklu ve sulu dağ eriği; mevsiminde, elle toplanır.",
+   "t": "Dağ eriği yaz sonunda, yamaçtaki ağaçların en güneşli dallarında olgunlaşır. Ferhat eriği sallayarak değil, elle toplar; yere düşen erik ezilir ve yola dayanmaz. Kabuğu incedir, içi suludur, tadı ekşiyle tatlının tam ortasındadır. Taze yenir, hoşafı ve reçeli de olur. Mevsimi birkaç haftadır; siparişler o haftalarda toplanıp gönderilir.",
+   "m": "Ferhat",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "hakkari-ham-propolisi-907",
+   "s": "Kovan çerçevelerinden elle kazınan, işlenmemiş ham propolis; yüz gramlık pakette.",
+   "t": "Propolis, arıların ağaç tomurcuklarından topladığı reçineyle kovanın aralıklarını kapattığı maddedir. Hüseyin bal hasadından sonra çerçeveleri tek tek kazır; bir kovandan çıkan miktar bir avucu geçmez. Kazınan parça işlenmez, eritilmez, olduğu gibi paketlenir. Koyu renklidir, soğukta kırılgan, sıcakta yapışkandır. Kokusu keskin ve reçinelidir.",
+   "m": "Hüseyin",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "hakkari-yayla-karpuzu-905",
+   "s": "Gece serinliğinde geç olgunlaşan, içi sıkı ve kıtır yayla karpuzu; tek tek seçilir.",
+   "t": "Yayla karpuzu ova karpuzundan geç olgunlaşır; gece serinliği meyvenin içini sıkı ve kıtır tutar. Şahin karpuzu tarlada tek tek yoklar, sapına ve sesine bakar. Olgun olmayan toplanmaz. Ortalama beş kilo gelir, içi kırmızıdır. Yaz sonunda, kısa bir süre bulunur; sipariş verenlere o günlerde kesilip gönderilir.",
+   "m": "Şahin",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "hardaliye-geleneksel-805",
+   "s": "Üzüm şırasının hardal tohumuyla bekletildiği alkolsüz geleneksel içecek; bir litrelik cam şişede.",
+   "t": "Üzüm ezilir, şırası küpe girer, içine hardal tohumu atılır. Hümeyra şırayı serin yerde haftalarca bekletir. Hardal tohumu şıranın alkole dönmesini engeller; ortaya ne şıra ne şarap olan, kendine özgü bir içecek çıkar. Tadı hafif buruk ve mayhoştur. Soğuk içilir. Şişenin dibinde tortu olabilir, bu doğaldır.",
+   "m": "Hümeyra",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "hatun-ana-nin-eksi-maya-gunesi-tarhana-501",
+   "s": "Ekşi mayayla tutulup güneşte kurutulan köy tarhanası; bir kiloluk keten torbada.",
+   "t": "Tarhana yazın yapılır, kışın yenir. Hatun Ana yoğurdu, unu ve sebzeyi yoğurur, hamuru günlerce ekşimeye bırakır. Sonra hamur parçalanır, damda bezlerin üstüne serilir ve güneşte kurur. Kuruyunca elle ovulur, elekten geçer. Keten torbaya girer ki nefes alsın. Bir avucu bir tencere çorba eder. Ekşiliği mayadan gelir.",
+   "m": "Hatun Ana",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "havahan-in-otlu-dag-peyniri-203",
+   "s": "Sirmo, heliz ve mendo otlarıyla yoğrulan, salamurada dinlenen otlu peynir; bir kiloluk kalıp.",
+   "t": "Otlu peynirin otu baharda toplanır. Havahan ve köyün kadınları sirmo, heliz ve mendoyu Avaşin meralarından toplar, ayıklar ve tuzlar. Otlar taze peynir teleme haline gelince içine yoğrulur. Kalıp kaya tuzuyla salamuraya yatar ve aylarca dinlenir. Peynir serttir, tuzludur, her dilimde yeşil ot damarları görünür. Yemeden önce suda bekletirseniz tuzu azalır.",
+   "m": "Havahan",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "husnu-dayi-nin-kagit-kabuklu-cevizi-504",
+   "s": "Kabuğu elle kırılan, içi iri ve açık renkli köy cevizi; bir kiloluk filede.",
+   "t": "Bu cevizin kabuğu parmakla kırılır. Hüsnü Dayı'nın ağaçları yaşlıdır; ceviz dalda olgunlaşır, yeşil kabuğu çatlayınca kendiliğinden düşer. Toplanan ceviz gölgede, hava alan bir yerde kurutulur; güneşte kurutulursa içi kararır ve acılaşır. İçi iridir, açık renklidir, tadı yağlıdır. Kabuklu saklanırsa kış boyu dayanır.",
+   "m": "Hüsnü Dayı",
+   "f": null,
+   "g": [
+    "Kağıt Kabuk",
+    "Gölgede Kurutma"
+   ]
+  },
+  {
+   "slug": "isli-kaya-uzumleri-tane-kuru-506",
+   "s": "Odun isinde kurutulmuş, koyu renkli ve isli kokulu kuru üzüm; bir kiloluk bez kesede.",
+   "t": "Bu üzümü güneş değil, is kurutur. Cafer salkımları odun ateşinin yakınına asar; üzüm günler içinde suyunu bırakır ve isin kokusunu alır. Tanesi koyulaşır, kabuğu büzülür. Tadı tatlıdır ama arkasından hafif bir is tadı gelir. Çerez olarak yenir, pilava ve hoşafa da girer. Bez kesede saklanır.",
+   "m": "Cafer",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "kadin-imecesi-odun-atesi-pekmezi-503",
+   "s": "Bakır kazanda, odun ateşinde saatlerce koyulaştırılan üzüm pekmezi; şeker eklenmez.",
+   "t": "Bağ bozumunda köyün kadınları tek kazanın başında toplanır. Zeynep ve komşuları üzümü ezer, şırayı süzer, bakır kazana doldurur. Kazan odun ateşinde saatlerce kaynar; biri karıştırır, biri ateşe bakar, biri köpüğü alır. İçine şeker girmez; pekmez şıranın kendisinden koyulaşır. Rengi koyu, kıvamı ağırdır. Bir kiloluk cam kavanozda gelir.",
+   "m": "Zeynep",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "kan-kirmizi-yabani-kizilcik-surubu-seti-602",
+   "s": "Yabani kızılcıktan yapılan koyu kırmızı, mayhoş şurup; bir litrelik cam şişede, suyla açılır.",
+   "t": "Kızılcık yaz sonunda kızarır, tadı ağzı buruşturur. Kader kızılcığı çalılardan toplar, kaynatır ve süzer. Şurup koyudur; bir ölçü şuruba birkaç ölçü su katılarak içilir. Rengi koyu kırmızı, tadı mayhoştur. Cam şişesiyle sofraya konacak kadar güzeldir, hediye olarak da gider.",
+   "m": "Kader",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "kekik-aromali-kesik-yogurt-kurud-703",
+   "s": "Süzülüp tuzlanan ve güneşte kurutulan yoğurt; kışlık, bir kiloluk bez çuvalda.",
+   "t": "Kurut, yoğurdun kışa saklanmış halidir. Hatun Teyze yoğurdu bez torbada süzer, tuzlar, elle topak yapar ve güneşe serer. Topaklar taş gibi sertleşir; bu haliyle aylarca bozulmaz. Yemek yaparken sıcak suda ezilir, çorbaya ve hamur yemeklerine sos olur. Tadı ekşi ve tuzludur.",
+   "m": "Hatun Teyze",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "kekik-aromali-visne-kompostosu-809",
+   "s": "Vişnenin dağ kekiğiyle kaynatıldığı ev yapımı komposto; bir litrelik cam şişede.",
+   "t": "Vişne yazın toplanır, komposto kışın açılır. Ayşe vişneyi çekirdeğiyle kaynatır, içine bir tutam dağ kekiği atar. Kekik vişnenin ekşisini yumuşatır, kokusunu değiştirir. Soğuk içilir. Şişenin dibinde vişne taneleri kalır; onlar da yenir.",
+   "m": "Ayşe",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "kirik-tas-kaya-tuzu-blogu-kristal-603",
+   "s": "Kayadan kırılarak çıkarılan iri kristal kaya tuzu; beş kiloluk çuvalda, öğütülmeden.",
+   "t": "Bu tuz denizden değil, kayadan çıkar. Haşem tuzu ocaktan iri parçalar halinde kırar; parçalar yıkanmaz, öğütülmez, olduğu gibi çuvala girer. Rengi beyazdan griye döner, içinde damarlar görülür. Evde havanda döverek ya da değirmende çekerek kullanılır. Salamura ve turşu için de iri parça halinde atılır.",
+   "m": "Haşem",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "kislik-kurutulmus-cennet-hurmasi-808",
+   "s": "İpe dizilip asılarak kurutulan bütün cennet hurması; dışı kuru, içi yumuşak.",
+   "t": "Hurma sonbaharda soyulur, ipe dizilir, saçak altına asılır. Hatun her birini elle soyar ve aralarında boşluk bırakarak dizer ki hava dolaşsın. Haftalar içinde dışı kurur, içi bal kıvamına gelir, üstünde kendi şekerinden ince beyaz bir tabaka oluşur. Bütün olarak gelir. Çayın, kahvenin yanında yenir.",
+   "m": "Hatun",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "kitir-taze-cagla-badem-806",
+   "s": "Çekirdeği henüz oluşmamış, ekşi ve kıtır taze çağla; baharda, günlük toplanır.",
+   "t": "Çağlanın mevsimi iki üç haftadır. Harun bademi çekirdeği sertleşmeden, yeşil ve tüylüyken toplar. O günlerde bütün olarak, tuza banılarak yenir; tadı ekşi ve ferahtır. Bir hafta gecikirse içi sertleşir ve çağla olmaktan çıkar. Bu yüzden sipariş üzerine, sabah toplanır ve aynı gün yola çıkar.",
+   "m": "Harun",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "koylu-isi-aci-kirmizi-biber-706",
+   "s": "Damda güneşte kurutulup iri dövülen acı kırmızı pul biber; yarım kiloluk cam şişede.",
+   "t": "Biber damda kızarır, havanda dövülür. Zeliş Abla biberleri yaz sonunda ipe dizer, dama asar. Kuruyunca sapları ayıklanır ve iri iri dövülür; toz haline getirilmez, pulu görünür kalır. Acıdır. Rengi parlak kırmızıdır. Tereyağında kızdırılıp çorbanın, yumurtanın üstüne dökülür.",
+   "m": "Zeliş Abla",
+   "f": [
+    "Damda güneşte kurutulur",
+    "İri dövülür, pulu görünür",
+    "Acı"
+   ],
+   "g": [
+    "Pul Biber",
+    "Güneşte Kurutma"
+   ]
+  },
+  {
+   "slug": "koyun-efsanevi-beyaz-isitma-pres-tasi-402",
+   "s": "Köyde eskiden beri ısıtılıp kullanılan beyaz, oval tıraşlı taş; iki ile dört kilo arasında.",
+   "t": "Kış evinde bu taş sobanın yanında dururdu. Isındıktan sonra sıcaklığı uzun süre tutar; köyde yatağı ısıtmak, hamuru ve peyniri bastırmak için kullanılırdı. İmran taşı seçer, oval biçimde tıraşlar ve yüzeyini düzler. Her taş iki ile dört kilo arasındadır. Isıtırken dikkat edin: sıcak taş cildi yakar, beze sararak tutun. Bir tedavi aracı değildir.",
+   "m": "İmran",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "kusburnu-marmelati-707",
+   "s": "Dikenli çalıdan toplanan kuşburnunun süzülerek pişirilen marmelatı; bir kiloluk cam kavanozda.",
+   "t": "Kuşburnunun zahmeti toplamakla bitmez. Leyla sonbaharda dikenli çalılardan toplar; eller çizilir. Sonra meyve kaynar ve ince bezden süzülür, çünkü içindeki tüylü çekirdekler marmelata geçmemelidir. Süzülen püre kıvam alana kadar pişer. Rengi koyu turuncu, tadı hafif ekşidir. Kahvaltıda ekmeğe sürülür.",
+   "m": "Leyla",
+   "f": [
+    "Yabani kuşburnundan",
+    "Çekirdeği ince bezden süzülür",
+    "Cam kavanozda"
+   ],
+   "g": [
+    "Sonbahar Hasadı",
+    "Yabani Meyve"
+   ]
+  },
+  {
+   "slug": "merez-hatun-un-magara-tulum-peyniri-201",
+   "s": "Kaya mağarasında sekiz ay dinlenen, şirden mayalı tulum peyniri; bir kiloluk kesede.",
+   "t": "Bu peynir sekiz ay gün yüzü görmez. Merez Hatun sütü şirden mayasıyla mayalar, teleme süzülür, tuzlanır ve tuluma sıkıca basılır. Tulum kaya mağarasına taşınır; mağaranın serinliği ve nemi yaz kış aynıdır. Peynir orada ağır ağır olgunlaşır. Çıktığında ufalanan, keskin kokulu, tadı güçlü bir peynirdir. Az yenir, çok doyurur.",
+   "m": "Merez Hatun",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "naciye-nin-yayik-tereyagi-202",
+   "s": "Ahşap yayıkta kol gücüyle dövülen inek sütü kaymağından köy tereyağı; bir kiloluk rulo.",
+   "t": "Yayığın sesi sabah erkenden duyulur. Naciye Teyze kaymağı günlerce biriktirir, ahşap yayığa doldurur ve yağ ayrılana kadar döver. Yağ soğuk suyla yıkanır, elle yoğrulur ve rulo yapılır. Rengi mevsime göre değişir: yazın ot bolken sarıdır, kışın daha açıktır. Soğuk zincirle gelir.",
+   "m": "Naciye Teyze",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "sabir-kurutmasi-cicek-bamyasi-702",
+   "s": "Sabah toplanıp ipe dizilen, gölgede kurutulduğu için yeşil kalan çiçek bamyası.",
+   "t": "Çiçek bamyası tırnak kadardır ve tek tek toplanır. Hanife tarlaya güneş doğmadan girer; bamya gün ısınınca sertleşir. Toplananlar ince iğneyle ipe dizilir ve güneş görmeyen, hava alan bir çardakta asılır. Gölgede kuruduğu için rengi yeşil kalır. Bir dizi elli altmış santimdir. Pişirmeden önce ılık suda bekletilir.",
+   "m": "Hanife",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "salih-in-meralik-ozgur-horozu-304",
+   "s": "Merada serbest gezen, eti sıkı ve koyu köy horozu; helal kesim, iki buçuk ile üç kilo.",
+   "t": "Bu horoz kümeste büyümedi. Salih horozlarını merada serbest bırakır; hayvan gün boyu gezer, eşelenir, kendi yemini bulur. Bu yüzden eti market tavuğuna benzemez: koyudur, sıkıdır, pişmesi uzun sürer. Suyuna çorbası ve haşlaması için aranır. Helal usulle kesilir, temizlenmiş olarak ve soğuk gelir.",
+   "m": "Salih",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "sami-usta-nin-kurutulmus-dag-dutlari-502",
+   "s": "İri beyaz dutun güneşte kurutulmuş hali; gevrek ve yoğun tatlı, bir kiloluk pakette.",
+   "t": "Dut ağacının altına bez serilir, dal sallanır. Sami Usta düşen dutları toplar, çöpünü ayıklar ve damda güneşe serer. Dut birkaç günde kurur; rengi koyulaşır, tadı yoğunlaşır. Gevrek ve tatlıdır. Avuç avuç yenir, cevizle birlikte daha da güzel olur. Hava almayan pakette gelir ki nem çekmesin.",
+   "m": "Sami Usta",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "sessiz-orman-kuzu-gobegi-mantari-601",
+   "s": "Baharda ormandan toplanan kuzu göbeği mantarı; mevsimlik, sipariş üzerine, yarım kilo.",
+   "t": "Kuzu göbeği baharda, yağmurdan sonra birkaç hafta görünür ve kaybolur. Yunus Emre ormanı bilir; mantarın çıktığı yerleri her yıl yeniden dolaşır. Mantar kökünden sökülmez, bıçakla kesilir ki ertesi yıl yine çıksın. Yaban mantarıdır: yalnızca türünden emin olunan mantarlar toplanır. Çiğ yenmez, iyice pişirilir. Az bulunur, fiyatı bu yüzden yüksektir.",
+   "m": "Yunus Emre",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "sobalik-mese-yarigi-403",
+   "s": "Kuru meşeden yarılmış sobalık ve şöminelik odun; otuz kiloluk bağ halinde.",
+   "t": "Meşe geç tutuşur, uzun yanar. Hakan odunu kuru ağaçtan keser, sobaya girecek boyda yarar ve bağlar. Odun kurudur; yaş odun gibi tütmez, közü uzun süre dayanır. Kuzine sobada yemek pişirmek için de uygundur. Her bağ otuz kilodur ve tel kafesle sarılıdır.",
+   "m": "Hakan",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "tas-degirmen-yuksekova-bulguru-908",
+   "s": "Kaynatılıp damda kurutulan, taş değirmende kırılan yerli buğday bulguru; bir kiloluk pakette.",
+   "t": "Köyde bulgur yaz sonunda yapılır: buğday büyük kazanlarda kaynatılır, damlarda güneşte kurutulur, sonra taş değirmende kırılır. İshak buğdayı elekten geçirir, kabuğunu savurur. Taş değirmen taneyi ısıtmadan kırar; bulgurun kokusu yerinde kalır. Tanesi iridir, piştiğinde dağılmaz. Pilavı tereyağıyla yapılır.",
+   "m": "İshak",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "taze-yayik-ayrani-canli-kultur-205",
+   "s": "Köy yoğurdundan yayıkta çekilen, üstünde tereyağı zerreleri yüzen ayran; iki litrelik cam şişede.",
+   "t": "Bu ayran tereyağının kardeşidir. Naciye yoğurdu yayıkta döver; yağ ayrılır, geriye ayran kalır. Bu yüzden üstünde küçük tereyağı zerreleri yüzer. Ekşiliği yoğurdun kendi mayasından gelir, sonradan eklenen bir şey yoktur. Hafif köpüklüdür. Soğuk içilir, soğuk taşınır ve çabuk tüketilir.",
+   "m": "Naciye",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "yuksekova-sonbahar-armudu-901",
+   "s": "Yüksekova bahçelerinde serin gecelerde olgunlaşan sulu ve kokulu yerli armut.",
+   "t": "Sonbahar Yüksekova'ya erken gelir. Armut o serin gecelerde olgunlaşır; gündüz güneşi şekerini toplar, gece ayazı kokusunu tutar. Hasan armudu elle, dalından koparır. Kabuğu ince, içi suludur. Küçük bir bahçenin ürünüdür; çok çıkmaz, çabuk biter. Olgunlaştıktan sonra uzun beklemez, geldiğinde birkaç gün içinde yenmelidir.",
+   "m": "Hasan",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "yuksekova-yayla-domatesi-802",
+   "s": "Ata tohumundan, yaylada toprakta yetişen pembe kabuklu, kokulu domates; günlük toplanır.",
+   "t": "Bu domatesin kokusu sapından gelir. Ferhat tohumu her yıl kendi domatesinden ayırır; fideler toprağa dikilir, suni gübre verilmez. Yaylada gece serin geçtiği için domates geç kızarır. Kabuğu pembeye çalar, içi etlidir, tadı ekşimsidir. Yola dayansın diye bir gün erken toplanır; mutfakta bir iki gün bekletince tam kıvamına gelir.",
+   "m": "Ferhat",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "yuksekova-yayla-kayisisi-903",
+   "s": "Kısa yayla yazında olgunlaşan küçük taneli, yoğun kokulu kayısı; tek kat kasada.",
+   "t": "Yüksek rakımda yaz kısa sürer, kayısı da o kısa sürede olgunlaşır. Tanesi küçüktür; kokusu ve tadı o küçük taneye sıkışmıştır. Harun kayısıyı tek kat kasaya dizer, üst üste koymaz, çünkü alttaki ezilir. Küçük bir bahçeden çıkar. Mevsimi geldiğinde sipariş verenlere toplanıp gönderilir.",
+   "m": "Harun",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "yuksekova-yayla-poleni-906",
+   "s": "Arıların yayla çiçeklerinden topladığı, gölgede kurutulmuş renkli taneli polen.",
+   "t": "Polen, arıların çiçekten kovana taşıdığı küçük renkli tanelerdir. Hüseyin kovanın girişine tuzak koyar; arı içeri girerken ayağındaki tanelerin bir kısmı tuzağa düşer. Toplanan polen gölgede kurutulur ve ayıklanır. Taneler sarıdan turuncuya, kahverengiye çeşit çeşittir; her renk başka bir çiçekten gelir. Tadı hafif tatlı ve çiçeksidir.",
+   "m": "Hüseyin",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "yuksekova-yaz-hiyari-904",
+   "s": "Sabah serinliğinde toplanan ince kabuklu, çıtır yaz hıyarı; salatalık ve turşuluk.",
+   "t": "Yüksekova'nın yaz bahçelerinde hıyar sabah erken, güneş toprağı ısıtmadan toplanır; çıtırlığını o saatte korur. Şahin küçük ve orta boyları ayırır: küçükler turşuya, ortalar salataya gider. Kabuğu incedir, soyulmadan yenir. Çekirdeği azdır. Bahçeden çıktığı gün yola çıkar.",
+   "m": "Şahin",
+   "f": null,
+   "g": null
+  },
+  {
+   "slug": "zahter-harmani-dag-kekigi-507",
+   "s": "Yüksek yamaçtan toplanıp serin yerde kurutulan keskin kokulu dağ kekiği.",
+   "t": "Dağ kekiği küçüktür, kokusu büyüktür. Zübeyde kekiği çiçek açtığı günlerde yamaçtan toplar; kökünden sökmez, makasla keser. Demetler serin ve gölge bir yerde kurutulur; güneşte kurutulursa kokusu uçar. Kuruyunca yaprakları saplarından ayrılır. Ete, çorbaya, peynire serpilir; demlenip çay gibi de içilir. Az kullanın, keskindir.",
+   "m": "Zübeyde",
+   "f": null,
+   "g": null
+  }
+ ]
+}
