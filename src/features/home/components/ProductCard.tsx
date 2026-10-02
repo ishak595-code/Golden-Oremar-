@@ -80,7 +80,7 @@ function ProductRowImage({src,eager,item}:{src:string|null|undefined;eager:boole
 export default function ProductCard({item,onClick,eager=false,merchandisingLabel=null}:{item:CatalogItem;onClick:()=>void;eager?:boolean;merchandisingLabel?:string|null}){
  const region=regionLabel(item);
  // The maker's name, when confirmed, says more than the province every row shares.
- const maker=productMaker(item.slug);
+ const maker=productMaker(item.slug,item.makerName);
  const verification=verificationLabel(item);
  const compareMinor=typeof item.variant.compareAtPriceMinor==='number'&&Number.isSafeInteger(item.variant.compareAtPriceMinor)?item.variant.compareAtPriceMinor:null;
  const accessibleLabel=buildProductCardAccessibilityLabel({name:item.name,price:item.variant.priceMinor/100,currency:item.currency,compareAtPrice:compareMinor!==null?compareMinor/100:null,statuses:[merchandisingLabel,maker?`Üreten ${maker}`:null,item.producer.name,region,verification]});

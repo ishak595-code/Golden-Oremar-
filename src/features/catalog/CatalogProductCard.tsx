@@ -33,7 +33,7 @@ export default function CatalogProductCard({product,onClick,onAddToCart,onToggle
  const statusBadges=<>{statusLabel?<span className={`go-product-card__badge go-product-card__badge--${statusTone}${statusTone==='featured'?' text-brand-on-green':statusTone==='preorder'?' text-brand-on-gold':''}`}>{statusLabel}</span>:null}{coldChain?<span className="go-product-card__badge go-product-card__badge--cold go-product-card__badge--icon" title="Soğuk zincir"><Snowflake aria-hidden="true" className="h-3.5 w-3.5"/><span className="sr-only">Soğuk zincir</span></span>:null}</>;
  // Who made it and where: one line, said once. The seller and its
  // verification are on the product page, not repeated on every card.
- const maker=productMaker(product?.slug),place=shortOrigin(origin,Boolean(maker));
+ const maker=productMaker(product?.slug,product?.makerName),place=shortOrigin(origin,Boolean(maker));
  const sourceLine=maker||place?<p className="go-product-card__source">{maker?<><span className="go-product-card__maker">{maker}</span>{place?<span className="go-product-card__place"> · {place}</span>:null}</>:<span className="go-product-card__place">{place}</span>}</p>:null;
  const lowStock=tracked&&stock!==null&&!soldOut&&stock<=5;
  const unitLine=unit||lowStock?<div className="go-product-card__unit truncate">{[unit,lowStock?`son ${stock} adet`:''].filter(Boolean).join(' · ')}</div>:null;

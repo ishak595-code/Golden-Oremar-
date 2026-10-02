@@ -224,7 +224,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const categoryName=safeText(detail?.category?.name,160);
  const categorySlug=safeReference(detail?.category?.slug,220);
  const producerLocation=safeText(detail?.producer?.locationLabel,240)||safeText(detail?.origin,240);
- const maker=productMaker(detail?.slug);
+ const maker=productMaker(detail?.slug,detail?.makerName);
  // No confirmed person yet: name the village's producers, which the origin record supports. Never a guessed person.
  const makerVillage=maker?'':shortOrigin(detail?.origin,true);
  const kunye:{label:string;text:string;tone?:'low'}[]=[];
