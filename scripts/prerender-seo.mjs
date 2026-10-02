@@ -133,6 +133,17 @@ function mediaCdnBase() {
 }
 const MEDIA_CDN_BASE = mediaCdnBase();
 
+// A product that still has only the store logo but has a representative photo
+// shipped in public/product-photos is shared with that photo, so a link sent
+// over WhatsApp shows the product instead of the same logo every time.
+function shippedPhotoUrl(slug, imagePath) {
+  const key = String(slug || '').trim();
+  if (!/^[a-z0-9-]{1,220}$/.test(key)) return null;
+  if (!/golden-oremar-(profile|cover)\.webp/.test(String(imagePath || ''))) return null;
+  if (!fs.existsSync(path.join(process.cwd(), 'public', 'product-photos', `${key}.webp`))) return null;
+  return `${resolveOrigin()}/product-photos/${key}.webp`;
+}
+
 function storageImageUrl(imagePath) {
   const value = String(imagePath || '').trim();
   if (!value) return null;
@@ -190,7 +201,7 @@ function productInput(item, isSafeSlug) {
     slug: item.slug,
     name: String(item.name || '').trim() || 'Ürün',
     description: String(item.shortDescription || '').trim(),
-    imageUrl: storageImageUrl(item.imagePath),
+    imageUrl: shippedPhotoUrl(item.slug, item.imagePath) || storageImageUrl(item.imagePath),
     priceMinor: typeof variant?.priceMinor === 'number' ? variant.priceMinor : null,
     currency: String(item.currency || 'TRY'),
     availability,

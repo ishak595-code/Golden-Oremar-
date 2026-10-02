@@ -19,7 +19,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  # write: the last step publishes the APK on the "android-latest" release.
+  contents: write
 
 concurrency:
   group: signed-release-apk-${{ github.ref }}
@@ -156,3 +157,28 @@ jobs:
             android/app/build/outputs/apk/release/signing-source.txt
           if-no-files-found: error
           retention-days: 14
+      # One fixed download link for the phone, instead of digging a zip out of
+      # a workflow run: /releases/download/android-latest/golden-oremar.apk
+      # While the build is signed with the throwaway CI key the release says
+      # so: such a build cannot update an installed app, it must be removed
+      # first. With the real upload key in the repository secrets, each build
+      # installs over the previous one.
+      - name: Publish the APK at a fixed download link
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp android/app/build/outputs/apk/release/app-release.apk "${RUNNER_TEMP}/golden-oremar.apk"
+          if [[ "$ANDROID_SIGNING_SOURCE" == 'github-secrets' ]]; then
+            notes="Golden Oremar Android, commit ${GITHUB_SHA}. Kalici anahtarla imzali: kurulu uygulamanin uzerine guncellenir."
+          else
+            notes="Golden Oremar Android TEST surumu, commit ${GITHUB_SHA}. Gecici anahtarla imzali: kurmadan once eski uygulamayi kaldirin. Play Store icin kullanilamaz."
+          fi
+          if gh release view android-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload android-latest "${RUNNER_TEMP}/golden-oremar.apk" --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit android-latest --notes "$notes" --target "$GITHUB_SHA" --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create android-latest "${RUNNER_TEMP}/golden-oremar.apk" --title 'Golden Oremar Android (son surum)' --notes "$notes" --prerelease --target "$GITHUB_SHA" --repo "$GITHUB_REPOSITORY"
+          fi
