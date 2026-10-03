@@ -86,6 +86,15 @@ for (const file of ['src/features/catalog/ProductRecommendationsRail.tsx']) {
 }
 check(/get_public_product_context_v1/.test(read('src/lib/offlineCatalog.ts')), 'The product context call needs an offline answer too.');
 
+// Product stories: one limit (1500 characters) shared by the admin and producer
+// forms, the admin save API and the database rule.
+const storyLimit = read('src/features/catalog/productStory.ts');
+check(/PRODUCT_STORY_MAX_LENGTH = 1500;/.test(storyLimit), 'PRODUCT_STORY_MAX_LENGTH must be 1500.');
+for (const file of ['src/admin/AdminOfficialStoreProducts.tsx', 'src/features/producer-products/ProducerProductManager.tsx', 'src/admin/officialStoreProductApi.ts']) {
+  check(/PRODUCT_STORY_MAX_LENGTH/.test(read(file)), `${file} must use PRODUCT_STORY_MAX_LENGTH for the story limit.`);
+}
+check(/char_length\(story\) <= 1500/.test(read('supabase/migrations/20261003030000_product_story_limit_1500_v1.sql')), 'The database story rule must allow up to 1500 characters.');
+
 if (failures.length) {
   console.error('Product detail experience contract audit failed:');
   for (const failure of failures) console.error(`- ${failure}`);
