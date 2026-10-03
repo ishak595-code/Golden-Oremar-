@@ -23,6 +23,7 @@ const audits=[
  'user-facing-error-contract-audit.mjs',
  'offline-catalog-contract-audit.mjs',
  'product-detail-experience-contract-audit.mjs',
+ 'product-detail-editorial-contract-audit.mjs',
  'theme-contract-audit.mjs',
  'responsive-resilience-contract-audit.mjs',
  'admin-data-contract-audit.mjs',

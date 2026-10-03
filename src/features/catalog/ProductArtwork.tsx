@@ -13,8 +13,10 @@ import{Apple,Beef,Cherry,CupSoda,Droplets,Drumstick,Egg,Fish,Flame,Gem,Grape,Ham
  *
  * When a representative photo has been shipped for the product
  * (public/product-photos, see scripts/product-photos), that photo is shown
- * instead, marked "Temsili görsel" on the product page. A real photo uploaded
- * by the store never reaches this component, so it always wins.
+ * instead. On the product page it is not stamped on the photo: the gallery
+ * captions it under the slider ("Temsili görseldir. Ürün görünümü hasat
+ * dönemine göre değişebilir."). A real photo uploaded by the store never
+ * reaches this component, so it always wins.
  */
 
 const SHIPPED=new Set(SHIPPED_PRODUCT_PHOTOS);
@@ -100,7 +102,6 @@ export default function ProductArtwork({name,categorySlug,categoryName,productTy
  const photo=photoFailed?null:shippedProductPhoto(slug,variant==='hero'?'large':'small');
  if(photo)return<span className={`go-artwork go-artwork--photo go-artwork--${variant} ${className}`} data-product-artwork="photo">
   <img src={photo} alt={label||''} loading={variant==='hero'?'eager':'lazy'} decoding="async" draggable={false} onError={()=>setPhotoFailed(true)}/>
-  {variant==='hero'?<span className="go-artwork__note">Temsili görsel</span>:null}
  </span>;
  const theme=THEMES[String(categorySlug||'')]||DEFAULT_THEME;
  const Icon=productArtworkIcon({name,productType,safetyClass,categorySlug:categorySlug||''});

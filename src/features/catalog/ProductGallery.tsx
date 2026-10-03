@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useRef,useState}from'react';
-import{ChevronLeft,ChevronRight,MapPin,Mountain,Quote,ZoomIn}from'lucide-react';
+import{ChevronLeft,ChevronRight,ZoomIn}from'lucide-react';
 import ProductArtwork,{shippedProductPhoto}from'./ProductArtwork';
 import ProductVideo from'../media/ProductVideo';
 
@@ -9,17 +9,20 @@ import ProductVideo from'../media/ProductVideo';
  * Swipe on a phone (CSS scroll snap, so it follows the finger natively),
  * arrows and dots on larger screens, arrow keys when focused. Real photos
  * come first and open full screen on tap. When a product has no photo yet,
- * its drawn artwork takes the first slide. Two more slides tell where it
- * comes from and the first line of its story, so the slider always has
- * something real to say.
+ * its shipped representative photo (or drawn artwork) takes the first slide.
+ * The second slide is the product's origin photo (the mountains, the drying,
+ * the bez kese being filled) when one has been shipped; there are no empty
+ * or placeholder slides.
+ *
+ * Representative photos are not labelled on the photo itself: a calm caption
+ * directly under the slider says so ("Temsili görseldir. ...").
  */
 
 export type GallerySlide=
  |{kind:'photo';key:string;src:string;alt:string;path:string}
  |{kind:'artwork';key:string}
- |{kind:'origin';key:string;origin:string;producer:string}
- |{kind:'video';key:string;url:string}
- |{kind:'story';key:string;kicker:string;line:string};
+ |{kind:'scene';key:string;src:string;alt:string}
+ |{kind:'video';key:string;url:string};
 
 type Props={
  slides:GallerySlide[];
@@ -32,13 +35,18 @@ type Props={
  onSlideChange?:(slide:GallerySlide)=>void;
  /** For the shipped representative photo, when the product has no photo of its own. */
  productSlug?:string|null;
+ /** Caption under the slider when a representative photo is shown. */
+ representativeNote?:string;
 };
 
-export default function ProductGallery({slides,productName,categorySlug,categoryName,productType,safetyClass,onOpenPhoto,onSlideChange,productSlug}:Props){
+export default function ProductGallery({slides:inputSlides,productName,categorySlug,categoryName,productType,safetyClass,onOpenPhoto,onSlideChange,productSlug,representativeNote}:Props){
  const trackRef=useRef<HTMLDivElement>(null);
  const[index,setIndex]=useState(0);
  const[failed,setFailed]=useState<Record<string,true>>({});
+ // An origin photo that fails to load is dropped, never left as an empty slide.
+ const slides=inputSlides.filter(slide=>slide.kind!=='scene'||!failed[slide.key]);
  const count=slides.length;
+ const representative=Boolean(representativeNote)&&(slides.some(slide=>slide.kind==='scene')||(Boolean(shippedProductPhoto(productSlug))&&slides.some(slide=>slide.kind==='artwork'||(slide.kind==='photo'&&failed[slide.key]))));
 
  useEffect(()=>{const track=trackRef.current;if(track)track.scrollTo({left:0});setIndex(0);},[slides.map(slide=>slide.key).join('|')]);
  useEffect(()=>{const slide=slides[index];if(slide)onSlideChange?.(slide);},[index]);// eslint-disable-line react-hooks/exhaustive-deps
@@ -73,20 +81,9 @@ export default function ProductGallery({slides,productName,categorySlug,category
      <img src={slide.src} alt={slide.alt} loading={position===0?'eager':'lazy'} fetchPriority={position===0?'high':'auto'} decoding="async" onError={()=>setFailed(current=>({...current,[slide.key]:true}))}/>
      <span className="go-gallery__zoom" aria-hidden="true"><ZoomIn/></span>
     </button>:null}
-    {slide.kind==='artwork'||(slide.kind==='photo'&&failed[slide.key])?<ProductArtwork name={productName} categorySlug={categorySlug} categoryName={categoryName} productType={productType} safetyClass={safetyClass} variant="hero" slug={productSlug} label={shippedProductPhoto(productSlug)?`${productName}, temsili görsel`:`${productName} için çizim görsel; ürün fotoğrafı yakında eklenecek`}/>:null}
+    {slide.kind==='artwork'||(slide.kind==='photo'&&failed[slide.key])?<ProductArtwork name={productName} categorySlug={categorySlug} categoryName={categoryName} productType={productType} safetyClass={safetyClass} variant="hero" slug={productSlug} label={shippedProductPhoto(productSlug)?productName:`${productName} için çizim görsel; ürün fotoğrafı yakında eklenecek`}/>:null}
     {slide.kind==='video'?<div className="go-gallery__video"><ProductVideo url={slide.url} title={productName} allowExternalLink/></div>:null}
-    {slide.kind==='origin'?<div className="go-gallery__story-card go-gallery__story-card--origin">
-     <Mountain aria-hidden="true" className="go-gallery__story-mark"/>
-     <span className="go-gallery__eyebrow"><MapPin aria-hidden="true"/>Kökeni</span>
-     <strong>{slide.origin}</strong>
-     {slide.producer?<span className="go-gallery__story-sub">{slide.producer} tarafından, kayıtlı menşeiyle</span>:null}
-    </div>:null}
-    {slide.kind==='story'?<div className="go-gallery__story-card go-gallery__story-card--story">
-     <Quote aria-hidden="true" className="go-gallery__story-mark"/>
-     <span className="go-gallery__eyebrow">{slide.kicker||'Ürünün hikâyesi'}</span>
-     <strong>{slide.line}</strong>
-     <span className="go-gallery__story-sub">Hikâyenin tamamı aşağıda, "Ürünün Hikâyesi" bölümünde.</span>
-    </div>:null}
+    {slide.kind==='scene'&&!failed[slide.key]?<div className="go-gallery__scene"><img src={slide.src} alt={slide.alt} loading="lazy" decoding="async" onError={()=>setFailed(current=>({...current,[slide.key]:true}))}/></div>:null}
    </div>)}
   </div>
   {count>1?<>
@@ -97,5 +94,5 @@ export default function ProductGallery({slides,productName,categorySlug,category
     <div className="go-gallery__dots">{slides.map((slide,position)=><button type="button" key={slide.key} onClick={()=>goTo(position)} aria-label={`${position+1}. slayta git`} aria-current={position===index?'true':undefined} className={`go-gallery__dot${position===index?' is-active':''}`}/>)}</div>
    </div>
   </>:null}
- </section>{thumbs}</>;
+ </section>{representative?<p className="go-gallery__note">{representativeNote}</p>:null}{thumbs}</>;
 }

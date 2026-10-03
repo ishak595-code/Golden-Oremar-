@@ -35,7 +35,7 @@ jobs:
         run: |
           set +e
           report() { echo "::error title=$1::$(printf '%s' "$2" | tr '\n' ' ' | cut -c1-900)"; }
-          git add public/product-photos src/features/media/productPhotoManifest.ts scripts/product-photos/sources.json
+          git add public/product-photos src/features/media/productPhotoManifest.ts src/features/media/productOriginPhotoManifest.ts scripts/product-photos/sources.json
           if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
           git config user.name "golden-oremar-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
