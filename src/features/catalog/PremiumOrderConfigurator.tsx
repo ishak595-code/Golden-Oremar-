@@ -19,7 +19,7 @@ export default function PremiumOrderConfigurator({lead,schema,selected,onChange,
  return<section aria-labelledby="premium-order-configurator-title" className={`go-order-config mt-5 overflow-hidden rounded-3xl border border-brand-gold/35 bg-gradient-to-br from-brand-gold/10 via-brand-card to-brand-card shadow-sm${open?' is-open':''}`}>
   <button type="button" onClick={()=>setOpen(value=>!value)} aria-expanded={open} aria-controls="premium-order-configurator-body" className="go-order-config__header flex w-full items-center gap-3 p-4 text-left sm:p-5">
    <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-brand-gold/15 text-brand-gold"><Sparkles className="h-5 w-5"/></span>
-   <span className="min-w-0 flex-1"><span className="block text-[11px] font-black uppercase tracking-[0.16em] text-brand-gold">Sana göre hazırlansın</span><span id="premium-order-configurator-title" className="mt-0.5 block text-base font-black text-brand-text">Hazırlama tercihleri</span><span className="mt-0.5 block truncate text-sm text-brand-muted">{summary||'Seçim yapın'}</span></span>
+   <span className="min-w-0 flex-1"><span className="block text-[11px] font-black uppercase tracking-[0.16em] text-brand-gold">Sana göre hazırlansın</span><span id="premium-order-configurator-title" className="mt-0.5 block text-base font-black text-brand-text">Hazırlama tercihleri</span><span className="mt-0.5 block text-sm text-brand-muted [overflow-wrap:anywhere]">{summary||'Seçim yapın'}</span></span>
    <span className="go-order-config__change shrink-0 text-xs font-black text-brand-gold">{open?'Kapat':'Değiştir'}</span>
    <ChevronDown aria-hidden="true" className="go-order-config__chevron h-5 w-5 shrink-0 text-brand-gold"/>
   </button>

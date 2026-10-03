@@ -37,18 +37,29 @@ check(/go-stock-pill go-stock-pill--out/.test(detail) && /if\(!soldOut&&!preorde
 check(/Sipariş üzerine hazırlanır/.test(detail) && /specifications\?.preOrderTime/.test(detail), 'Pre-orders say so under the price and show the stored harvest and dispatch sentence.');
 check(!/aria-labelledby="product-withdrawal-title" className=\{`mt-6 flex gap-3/.test(detail), 'The large always-open withdrawal box must not come back; the line and the section replace it.');
 
-// Product page v4 (2026-10-03): rating summary under the title, a polished
-// empty review state that never invents reviews, a delivery row, the story
-// open with "Devamını oku", thumbnails and a zoomable viewer.
-check(/className="go-rating-row"/.test(detail) && /İlk yorumu sen yaz/.test(detail), 'The title must be followed by the rating summary, or "İlk yorumu sen yaz" when there are no reviews.');
-check(/className="go-reviews-empty"/.test(detail) && /her yorum gerçek bir siparişe bağlıdır/.test(detail) && /go-reviews__bars/.test(detail), 'Reviews show a rating distribution, and an empty state that explains reviews come only from delivered orders.');
+// Product page v4 (2026-10-03): a delivery row, thumbnails and a zoomable
+// viewer. Owner corrections the same day: no review call-to-action above
+// the price, the pre-v4 review wording restored, story and description are
+// closed sections that open to the full text (no preview, no clamp), and
+// toggles do not expose an on/off state.
+const titleToPrice = detail.slice(detail.indexOf('<h1 ref={titleRef}'), detail.indexOf('className="go-price-card"'));
+check(!/go-rating-row/.test(detail) && !/İlk yorumu sen yaz/.test(detail) && !/değerlendirme bırak/i.test(detail) && titleToPrice.length > 0 && !/yorum|değerlendirme|Star/i.test(titleToPrice), 'No review call-to-action or rating row between the product name and the price.');
+check(/'Tadına bakan ilk siz olun, ilk yorumu siz yazın'/.test(detail) && /Henüz müşteri yorumu yok/.test(detail) && /Bu ürüne ilk yorumu yapan siz olun!/.test(detail), 'The reviews section keeps its original wording: teaser "Tadına bakan ilk siz olun, ilk yorumu siz yazın", empty state "Henüz müşteri yorumu yok / Bu ürüne ilk yorumu yapan siz olun!".');
+check(/go-reviews__bars/.test(detail) && /her yorum gerçek bir siparişe bağlıdır/.test(detail), 'When there are reviews they show a rating distribution and say reviews come only from delivered orders.');
+check(!/initialOpen=/.test(detail) && !/Devamını oku/.test(detail) && !/is-clamped/.test(detail) && /<p className="go-detail-story">\{storyText\}<\/p>/.test(detail), 'The story section is closed on arrival and opens to the full story; no preview, clamp or "Devamını oku".');
+check(/<DetailAccordion id="description"[^>]*title="Açıklama"/.test(detail) && !/text-\[15px\] leading-7 text-brand-muted">\{safeText\(detail\.shortDescription/.test(detail), 'The description is a closed "Açıklama" section, not a paragraph under the price.');
+const v4css = read('src/features/catalog/productDetailV4.css');
+check(/\.go-detail-grid > \* \{ min-width: 0; \}/.test(v4css) && /\.go-detail-story, \.go-detail-description \{[^}]*overflow-wrap: anywhere/.test(v4css) && /className="go-detail-grid /.test(detail), 'Product text wraps long words and the two columns may shrink, so nothing widens the page (browser and Android WebView).');
+check(!/is-clamped|go-story-more|go-rating-row/.test(v4css), 'The removed preview clamp and rating row leave no CSS behind.');
+check(!/aria-pressed=\{isFavorite\}/.test(detail) && /aria-label=\{isFavorite\?'Favorilerden çıkar':'Favorilere ekle'\}/.test(detail), 'The favourite button is named "Favorilere ekle" / "Favorilerden çıkar" and is not an aria-pressed toggle (screen readers would add "kapalı").');
+check(!/aria-pressed=\{isFavorite\}/.test(read('src/features/catalog/CatalogProductCard.tsx')) && /aria-label=\{isFavorite\?'Favorilerden çıkar':'Favorilere ekle'\}/.test(read('src/features/catalog/CatalogProductCard.tsx')), 'Product cards: the favourite button has the same names and no aria-pressed toggle.');
 check(/className="go-delivery-row"/.test(detail), 'A delivery row sits under the purchase actions.');
-check(/initialOpen=\{storyText\?'story':null\}/.test(detail) && /Devamını oku/.test(detail), 'The story section is open on arrival and long stories fold behind "Devamını oku".');
 check(/go-gallery__thumbs/.test(gallery_src()) , 'The gallery shows thumbnails when there are two or more photos.');
 check(/viewerZoom/.test(detail) && /onTouchEnd=/.test(detail), 'The full-screen viewer zooms on tap and swipes between photos.');
 check(!/weightGrams[^;]*kgPrice|kgPriceMinor=[^;]*packageWeight/.test(detail), 'The kilogram price comes from the net amount on the label, never from the packed shipping weight.');
 
 const accordion = read('src/features/catalog/DetailAccordion.tsx');
+check(/aria-label=\{title\}/.test(accordion) && /aria-describedby=\{teaser\?teaserId:undefined\}/.test(accordion), 'Section headers are named by the title alone; the teaser is read once, as the description, never twice.');
 check(/aria-expanded=\{open\}/.test(accordion) && /aria-controls=\{panelId\}/.test(accordion) && /role="region"/.test(accordion), 'Accordion headers must be buttons with aria-expanded and aria-controls, panels labelled regions.');
 check(/mounted\?children:null/.test(accordion), 'Accordion content must mount on first open (recommendations are fetched only when asked for).');
 
