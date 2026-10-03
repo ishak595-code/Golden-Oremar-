@@ -110,3 +110,56 @@
   :root[data-app-tab="product-detail"] .product-detail-commerce-dock { position: static; left: auto; right: auto; bottom: auto; max-width: none; margin-top: 1.25rem; box-shadow: none; backdrop-filter: none; }
   :root[data-app-tab="product-detail"] #root > .min-h-screen { padding-bottom: 2rem !important; }
 }
+
+/* Store follow (under "Üreticiye soru sor"): same footprint as the ask button,
+   with one short helper line that always wraps instead of overflowing. */
+.go-store-follow { display: grid; gap: .3rem; min-width: 0; }
+.go-store-follow__button { display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; min-height: 3rem; padding: .5rem 1rem; border: 1px solid var(--brand-green); border-radius: 1rem; background: var(--brand-green); color: #fff; font-size: .95rem; font-weight: 800; line-height: 1.2; text-align: center; overflow-wrap: anywhere; touch-action: manipulation; transition: background-color .15s ease, color .15s ease, border-color .15s ease; }
+.go-store-follow__button svg { flex: 0 0 auto; width: 1.1rem; height: 1.1rem; }
+.go-store-follow__button.is-following { background: transparent; color: var(--text-main); border-color: color-mix(in srgb, var(--brand-gold) 55%, var(--border-main)); }
+.go-store-follow__button.is-following svg { color: var(--brand-gold); }
+.go-store-follow__button:disabled { opacity: .6; cursor: progress; }
+.go-store-follow__button:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 2px; }
+.go-store-follow__hint { margin: 0; min-width: 0; font-size: .78rem; line-height: 1.4; text-align: center; color: var(--text-muted); overflow-wrap: anywhere; }
+.go-store-follow__hint.is-error { color: #b91c1c; font-weight: 700; }
+:root[data-color-scheme="dark"] .go-store-follow__hint.is-error { color: #fca5a5; }
+
+/* Review form opened from "Değerlendirme yaz" inside Müşteri Yorumları. */
+.go-review-composer { min-width: 0; overflow-wrap: anywhere; }
+.go-review-composer__note { display: flex; align-items: center; gap: .5rem; margin: 0; font-size: .88rem; font-weight: 700; color: var(--text-muted); }
+.go-review-composer__spin { width: 1rem; height: 1rem; animation: go-spin 1s linear infinite; }
+@keyframes go-spin { to { transform: rotate(360deg); } }
+.go-review-composer__notice { display: grid; gap: .4rem; padding: .9rem 1rem; border: 1px solid var(--border-main); border-radius: 1rem; background: var(--bg-card); }
+.go-review-composer__notice strong { display: flex; align-items: center; gap: .4rem; font-weight: 900; color: var(--text-main); }
+.go-review-composer__notice strong svg { flex: 0 0 auto; width: 1.05rem; height: 1.05rem; color: var(--brand-green); }
+.go-review-composer__notice p { margin: 0; font-size: .86rem; line-height: 1.5; color: var(--text-muted); }
+.go-review-composer__notice--warn { border-color: #fcd34d; background: #fffbeb; }
+.go-review-composer__notice--warn strong, .go-review-composer__notice--warn p { color: #78350f; }
+:root[data-color-scheme="dark"] .go-review-composer__notice--warn { border-color: #92400e; background: rgb(69 26 3 / .35); }
+:root[data-color-scheme="dark"] .go-review-composer__notice--warn strong, :root[data-color-scheme="dark"] .go-review-composer__notice--warn p { color: #fde68a; }
+.go-review-composer__notice--ok { border-color: #86efac; background: #f0fdf4; }
+:root[data-color-scheme="dark"] .go-review-composer__notice--ok { border-color: #166534; background: rgb(5 46 22 / .35); }
+.go-review-composer__form { display: grid; gap: .8rem; padding: 1rem; border: 1px solid color-mix(in srgb, var(--brand-gold) 40%, var(--border-main)); border-radius: 1rem; background: var(--bg-card); min-width: 0; }
+.go-review-composer__heading { font-size: 1rem; font-weight: 900; color: var(--text-main); }
+.go-review-composer__meta { margin: -.5rem 0 0; font-size: .8rem; color: var(--text-muted); }
+.go-review-composer__stars { margin: 0; padding: 0; border: 0; min-width: 0; }
+.go-review-composer__stars legend { margin-bottom: .3rem; font-size: .88rem; font-weight: 800; }
+.go-review-composer__stars [role="radiogroup"] { display: flex; flex-wrap: wrap; gap: .15rem; }
+.go-review-composer__star { display: grid; place-items: center; width: 2.75rem; height: 2.75rem; border-radius: .75rem; color: #d1d5db; touch-action: manipulation; }
+.go-review-composer__star svg { width: 1.6rem; height: 1.6rem; }
+.go-review-composer__star.is-on { color: var(--brand-gold); }
+.go-review-composer__star.is-on svg { fill: currentColor; }
+.go-review-composer__star:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 1px; }
+.go-review-composer__rating-word { display: block; margin-top: .2rem; font-size: .8rem; font-weight: 700; color: var(--text-muted); }
+.go-review-composer__field { display: grid; gap: .3rem; min-width: 0; font-size: .88rem; font-weight: 800; }
+.go-review-composer__field small { font-weight: 600; color: var(--text-muted); }
+.go-review-composer__field textarea, .go-review-composer__field input { width: 100%; min-width: 0; font-weight: 500; }
+.go-review-composer__count { font-size: .75rem; }
+.go-review-composer__error { margin: 0; font-size: .85rem; font-weight: 700; color: #b91c1c; }
+:root[data-color-scheme="dark"] .go-review-composer__error { color: #fca5a5; }
+.go-review-composer__actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.go-review-composer__primary, .go-review-composer__secondary { min-height: 2.75rem; padding: 0 1.1rem; border-radius: 999px; font-weight: 900; font-size: .9rem; touch-action: manipulation; }
+.go-review-composer__primary { border: 1px solid var(--brand-green); background: var(--brand-green); color: #fff; }
+.go-review-composer__primary:disabled { opacity: .6; }
+.go-review-composer__secondary { border: 1px solid var(--border-main); background: transparent; color: var(--text-main); }
+.go-review-composer__primary:focus-visible, .go-review-composer__secondary:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 2px; }
