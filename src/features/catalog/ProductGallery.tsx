@@ -62,7 +62,11 @@ export default function ProductGallery({slides,productName,categorySlug,category
   else if(event.key==='ArrowLeft'){event.preventDefault();goTo(index-1);}
  }
 
- return<section className="go-gallery" aria-roledescription="görsel kaydırıcı" aria-label={`${productName} görselleri`} onKeyDown={onKeyDown}>
+ const photoSlides=slides.map((slide,position)=>({slide,position})).filter(entry=>entry.slide.kind==='photo'&&!failed[entry.slide.key]);
+ // Thumbnails show at a glance that there are more photos (Baymard: hidden
+ // extra images are often missed on mobile). Only for two or more photos.
+ const thumbs=photoSlides.length>1?<div className="go-gallery__thumbs" role="group" aria-label="Ürün fotoğrafları">{photoSlides.map(({slide,position})=>slide.kind==='photo'?<button type="button" key={`thumb:${slide.key}`} onClick={()=>goTo(position)} aria-label={`${position+1}. görsele git`} aria-current={position===index?'true':undefined} className={`go-gallery__thumb${position===index?' is-active':''}`}><img src={slide.src} alt="" loading="lazy" decoding="async"/></button>:null)}</div>:null;
+ return<><section className="go-gallery" aria-roledescription="görsel kaydırıcı" aria-label={`${productName} görselleri`} onKeyDown={onKeyDown}>
   <div ref={trackRef} className="go-gallery__track" onScroll={onScroll} tabIndex={0} aria-label={count>1?'Kaydırarak veya ok tuşlarıyla gezinin':undefined}>
    {slides.map((slide,position)=><div key={slide.key} className={`go-gallery__slide go-gallery__slide--${slide.kind}`} role="group" aria-roledescription="slayt" aria-label={`${position+1} / ${count}`} aria-hidden={position!==index?true:undefined} inert={position!==index?true:undefined}>
     {slide.kind==='photo'&&!failed[slide.key]?<button type="button" className="go-gallery__photo" onClick={()=>onOpenPhoto(slide.path)} aria-label={`${productName} görselini tam ekran aç`} tabIndex={position===index?0:-1}>
@@ -93,5 +97,5 @@ export default function ProductGallery({slides,productName,categorySlug,category
     <div className="go-gallery__dots">{slides.map((slide,position)=><button type="button" key={slide.key} onClick={()=>goTo(position)} aria-label={`${position+1}. slayta git`} aria-current={position===index?'true':undefined} className={`go-gallery__dot${position===index?' is-active':''}`}/>)}</div>
    </div>
   </>:null}
- </section>;
+ </section>{thumbs}</>;
 }

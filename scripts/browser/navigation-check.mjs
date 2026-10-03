@@ -53,7 +53,7 @@ await step('product page: purchase dock replaces the tab bar', PRODUCT, async ()
   const dock = await p.locator('.product-detail-commerce-dock').evaluate(el => getComputedStyle(el).position).catch(() => '');
   return { ok: !navVisible && dock === 'fixed' && await tabOf(p) === 'product-detail', detail: `tab bar visible=${navVisible}, dock=${dock}, tab=${await tabOf(p)}` };
 });
-for (const [tab, expected] of [['Kategoriler', '/?tab=categories'], ['Favoriler', '/?tab=account'], ['Sepet', '/?tab=cart'], ['Hesabım', '/?tab=account'], ['Ana Sayfa', '/?tab=home']]) {
+for (const [tab, expected] of [['Kategoriler', '/?tab=categories'], ['Favoriler', '/?tab=account&view=favorites'], ['Sepet', '/?tab=cart'], ['Hesabım', '/?tab=account'], ['Ana Sayfa', '/?tab=home']]) {
   await step(`bottom navigation from a category page: ${tab}`, '/kategori/bal-sifa', p => p.locator(`nav[aria-label="Ana gezinme"] button[aria-label^="${tab}"]`).click(), async p => ({ ok: addressOf(p) === expected, detail: addressOf(p) }));
 }
 await browser.close();
