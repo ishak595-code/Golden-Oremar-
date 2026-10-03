@@ -373,7 +373,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
       <div className="go-ship__row"><dt>Kargo ücreti</dt><dd>{shippingQuote?(shippingQuote.feeMinor===0?'Ücretsiz':`${priceText(shippingQuote.feeMinor,shippingQuote.currency)}${shippingQuote.freeThresholdMinor?` · ${priceText(shippingQuote.freeThresholdMinor,shippingQuote.currency)} ve üzeri ücretsiz`:''}`):'Siparişte gösterilir'}</dd></div>
       {preparation?<div className="go-ship__row"><dt>{preparation[0]}</dt><dd>{preparation[1]}</dd></div>:null}
       {shippingQuote?.maxDays?<div className="go-ship__row"><dt>{preorder?'Teslimat süresi':'Tahmini teslimat'}</dt><dd>{preorder?'Kargoya verildikten sonra ':''}{shippingQuote.minDays&&shippingQuote.minDays<shippingQuote.maxDays?`${shippingQuote.minDays}–${shippingQuote.maxDays} iş günü`:`${shippingQuote.maxDays} iş günü`}</dd></div>:null}
-      {detail?.handlingProfile?.requiresColdChain?<div className="go-ship__row"><dt>Gönderim</dt><dd>Soğuk zincirle</dd></div>:null}
+      {detail?.handlingProfile?.requiresColdChain?<div className="go-ship__row"><dt>Gönderim</dt><dd>Soğuk zincirle gönderilir</dd></div>:null}
       {withdrawal?<div className="go-ship__row"><dt>İade</dt><dd>{withdrawal.tier==='none'?'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır':withdrawal.copy.title}</dd></div>:null}
      </dl>
     </DetailAccordion>
