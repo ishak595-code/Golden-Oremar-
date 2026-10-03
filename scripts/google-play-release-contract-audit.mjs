@@ -17,6 +17,6 @@ require(workflow.includes('npm run audit:release')&&workflow.includes('npx tsc -
 require(workflow.includes('jarsigner -verify'),'Google Play AAB signature verification is missing.');
 require(/applicationId\s+["']com\.goldenoremar\.app["']/.test(gradle),'Android applicationId drifted from the Play package.');
 require(/targetSdk\s*=\s*rootProject\.ext\.targetSdkVersion/.test(gradle),'Android target SDK contract is missing.');
-require(/versionCode\s*=\s*4\b/.test(gradle)&&/versionName\s*=\s*["']1\.3\.0["']/.test(gradle),'Google Play release identity must remain 1.3.0 build 4 for this release.');
+require(/versionCode\s*=\s*5\b/.test(gradle)&&/versionName\s*=\s*["']1\.3\.1["']/.test(gradle),'Google Play release identity must remain 1.3.1 build 5 for this release.');
 require(notes.trim().length>=80,'Turkish Google Play release notes are missing or too short.');
 if(failures.length){console.error('Golden Oremar Google Play release contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}console.log('Golden Oremar Google Play release contract audit passed: production AAB, package identity, pinned publisher action, signing/service-account gates and release notes are fail-closed.');
