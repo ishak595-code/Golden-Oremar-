@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { registerBackHandler } from '../navigation/backHandlers';
 
 const FOCUSABLE_SELECTOR = [
   'a[href]',
@@ -121,7 +122,13 @@ export function useAccessibleDialog<T extends HTMLElement>(open: boolean, onClos
     };
 
     document.addEventListener('keydown', onKeyDown, true);
+    // Android back closes the dialog the user opened last, like Escape does.
+    const removeBackHandler = registerBackHandler(() => {
+      onCloseRef.current();
+      return true;
+    });
     return () => {
+      removeBackHandler();
       window.cancelAnimationFrame(frame);
       document.removeEventListener('keydown', onKeyDown, true);
       const stackIndex = activeDialogs.lastIndexOf(dialog);

@@ -61,6 +61,8 @@ forbid(sheet, /[☀-➿\u{1F300}-\u{1FAFF}]/u, 'The order sheet must not use emo
 
 need(sheet, 'Bu sipariş bir hediye', 'The order sheet must let anyone, guests included, send the order as a gift.');
 need(sheet, 'giftNoteText(recipient,giftMessage)', 'Gift details must travel with the order note.');
+need(sheet, "{gift?<div className={`go-order-gift", 'Gift wording appears only in the flow opened with "Hediye Et"; Hemen Satın Al and cart checkout are plain orders.');
+need(sheet, 'const giftMode=gift&&isGift;', 'A normal purchase must never be sent as a gift, even with stale gift state.');
 need(sheet, 'Ücretsiz üye ol', 'Guests must be invited to join from the order sheet.');
 need(sheet, 'üye olmadan devam edin', 'The invitation to join must never block a guest order.');
 
