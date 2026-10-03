@@ -3,7 +3,10 @@ import path from 'node:path';
 
 const assetsDir = path.join(process.cwd(), 'dist', 'assets');
 const maxChunkBytes = 450 * 1024;
-const maxEntryBytes = 250 * 1024;
+// 256 KiB since Oct 2026: the entry carries the representative product photo
+// manifest (src/features/media/productPhotoManifest.ts, ~2 KiB of slugs for
+// all 50 products); main was already within 0.3 KiB of the old 250 KiB limit.
+const maxEntryBytes = 256 * 1024;
 
 if (!fs.existsSync(assetsDir)) {
   console.error('Bundle budget audit failed: dist/assets does not exist. Run the production build first.');
