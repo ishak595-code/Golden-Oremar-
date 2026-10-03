@@ -1,8 +1,9 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{addToGuestCart}from'../cart/guestCart';
 import{ArrowLeft,Award,Bell,BellRing,CircleSlash,BadgeCheck,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,FileText,Gift,Heart,Info as InfoIcon,MessageCircle,Minus,PackageCheck,Plus,QrCode,ScanLine,Share2,ShieldCheck,ShoppingCart,Sparkles,Star,Store,Truck,X,ZoomIn,MapPin,User}from'lucide-react';
-import{getProducerFollowMetrics,getProductDetail,listProductReviews,publicCatalogUrl,toggleProducerFollow,toggleProductFavorite}from'./api';
-import ProductReviewComposer from'./ProductReviewComposer';
+import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProducerFollow,toggleProductFavorite}from'./api';
+// The review form is loaded only when a customer taps "Değerlendirme yaz".
+const ProductReviewComposer=React.lazy(()=>import('./ProductReviewComposer'));
 import PremiumOrderConfigurator from'./PremiumOrderConfigurator';
 import{buildOrderCustomization,buildProductExperience,defaultOrderOptions,validateOrderOptions,type SelectedOrderOptions}from'./productExperience';
 import ProductSafetyPanel from'../content/ProductSafetyPanel';
@@ -18,6 +19,7 @@ import{productMaker,shortOrigin}from'./productMakers';
 import ProductGallery,{type GallerySlide}from'./ProductGallery';
 import{isBrandFallbackImage}from'./ProductArtwork';
 import{DetailAccordion,DetailAccordionGroup,openDetailSection}from'./DetailAccordion';
+import{isFollowingStore}from'./storeFollowApi';
 import'./productDetailV4.css';
 import ProductRecommendations from'./ProductRecommendations';
 import ProductRecommendationsRail from'./ProductRecommendationsRail';
@@ -170,7 +172,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  // Whether the signed-in customer already follows this store (same metric
  // the catalogue cards use). A failed lookup leaves the button at "follow".
  const followProducerId=safeReference(detail?.producer?.id,160);
- useEffect(()=>{let active=true;setFollowing(false);if(!authenticated||!followProducerId)return;getProducerFollowMetrics([followProducerId]).then(rows=>{const row=rows.find(entry=>entry.producerId===followProducerId);if(active&&row)setFollowing(row.following);}).catch(()=>{});return()=>{active=false;};},[authenticated,followProducerId]);
+ useEffect(()=>{let active=true;setFollowing(false);if(!authenticated||!followProducerId)return;isFollowingStore(followProducerId).then(value=>{if(active&&value!==null)setFollowing(value);}).catch(()=>{});return()=>{active=false;};},[authenticated,followProducerId]);
  useEffect(()=>{if(!imageViewerOpen||images.length<2)return;const onKeyDown=(event:KeyboardEvent)=>{if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;event.preventDefault();const delta=event.key==='ArrowLeft'?-1:1;const next=(selectedImageIndex+delta+images.length)%images.length;setSelectedImagePath(safeText(images[next]?.path,1200));};document.addEventListener('keydown',onKeyDown,true);return()=>document.removeEventListener('keydown',onKeyDown,true);},[imageViewerOpen,images,selectedImageIndex]);
 
  const favoriteReference=String(detail?.legacyId||detail?.id||'');
@@ -387,7 +389,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    </DetailAccordion>
    {hasTraceability?<DetailAccordion id="trace" icon={ScanLine} title="Lot ve İzlenebilirlik" teaser="Parti kodunu görün"><Traceability detail={detail} hasTraceability={hasTraceability} onCopy={copyTrace}/></DetailAccordion>:null}
    {Array.isArray(detail.certifications)&&detail.certifications.length?<DetailAccordion id="certs" icon={Award} title="Sertifikalar" teaser={`${detail.certifications.length} belge`}><Certifications items={detail.certifications}/></DetailAccordion>:null}
-   <DetailAccordion id="reviews" icon={Star} title="Müşteri Yorumları" teaser={reviewCount?`${averageRating!==null?averageRating.toFixed(1):'-'} puan · ${reviewCount} yorum`:'Tadına bakan ilk siz olun, ilk yorumu siz yazın'}><Reviews reviews={reviews} reviewCount={reviewCount} averageRating={averageRating} onWrite={startReview} composer={reviewComposerOpen&&productId?<ProductReviewComposer productId={productId} productName={detailName} onClose={()=>setReviewComposerOpen(false)}/>:null}/></DetailAccordion>
+   <DetailAccordion id="reviews" icon={Star} title="Müşteri Yorumları" teaser={reviewCount?`${averageRating!==null?averageRating.toFixed(1):'-'} puan · ${reviewCount} yorum`:'Tadına bakan ilk siz olun, ilk yorumu siz yazın'}><Reviews reviews={reviews} reviewCount={reviewCount} averageRating={averageRating} onWrite={startReview} composer={reviewComposerOpen&&productId?<React.Suspense fallback={<p className="go-review-composer__note">Yorum formu açılıyor…</p>}><ProductReviewComposer productId={productId} productName={detailName} onClose={()=>setReviewComposerOpen(false)}/></React.Suspense>:null}/></DetailAccordion>
   </DetailAccordionGroup>
 
   {/* Recommendations are always in view, not behind a tap: products that
