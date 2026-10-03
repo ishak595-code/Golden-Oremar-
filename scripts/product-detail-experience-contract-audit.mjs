@@ -58,6 +58,17 @@ check(/go-gallery__thumbs/.test(gallery_src()) , 'The gallery shows thumbnails w
 check(/viewerZoom/.test(detail) && /onTouchEnd=/.test(detail), 'The full-screen viewer zooms on tap and swipes between photos.');
 check(!/weightGrams[^;]*kgPrice|kgPriceMinor=[^;]*packageWeight/.test(detail), 'The kilogram price comes from the net amount on the label, never from the packed shipping weight.');
 
+// 2026-10-03 (b): store follow under the ask button, edge-to-edge section
+// headers, and a review form that opens from the product page in every state.
+check(/className="go-store-follow mt-2"/.test(detail) && detail.indexOf('go-store-follow mt-2') > detail.indexOf('go-store-ask') && /toggleProducerFollow\(producerId\)/.test(detail) && /'Mağazayı takip et'/.test(detail) && /'Takip ediliyor'/.test(detail) && /Yeni ürünler gelince haberin olsun/.test(detail), 'A "Mağazayı takip et" button with its helper line sits under the ask button and uses toggle_producer_follow_v1.');
+check(!/go-store-follow[^\n]*aria-pressed/.test(detail) && !/aria-pressed=\{following\}/.test(read('src/features/catalog/PublicProducerScreen.tsx')), 'Follow buttons are not aria-pressed toggles (screen readers would add "kapalı").');
+check(/async function toggleFollow\(\)\{\n  if\(!authenticated\)\{onLoginRequired\(\);return;\}/.test(detail), 'Following a store asks guests to sign in first.');
+const v3css = read('src/features/customer-experience/productDetailV3.css');
+check(!/\.go-detail-accordion\{[^}]*overflow:hidden/.test(v3css) && /\.go-detail-accordion__header::before\{content:'';position:absolute;inset:-1px -1px 0 -1px;\}/.test(v3css) && /\.go-detail-accordion__header>\*\{position:relative;pointer-events:none;\}/.test(v3css), 'The whole section header row, corners and border included, is the tap target (the card does not clip it).');
+check(/const write=composer\|\|<button type="button" onClick=\{onWrite\} className="go-reviews__write">/.test(detail) && (detail.match(/\{write\}\{policy\}/g)||[]).length===2 && /setReviewComposerOpen\(true\)/.test(detail), '"Değerlendirme yaz" is offered when there are no reviews, when reviews are unavailable and under the list, and opens the review form in place.');
+const composerSrc = read('src/features/catalog/ProductReviewComposer.tsx');
+check(/listReviewableOrderItems\(\)/.test(composerSrc) && /entry\.productId===productId/.test(composerSrc) && /submitVerifiedReview\(/.test(composerSrc) && /Teslim aldıktan sonra yorum yazabilirsiniz/.test(composerSrc) && /Yorum şu anda gönderilemiyor/.test(composerSrc), 'The review form only accepts delivered orders of this product and says so in Turkish when there is nothing to review or the service is unreachable.');
+
 const accordion = read('src/features/catalog/DetailAccordion.tsx');
 check(/aria-label=\{title\}/.test(accordion) && /aria-describedby=\{teaser\?teaserId:undefined\}/.test(accordion), 'Section headers are named by the title alone; the teaser is read once, as the description, never twice.');
 check(/aria-expanded=\{open\}/.test(accordion) && /aria-controls=\{panelId\}/.test(accordion) && /role="region"/.test(accordion), 'Accordion headers must be buttons with aria-expanded and aria-controls, panels labelled regions.');

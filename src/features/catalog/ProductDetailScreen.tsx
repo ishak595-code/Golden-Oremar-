@@ -1,7 +1,9 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{addToGuestCart}from'../cart/guestCart';
-import{ArrowLeft,Award,CircleSlash,BadgeCheck,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,FileText,Gift,Heart,Info as InfoIcon,MessageCircle,Minus,PackageCheck,Plus,QrCode,ScanLine,Share2,ShieldCheck,ShoppingCart,Sparkles,Star,Store,Truck,X,ZoomIn,MapPin,User}from'lucide-react';
-import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProductFavorite}from'./api';
+import{ArrowLeft,Award,Bell,BellRing,CircleSlash,BadgeCheck,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,FileText,Gift,Heart,Info as InfoIcon,MessageCircle,Minus,PackageCheck,Plus,QrCode,ScanLine,Share2,ShieldCheck,ShoppingCart,Sparkles,Star,Store,Truck,X,ZoomIn,MapPin,User}from'lucide-react';
+import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProducerFollow,toggleProductFavorite}from'./api';
+// The review form is loaded only when a customer taps "Değerlendirme yaz".
+const ProductReviewComposer=React.lazy(()=>import('./ProductReviewComposer'));
 import PremiumOrderConfigurator from'./PremiumOrderConfigurator';
 import{buildOrderCustomization,buildProductExperience,defaultOrderOptions,validateOrderOptions,type SelectedOrderOptions}from'./productExperience';
 import ProductSafetyPanel from'../content/ProductSafetyPanel';
@@ -17,6 +19,7 @@ import{productMaker,shortOrigin}from'./productMakers';
 import ProductGallery,{type GallerySlide}from'./ProductGallery';
 import{isBrandFallbackImage}from'./ProductArtwork';
 import{DetailAccordion,DetailAccordionGroup,openDetailSection}from'./DetailAccordion';
+import{isFollowingStore}from'./storeFollowApi';
 import'./productDetailV4.css';
 import ProductRecommendations from'./ProductRecommendations';
 import ProductRecommendationsRail from'./ProductRecommendationsRail';
@@ -53,6 +56,10 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const[detail,setDetail]=useState<any>(null);
  const[safetyContent,setSafetyContent]=useState<any>(null);
  const[reviews,setReviews]=useState<any>(null);
+ const[reviewComposerOpen,setReviewComposerOpen]=useState(false);
+ const[following,setFollowing]=useState(false);
+ const[followBusy,setFollowBusy]=useState(false);
+ const[followError,setFollowError]=useState('');
  const[variantId,setVariantId]=useState('');
  const[quantity,setQuantity]=useState(1);
  const[selectedOrderOptions,setSelectedOrderOptions]=useState<SelectedOrderOptions>({});
@@ -115,7 +122,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  async function load(){
   const current=++requestId.current;
   try{
-   setLoading(true);setError('');setStatus('');setFavoriteOverride(null);setQuestionOpen(false);setImageViewerOpen(false);setViewerZoom(null);setDetail(null);setReviews(null);
+   setLoading(true);setError('');setStatus('');setFavoriteOverride(null);setQuestionOpen(false);setImageViewerOpen(false);setViewerZoom(null);setDetail(null);setReviews(null);setReviewComposerOpen(false);setFollowError('');
    const product=await getProductDetail(reference);
    if(requestId.current!==current)return;
    setDetail(product);
@@ -162,6 +169,10 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const orderConfigurationError=validateOrderOptions(experience.optionSchema,selectedOrderOptions);
  const purchaseReady=variant?.available===true&&variantReference!==null&&priceReady&&stockReady&&!soldOut&&!orderConfigurationError;
  useEffect(()=>{setQuantity(current=>Math.max(1,Math.min(current,maxQuantity)));},[variantId,maxQuantity]);
+ // Whether the signed-in customer already follows this store (same metric
+ // the catalogue cards use). A failed lookup leaves the button at "follow".
+ const followProducerId=safeReference(detail?.producer?.id,160);
+ useEffect(()=>{let active=true;setFollowing(false);if(!authenticated||!followProducerId)return;isFollowingStore(followProducerId).then(value=>{if(active&&value!==null)setFollowing(value);}).catch(()=>{});return()=>{active=false;};},[authenticated,followProducerId]);
  useEffect(()=>{if(!imageViewerOpen||images.length<2)return;const onKeyDown=(event:KeyboardEvent)=>{if(event.key!=='ArrowLeft'&&event.key!=='ArrowRight')return;event.preventDefault();const delta=event.key==='ArrowLeft'?-1:1;const next=(selectedImageIndex+delta+images.length)%images.length;setSelectedImagePath(safeText(images[next]?.path,1200));};document.addEventListener('keydown',onKeyDown,true);return()=>document.removeEventListener('keydown',onKeyDown,true);},[imageViewerOpen,images,selectedImageIndex]);
 
  const favoriteReference=String(detail?.legacyId||detail?.id||'');
@@ -261,7 +272,17 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const storyText=safeText(experience.story,3000);
  const descriptionText=safeText(detail?.shortDescription,1000);
  const descriptionTeaser=(()=>{const first=descriptionText.split(/(?<=[.!?…])\s+/)[0]||'';return first.length>=12&&first.length<=110?first:'Ürünü kısaca tanıyın';})();
- function startReview(){if(!authenticated){onLoginRequired();return;}pushInternalRoute(buildTabUrl('account',{view:'reviews'}),'account');}
+ function startReview(){if(!authenticated){onLoginRequired();return;}setReviewComposerOpen(true);}
+ // Following the store: same data as the store page and Hesabım > Takip
+ // Ettiğim Satıcılar (toggle_producer_follow_v1). Not an aria-pressed
+ // toggle, so screen readers never add "kapalı"; the visible text names it.
+ async function toggleFollow(){
+  if(!authenticated){onLoginRequired();return;}
+  if(!producerId||followBusy)return;
+  try{setFollowBusy(true);setFollowError('');const result:any=await toggleProducerFollow(producerId);setFollowing(result?.following===true);}
+  catch{setFollowError('Takip işlemi şu anda tamamlanamadı. Lütfen biraz sonra tekrar deneyin.');}
+  finally{setFollowBusy(false);}
+ }
  const storyLine=(()=>{const text=safeText(experience.story,3000);const first=text.split(/(?<=[.!?…])\s+/)[0]||'';return first.length>=12&&first.length<=180?first:'';})();
  const gallerySlides:GallerySlide[]=[
   ...(images.length?images.slice(0,12).flatMap((image:any,index:number)=>{const path=safeText(image?.path,1200);const src=publicCatalogUrl(path);return src?[{kind:'photo' as const,key:`photo:${path}:${index}`,src,path,alt:safeText(image?.alt,300)||detailName}]:[];}):[]),
@@ -332,6 +353,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
     </button>:null}
 
     {questionReady?<button type="button" onClick={()=>{if(!authenticated){onLoginRequired();return;}setQuestionOpen(value=>!value);setError('');setStatus('');}} aria-expanded={questionOpen} className="go-store-ask mt-2"><MessageCircle aria-hidden="true"/>Üreticiye soru sor</button>:null}
+    {producerId?<div className="go-store-follow mt-2"><button type="button" onClick={()=>void toggleFollow()} disabled={followBusy} aria-describedby={`store-follow-hint-${producerId}`} className={`go-store-follow__button${following?' is-following':''}`}>{following?<BellRing aria-hidden="true"/>:<Bell aria-hidden="true"/>}<span>{followBusy?'Güncelleniyor…':following?'Takip ediliyor':'Mağazayı takip et'}</span></button><p id={`store-follow-hint-${producerId}`} role={followError?'alert':undefined} className={`go-store-follow__hint${followError?' is-error':''}`}>{followError||(following?'Yeni ürünlerinden haberin olacak · Bırakmak için dokun':'Yeni ürünler gelince haberin olsun')}</p></div>:null}
     {questionOpen&&producerId&&productId?<ProducerQuestionComposer className="mt-3" context={{kind:'product',producerId,productId,productName:detailName}} onCancel={()=>setQuestionOpen(false)} onStarted={()=>{setQuestionOpen(false);setStatus('Sorunuz üreticiye gönderildi. Yanıtı Hesabım > Mesajlarım bölümünden takip edebilirsiniz.');}}/>:null}
 
     {kunye.length?<ul className="go-kunye" data-product-kunye="true" aria-label="Ürün künyesi">{kunye.map(row=>{const Icon=({maker:User,village:MapPin,verified:BadgeCheck,stock:PackageCheck} as Record<string,typeof MapPin>)[row.key];const body=<><span className="go-kunye__icon" aria-hidden="true"><Icon/></span><span className="go-kunye__text"><span className="go-kunye__label">{row.label}</span><span className="go-kunye__value">{row.text}</span></span>{row.href?<span className="go-kunye__go" aria-hidden="true"><span>Haritada aç</span><ExternalLink/></span>:null}</>;return<li key={row.key}>{row.href?<a href={row.href} target="_blank" rel="noopener noreferrer" className={`go-kunye__row go-kunye__row--link`} aria-label={`${row.label}: ${row.text}. Haritada aç`}>{body}</a>:<div className={`go-kunye__row${row.tone?` go-kunye__row--${row.tone}`:''}`}>{body}</div>}</li>;})}</ul>:null}
@@ -367,7 +389,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    </DetailAccordion>
    {hasTraceability?<DetailAccordion id="trace" icon={ScanLine} title="Lot ve İzlenebilirlik" teaser="Parti kodunu görün"><Traceability detail={detail} hasTraceability={hasTraceability} onCopy={copyTrace}/></DetailAccordion>:null}
    {Array.isArray(detail.certifications)&&detail.certifications.length?<DetailAccordion id="certs" icon={Award} title="Sertifikalar" teaser={`${detail.certifications.length} belge`}><Certifications items={detail.certifications}/></DetailAccordion>:null}
-   <DetailAccordion id="reviews" icon={Star} title="Müşteri Yorumları" teaser={reviewCount?`${averageRating!==null?averageRating.toFixed(1):'-'} puan · ${reviewCount} yorum`:'Tadına bakan ilk siz olun, ilk yorumu siz yazın'}><Reviews reviews={reviews} reviewCount={reviewCount} averageRating={averageRating} onWrite={startReview}/></DetailAccordion>
+   <DetailAccordion id="reviews" icon={Star} title="Müşteri Yorumları" teaser={reviewCount?`${averageRating!==null?averageRating.toFixed(1):'-'} puan · ${reviewCount} yorum`:'Tadına bakan ilk siz olun, ilk yorumu siz yazın'}><Reviews reviews={reviews} reviewCount={reviewCount} averageRating={averageRating} onWrite={startReview} composer={reviewComposerOpen&&productId?<React.Suspense fallback={<p className="go-review-composer__note">Yorum formu açılıyor…</p>}><ProductReviewComposer productId={productId} productName={detailName} onClose={()=>setReviewComposerOpen(false)}/></React.Suspense>:null}/></DetailAccordion>
   </DetailAccordionGroup>
 
   {/* Recommendations are always in view, not behind a tap: products that
@@ -423,21 +445,24 @@ function Certifications({items}:{items:any[]}){return<div className="space-y-2">
 
 function StarRow({value,size='sm'}:{value:number;size?:'sm'|'lg'}){const rounded=Math.round(Math.max(0,Math.min(5,value)));return<span className={`go-stars go-stars--${size}`} aria-hidden="true">{Array.from({length:5}).map((_,index)=>{const fill=rounded>=index+1?'full':'empty';return<span key={index} className={`go-star go-star--${fill}`}><Star/></span>;})}</span>;}
 
-function Reviews({reviews,reviewCount,averageRating,onWrite}:{reviews:any;reviewCount:number|null;averageRating:number|null;onWrite:()=>void}){
+function Reviews({reviews,reviewCount,averageRating,onWrite,composer}:{reviews:any;reviewCount:number|null;averageRating:number|null;onWrite:()=>void;composer:React.ReactNode}){
  const items:any[]=Array.isArray(reviews?.items)?reviews.items.slice(0,20):[];
  const summary=reviews?.summary&&typeof reviews.summary==='object'?reviews.summary:{};
  const bars=[5,4,3,2,1].map(star=>({star,count:safeInteger(summary[`rating${star}`])??0}));
  const barTotal=bars.reduce((sum,bar)=>sum+bar.count,0);
  const policy=<p className="go-reviews__policy"><ShieldCheck aria-hidden="true"/>Değerlendirmeler yalnız bu ürünü satın alıp teslim alan müşterilerimizden gelir; her yorum gerçek bir siparişe bağlıdır.</p>;
- if(reviewCount===0||(reviewCount===null&&reviews&&!items.length))return<div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center dark:border-gray-700 dark:bg-gray-800"><Star aria-hidden="true" className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600"/><p className="mt-3 font-semibold text-gray-600 dark:text-gray-300">Henüz müşteri yorumu yok</p><p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Bu ürüne ilk yorumu yapan siz olun!</p></div>;
- if(!reviews&&reviewCount===null)return<div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4 text-center dark:border-amber-900/60 dark:bg-amber-950/30"><p className="font-semibold text-amber-900 dark:text-amber-100">Yorumlar şu anda görüntülenemiyor</p><p className="mt-1 text-sm text-amber-700 dark:text-amber-200">Lütfen daha sonra tekrar deneyin.</p></div>;
+ // "Değerlendirme yaz" is offered in every state (no reviews yet, reviews
+ // unavailable, a list), so a tap on the section always leads somewhere.
+ const write=composer||<button type="button" onClick={onWrite} className="go-reviews__write"><Star aria-hidden="true"/>Değerlendirme yaz</button>;
+ if(reviewCount===0||(reviewCount===null&&reviews&&!items.length))return<div className="go-reviews"><div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center dark:border-gray-700 dark:bg-gray-800"><Star aria-hidden="true" className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600"/><p className="mt-3 font-semibold text-gray-600 dark:text-gray-300">Henüz müşteri yorumu yok</p><p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Bu ürüne ilk yorumu yapan siz olun!</p></div>{write}{policy}</div>;
+ if(!reviews&&reviewCount===null)return<div className="go-reviews"><div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4 text-center dark:border-amber-900/60 dark:bg-amber-950/30"><p className="font-semibold text-amber-900 dark:text-amber-100">Yorumlar şu anda görüntülenemiyor</p><p className="mt-1 text-sm text-amber-700 dark:text-amber-200">Lütfen daha sonra tekrar deneyin.</p></div>{write}{policy}</div>;
  return<div className="go-reviews">
   <div className="go-reviews__summary">
    <div className="go-reviews__score"><strong>{averageRating!==null?averageRating.toFixed(1):'-'}</strong><StarRow value={averageRating??0} size="lg"/><span>{reviewCount??items.length} değerlendirme</span></div>
    {barTotal>0?<ul className="go-reviews__bars" aria-label="Puan dağılımı">{bars.map(bar=><li key={bar.star}><span className="go-reviews__bar-label">{bar.star} yıldız</span><span className="go-reviews__bar" aria-hidden="true"><span style={{width:`${Math.round(bar.count/barTotal*100)}%`}}/></span><span className="go-reviews__bar-count">{bar.count}</span></li>)}</ul>:null}
   </div>
   {items.length?<div className="space-y-3">{items.map((review:any,index:number)=>{const rating=safeRating(review?.rating);const date=dateOnly(review?.createdAt||review?.publishedAt);return<article key={safeReference(review?.id,160)||`review-${index}`} className="go-review-card"><div className="flex items-center justify-between gap-3"><div className="min-w-0"><strong className="block truncate font-bold">{safeText(review?.reviewerName,160)||'Müşteri'}</strong>{date?<span className="text-xs text-brand-muted">{date}</span>:null}</div>{rating!==null?<span className="flex items-center gap-1" aria-label={`${rating} yıldız`}><StarRow value={rating}/></span>:null}</div>{review?.verifiedPurchase===true?<div className="mt-1 flex items-center gap-1 text-xs font-bold text-green-700 dark:text-green-400"><CheckCircle2 aria-hidden="true" className="h-3.5 w-3.5"/>Doğrulanmış satın alma</div>:null}{safeText(review?.title,240)?<h3 className="mt-2 font-bold">{safeText(review.title,240)}</h3>:null}{safeText(review?.body,5000)?<p className="mt-1 text-sm leading-relaxed text-brand-muted">{safeText(review.body,5000)}</p>:null}{safeText(review?.merchantReply,5000)?<div className="mt-3 rounded-lg border-l-4 border-brand-gold bg-brand-gold/5 p-3 text-sm"><strong className="font-bold">Üretici yanıtı:</strong> <span className="text-brand-muted">{safeText(review.merchantReply,5000)}</span></div>:null}</article>;})}</div>:null}
-  <button type="button" onClick={onWrite} className="go-reviews__write"><Star aria-hidden="true"/>Değerlendirme yaz</button>
+  {write}
   {policy}
  </div>;
 }
