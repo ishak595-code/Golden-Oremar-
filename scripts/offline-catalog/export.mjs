@@ -58,6 +58,12 @@ async function collect() {
     'offline_ordering.json': await rpc('get_public_offline_ordering_v1'),
     'events_upcoming.json': await rpc('list_public_events_v1', { p_include_past: false }),
     'events_all.json': await rpc('list_public_events_v1', { p_include_past: true }),
+    // Domestic shipping quote for 1 kg and 2 kg (fee per kg and the
+    // free-shipping threshold follow from the two; see offlineCatalog.ts).
+    'shipping_tr.json': {
+      kg1: await rpc('get_shipping_quote_v1', { p_country_code: 'TR', p_weight_grams: 1000, p_subtotal_minor: 0, p_currency: 'TRY' }),
+      kg2: await rpc('get_shipping_quote_v1', { p_country_code: 'TR', p_weight_grams: 2000, p_subtotal_minor: 0, p_currency: 'TRY' }),
+    },
   };
   for (const section of SECTIONS) files[`sections/${section}.json`] = await rpc('get_public_home_section_v1', { p_key: section, p_locale: 'tr' });
   const items = Array.isArray(files['home_catalog.json']?.items) ? files['home_catalog.json'].items : [];

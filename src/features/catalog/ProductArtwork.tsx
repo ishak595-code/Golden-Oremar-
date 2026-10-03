@@ -13,10 +13,8 @@ import{Apple,Beef,Cherry,CupSoda,Droplets,Drumstick,Egg,Fish,Flame,Gem,Grape,Ham
  *
  * When a representative photo has been shipped for the product
  * (public/product-photos, see scripts/product-photos), that photo is shown
- * instead. On the product page it is not stamped on the photo: the gallery
- * captions it under the slider ("Temsili görseldir. Ürün görünümü hasat
- * dönemine göre değişebilir."). A real photo uploaded by the store never
- * reaches this component, so it always wins.
+ * instead, unlabelled. A real photo uploaded by the store never reaches this
+ * component, so it always wins.
  */
 
 const SHIPPED=new Set(SHIPPED_PRODUCT_PHOTOS);
@@ -95,13 +93,15 @@ type Props={
  label?:string;
  /** Product slug, to use its shipped representative photo when there is one. */
  slug?:string|null;
+ /** Rendered width hint for the hero photo's srcset (480 / 1200 px files). */
+ sizes?:string;
 };
 
-export default function ProductArtwork({name,categorySlug,categoryName,productType,safetyClass,variant='card',className='',label,slug}:Props){
+export default function ProductArtwork({name,categorySlug,categoryName,productType,safetyClass,variant='card',className='',label,slug,sizes}:Props){
  const[photoFailed,setPhotoFailed]=useState(false);
  const photo=photoFailed?null:shippedProductPhoto(slug,variant==='hero'?'large':'small');
  if(photo)return<span className={`go-artwork go-artwork--photo go-artwork--${variant} ${className}`} data-product-artwork="photo">
-  <img src={photo} alt={label||''} loading={variant==='hero'?'eager':'lazy'} decoding="async" draggable={false} onError={()=>setPhotoFailed(true)}/>
+  <img src={photo} srcSet={variant==='hero'?`${shippedProductPhoto(slug,'small')} 480w, ${photo} 1200w`:undefined} sizes={variant==='hero'?(sizes||'100vw'):undefined} alt={label||''} loading={variant==='hero'?'eager':'lazy'} fetchPriority={variant==='hero'?'high':undefined} decoding="async" draggable={false} onError={()=>setPhotoFailed(true)}/>
  </span>;
  const theme=THEMES[String(categorySlug||'')]||DEFAULT_THEME;
  const Icon=productArtworkIcon({name,productType,safetyClass,categorySlug:categorySlug||''});

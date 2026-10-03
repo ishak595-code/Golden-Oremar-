@@ -24,7 +24,7 @@ for (const slug of products) {
     const maker = row('üreten')?.[1] || '';
     const title = document.querySelector('h1')?.innerText.trim() || '';
     const copy = document.querySelector('#root').cloneNode(true);
-    copy.querySelectorAll('.go-detail-recos, .go-sticky-buy, nav, [role="dialog"], .sr-only').forEach(node => node.remove());
+    copy.querySelectorAll('.go-detail-recos, nav, [role="dialog"], .sr-only').forEach(node => node.remove());
     // Section bodies are read too, whether open or not.
     const text = copy.textContent.replace(/\s+/g, ' ');
     const count = needle => needle ? text.split(needle).length - 1 : 0;

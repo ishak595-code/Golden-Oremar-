@@ -1,63 +1,21 @@
-/* Product detail (2026-10-03, editorial page): the primary tab bar steps
-   aside; the purchase buttons live in the buy box under the price, and on a
-   phone a calm bar (pack, price, "Sepete Ekle") appears at the bottom only
-   while those buttons are out of view. Safe areas are respected. */
+/* Product detail: the primary tab bar steps aside; the purchase buttons live
+   in the buy box under the price (no fixed bottom bar, so the price is never
+   shown a second time). Safe areas are respected. */
 :root[data-app-tab="product-detail"] nav[aria-label="Ana gezinme"] {
   display: none !important;
 }
 
 :root[data-app-tab="product-detail"] #root > .min-h-screen {
-  padding-bottom: calc(5.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
+  padding-bottom: calc(2rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
 }
 
 :root[data-app-tab="product-detail"] section[aria-label="Ürün görselleri"] .hide-scrollbar button {
   background: var(--bg-card);
 }
 
-/* Bottom bar (phones and tablets). */
-.go-sticky-buy {
-  position: fixed;
-  z-index: 75;
-  left: calc(.6rem + var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
-  right: calc(.6rem + var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
-  bottom: calc(.6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
-  max-width: 40rem;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  gap: .75rem;
-  padding: .55rem .55rem .55rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--border-main) 70%, transparent);
-  border-radius: 1.1rem;
-  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
-  box-shadow: 0 12px 32px rgb(5 24 16 / .18);
-  backdrop-filter: blur(16px);
-  transform: translateY(calc(100% + 1.5rem));
-  opacity: 0;
-  visibility: hidden;
-  transition: transform .22s ease, opacity .22s ease, visibility 0s linear .22s;
-}
-.go-sticky-buy.is-visible { transform: none; opacity: 1; visibility: visible; transition: transform .22s ease, opacity .22s ease, visibility 0s; }
-.go-sticky-buy__summary { display: grid; min-width: 0; flex: 1; gap: .05rem; }
-.go-sticky-buy__pack { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; color: var(--text-muted); }
-.go-sticky-buy__price { font-size: 1.05rem; font-weight: 800; color: var(--text-main); font-variant-numeric: tabular-nums; }
-.go-sticky-buy__cart {
-  display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: .45rem;
-  min-height: 3rem; padding: 0 1.25rem; border: 0; border-radius: .85rem;
-  background: var(--brand-green, #0f5132); color: var(--text-on-green, #fff);
-  font-size: .95rem; font-weight: 800; white-space: nowrap; touch-action: manipulation;
-}
-.go-sticky-buy__cart svg { width: 1.05rem; height: 1.05rem; }
-.go-sticky-buy__cart:disabled { opacity: .5; cursor: not-allowed; }
-@media (prefers-reduced-motion: reduce) { .go-sticky-buy, .go-sticky-buy.is-visible { transition: none; } }
-@media (min-width: 1024px) {
-  .go-sticky-buy { display: none; }
-  :root[data-app-tab="product-detail"] #root > .min-h-screen { padding-bottom: 2rem !important; }
-}
-
 /* The safety centre button (report/block, required for user content) stays
    reachable everywhere without covering the page: an icon above the tab bar
-   on phones, lifted above the purchase and checkout bars where they show. */
+   on phones, lifted above the checkout bar where it shows. */
 .go-safety-fab {
   display: inline-flex;
   align-items: center;
@@ -74,7 +32,7 @@
 }
 @media (max-width: 1023px) {
   :root[data-app-tab="product-detail"] .go-safety-fab {
-    bottom: calc(5.4rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+    bottom: calc(1.25rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   }
   :root[data-cart-dock="on"] .go-safety-fab {
     bottom: calc(6.6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));

@@ -10,9 +10,9 @@ import{ChevronDown,type LucideIcon}from'lucide-react';
  * one being opened, or an automatic scroll after the opening animation, is
  * what used to make an opened section "disappear" off the screen. The panel
  * has no height or opacity animation either, so its full text is there the
- * moment it opens. The single exception: when the opened text would start
- * hidden behind the sticky purchase bar at the bottom of a phone screen, the
- * page moves just enough to show its first lines.
+ * moment it opens. The single exception: when the header sits at the very
+ * bottom of the screen, so the opened text would start below it, the page
+ * moves just enough to show its first lines.
  *
  * Content mounts on first open (reviews are only fetched when a customer asks
  * for them) and stays mounted, so closing and reopening is instant.
@@ -33,20 +33,17 @@ export function DetailAccordionGroup({children,className=''}:{children:React.Rea
 
 type Props={id:string;title:string;teaser?:string;icon?:LucideIcon;tone?:'default'|'gold';/** A slim row, e.g. delivery inside the buy box. */compact?:boolean;children:React.ReactNode};
 
-/** Height of the phone's sticky purchase bar, when it is showing. */
-function bottomBarHeight(){const bar=document.querySelector<HTMLElement>('.go-sticky-buy.is-visible');return bar?bar.getBoundingClientRect().height:0;}
-
 export function DetailAccordion({id,title,teaser,icon:Icon,tone='default',compact=false,children}:Props){
  const[open,setOpen]=useState(false);
  const[mounted,setMounted]=useState(false);
  const panelRef=useRef<HTMLDivElement>(null);
  const revealRef=useRef(false);
  useEffect(()=>{const onOpen=(event:Event)=>{if((event as CustomEvent<{id?:string}>).detail?.id===id){setMounted(true);setOpen(true);}};window.addEventListener(OPEN_DETAIL_SECTION_EVENT,onOpen);return()=>window.removeEventListener(OPEN_DETAIL_SECTION_EVENT,onOpen);},[id]);
- // Only when the first lines of the opened text would sit under the sticky bar.
+ // Only when the first lines of the opened text would start below the screen.
  useEffect(()=>{
   if(!open||!revealRef.current)return;revealRef.current=false;
   const panel=panelRef.current;if(!panel)return;
-  const top=panel.getBoundingClientRect().top,limit=window.innerHeight-bottomBarHeight()-72;
+  const top=panel.getBoundingClientRect().top,limit=window.innerHeight-72;
   if(top>limit)window.scrollBy({top:top-limit,behavior:'auto'});
  },[open]);
  const reactId=useId().replace(/:/g,'');

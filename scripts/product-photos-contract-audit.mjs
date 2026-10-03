@@ -1,11 +1,12 @@
 // Representative product photos contract audit.
 //
 // Every slug in the generated manifest has both shipped sizes, the photo is
-// only a fallback (a real uploaded photo wins), it is labelled "Temsili
-// görsel" on the product page, and the hosting rules serve the folder as
-// files with caching instead of the app shell.
+// only a fallback (a real uploaded photo wins), no photo disclaimer is shown
+// to customers, and the hosting rules serve the folder as files with caching
+// instead of the app shell.
 
 import fs from 'node:fs';
+import path from 'node:path';
 
 const failures = [];
 const read = file => fs.readFileSync(file, 'utf8');
@@ -21,11 +22,21 @@ const sources = JSON.parse(read('scripts/product-photos/sources.json'));
 if (!Array.isArray(sources) || sources.some(entry => !/^[a-z0-9][a-z0-9-]{1,200}$/.test(String(entry?.slug || '')))) failures.push('sources.json must be a list of { slug, url } with safe slugs.');
 
 const artwork = read('src/features/catalog/ProductArtwork.tsx');
-// 2026-10-03: the label is no longer stamped on the photo; a calm caption
-// sits directly under the slider for representative photos.
+// 2026-10-03: the label is no longer stamped on the photo, and (round 2, at
+// İshak's request) no "Temsili" caption or other photo disclaimer is shown
+// anywhere a customer looks.
 if (/go-artwork__note/.test(artwork)) failures.push('The "Temsili görsel" badge must not sit on top of the photo.');
-need(read('src/features/catalog/ProductGallery.tsx'), /<\/section>\{representative\?<p className="go-gallery__note">\{representativeNote\}<\/p>:null\}/, 'Representative photos are captioned directly under the slider.');
-need(read('src/features/catalog/ProductDetailScreen.tsx'), 'Temsili görseldir. Ürün görünümü hasat dönemine göre değişebilir.', 'The product page passes the caption "Temsili görseldir. Ürün görünümü hasat dönemine göre değişebilir."');
+{
+  const gallery = read('src/features/catalog/ProductGallery.tsx');
+  if (/go-gallery__note|representativeNote/.test(gallery) || /representativeNote=/.test(read('src/features/catalog/ProductDetailScreen.tsx'))) failures.push('No caption under the product photos.');
+  // Customer-facing copy (strings in the storefront code) carries no photo disclaimer.
+  const walk = dir => fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]);
+  const DISCLAIMER = /['"`>][^'"`<]*(Temsili|temsili görsel|sahte değildir|gerçeği gelene)[^'"`<]*['"`<]/;
+  for (const file of walk('src').filter(f => /\.(tsx?|jsx?)$/.test(f))) {
+    const code = fs.readFileSync(file, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+    if (DISCLAIMER.test(code)) failures.push(`${file}: no "Temsili" or similar photo disclaimer in customer-facing text.`);
+  }
+}
 need(artwork, "/product-photos/${key}", 'Shipped photos must come from public/product-photos.');
 need(read('src/features/catalog/ProductGallery.tsx'), /slide\.kind==='artwork'[\s\S]{0,200}<ProductArtwork[^>]*slug=\{productSlug\}/, 'The gallery must use the shipped photo only in place of the drawn artwork, never over a real photo.');
 need(read('vercel.json'), 'product-photos/|', 'The SPA fallback must not answer for /product-photos/.');
@@ -48,4 +59,4 @@ need(read('.github/workflows/product-photos-import.yml'), 'src/features/media/pr
 need(read('src/features/catalog/ProductDetailScreen.tsx'), /ORIGIN_PHOTOS\.has\(originSlug\)\)gallerySlides\.splice\(1,0,\{kind:'scene'/, 'The origin photo is the second slide, and only when it has been shipped.');
 
 if (failures.length) { console.error('Product photos contract audit failed:'); for (const failure of failures) console.error(`- ${failure}`); process.exit(1); }
-console.log(`Product photos contract audit passed: ${slugs.length} shipped photo(s) present in both sizes, used only as a labelled fallback, served as cached files.`);
+console.log(`Product photos contract audit passed: ${slugs.length} shipped photo(s) present in both sizes, used only as a fallback without any disclaimer, served as cached files.`);
