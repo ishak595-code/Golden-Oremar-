@@ -37,5 +37,18 @@ export const SHIPPED_PRODUCT_PHOTOS: readonly string[] = [
  "koyun-efsanevi-beyaz-isitma-pres-tasi-402",
  "kusburnu-marmelati-707",
  "merez-hatun-un-magara-tulum-peyniri-201",
- "sessiz-orman-kuzu-gobegi-mantari-601"
+ "naciye-nin-yayik-tereyagi-202",
+ "sabir-kurutmasi-cicek-bamyasi-702",
+ "salih-in-meralik-ozgur-horozu-304",
+ "sami-usta-nin-kurutulmus-dag-dutlari-502",
+ "sessiz-orman-kuzu-gobegi-mantari-601",
+ "sobalik-mese-yarigi-403",
+ "tas-degirmen-yuksekova-bulguru-908",
+ "taze-yayik-ayrani-canli-kultur-205",
+ "yuksekova-sonbahar-armudu-901",
+ "yuksekova-yayla-domatesi-802",
+ "yuksekova-yayla-kayisisi-903",
+ "yuksekova-yayla-poleni-906",
+ "yuksekova-yaz-hiyari-904",
+ "zahter-harmani-dag-kekigi-507"
 ];
