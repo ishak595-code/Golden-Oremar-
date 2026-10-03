@@ -74,6 +74,12 @@ export function shippingInsight(shipping: Record<string, any> | null | undefined
 }
 
 export function formatMoney(minor: number, currency: string) {
+  // Turkish lira the way the product page and cards write it: "820 TL",
+  // "12,50 TL" (kuruş only when there are some).
+  if (String(currency).toUpperCase() === 'TRY' && Number.isFinite(minor)) {
+    const digits = Math.round(minor) % 100 === 0 ? 0 : 2;
+    return `${(minor / 100).toLocaleString('tr-TR', { minimumFractionDigits: digits, maximumFractionDigits: digits })} TL`;
+  }
   try { return new Intl.NumberFormat('tr-TR', { style: 'currency', currency, maximumFractionDigits: 2 }).format(minor / 100); }
   catch { return `${(minor / 100).toLocaleString('tr-TR')} ${currency}`; }
 }

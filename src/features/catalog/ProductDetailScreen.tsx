@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{addToGuestCart}from'../cart/guestCart';
-import{ArrowLeft,BadgeCheck,Bell,BellRing,CheckCircle2,ChevronLeft,ChevronRight,CircleSlash,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,PackageCheck,Plus,QrCode,Share2,ShieldCheck,ShoppingCart,Star,Store,User,X}from'lucide-react';
+import{ArrowLeft,BadgeCheck,Bell,BellRing,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,PackageCheck,Plus,QrCode,Share2,ShieldCheck,ShoppingCart,Star,Store,User,X}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProducerFollow,toggleProductFavorite}from'./api';
 // The review form is loaded only when a customer taps "Değerlendirme yaz".
 const ProductReviewComposer=React.lazy(()=>import('./ProductReviewComposer'));
@@ -32,7 +32,7 @@ import type{ProductRecommendation}from'./productRecommendationsApi';
 /* Editorial product page (2026-10-03): photo with its slide bar, the
    prestige line and "Kargo bizden" under it, title, price (for the chosen
    quantity) and pack, the purchase buttons, then the story, the product
-   information, the facts table (Kökeni, Üretim, Ambalaj, İade, Teslimat),
+   information, the facts table (Kökeni, Üretim, Ambalaj, İade, Stok, Teslimat),
    health, how to use it, the producer, the reviews and, after them, the
    products that suit this one. The price is shown once. */
 
@@ -266,9 +266,9 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  if(maker||makerVillage)kunye.push({key:'maker',label:'Üreten',text:maker||`${makerVillage} üreticileri`});
  if(producerLocation){const place=producerLocation.split(',').map(part=>part.trim()).filter(Boolean).map((part,index)=>index===0&&part.includes(' - ')?part.split(' - ').pop()!.trim():part).join(', ');kunye.push({key:'village',label:'Köy',text:producerLocation,href:`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`});}
  {const official=detail?.producer?.storeKind==='official';const notes=[detail?.producer?.originVerified===true?'Menşei doğrulandı':'',detail?.producer?.verified===true?(official?'resmi mağaza':'doğrulanmış üretici'):'',...activeBadges.filter((badge:any)=>!['official_store','verified_origin'].includes(safeText(badge.key,80))).map((badge:any)=>safeText(badge.label,120)).filter(Boolean).slice(0,3)].filter(Boolean);if(notes.length)kunye.push({key:'verified',label:'Doğrulama',text:notes.join(', ')});}
- // Only a low stock is worth saying, next to the quantity. Sold out is the
- // pill beside the price and pre-order the line under it.
- const lowStock=!soldOut&&!preorder&&tracked&&variantStock!==null&&variantStock<=5?variantStock:null;
+ // "Stok" in the facts table, right under İade, from the chosen pack's real
+ // stock: Tükendi, Son N adet (5 or fewer), Stokta; pre-orders say Ön sipariş.
+ const stockFact=!variant?'':soldOut?'Tükendi':preorder?'Ön sipariş':tracked&&variantStock!==null&&variantStock<=5?`Son ${variantStock} adet`:stockReady?'Stokta':'';
  const producerId=safeReference(detail?.producer?.id,160);
  const productId=safeReference(detail?.id,160);
  const questionReady=Boolean(producerId&&productId);
@@ -277,13 +277,23 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  // Pre-orders say what their own record says (the stored harvest and dispatch
  // sentence, e.g. "Yeni sezon hasadıyla gönderilir (Haziran-Temmuz)"); the
  // rest of the catalogue is dispatched within 2-4 working days.
- const dispatchLine=(()=>{
+ const computedDispatch=(()=>{
   if(!preorder)return'2-4 iş günü içinde kargoya verilir';
   if(preorderLeadDays!==null&&preorderLeadDays>0)return`Siparişten sonra yaklaşık ${preorderLeadDays} günde kargoya verilir`;
   const stored=sentencesOf(safeText(detail?.specifications?.preOrderTime,300))[0]?.replace(/[.\s]+$/,'')||'';
   return stored||'2-4 iş günü içinde kargoya verilir';
  })();
+ // The product's own record (Ürün sayfası içeriği in the admin and seller
+ // panels) decides the dispatch sentence; an empty value hides it. Older
+ // records without the key keep the rule above.
+ const dispatchLine=typeof editorial.dispatchText==='string'?ed('dispatchText',160):computedDispatch;
  const withdrawal=(()=>{const tier=withdrawalTier((detail as any)?.handlingProfile);return tier?{tier,copy:WITHDRAWAL_COPY[tier]}:null;})();
+ // Shipping for this product: free ("Kargo bizden") or the real fee
+ // ("Kargo ücreti 49 TL"), the same rule the cart and checkout charge.
+ // A written shipping line from the record takes its place.
+ const shippingFeeMinor=(()=>{const shipping=(detail as any)?.shipping;const fee=safeInteger(shipping?.feeMinor);return shipping&&typeof shipping==='object'&&fee!==null&&fee>0?fee:0;})();
+ const shippingLine=ed('shippingNote',80)||(shippingFeeMinor>0?`Kargo ücreti ${priceText(shippingFeeMinor,'TRY')}`:'Kargo bizden');
+ const coldChain=typeof editorial.coldChain==='boolean'?editorial.coldChain:detail?.handlingProfile?.requiresColdChain===true;
 
  const unitLabel=safeText(variant?.name,120)||safeText(detail?.unitLabel,120);
  // The pack in words ("1 kg • Özel bez kese"), never "1 adet": the editorial
@@ -297,6 +307,11 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const kgPriceMinor=priceReady&&labelGrams!==null&&labelGrams>=50&&labelGrams<=50000&&labelGrams!==1000?Math.round(priceMinor!*1000/labelGrams):null;
  const discountPercent=compareAtPriceReady?Math.round((1-priceMinor!/compareAtPriceMinor!)*100):0;
  const totalMinor=priceReady?priceMinor!*quantity:null;
+ // Discount for the chosen quantity: old total struck through, new total, and
+ // one small badge "%20 · 80 TL indirim". Screen readers hear one short line.
+ const discountShown=compareAtPriceReady&&discountPercent>=1;
+ const oldTotalMinor=discountShown?compareAtPriceMinor!*quantity:null;
+ const dropMinor=discountShown?(compareAtPriceMinor!-priceMinor!)*quantity:null;
  // One line under the photo: place · how it is made · one trait ("Yüksekova ·
  // Odun isiyle geleneksel kurutma · Sınırlı hasat"), from the product's own record.
  const prestigeParts=ed('prestige',160).split('·').map(part=>part.trim()).filter(Boolean).slice(0,3);
@@ -310,9 +325,10 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  // it), then İade and Teslimat. Perishables keep their legal return text (no
  // right of withdrawal); the return terms appear only here on the page.
  const productionFact=(()=>{const value=ed('production',160);return value&&mostlyCovered(value,prestigeParts.join(' '))?'':value;})();
- const returnText=withdrawal?(withdrawal.tier==='none'?'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır':'14 gün içinde, paket açılmamışsa ücretsiz iade'):'';
- const deliveryLines=[dispatchLine,'Kargo bizden',...(detail?.handlingProfile?.requiresColdChain===true?['Soğuk zincirle gönderilir']:[])];
- const facts:Array<[string,string[]]>=([['Kökeni',[ed('origin',120)]],['Üretim',[productionFact]],['Ambalaj',[ed('packaging',120)]],['İade',[returnText]],['Teslimat',deliveryLines]] as Array<[string,string[]]>).map(([label,lines]):[string,string[]]=>[label,lines.filter(Boolean)]).filter(([,lines])=>lines.length>0);
+ const computedReturn=withdrawal?(withdrawal.tier==='none'?'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır':'14 gün içinde, paket açılmamışsa ücretsiz iade'):'';
+ const returnText=typeof editorial.returnText==='string'?ed('returnText',200):computedReturn;
+ const deliveryLines=[dispatchLine,shippingLine,...(coldChain?['Soğuk zincirle gönderilir']:[])];
+ const facts:Array<[string,string[]]>=([['Kökeni',[ed('origin',120)]],['Üretim',[productionFact]],['Ambalaj',[ed('packaging',120)]],['İade',[returnText]],['Stok',[stockFact]],['Teslimat',deliveryLines]] as Array<[string,string[]]>).map(([label,lines]):[string,string[]]=>[label,lines.filter(Boolean)]).filter(([,lines])=>lines.length>0);
  function startReview(){if(!authenticated){onLoginRequired();return;}setReviewComposerOpen(true);}
  // Following the store: same data as the store page and Hesabım > Takip
  // Ettiğim Satıcılar (toggle_producer_follow_v1). Not an aria-pressed
@@ -337,7 +353,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  if(productVideoUrl)gallerySlides.push({kind:'video',key:`video:${productVideoUrl}`,url:productVideoUrl});
  const showHealth=hasHealthInfo(safetyContent);
  const showUsage=hasUsageInfo(safetyContent,productVideoUrl||null);
- const purchaseLabel=busy?'İşleniyor…':preorder?'Sipariş Ver':'Sepete Ekle';
+ const purchaseLabel=busy?'İşleniyor…':soldOut?'Tükendi':preorder?'Sipariş Ver':'Sepete Ekle';
 
  return<article className="go-pdp mx-auto max-w-6xl px-4 pb-10 sm:px-6">
   <div className="sticky z-30 -mx-4 mb-4 flex min-h-16 items-center gap-2 border-b border-brand-border bg-brand-card/95 px-4 backdrop-blur-xl sm:-mx-6 sm:px-6" style={{top:'env(safe-area-inset-top, 0px)', paddingTop:'env(safe-area-inset-top, 0px)'}}>
@@ -351,15 +367,14 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
   {status?<div role="status" aria-live="polite" className="mb-4 rounded-2xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">{cartAdded?<div className="flex items-center justify-between gap-3"><span>{status}</span><button type="button" onClick={navigateToCart} className="min-h-11 rounded-full border-2 border-green-700 bg-green-700 px-3 font-black text-white shadow-sm transition-all hover:bg-green-800">Sepete Git</button></div>:status}</div>:null}
 
   <div className="go-detail-grid grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-10">
-   <div className="go-detail-media"><ProductGallery slides={gallerySlides} productName={detailName} productSlug={safeText(detail?.slug,220)} categorySlug={categorySlug} categoryName={categoryName} productType={safeText(detail?.handlingProfile?.productType,60)} safetyClass={safeText(detail?.handlingProfile?.safetyClass,60)} onOpenPhoto={path=>{setSelectedImagePath(path);setImageViewerOpen(true);}}/>{prestigeParts.length?<p className="go-prestige">{prestigeParts.map((part,index)=><React.Fragment key={part}>{index?<span className="go-prestige__dot" aria-hidden="true"> · </span>:null}<span>{part}</span></React.Fragment>)}</p>:null}<p className="go-prestige-note">Kargo bizden</p></div>
+   <div className="go-detail-media"><ProductGallery slides={gallerySlides} productName={detailName} productSlug={safeText(detail?.slug,220)} categorySlug={categorySlug} categoryName={categoryName} productType={safeText(detail?.handlingProfile?.productType,60)} safetyClass={safeText(detail?.handlingProfile?.safetyClass,60)} onOpenPhoto={path=>{setSelectedImagePath(path);setImageViewerOpen(true);}}/>{prestigeParts.length?<p className="go-prestige">{prestigeParts.map((part,index)=><React.Fragment key={part}>{index?<span className="go-prestige__dot" aria-hidden="true"> · </span>:null}<span>{part}</span></React.Fragment>)}</p>:null}<p className="go-prestige-note">{shippingLine}</p></div>
 
    <section className="go-buybox" aria-labelledby="product-detail-title">
     <h1 id="product-detail-title" ref={titleRef} className="go-buybox__title">{detailName}</h1>
 
     <div className="go-price-card">
      <div className="go-price-card__main">
-      {priceReady?<p className="go-price-card__amounts">{compareAtPriceReady&&discountPercent>=1?<span className="go-price-card__discount">%{discountPercent} indirim</span>:null}<span className="go-price-card__price" aria-live="polite">{priceText(totalMinor,currency)}</span>{compareAtPriceReady?<span className="go-price-card__was">Önce <s>{priceText(compareAtPriceMinor!*quantity,currency)}</s></span>:null}</p>:<p className="go-price-card__missing">Fiyat şu anda gösterilemiyor</p>}
-      {soldOut?<span className="go-stock-pill go-stock-pill--out"><CircleSlash aria-hidden="true"/>Stokta yok</span>:null}
+      {priceReady?(discountShown?<p className="go-price-card__amounts"><span className="sr-only" aria-live="polite">{`Önceki fiyat ${priceText(oldTotalMinor,currency)}, şimdi ${priceText(totalMinor,currency)}`}</span><span className="go-price-card__price" aria-hidden="true">{priceText(totalMinor,currency)}</span><s className="go-price-card__was" aria-hidden="true">{priceText(oldTotalMinor,currency)}</s><span className="go-price-card__discount" aria-hidden="true">%{discountPercent} · {priceText(dropMinor,currency)} indirim</span></p>:<p className="go-price-card__amounts"><span className="go-price-card__price" aria-live="polite">{priceText(totalMinor,currency)}</span></p>):<p className="go-price-card__missing">Fiyat şu anda gösterilemiyor</p>}
      </div>
      {packLine||kgPriceMinor!==null?<p className="go-price-card__unit">{packLine?<span className="go-price-card__pack">{packLine}</span>:null}{kgPriceMinor!==null?<span className="go-price-card__kg">kg fiyatı {priceText(kgPriceMinor,currency)}</span>:null}</p>:null}
      {preorder?<p className="go-price-card__preorder">Sipariş üzerine hazırlanır</p>:null}
@@ -370,7 +385,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
      <PremiumOrderConfigurator lead={experience.orderLead} schema={experience.optionSchema} selected={selectedOrderOptions} onChange={setSelectedOrderOptions} disabled={busy||soldOut}/>
 
-     <div className="go-buy__qty"><span id="product-quantity-label" className="go-buy__qty-label">Adet</span>{lowStock!==null?<span className="go-buy__low">Son {lowStock} ürün</span>:null}<div className="go-buy__stepper" role="group" aria-labelledby="product-quantity-label"><button type="button" onClick={()=>setQuantity(value=>Math.max(1,value-1))} disabled={!purchaseReady||busy||quantity<=1} aria-label="Azalt"><Minus aria-hidden="true"/></button><output aria-live="polite">{quantity}</output><button type="button" onClick={()=>setQuantity(value=>Math.min(maxQuantity,value+1))} disabled={!purchaseReady||busy||quantity>=maxQuantity} aria-label="Artır"><Plus aria-hidden="true"/></button></div></div>
+     <div className="go-buy__qty"><span id="product-quantity-label" className="go-buy__qty-label">Adet</span><div className="go-buy__stepper" role="group" aria-labelledby="product-quantity-label"><button type="button" onClick={()=>setQuantity(value=>Math.max(1,value-1))} disabled={!purchaseReady||busy||quantity<=1} aria-label="Azalt"><Minus aria-hidden="true"/></button><output aria-live="polite">{quantity}</output><button type="button" onClick={()=>setQuantity(value=>Math.min(maxQuantity,value+1))} disabled={!purchaseReady||busy||quantity>=maxQuantity} aria-label="Artır"><Plus aria-hidden="true"/></button></div></div>
 
      {!purchaseReady&&!soldOut&&stockReady?<p className="go-buy__issue">{purchaseIssueMessage()}</p>:null}
 
@@ -423,7 +438,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
     <DetailAccordion id="reviews" title="Müşteri Yorumları" teaser={reviewCount?`${averageRating!==null?averageRating.toFixed(1):'-'} puan · ${reviewCount} yorum`:'Tadına bakan ilk siz olun, ilk yorumu siz yazın'}><Reviews reviews={reviews} reviewCount={reviewCount} averageRating={averageRating} onWrite={startReview} composer={reviewComposerOpen&&productId?<React.Suspense fallback={<p className="go-review-composer__note">Yorum formu açılıyor…</p>}><ProductReviewComposer productId={productId} productName={detailName} onClose={()=>setReviewComposerOpen(false)}/></React.Suspense>:null}/></DetailAccordion>
    </DetailAccordionGroup>
 
-   <ProductRecommendationsShelf reference={safeText(detail.slug,220)||reference} onOpenProduct={next=>onOpenProduct?onOpenProduct(next):pushInternalRoute(buildProductUrl(next),'product-detail')} onAddToCart={(item,quantity)=>onAddCatalogItem?.(item,quantity)}/>
+   <ProductRecommendationsShelf reference={safeText(detail.slug,220)||reference} currentId={productId} onOpenProduct={next=>onOpenProduct?onOpenProduct(next):pushInternalRoute(buildProductUrl(next),'product-detail')} onAddToCart={(item,quantity)=>onAddCatalogItem?.(item,quantity)}/>
   </div>
 
 

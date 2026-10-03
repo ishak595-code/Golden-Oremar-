@@ -34,7 +34,7 @@ const jsx = detail.slice(detail.indexOf(' return<article'));
 const order = [
   ['photo', '<ProductGallery '],
   ['prestige line', '<p className="go-prestige"'],
-  ['Kargo bizden', '<p className="go-prestige-note">Kargo bizden</p>'],
+  ['Kargo bizden', '<p className="go-prestige-note">{shippingLine}</p>'],
   ['title', '<h1 id="product-detail-title"'],
   ['price', 'className="go-price-card__price"'],
   ['pack', 'className="go-price-card__pack"'],
@@ -67,9 +67,9 @@ check(!/'Köyden sofranıza'|go-buybox__tagline|go-buybox__origin/.test(jsx), 'T
   check(/getProductRecommendations\(/.test(shelf) && /<CatalogProductCard [\s\S]{0,400}? compact\/>/.test(shelf) && /Sofranızı bu lezzetlerle tamamlayın/.test(shelf) && !/Bu ürünün yanına yakışanlar/.test(shelf), 'The recommendations shelf uses the product-based recommendations and the category page cards (square photo).');
 }
 check(/\{showHealth\?<DetailAccordion id="safety"/.test(jsx) && /hasHealthInfo\(safetyContent\)/.test(detail), '"Sağlık bilgileri" shows only when the product has health content.');
-check(/\['Kökeni',\[ed\('origin',120\)\]\],\['Üretim',\[productionFact\]\],\['Ambalaj',\[ed\('packaging',120\)\]\],\['İade',\[returnText\]\],\['Teslimat',deliveryLines\]\]/.test(detail) && !/'İçindekiler'/.test(detail), 'The facts table lists Kökeni, Üretim, Ambalaj, İade and Teslimat (no İçindekiler row), each only when it has a value.');
-check(/const returnText=withdrawal\?\(withdrawal\.tier==='none'\?'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır':'14 gün içinde, paket açılmamışsa ücretsiz iade'\):'';/.test(detail), 'İade: "14 gün içinde, paket açılmamışsa ücretsiz iade"; perishables keep "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır".');
-check(/const deliveryLines=\[dispatchLine,'Kargo bizden',\.\.\.\(detail\?\.handlingProfile\?\.requiresColdChain===true\?\['Soğuk zincirle gönderilir'\]:\[\]\)\];/.test(detail) && /if\(!preorder\)return'2-4 iş günü içinde kargoya verilir';/.test(detail) && /specifications\?\.preOrderTime/.test(detail), 'Teslimat: "2-4 iş günü içinde kargoya verilir" (pre-orders: their stored dispatch sentence), "Kargo bizden", and "Soğuk zincirle gönderilir" for cold-chain products.');
+check(/\['Kökeni',\[ed\('origin',120\)\]\],\['Üretim',\[productionFact\]\],\['Ambalaj',\[ed\('packaging',120\)\]\],\['İade',\[returnText\]\],\['Stok',\[stockFact\]\],\['Teslimat',deliveryLines\]\]/.test(detail) && !/'İçindekiler'/.test(detail), 'The facts table lists Kökeni, Üretim, Ambalaj, İade, Stok and Teslimat (no İçindekiler row), each only when it has a value.');
+check(/const computedReturn=withdrawal\?\(withdrawal\.tier==='none'\?'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır':'14 gün içinde, paket açılmamışsa ücretsiz iade'\):'';/.test(detail) && /const returnText=typeof editorial\.returnText==='string'\?ed\('returnText',200\):computedReturn;/.test(detail), 'İade: "14 gün içinde, paket açılmamışsa ücretsiz iade"; perishables keep "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır".');
+check(/const deliveryLines=\[dispatchLine,shippingLine,\.\.\.\(coldChain\?\['Soğuk zincirle gönderilir'\]:\[\]\)\];/.test(detail) && /const dispatchLine=typeof editorial\.dispatchText==='string'\?ed\('dispatchText',160\):computedDispatch;/.test(detail) && /const coldChain=typeof editorial\.coldChain==='boolean'\?editorial\.coldChain:detail\?\.handlingProfile\?\.requiresColdChain===true;/.test(detail) && /const shippingLine=ed\('shippingNote',80\)\|\|\(shippingFeeMinor>0\?`Kargo ücreti \$\{priceText\(shippingFeeMinor,'TRY'\)\}`:'Kargo bizden'\);/.test(detail) && /if\(!preorder\)return'2-4 iş günü içinde kargoya verilir';/.test(detail) && /specifications\?\.preOrderTime/.test(detail), 'Teslimat: "2-4 iş günü içinde kargoya verilir" (pre-orders: their stored dispatch sentence), "Kargo bizden", and "Soğuk zincirle gönderilir" for cold-chain products.');
 check(!/<DetailAccordion id="delivery"|Kargo ve teslimat bilgisi/.test(detail) && (detail.match(/'14 gün içinde, paket açılmamışsa ücretsiz iade'/g) || []).length === 1 && (detail.match(/'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır'/g) || []).length === 1, 'No "Kargo ve teslimat bilgisi" section; the return text appears once, in the facts table.');
 check(!/go-buybox__subtitle/.test(jsx), 'No subtitle line under the product name.');
 check(/<span className="go-price-card__price" aria-live="polite">\{priceText\(totalMinor,currency\)\}<\/span>/.test(jsx) && /const totalMinor=priceReady\?priceMinor!\*quantity:null;/.test(detail), 'The big price is unit price × quantity and is announced politely when it changes.');
@@ -115,6 +115,12 @@ check(prestigeRows.find(row => row.slug === 'isli-kaya-uzumleri-tane-kuru-506')?
   check(Boolean(embedded) && /'formerName','prestige'\]/.test(migration) && /create or replace function private\.get_public_product_detail_v12/.test(migration), 'The prestige migration returns editorial.prestige from the detail RPC and embeds the lines.');
   if (embedded) for (const item of JSON.parse(embedded[1])) check(prestigeById.get(item.id) === item.prestige, `${item.slug}: the prestige migration and the file must hold the same line.`);
 }
+// Return, dispatch and cold-chain lines moved into each product's record
+// (20261003200000_product_page_content_v1), backfilled with the values the
+// page computed, so the page reads the same.
+const terms = JSON.parse(read('catalog/product-editorial/product-page-terms.v1.json'));
+const termsById = new Map(terms.map(item => [item.id, item]));
+check(terms.length === 50 && terms.every(item => typeof item.returnText === 'string' && item.returnText && typeof item.dispatchText === 'string' && item.dispatchText && typeof item.coldChain === 'boolean'), 'Every product carries its return text, dispatch text and cold-chain flag.');
 const ids = new Set();
 for (const row of rows) {
   const e = row.editorial || {};
@@ -128,7 +134,9 @@ for (const row of rows) {
   if (fs.existsSync(offline)) {
     const copy = JSON.parse(read(offline));
     check(copy.name === row.name, `${row.slug}: the shipped offline copy must carry the new name.`);
-    check(same(copy.editorial, { ...e, prestige: prestigeById.get(row.id) }), `${row.slug}: the shipped offline copy must carry the same editorial text and prestige line.`);
+    const t = termsById.get(row.id) || {};
+    check(same(copy.editorial, { ...e, prestige: prestigeById.get(row.id), returnText: t.returnText, dispatchText: t.dispatchText, coldChain: t.coldChain }), `${row.slug}: the shipped offline copy must carry the same editorial text, prestige line and page terms.`);
+    check(same(copy.shipping, { mode: 'default', feeMinor: 0 }), `${row.slug}: the shipped offline copy must carry the default shipping rule.`);
   } else failures.push(`${row.slug}: no shipped offline copy.`);
 }
 check(ids.size === 50, 'Editorial rows must have unique product ids.');
