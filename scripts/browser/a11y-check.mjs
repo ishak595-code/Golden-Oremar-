@@ -78,7 +78,7 @@ for (const [name, path, overrides] of screens) {
   record(await play.count() === 1, 'play button has an accessible name');
   // The video is a slide: bring it into view first (hidden slides are inert).
   const videoPosition = await page.evaluate(() => [...document.querySelectorAll('.go-gallery__slide')].findIndex(el => el.classList.contains('go-gallery__slide--video')) + 1);
-  await page.locator(`button[aria-label="${videoPosition}. slayta git"]`).click();
+  await page.locator(`.go-gallery__progress button:nth-child(${videoPosition})`).click();
   await page.waitForTimeout(900);
   await play.click();
   const frame = page.locator('iframe');
