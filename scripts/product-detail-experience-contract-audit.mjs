@@ -36,6 +36,7 @@ check(/<ProductGallery /.test(detail), 'The product images use ProductGallery.')
   // timing, cold chain, the return right in one line) and nothing else.
   const delivery = detail.slice(detail.indexOf('<DetailAccordion id="delivery"'), detail.indexOf('</DetailAccordion>', detail.indexOf('<DetailAccordion id="delivery"')));
   check(!/go-return-line/.test(detail) && /<dl className="go-ship">/.test(delivery) && />Kargo ücreti</.test(delivery) && /getDomesticShippingQuote\(/.test(detail) && /withdrawal\.copy\.title/.test(delivery), 'Shipping and the return right live in "Kargo ve teslimat bilgisi" as short rows (no separate line under the price).');
+  check(/<dd>Soğuk zincirle gönderilir<\/dd>/.test(delivery), 'Cold-chain products read "Soğuk zincirle gönderilir" in the delivery rows.');
   check(!/yarın|withdrawal\.copy\.body|ShippingReadiness|go-detail-returns|Satıcı/.test(delivery), '"Kargo ve teslimat bilgisi" carries no long return steps, seller notes or invented dates.');
   const quote = read('src/features/catalog/shippingQuote.ts');
   check(/supabase\.rpc\('get_shipping_quote_v1'/.test(quote) && !/\b(?:[1-9]\d{2,})\b/.test(quote.replace(/\b(?:100000|1000)\b/g, '')), 'Shipping numbers come from the shipping zones (get_shipping_quote_v1), none are written in the code.');
