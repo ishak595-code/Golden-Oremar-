@@ -1,4 +1,4 @@
-/* Product page v4: price block, rating row, delivery row, story preview,
+/* Product page v4: price block, delivery row,
    review summary and polished empty state, gallery thumbnails, zoomable
    viewer. Loaded with the product page chunk only. */
 
@@ -15,15 +15,6 @@
 .go-gallery__thumb.is-active { border-color: var(--brand-gold); opacity: 1; }
 .go-gallery__thumb:hover { opacity: 1; }
 .go-gallery__thumb:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-gold) 55%, transparent); }
-
-/* Rating row under the title */
-.go-rating-row { margin-top: .5rem; }
-.go-rating-row__link { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem; min-height: 2.75rem; padding: 0; border: 0; background: none; color: var(--text-main); font-size: .9rem; text-align: left; }
-.go-rating-row__link strong { font-weight: 900; }
-.go-rating-row__link > span:not(.go-stars) { color: var(--text-muted); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--text-muted) 40%, transparent); text-underline-offset: 3px; }
-.go-rating-row__link--empty > span:not(.go-stars):not(.go-rating-row__cta) { text-decoration: none; }
-.go-rating-row__cta { color: var(--brand-gold) !important; font-weight: 800; text-decoration-color: color-mix(in srgb, var(--brand-gold) 55%, transparent) !important; }
-.go-rating-row__link:focus-visible { outline: none; border-radius: .5rem; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-gold) 55%, transparent); }
 
 /* Stars */
 .go-stars { display: inline-flex; gap: 1px; line-height: 0; }
@@ -63,13 +54,18 @@
 .go-delivery-row__text span { font-size: .8rem; line-height: 1.35; color: var(--text-muted); }
 .go-delivery-row__go { flex: 0 0 auto; width: 1.1rem; height: 1.1rem; color: var(--text-muted); }
 
-/* Story preview with "Devamını oku" */
-.go-story-text { position: relative; }
-.go-story-text.is-clamped { max-height: 13.5em; overflow: hidden; }
-.go-story-text.is-clamped::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 4.5em; background: linear-gradient(to bottom, transparent, var(--bg-card)); pointer-events: none; }
-.go-story-more { margin-top: .5rem; display: inline-flex; align-items: center; gap: .3rem; min-height: 2.75rem; padding: 0 .2rem; border: 0; background: none; color: var(--brand-gold); font-weight: 800; font-size: .92rem; }
-.go-story-more svg { width: 1rem; height: 1rem; transition: transform .2s ease; }
-.go-story-more:focus-visible { outline: none; border-radius: .5rem; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-gold) 55%, transparent); }
+/* Text never leaves its box (2026-10-03). Story and description are
+   closed sections that open to the full text: no preview, no clamp, no fade.
+   Long words, URLs and lot codes wrap instead of widening the page, and the
+   grid columns may shrink below their content (min-width:0), which the
+   Android WebView needs as much as the browser. */
+.go-detail-grid > * { min-width: 0; }
+.go-detail-story, .go-detail-description { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; word-break: normal; hyphens: auto; max-width: 100%; }
+.go-detail-description { font-size: 15px; line-height: 1.75; color: var(--text-muted); }
+.go-detail-accordion, .go-detail-accordion__body, .go-detail-accordion__titles, .go-kunye__text, .go-kunye__value, .go-store-card__body, .go-store-card__meta, .go-delivery-row__text, .go-detail-features li > span, .go-detail-returns, .go-review-card, .go-price-card__unit { min-width: 0; overflow-wrap: anywhere; }
+.go-detail-accordion__body :where(p, li, dd, dt, td, th, span, strong, a) { overflow-wrap: anywhere; }
+.go-detail-accordion__body :where(table) { max-width: 100%; }
+.go-detail-accordion__body :where(img, video, svg) { max-width: 100%; }
 
 /* Reviews */
 .go-reviews { display: flex; flex-direction: column; gap: 1rem; }
@@ -105,7 +101,7 @@
 .go-viewer-img.is-zoomed { cursor: zoom-out; transition: transform .18s ease, transform-origin 0s; }
 
 @media (prefers-reduced-motion: reduce) {
-  .go-viewer-img, .go-gallery__thumb, .go-story-more svg { transition: none; }
+  .go-viewer-img, .go-gallery__thumb { transition: none; }
 }
 
 /* Desktop: the purchase actions sit in the buy box instead of floating over

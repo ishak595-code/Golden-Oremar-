@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{addToGuestCart}from'../cart/guestCart';
-import{ArrowLeft,Award,CircleSlash,BadgeCheck,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,Gift,Heart,Info as InfoIcon,MessageCircle,Minus,PackageCheck,Plus,QrCode,ScanLine,Share2,ShieldCheck,ShoppingCart,Sparkles,Star,Store,Truck,X,ZoomIn,MapPin,User}from'lucide-react';
+import{ArrowLeft,Award,CircleSlash,BadgeCheck,BookOpen,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,FileText,Gift,Heart,Info as InfoIcon,MessageCircle,Minus,PackageCheck,Plus,QrCode,ScanLine,Share2,ShieldCheck,ShoppingCart,Sparkles,Star,Store,Truck,X,ZoomIn,MapPin,User}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProductFavorite}from'./api';
 import PremiumOrderConfigurator from'./PremiumOrderConfigurator';
 import{buildOrderCustomization,buildProductExperience,defaultOrderOptions,validateOrderOptions,type SelectedOrderOptions}from'./productExperience';
@@ -67,7 +67,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const[status,setStatus]=useState('');
  const[favoriteOverride,setFavoriteOverride]=useState<boolean|null>(null);
  const[questionOpen,setQuestionOpen]=useState(false);
- const[storyExpanded,setStoryExpanded]=useState(false);
  const[showHeaderTitle,setShowHeaderTitle]=useState(false);
  const[viewerZoom,setViewerZoom]=useState<{x:number;y:number}|null>(null);
  const titleRef=useRef<HTMLHeadingElement|null>(null);
@@ -116,7 +115,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  async function load(){
   const current=++requestId.current;
   try{
-   setLoading(true);setError('');setStatus('');setFavoriteOverride(null);setQuestionOpen(false);setImageViewerOpen(false);setStoryExpanded(false);setViewerZoom(null);setDetail(null);setReviews(null);
+   setLoading(true);setError('');setStatus('');setFavoriteOverride(null);setQuestionOpen(false);setImageViewerOpen(false);setViewerZoom(null);setDetail(null);setReviews(null);
    const product=await getProductDetail(reference);
    if(requestId.current!==current)return;
    setDetail(product);
@@ -260,8 +259,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const deliveryTitle=preorder?'Sipariş üzerine hazırlanır':detail?.handlingProfile?.requiresColdChain?'Soğuk zincirle gönderilir':'Özenle paketlenip kargoya verilir';
  const deliveryText=preorder?(preorderLeadDays!==null&&preorderLeadDays>0?`Hazırlık süresi yaklaşık ${preorderLeadDays} gün. Kargo ücreti ve teslimat seçenekleri siparişte gösterilir.`:'Hazırlık ve gönderim tarihi siparişinizle birlikte bildirilir.'):'Kargo ücreti ve teslimat seçenekleri adresinize göre siparişte gösterilir.';
  const storyText=safeText(experience.story,3000);
- const storyLong=storyText.length>360;
- function openReviewsSection(){openDetailSection('reviews');}
+ const descriptionText=safeText(detail?.shortDescription,1000);
+ const descriptionTeaser=(()=>{const first=descriptionText.split(/(?<=[.!?…])\s+/)[0]||'';return first.length>=12&&first.length<=110?first:'Ürünü kısaca tanıyın';})();
  function startReview(){if(!authenticated){onLoginRequired();return;}pushInternalRoute(buildTabUrl('account',{view:'reviews'}),'account');}
  const storyLine=(()=>{const text=safeText(experience.story,3000);const first=text.split(/(?<=[.!?…])\s+/)[0]||'';return first.length>=12&&first.length<=180?first:'';})();
  const gallerySlides:GallerySlide[]=[
@@ -278,21 +277,20 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
   <div className="sticky z-30 -mx-4 mb-4 flex min-h-16 items-center gap-2 border-b border-brand-border bg-brand-card/95 px-4 backdrop-blur-xl sm:-mx-6 sm:px-6" style={{top:'env(safe-area-inset-top, 0px)', paddingTop:'env(safe-area-inset-top, 0px)'}}>
    <button type="button" onClick={onBack} aria-label="Geri" className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card"><ArrowLeft aria-hidden="true" className="h-5 w-5"/></button>
    <div className="min-w-0 flex-1 text-center"><div className="truncate text-sm font-black text-brand-text" aria-live="off">{showHeaderTitle?detailName:'Ürün Detayı'}</div></div>
-   <button type="button" onClick={()=>void favorite()} disabled={busy} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} aria-pressed={isFavorite} className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card disabled:opacity-50"><Heart aria-hidden="true" className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-brand-text'}`}/></button>
+   <button type="button" onClick={()=>void favorite()} disabled={busy} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card disabled:opacity-50"><Heart aria-hidden="true" className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-brand-text'}`}/></button>
    <button type="button" onClick={()=>void shareProduct()} disabled={shareBusy} aria-label="Ürünü paylaş" className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card disabled:opacity-50"><Share2 aria-hidden="true" className="h-5 w-5"/></button>
   </div>
 
   {error?<div role="alert" className="mb-4 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div>:null}
   {status?<div role="status" aria-live="polite" className="mb-4 rounded-2xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">{cartAdded?<div className="flex items-center justify-between gap-3"><span>{status}</span><button type="button" onClick={navigateToCart} className="min-h-11 rounded-full border-2 border-green-700 bg-green-700 px-3 font-black text-white shadow-sm transition-all hover:bg-green-800">Sepete Git</button></div>:status}</div>:null}
 
-  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+  <div className="go-detail-grid grid grid-cols-1 gap-6 lg:grid-cols-2">
    <div className="go-detail-media"><ProductGallery slides={gallerySlides} productName={detailName} productSlug={safeText(detail?.slug,220)} categorySlug={categorySlug} categoryName={categoryName} productType={safeText(detail?.handlingProfile?.productType,60)} safetyClass={safeText(detail?.handlingProfile?.safetyClass,60)} onOpenPhoto={path=>{setSelectedImagePath(path);setImageViewerOpen(true);}}/></div>
 
    <section>
     {categoryName?categorySlug?<button type="button" onClick={()=>onCategory?onCategory(categorySlug,categoryName):navigateToCategory(categorySlug)} aria-label={`${categoryName} kategorisini aç`} className="group inline-flex min-h-11 items-center gap-1 rounded-full border border-brand-gold/35 bg-brand-gold/5 px-3 text-xs font-black uppercase tracking-[0.12em] text-brand-gold transition hover:border-brand-gold hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><span>{categoryName}</span><ChevronRight aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5"/></button>:<div className="text-xs font-black uppercase tracking-[0.14em] text-brand-gold">{categoryName}</div>:null}
     <div className="mt-3 text-xs font-black tracking-[0.08em] text-brand-gold">{experience.kicker}</div>
     <h1 ref={titleRef} className="mt-1 text-3xl font-black leading-tight text-brand-green dark:text-brand-gold">{detailName}</h1>
-    <div className="go-rating-row">{reviewCount!==null&&reviewCount>0?<button type="button" onClick={openReviewsSection} className="go-rating-row__link" aria-label={`${averageRating!==null?averageRating.toFixed(1):'-'} puan, ${reviewCount} değerlendirme. Yorumları göster`}><StarRow value={averageRating??0}/><strong>{averageRating!==null?averageRating.toFixed(1):'-'}</strong><span>{reviewCount} değerlendirme</span></button>:<button type="button" onClick={openReviewsSection} className="go-rating-row__link go-rating-row__link--empty"><StarRow value={0}/><span>Henüz değerlendirme yok</span><span className="go-rating-row__cta">İlk yorumu sen yaz</span></button>}</div>
 
     <div className="go-price-card" aria-label="Fiyat bilgisi">
      <div className="go-price-card__main">
@@ -303,7 +301,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
      {preorder?<div className="mt-2 text-xs font-black uppercase tracking-wider text-brand-gold">Sipariş üzerine hazırlanır</div>:null}
     </div>
 
-    {safeText(detail.shortDescription,1000)?<p className="mt-4 text-[15px] leading-7 text-brand-muted">{safeText(detail.shortDescription,1000)}</p>:null}
 
 
     {Array.isArray(detail.variants)&&detail.variants.length>1?<label className="mt-5 block"><span className="text-sm font-black">Paket / seçenek <span className="text-red-500" aria-label="zorunlu">*</span></span><select value={variantId} onChange={event=>setVariantId(event.target.value)} className="input mt-2">{detail.variants.map((item:any)=>{const id=safeReference(item?.id,160)||'';return<option key={id||safeText(item?.name,240)} value={id} disabled={item?.available===false}>{safeText(item?.name,240)||'Seçenek'}{item?.available===false?' (Stokta yok)':''}</option>;})}</select></label>:null}
@@ -339,14 +336,15 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
     {kunye.length?<ul className="go-kunye" data-product-kunye="true" aria-label="Ürün künyesi">{kunye.map(row=>{const Icon=({maker:User,village:MapPin,verified:BadgeCheck,stock:PackageCheck} as Record<string,typeof MapPin>)[row.key];const body=<><span className="go-kunye__icon" aria-hidden="true"><Icon/></span><span className="go-kunye__text"><span className="go-kunye__label">{row.label}</span><span className="go-kunye__value">{row.text}</span></span>{row.href?<span className="go-kunye__go" aria-hidden="true"><span>Haritada aç</span><ExternalLink/></span>:null}</>;return<li key={row.key}>{row.href?<a href={row.href} target="_blank" rel="noopener noreferrer" className={`go-kunye__row go-kunye__row--link`} aria-label={`${row.label}: ${row.text}. Haritada aç`}>{body}</a>:<div className={`go-kunye__row${row.tone?` go-kunye__row--${row.tone}`:''}`}>{body}</div>}</li>;})}</ul>:null}
 
+    {reviewCount!==null&&reviewCount>0?<div className="mt-4 flex items-center gap-2 text-sm"><Star aria-hidden="true" className="h-5 w-5 fill-brand-gold text-brand-gold"/><strong>{averageRating!==null?averageRating.toFixed(1):'-'}</strong><span className="text-brand-muted">{reviewCount} yorum</span></div>:null}
    </section>
   </div>
 
 
-  <DetailAccordionGroup className="mt-8" initialOpen={storyText?'story':null}>
+  <DetailAccordionGroup className="mt-8">
+   {descriptionText?<DetailAccordion id="description" icon={FileText} title="Açıklama" teaser={descriptionTeaser}><p className="go-detail-description">{descriptionText}</p></DetailAccordion>:null}
    <DetailAccordion id="story" icon={BookOpen} tone="gold" title="Ürünün Hikâyesi" teaser={safeText(experience.kicker,160)||'Sofranıza gelene kadarki yolculuğu'}>
-    <div className={`go-story-text${storyLong&&!storyExpanded?' is-clamped':''}`}><p className="go-detail-story" id="product-story-text">{experience.story}</p></div>
-    {storyLong?<button type="button" className="go-story-more" aria-expanded={storyExpanded} aria-controls="product-story-text" onClick={()=>setStoryExpanded(value=>!value)}>{storyExpanded?'Daha az göster':'Devamını oku'}<ChevronRight aria-hidden="true" className={storyExpanded?'-rotate-90':'rotate-90'}/></button>:null}
+    <p className="go-detail-story">{storyText}</p>
    </DetailAccordion>
    <DetailAccordion id="info" icon={Sparkles} title="Ürünün Bilgi ve Özellikleri" teaser={[safeText(variant?.name,120)||safeText(detail?.unitLabel,120),formatWeight(safeInteger(variant?.weightGrams)),featureItems.length?`${featureItems.length} özellik`:''].filter(Boolean).join(' · ')||'Onu farklı kılan her şey'}>
     {featureItems.length?<ul className="go-detail-features">{featureItems.map((item,index)=><li key={`${item}-${index}`}><CheckCircle2 aria-hidden="true"/><span>{item}</span></li>)}</ul>:null}
@@ -369,7 +367,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    </DetailAccordion>
    {hasTraceability?<DetailAccordion id="trace" icon={ScanLine} title="Lot ve İzlenebilirlik" teaser="Parti kodunu görün"><Traceability detail={detail} hasTraceability={hasTraceability} onCopy={copyTrace}/></DetailAccordion>:null}
    {Array.isArray(detail.certifications)&&detail.certifications.length?<DetailAccordion id="certs" icon={Award} title="Sertifikalar" teaser={`${detail.certifications.length} belge`}><Certifications items={detail.certifications}/></DetailAccordion>:null}
-   <DetailAccordion id="reviews" icon={Star} title="Müşteri Yorumları" teaser={reviewCount?`${averageRating!==null?averageRating.toFixed(1):'-'} puan · ${reviewCount} değerlendirme`:'Henüz değerlendirme yok · İlk yorumu sen yaz'}><Reviews reviews={reviews} reviewCount={reviewCount} averageRating={averageRating} onWrite={startReview}/></DetailAccordion>
+   <DetailAccordion id="reviews" icon={Star} title="Müşteri Yorumları" teaser={reviewCount?`${averageRating!==null?averageRating.toFixed(1):'-'} puan · ${reviewCount} yorum`:'Tadına bakan ilk siz olun, ilk yorumu siz yazın'}><Reviews reviews={reviews} reviewCount={reviewCount} averageRating={averageRating} onWrite={startReview}/></DetailAccordion>
   </DetailAccordionGroup>
 
   {/* Recommendations are always in view, not behind a tap: products that
@@ -431,13 +429,7 @@ function Reviews({reviews,reviewCount,averageRating,onWrite}:{reviews:any;review
  const bars=[5,4,3,2,1].map(star=>({star,count:safeInteger(summary[`rating${star}`])??0}));
  const barTotal=bars.reduce((sum,bar)=>sum+bar.count,0);
  const policy=<p className="go-reviews__policy"><ShieldCheck aria-hidden="true"/>Değerlendirmeler yalnız bu ürünü satın alıp teslim alan müşterilerimizden gelir; her yorum gerçek bir siparişe bağlıdır.</p>;
- if(reviewCount===0||(reviewCount===null&&reviews&&!items.length))return<div className="go-reviews-empty">
-  <span className="go-reviews-empty__mark" aria-hidden="true"><MessageCircle/></span>
-  <h3>Henüz değerlendirme yok</h3>
-  <p>Bu ürünü ilk deneyenlerden biri siz olabilirsiniz. Siparişiniz teslim edildiğinde Hesabım &gt; Değerlendirmelerim bölümünden puan verip deneyiminizi paylaşabilirsiniz.</p>
-  <button type="button" onClick={onWrite} className="go-reviews-empty__cta"><Star aria-hidden="true"/>İlk yorumu sen yaz</button>
-  {policy}
- </div>;
+ if(reviewCount===0||(reviewCount===null&&reviews&&!items.length))return<div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 text-center dark:border-gray-700 dark:bg-gray-800"><Star aria-hidden="true" className="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600"/><p className="mt-3 font-semibold text-gray-600 dark:text-gray-300">Henüz müşteri yorumu yok</p><p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Bu ürüne ilk yorumu yapan siz olun!</p></div>;
  if(!reviews&&reviewCount===null)return<div className="rounded-xl border-2 border-amber-200 bg-amber-50 p-4 text-center dark:border-amber-900/60 dark:bg-amber-950/30"><p className="font-semibold text-amber-900 dark:text-amber-100">Yorumlar şu anda görüntülenemiyor</p><p className="mt-1 text-sm text-amber-700 dark:text-amber-200">Lütfen daha sonra tekrar deneyin.</p></div>;
  return<div className="go-reviews">
   <div className="go-reviews__summary">

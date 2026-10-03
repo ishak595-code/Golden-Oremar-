@@ -11,9 +11,10 @@ import{ChevronDown,type LucideIcon}from'lucide-react';
  * closing and reopening is instant.
  *
  * Accessibility: each header is a real button with aria-expanded and
- * aria-controls; the panel is a labelled region. Screen readers hear
- * "Ürün Özellikleri, düğme, daraltılmış" and the teaser line as its
- * description.
+ * aria-controls; the panel is a labelled region. The button is named by the
+ * title alone (aria-label), so screen readers hear "Müşteri Yorumları, düğme,
+ * daraltıldı" and then the teaser line once, as its description; the teaser
+ * is never read twice (once in the name and again as the description).
  */
 
 type GroupState={open:string|null;toggle:(id:string)=>void};
@@ -53,7 +54,7 @@ export function DetailAccordion({id,title,teaser,icon:Icon,tone='default',childr
 
  return<section className={`go-detail-accordion${open?' is-open':''}${tone==='gold'?' go-detail-accordion--gold':''}`} data-accordion-id={id}>
   <h2 className="go-detail-accordion__heading">
-   <button ref={headerRef} type="button" id={headerId} aria-expanded={open} aria-controls={panelId} aria-describedby={teaser?teaserId:undefined} onClick={toggle} className="go-detail-accordion__header">
+   <button ref={headerRef} type="button" id={headerId} aria-label={title} aria-expanded={open} aria-controls={panelId} aria-describedby={teaser?teaserId:undefined} onClick={toggle} className="go-detail-accordion__header">
     {Icon?<span className="go-detail-accordion__icon" aria-hidden="true"><Icon/></span>:null}
     <span className="go-detail-accordion__titles"><span className="go-detail-accordion__title">{title}</span>{teaser?<span id={teaserId} className="go-detail-accordion__teaser">{teaser}</span>:null}</span>
     <ChevronDown aria-hidden="true" className="go-detail-accordion__chevron"/>
