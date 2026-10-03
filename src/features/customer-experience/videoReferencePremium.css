@@ -124,7 +124,8 @@
 .go-product-card__media {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 1 / .92;
+  /* Product photos are square: a square frame shows the whole photo. */
+  aspect-ratio: 1 / 1;
   background: color-mix(in srgb, var(--bg-card) 88%, var(--brand-green) 12%);
 }
 
@@ -205,8 +206,10 @@
 }
 
 .go-product-card--compact .go-product-card__media {
-  height: 100%;
-  aspect-ratio: auto;
+  /* Square, at the top of the photo column: the whole square photo is
+     visible instead of a centre slice of a tall narrow column. */
+  align-self: start;
+  aspect-ratio: 1 / 1;
 }
 
 .go-filter-panel {
@@ -332,7 +335,6 @@ nav[aria-label="Ana gezinme"] button[aria-current="page"]::before {
 @media (max-width: 640px) {
   .go-premium-intro { border-radius: 1.45rem; }
   .go-premium-product-rail > * { width: min(19rem, 84vw); }
-  .go-product-card__media { aspect-ratio: 1 / .96; }
   .go-product-recommendations { margin-top: -3.25rem; padding-inline: .8rem; }
 }
 
