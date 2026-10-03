@@ -1,7 +1,7 @@
 // The product page and the product cards, as İshak asked for on 2026-10-01
 // and reshaped into the editorial page on 2026-10-03.
 //
-//  - Product sections (delivery, story, product information, health, how to
+//  - Product sections (story, product information, health, how to
 //    use it, reviews) open on tap, each on its own, downwards in place.
 //  - The product images are a real swipe slider.
 //  - Products without a photo show their own drawn artwork, not the store
@@ -23,23 +23,20 @@ check(!/<details\b/.test(detail), 'ProductDetailScreen must not use always-style
 check(/<DetailAccordionGroup/.test(detail), 'Product sections sit in DetailAccordionGroup lists.');
 // Editorial page (2026-10-03): the section names İshak chose. The order is
 // checked in product-detail-editorial-contract-audit.mjs.
-for (const [id, label] of [['delivery', 'Kargo ve teslimat bilgisi'], ['story', 'Bu ürünün hikâyesi'], ['info', 'Ürün bilgileri ve özellikleri'], ['safety', 'Sağlık bilgileri'], ['usage', 'Nasıl tüketilir\\?'], ['reviews', 'Müşteri Yorumları']]) {
+for (const [id, label] of [['story', 'Bu ürünün hikâyesi'], ['info', 'Ürün bilgileri ve özellikleri'], ['safety', 'Sağlık bilgileri'], ['usage', 'Nasıl tüketilir\\?'], ['reviews', 'Müşteri Yorumları']]) {
   check(new RegExp(`<DetailAccordion id="${id}"[^>]*title=[^>]*${label}`).test(detail), `The "${label.replace('\\', '')}" section must be a DetailAccordion (id ${id}).`);
 }
 // Round 2 (2026-10-03): after the reviews comes the product-based shelf
-// "Bu ürünün yanına yakışanlar" again (and nothing else).
+// "Sofranızı bu lezzetlerle tamamlayın" (and nothing else).
 check(/<ProductRecommendationsShelf reference=/.test(detail) && detail.indexOf('<ProductRecommendationsShelf ') > detail.indexOf('<DetailAccordion id="reviews"') && !/<ProductRecommendationsRail\b/.test(detail), 'After the reviews: the product-based recommendations shelf, once.');
 check(/<ProductGallery /.test(detail), 'The product images use ProductGallery.');
 {
-  // "Kargo ve teslimat bilgisi": short label / value rows from real data only
-  // (fee and delivery days from get_shipping_quote_v1, stored pre-order
-  // timing, cold chain, the return right in one line) and nothing else.
-  const delivery = detail.slice(detail.indexOf('<DetailAccordion id="delivery"'), detail.indexOf('</DetailAccordion>', detail.indexOf('<DetailAccordion id="delivery"')));
-  check(!/go-return-line/.test(detail) && /<dl className="go-ship">/.test(delivery) && />Kargo ücreti</.test(delivery) && /getDomesticShippingQuote\(/.test(detail) && /withdrawal\.copy\.title/.test(delivery), 'Shipping and the return right live in "Kargo ve teslimat bilgisi" as short rows (no separate line under the price).');
-  check(/<dd>Soğuk zincirle gönderilir<\/dd>/.test(delivery), 'Cold-chain products read "Soğuk zincirle gönderilir" in the delivery rows.');
-  check(!/yarın|withdrawal\.copy\.body|ShippingReadiness|go-detail-returns|Satıcı/.test(delivery), '"Kargo ve teslimat bilgisi" carries no long return steps, seller notes or invented dates.');
-  const quote = read('src/features/catalog/shippingQuote.ts');
-  check(/supabase\.rpc\('get_shipping_quote_v1'/.test(quote) && !/\b(?:[1-9]\d{2,})\b/.test(quote.replace(/\b(?:100000|1000)\b/g, '')), 'Shipping numbers come from the shipping zones (get_shipping_quote_v1), none are written in the code.');
+  // Round 3 (2026-10-03): no "Kargo ve teslimat bilgisi" section. Delivery and
+  // return terms are rows of the facts table (İade, Teslimat), said once.
+  check(!/<DetailAccordion id="delivery"|go-ship|go-return-line|getDomesticShippingQuote/.test(detail), 'No "Kargo ve teslimat bilgisi" section on the product page.');
+  const facts = detail.slice(detail.indexOf('const returnText='), detail.indexOf('function startReview'));
+  check(/'Soğuk zincirle gönderilir'/.test(facts), 'Cold-chain products read "Soğuk zincirle gönderilir" in the Teslimat row of the facts table.');
+  check(!/yarın|withdrawal\.copy\.body|ShippingReadiness|go-detail-returns|Satıcı/.test(facts), 'The İade and Teslimat rows carry no long return steps, seller notes or invented dates.');
 }
 check(!/[\u2600-\u27BF\u{1F300}-\u{1FAFF}]/u.test(detail), 'The product page uses no emoji; states are shown with line icons.');
 check(/<ul className="go-kunye"/.test(detail) && detail.indexOf('<ul className="go-kunye"') > detail.indexOf('Üreticisini tanı') && detail.indexOf('<ul className="go-kunye"') < detail.indexOf('go-store-ask') && /maps\/search\/\?api=1&query=/.test(detail) && !/go-stock-line/.test(detail) && !/go-origin-strip/.test(detail) && !/go-detail-origin/.test(detail) && !/kind:'origin'/.test(detail) && !/label:'Stok'/.test(detail), 'Maker, village and verification are separate rows (the künye) under "Üreticisini tanı"; the village row opens the map; none of them is repeated as a strip, a line or a footer, and there is no "Stok: Var" row.');
@@ -49,7 +46,7 @@ check(!/Ürün Videosu<\/h2>/.test(detail) && /kind:'video'/.test(detail), 'The 
 check(/\{hasTraceability\?<DetailAccordion id="trace"/.test(detail), 'The traceability section is hidden while it has nothing to show.');
 check(!/aria-label="Bu ürünü hediye gönder"/.test(detail) && /async function giftNow\(\)[\s\S]{0,500}setOfflineGift\(true\)/.test(detail), 'One gift button; it works for guests through the order sheet.');
 check(/go-stock-pill go-stock-pill--out/.test(detail) && /const lowStock=!soldOut&&!preorder&&tracked/.test(detail), 'Sold out is a pill next to the price; a low stock is said next to the quantity.');
-check(/Sipariş üzerine hazırlanır/.test(detail) && /specifications\?.preOrderTime/.test(detail) && /'Kargoya veriliş'/.test(detail), 'Pre-orders say so under the price and show the stored harvest and dispatch timing.');
+check(/Sipariş üzerine hazırlanır/.test(detail) && /specifications\?.preOrderTime/.test(detail) && /const dispatchLine=/.test(detail), 'Pre-orders say so under the price and show the stored harvest and dispatch timing in the Teslimat row.');
 check(!/aria-labelledby="product-withdrawal-title" className=\{`mt-6 flex gap-3/.test(detail), 'The large always-open withdrawal box must not come back.');
 
 // Title to price: the name, the subtitle and the price; no review prompt or
@@ -94,7 +91,7 @@ check(/aria-expanded=\{open\}/.test(accordion) && /aria-controls=\{panelId\}/.te
 check(/mounted\?children:null/.test(accordion), 'Accordion content mounts on first open (reviews are fetched only when asked for).');
 check(!/group\.toggle|setOpen\(current=>current===id\?null:id\)/.test(accordion) && !/setTimeout/.test(accordion) && !/scrollTo\(/.test(accordion) && /hidden=\{!open\}/.test(accordion), 'Opening a section never closes another one, never scrolls the page on a timer, and closed panels are hidden.');
 check(/\.go-detail-accordion__panel\{overflow-anchor:none;\}/.test(v3css) && !/go-detail-accordion__panel\{[^}]*grid-template-rows/.test(v3css) && !/go-detail-accordion__body\{[^}]*(opacity|transform)/.test(v3css) && !/go-detail-accordion__clip/.test(v3css + accordion), 'Panels expand downwards in place: no grid-rows or opacity animation, no clipping wrapper, scroll anchoring off.');
-check(!/teaser=/.test(detail.slice(detail.indexOf('<DetailAccordion id="delivery"'), detail.indexOf('<DetailAccordion id="reviews"'))), 'Only the reviews section has a note under its title; no preview text elsewhere.');
+check(!/teaser=/.test(detail.slice(detail.indexOf('<DetailAccordion id="story"'), detail.indexOf('<DetailAccordion id="reviews"'))), 'Only the reviews section has a note under its title; no preview text elsewhere.');
 
 const gallery = read('src/features/catalog/ProductGallery.tsx');
 const css = read('src/features/customer-experience/productDetailV3.css');

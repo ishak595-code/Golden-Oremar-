@@ -2,11 +2,13 @@
 //
 // One shared page for every product, in this order:
 //   photo (gallery with a slim slide bar) -> prestige line ("Yüksekova · Odun
-//   isiyle geleneksel kurutma · Sınırlı hasat") -> title -> subtitle -> price
-//   + pack -> "Kargo ve teslimat bilgisi" -> buttons -> "Bu ürünün hikâyesi"
-//   -> "Ürün bilgileri ve özellikleri" -> four facts (Kökeni, Üretim,
-//   İçindekiler, Ambalaj) -> "Sağlık bilgileri" -> "Nasıl tüketilir?"
-//   -> "Üreticisini tanı" -> reviews -> "Bu ürünün yanına yakışanlar".
+//   isiyle geleneksel kurutma · Sınırlı hasat") -> "Kargo bizden" -> title
+//   -> price (unit price × quantity) + pack -> buttons -> "Bu ürünün hikâyesi"
+//   -> "Ürün bilgileri ve özellikleri" -> facts table (Kökeni, Üretim,
+//   Ambalaj, İade, Teslimat) -> "Sağlık bilgileri" -> "Nasıl tüketilir?"
+//   -> "Üreticisini tanı" -> reviews -> "Sofranızı bu lezzetlerle tamamlayın".
+// Round 3 (2026-10-03): no subtitle line and no "Kargo ve teslimat bilgisi"
+// section; return and delivery terms live once, in the facts table.
 // Round 2 (2026-10-03): the price is shown once (no bottom bar repeating it
 // after the reviews), the tagline and "Köyden sofranıza" row gave way to the
 // prestige line, and no "Temsili" caption sits under the photo.
@@ -32,11 +34,10 @@ const jsx = detail.slice(detail.indexOf(' return<article'));
 const order = [
   ['photo', '<ProductGallery '],
   ['prestige line', '<p className="go-prestige"'],
+  ['Kargo bizden', '<p className="go-prestige-note">Kargo bizden</p>'],
   ['title', '<h1 id="product-detail-title"'],
-  ['subtitle', 'className="go-buybox__subtitle"'],
   ['price', 'className="go-price-card__price"'],
   ['pack', 'className="go-price-card__pack"'],
-  ['Kargo ve teslimat bilgisi', '<DetailAccordion id="delivery" title="Kargo ve teslimat bilgisi"'],
   ['buttons', 'className="go-buy__actions product-detail-commerce-dock"'],
   ['Bu ürünün hikâyesi', '<DetailAccordion id="story" title="Bu ürünün hikâyesi"'],
   ['Ürün bilgileri ve özellikleri', '<DetailAccordion id="info" title="Ürün bilgileri ve özellikleri"'],
@@ -63,10 +64,16 @@ check(!/go-sticky-buy|stickyBuy/.test(detail), 'No bottom bar repeating the pric
 check(!/'Köyden sofranıza'|go-buybox__tagline|go-buybox__origin/.test(jsx), 'The framed tagline and "Köyden sofranıza" row under the photo are replaced by the prestige line.');
 {
   const shelf = read('src/features/catalog/ProductRecommendationsShelf.tsx');
-  check(/getProductRecommendations\(/.test(shelf) && /<CatalogProductCard [\s\S]{0,400}? compact\/>/.test(shelf) && /Bu ürünün yanına yakışanlar/.test(shelf), 'The recommendations shelf uses the product-based recommendations and the category page cards (square photo).');
+  check(/getProductRecommendations\(/.test(shelf) && /<CatalogProductCard [\s\S]{0,400}? compact\/>/.test(shelf) && /Sofranızı bu lezzetlerle tamamlayın/.test(shelf) && !/Bu ürünün yanına yakışanlar/.test(shelf), 'The recommendations shelf uses the product-based recommendations and the category page cards (square photo).');
 }
 check(/\{showHealth\?<DetailAccordion id="safety"/.test(jsx) && /hasHealthInfo\(safetyContent\)/.test(detail), '"Sağlık bilgileri" shows only when the product has health content.');
-check(/\['Kökeni',ed\('origin',120\)\],\['Üretim',productionFact\],\[ed\('ingredientsLabel',40\)\|\|'İçindekiler',ed\('ingredients',200\)\],\['Ambalaj',ed\('packaging',120\)\]\][^;]*\.filter\(\(\[,value\]\)=>value\)/.test(detail), 'The facts block lists Kökeni, Üretim, İçindekiler and Ambalaj, each only when the product record has it.');
+check(/\['Kökeni',\[ed\('origin',120\)\]\],\['Üretim',\[productionFact\]\],\['Ambalaj',\[ed\('packaging',120\)\]\],\['İade',\[returnText\]\],\['Teslimat',deliveryLines\]\]/.test(detail) && !/'İçindekiler'/.test(detail), 'The facts table lists Kökeni, Üretim, Ambalaj, İade and Teslimat (no İçindekiler row), each only when it has a value.');
+check(/const returnText=withdrawal\?\(withdrawal\.tier==='none'\?'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır':'14 gün içinde, paket açılmamışsa ücretsiz iade'\):'';/.test(detail), 'İade: "14 gün içinde, paket açılmamışsa ücretsiz iade"; perishables keep "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır".');
+check(/const deliveryLines=\[dispatchLine,'Kargo bizden',\.\.\.\(detail\?\.handlingProfile\?\.requiresColdChain===true\?\['Soğuk zincirle gönderilir'\]:\[\]\)\];/.test(detail) && /if\(!preorder\)return'2-4 iş günü içinde kargoya verilir';/.test(detail) && /specifications\?\.preOrderTime/.test(detail), 'Teslimat: "2-4 iş günü içinde kargoya verilir" (pre-orders: their stored dispatch sentence), "Kargo bizden", and "Soğuk zincirle gönderilir" for cold-chain products.');
+check(!/<DetailAccordion id="delivery"|Kargo ve teslimat bilgisi/.test(detail) && (detail.match(/'14 gün içinde, paket açılmamışsa ücretsiz iade'/g) || []).length === 1 && (detail.match(/'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır'/g) || []).length === 1, 'No "Kargo ve teslimat bilgisi" section; the return text appears once, in the facts table.');
+check(!/go-buybox__subtitle/.test(jsx), 'No subtitle line under the product name.');
+check(/<span className="go-price-card__price" aria-live="polite">\{priceText\(totalMinor,currency\)\}<\/span>/.test(jsx) && /const totalMinor=priceReady\?priceMinor!\*quantity:null;/.test(detail), 'The big price is unit price × quantity and is announced politely when it changes.');
+check(/onGift\(detail\.slug\|\|detail\.id,quantity\)/.test(detail) && /initialQuantity=\{giftProduct\.quantity\}/.test(read('src/App.tsx')), 'Hediye Et opens the gift order with the chosen quantity.');
 check(/const productionFact=\(\(\)=>\{const value=ed\('production',160\);return value&&mostlyCovered\(value,prestigeParts\.join\(' '\)\)\?'':value;\}\)\(\);/.test(detail), '"Üretim" is left out of the facts when the prestige line already says it.');
 check(!/representativeNote|Temsili/.test(detail), 'No "Temsili" caption under the photo.');
 check(/withoutRepeatedSentences\(ed\('about',1200\),\[storyText\]\)/.test(detail) && /\['Paket',packLine\?'':/.test(detail), 'No sentence or pack line is repeated on the page.');

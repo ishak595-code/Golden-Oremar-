@@ -31,6 +31,8 @@ import {
 
 type Props = {
   productReference: string;
+  /** The quantity chosen on the product page (defaults to 1). */
+  initialQuantity?: number;
   onClose: () => void;
   onCreated?: (order: any) => void;
   onOpenPayments?: () => void;
@@ -122,11 +124,13 @@ function variantSelectable(product: any, variant: any) {
   return stock !== null && stock > 0;
 }
 
-export default function GiftOrderFlow({ productReference, onClose, onCreated, onOpenPayments }: Props) {
+export default function GiftOrderFlow({ productReference, initialQuantity, onClose, onCreated, onOpenPayments }: Props) {
   const [product, setProduct] = useState<any>(null);
   const [account, setAccount] = useState<any>(null);
   const [variantId, setVariantId] = useState('');
-  const [quantity, setQuantity] = useState(1);
+  const startQuantity = Number.isSafeInteger(initialQuantity) && (initialQuantity as number) > 1 ? (initialQuantity as number) : 1;
+  const startQuantityRef = useRef(startQuantity);
+  const [quantity, setQuantity] = useState(startQuantity);
   const [recipientName, setRecipientName] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
@@ -175,7 +179,7 @@ export default function GiftOrderFlow({ productReference, onClose, onCreated, on
         setAppliedCoupon('');
         setSelectedPaymentMethodId('');
         setPaymentEnrollmentOpen(false);
-        setQuantity(1);
+        setQuantity(startQuantityRef.current);
         setOccasion('just_because');
         setPresentationStyle('oremar_gold');
         setCardTitle('');

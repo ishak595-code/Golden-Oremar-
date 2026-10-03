@@ -27,12 +27,12 @@ import{applySeo,clearSeoStructuredData,publicSeoOrigin}from'../seo/applySeo';
 import{withdrawalTier,WITHDRAWAL_COPY}from'./withdrawalRight';
 import{buildTabUrl}from'../navigation/appUrl';
 import ProductRecommendationsShelf from'./ProductRecommendationsShelf';
-import{getDomesticShippingQuote,type ShippingQuote}from'./shippingQuote';
 import type{ProductRecommendation}from'./productRecommendationsApi';
 
-/* Editorial product page (2026-10-03): photo with its slide bar and the
-   prestige line under it, title, subtitle, price and pack, delivery, the
-   purchase buttons, then the story, the product information, four facts,
+/* Editorial product page (2026-10-03): photo with its slide bar, the
+   prestige line and "Kargo bizden" under it, title, price (for the chosen
+   quantity) and pack, the purchase buttons, then the story, the product
+   information, the facts table (Kökeni, Üretim, Ambalaj, İade, Teslimat),
    health, how to use it, the producer, the reviews and, after them, the
    products that suit this one. The price is shown once. */
 
@@ -44,7 +44,7 @@ type Props={
  onBack:()=>void;
  onLoginRequired:()=>void;
  onCartChanged?:()=>Promise<void>|void;
- onGift:(reference:string)=>void;
+ onGift:(reference:string,quantity:number)=>void;
  onProducer:(id:string,slug:string,name:string)=>void;
  onCategory?:(slug:string,name:string)=>void;
  /** Opens another product (recommendations inside the page). */
@@ -191,10 +191,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const featureItems=normalizeFeatures(detail?.features);
  const reviewCount=firstInteger(reviews?.summary?.count,detail?.reviewSummary?.count);
  const averageRating=firstRating(reviews?.summary?.averageRating,detail?.reviewSummary?.averageRating);
- // Kargo ücreti and teslimat süresi from the shipping zones (the checkout's own quote), for this pack.
- const[shippingQuote,setShippingQuote]=useState<ShippingQuote|null>(null);
- const shippingWeight=safeInteger(variant?.weightGrams);
- useEffect(()=>{let active=true;setShippingQuote(null);if(!priceReady||!currency)return;getDomesticShippingQuote(shippingWeight,priceMinor!*quantity,currency).then(quote=>{if(active)setShippingQuote(quote);}).catch(()=>{});return()=>{active=false;};},[variantReference,shippingWeight,priceMinor,quantity,currency,priceReady]);
 
  function purchaseIssueMessage(){if(orderConfigurationError)return orderConfigurationError;if(soldOut)return'Bu ürün şu anda stokta yok. Stok güncellemesi için lütfen daha sonra tekrar kontrol edin.';if(!priceReady)return'Fiyat bilgisi şu anda gösterilemiyor. Lütfen sayfayı yenileyin.';if(!stockReady)return'Stok bilgisi yenileniyor. Lütfen birkaç saniye bekleyin.';return'Bu seçenek şu anda satın alınamıyor. Lütfen farklı bir seçenek deneyin.';}
  function moveImage(delta:number){if(images.length<2)return;const next=(selectedImageIndex+delta+images.length)%images.length;setSelectedImagePath(safeText(images[next]?.path,1200));}
@@ -222,7 +218,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  async function giftNow(){
   if(!purchaseReady||!variantReference){setError(purchaseIssueMessage());return;}
   try{setBusy(true);setError('');if(!(await onlinePaymentOpen())&&offlineOrderingAvailable(await getOfflineOrderingConfig())){setOfflineGift(true);setOfflineOrderOpen(true);return;}}catch{/* fall through */}finally{setBusy(false);}
-  if(authenticated)onGift(detail.slug||detail.id);else onLoginRequired();
+  if(authenticated)onGift(detail.slug||detail.id,quantity);else onLoginRequired();
  }
  async function buyNow(){
   if(!purchaseReady||!variantReference){setError(purchaseIssueMessage());return;}
@@ -277,16 +273,15 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const productId=safeReference(detail?.id,160);
  const questionReady=Boolean(producerId&&productId);
  const cartAdded=status==='Sepete eklendi.'||status==='Sipariş sepete eklendi.';
- // Pre-orders: the stored lead time, or the stored harvest and dispatch
- // sentence ("Yeni sezon hasadıyla gönderilir (Haziran-Temmuz) ...").
- const preparation=((): [string,string]|null=>{
-  if(!preorder)return null;
-  if(preorderLeadDays!==null&&preorderLeadDays>0)return['Hazırlık süresi',`Yaklaşık ${preorderLeadDays} gün`];
-  const stored=safeText(detail?.specifications?.preOrderTime,300);
-  const months=/hasad[ıi]yla gönderilir\s*\(([^)]{3,40})\)/i.exec(stored);
-  if(months)return['Kargoya veriliş',`Yeni sezon hasadıyla, ${months[1].replace(/\s*-\s*/,'–')}`];
-  if(/üretici onayından sonra/i.test(stored))return['Hazırlık süresi','Üretici onayından sonra siparişte kesinleşir'];
-  return stored?['Hazırlık süresi',stored]:null;
+ // "Teslimat" in the facts table: when the order is handed to the carrier.
+ // Pre-orders say what their own record says (the stored harvest and dispatch
+ // sentence, e.g. "Yeni sezon hasadıyla gönderilir (Haziran-Temmuz)"); the
+ // rest of the catalogue is dispatched within 2-4 working days.
+ const dispatchLine=(()=>{
+  if(!preorder)return'2-4 iş günü içinde kargoya verilir';
+  if(preorderLeadDays!==null&&preorderLeadDays>0)return`Siparişten sonra yaklaşık ${preorderLeadDays} günde kargoya verilir`;
+  const stored=sentencesOf(safeText(detail?.specifications?.preOrderTime,300))[0]?.replace(/[.\s]+$/,'')||'';
+  return stored||'2-4 iş günü içinde kargoya verilir';
  })();
  const withdrawal=(()=>{const tier=withdrawalTier((detail as any)?.handlingProfile);return tier?{tier,copy:WITHDRAWAL_COPY[tier]}:null;})();
 
@@ -302,7 +297,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const kgPriceMinor=priceReady&&labelGrams!==null&&labelGrams>=50&&labelGrams<=50000&&labelGrams!==1000?Math.round(priceMinor!*1000/labelGrams):null;
  const discountPercent=compareAtPriceReady?Math.round((1-priceMinor!/compareAtPriceMinor!)*100):0;
  const totalMinor=priceReady?priceMinor!*quantity:null;
- const subtitle=ed('subtitle',200);
  // One line under the photo: place · how it is made · one trait ("Yüksekova ·
  // Odun isiyle geleneksel kurutma · Sınırlı hasat"), from the product's own record.
  const prestigeParts=ed('prestige',160).split('·').map(part=>part.trim()).filter(Boolean).slice(0,3);
@@ -310,11 +304,15 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  // Each sentence appears once on the page: the product information drops a
  // sentence the story already tells, and the short description one either says.
  const aboutText=withoutRepeatedSentences(ed('about',1200),[storyText]);
- const descriptionText=withoutRepeatedSentences(safeText(detail?.shortDescription,1000),[storyText,aboutText,subtitle]);
- // Four facts, each only when the product's own record says it.
- // "Üretim" is left out when the prestige line under the photo already says it.
+ const descriptionText=withoutRepeatedSentences(safeText(detail?.shortDescription,1000),[storyText,aboutText]);
+ // The facts table: Kökeni, Üretim and Ambalaj from the product's own record
+ // ("Üretim" is left out when the prestige line under the photo already says
+ // it), then İade and Teslimat. Perishables keep their legal return text (no
+ // right of withdrawal); the return terms appear only here on the page.
  const productionFact=(()=>{const value=ed('production',160);return value&&mostlyCovered(value,prestigeParts.join(' '))?'':value;})();
- const facts:Array<[string,string]>=([['Kökeni',ed('origin',120)],['Üretim',productionFact],[ed('ingredientsLabel',40)||'İçindekiler',ed('ingredients',200)],['Ambalaj',ed('packaging',120)]] as Array<[string,string]>).filter(([,value])=>value);
+ const returnText=withdrawal?(withdrawal.tier==='none'?'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır':'14 gün içinde, paket açılmamışsa ücretsiz iade'):'';
+ const deliveryLines=[dispatchLine,'Kargo bizden',...(detail?.handlingProfile?.requiresColdChain===true?['Soğuk zincirle gönderilir']:[])];
+ const facts:Array<[string,string[]]>=([['Kökeni',[ed('origin',120)]],['Üretim',[productionFact]],['Ambalaj',[ed('packaging',120)]],['İade',[returnText]],['Teslimat',deliveryLines]] as Array<[string,string[]]>).map(([label,lines]):[string,string[]]=>[label,lines.filter(Boolean)]).filter(([,lines])=>lines.length>0);
  function startReview(){if(!authenticated){onLoginRequired();return;}setReviewComposerOpen(true);}
  // Following the store: same data as the store page and Hesabım > Takip
  // Ettiğim Satıcılar (toggle_producer_follow_v1). Not an aria-pressed
@@ -353,30 +351,19 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
   {status?<div role="status" aria-live="polite" className="mb-4 rounded-2xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">{cartAdded?<div className="flex items-center justify-between gap-3"><span>{status}</span><button type="button" onClick={navigateToCart} className="min-h-11 rounded-full border-2 border-green-700 bg-green-700 px-3 font-black text-white shadow-sm transition-all hover:bg-green-800">Sepete Git</button></div>:status}</div>:null}
 
   <div className="go-detail-grid grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-10">
-   <div className="go-detail-media"><ProductGallery slides={gallerySlides} productName={detailName} productSlug={safeText(detail?.slug,220)} categorySlug={categorySlug} categoryName={categoryName} productType={safeText(detail?.handlingProfile?.productType,60)} safetyClass={safeText(detail?.handlingProfile?.safetyClass,60)} onOpenPhoto={path=>{setSelectedImagePath(path);setImageViewerOpen(true);}}/>{prestigeParts.length?<p className="go-prestige">{prestigeParts.map((part,index)=><React.Fragment key={part}>{index?<span className="go-prestige__dot" aria-hidden="true"> · </span>:null}<span>{part}</span></React.Fragment>)}</p>:null}</div>
+   <div className="go-detail-media"><ProductGallery slides={gallerySlides} productName={detailName} productSlug={safeText(detail?.slug,220)} categorySlug={categorySlug} categoryName={categoryName} productType={safeText(detail?.handlingProfile?.productType,60)} safetyClass={safeText(detail?.handlingProfile?.safetyClass,60)} onOpenPhoto={path=>{setSelectedImagePath(path);setImageViewerOpen(true);}}/>{prestigeParts.length?<p className="go-prestige">{prestigeParts.map((part,index)=><React.Fragment key={part}>{index?<span className="go-prestige__dot" aria-hidden="true"> · </span>:null}<span>{part}</span></React.Fragment>)}</p>:null}<p className="go-prestige-note">Kargo bizden</p></div>
 
    <section className="go-buybox" aria-labelledby="product-detail-title">
     <h1 id="product-detail-title" ref={titleRef} className="go-buybox__title">{detailName}</h1>
-    {subtitle?<p className="go-buybox__subtitle">{subtitle}</p>:null}
 
     <div className="go-price-card">
      <div className="go-price-card__main">
-      {priceReady?<p className="go-price-card__amounts">{compareAtPriceReady&&discountPercent>=1?<span className="go-price-card__discount">%{discountPercent} indirim</span>:null}<span className="go-price-card__price">{priceText(priceMinor,currency)}</span>{compareAtPriceReady?<span className="go-price-card__was">Önce <s>{priceText(compareAtPriceMinor,currency)}</s></span>:null}</p>:<p className="go-price-card__missing">Fiyat şu anda gösterilemiyor</p>}
+      {priceReady?<p className="go-price-card__amounts">{compareAtPriceReady&&discountPercent>=1?<span className="go-price-card__discount">%{discountPercent} indirim</span>:null}<span className="go-price-card__price" aria-live="polite">{priceText(totalMinor,currency)}</span>{compareAtPriceReady?<span className="go-price-card__was">Önce <s>{priceText(compareAtPriceMinor!*quantity,currency)}</s></span>:null}</p>:<p className="go-price-card__missing">Fiyat şu anda gösterilemiyor</p>}
       {soldOut?<span className="go-stock-pill go-stock-pill--out"><CircleSlash aria-hidden="true"/>Stokta yok</span>:null}
      </div>
      {packLine||kgPriceMinor!==null?<p className="go-price-card__unit">{packLine?<span className="go-price-card__pack">{packLine}</span>:null}{kgPriceMinor!==null?<span className="go-price-card__kg">kg fiyatı {priceText(kgPriceMinor,currency)}</span>:null}</p>:null}
      {preorder?<p className="go-price-card__preorder">Sipariş üzerine hazırlanır</p>:null}
     </div>
-
-    <DetailAccordion id="delivery" title="Kargo ve teslimat bilgisi" compact>
-     <dl className="go-ship">
-      <div className="go-ship__row"><dt>Kargo ücreti</dt><dd>{shippingQuote?(shippingQuote.feeMinor===0?'Ücretsiz':`${priceText(shippingQuote.feeMinor,shippingQuote.currency)}${shippingQuote.freeThresholdMinor?` · ${priceText(shippingQuote.freeThresholdMinor,shippingQuote.currency)} ve üzeri ücretsiz`:''}`):'Siparişte gösterilir'}</dd></div>
-      {preparation?<div className="go-ship__row"><dt>{preparation[0]}</dt><dd>{preparation[1]}</dd></div>:null}
-      {shippingQuote?.maxDays?<div className="go-ship__row"><dt>{preorder?'Teslimat süresi':'Tahmini teslimat'}</dt><dd>{preorder?'Kargoya verildikten sonra ':''}{shippingQuote.minDays&&shippingQuote.minDays<shippingQuote.maxDays?`${shippingQuote.minDays}–${shippingQuote.maxDays} iş günü`:`${shippingQuote.maxDays} iş günü`}</dd></div>:null}
-      {detail?.handlingProfile?.requiresColdChain?<div className="go-ship__row"><dt>Gönderim</dt><dd>Soğuk zincirle gönderilir</dd></div>:null}
-      {withdrawal?<div className="go-ship__row"><dt>İade</dt><dd>{withdrawal.tier==='none'?'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır':withdrawal.copy.title}</dd></div>:null}
-     </dl>
-    </DetailAccordion>
 
     <div className="go-buy">
      {Array.isArray(detail.variants)&&detail.variants.length>1?<label className="go-buy__field"><span>Paket</span><select value={variantId} onChange={event=>setVariantId(event.target.value)} className="input">{detail.variants.map((item:any)=>{const id=safeReference(item?.id,160)||'';return<option key={id||safeText(item?.name,240)} value={id} disabled={item?.available===false}>{safeText(item?.name,240)||'Seçenek'}{item?.available===false?' (Stokta yok)':''}</option>;})}</select></label>:null}
@@ -409,7 +396,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
     </DetailAccordion>
    </DetailAccordionGroup>
 
-   {facts.length?<dl className="go-facts" aria-label="Kısa bilgiler">{facts.map(([label,value])=><div key={label} className="go-facts__row"><dt>{label}</dt><dd>{value}</dd></div>)}</dl>:null}
+   {facts.length?<dl className="go-facts" aria-label="Kısa bilgiler">{facts.map(([label,lines])=><div key={label} className="go-facts__row"><dt>{label}</dt><dd>{lines.map(line=><span key={line} className="go-facts__line">{line}</span>)}</dd></div>)}</dl>:null}
 
    {showHealth||showUsage||hasTraceability||(Array.isArray(detail.certifications)&&detail.certifications.length)?<DetailAccordionGroup>
     {showHealth?<DetailAccordion id="safety" title={isNonFood?'Güvenli kullanım':'Sağlık bilgileri'}><HealthInfo content={safetyContent}/></DetailAccordion>:null}
