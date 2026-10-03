@@ -327,7 +327,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const productionFact=(()=>{const value=ed('production',160);return value&&mostlyCovered(value,prestigeParts.join(' '))?'':value;})();
  const computedReturn=withdrawal?(withdrawal.tier==='none'?'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır':'14 gün içinde, paket açılmamışsa ücretsiz iade'):'';
  const returnText=typeof editorial.returnText==='string'?ed('returnText',200):computedReturn;
- const deliveryLines=[dispatchLine,shippingLine,...(coldChain?['Soğuk zincirle gönderilir']:[])];
+ // The shipping fee line ("Kargo bizden") is shown once, under the photo; it is not repeated here.
+ const deliveryLines=[dispatchLine,...(coldChain?['Soğuk zincirle gönderilir']:[])];
  const facts:Array<[string,string[]]>=([['Kökeni',[ed('origin',120)]],['Üretim',[productionFact]],['Ambalaj',[ed('packaging',120)]],['İade',[returnText]],['Stok',[stockFact]],['Teslimat',deliveryLines]] as Array<[string,string[]]>).map(([label,lines]):[string,string[]]=>[label,lines.filter(Boolean)]).filter(([,lines])=>lines.length>0);
  function startReview(){if(!authenticated){onLoginRequired();return;}setReviewComposerOpen(true);}
  // Following the store: same data as the store page and Hesabım > Takip

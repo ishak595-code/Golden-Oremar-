@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useRef,useState}from'react';
+import React,{useCallback,useEffect,useMemo,useRef,useState}from'react';
 import{AlertCircle,ArrowRight,ArrowUp,RefreshCw}from'lucide-react';
 import{publicCatalogUrl}from'../catalog/api';
 import{CUSTOMER_COPY,homeSectionDisplayCopy}from'../customer-experience/customerCopy';
@@ -35,6 +35,14 @@ export default function HomeSection({onProductClick}:Props){
 
  useEffect(()=>{const check=()=>setShowScrollTop(window.scrollY>400);check();window.addEventListener('scroll',check,{passive:true});return()=>window.removeEventListener('scroll',check);},[]);
 
+ /* One product, one place: a product already shown in an earlier section is
+    left out of the later ones, so the page never repeats itself. The earliest
+    section (lowest order) keeps the product. */
+ const initialOwners=useMemo(()=>{const owners:Record<string,number>={};(experience?.sections||[]).filter(section=>!section.deferred).forEach((section,order)=>{for(const item of section.items)if(owners[item.id]===undefined)owners[item.id]=order;});return owners;},[experience]);
+ const[deferredOwners,setDeferredOwners]=useState<Record<string,number>>({});
+ const claimProducts=useCallback((order:number,ids:string[])=>setDeferredOwners(current=>{let next=current;for(const id of ids){const owner=current[id];if(owner===undefined||owner>order){if(next===current)next={...current};next[id]=order;}}return next;}),[]);
+ const ownerOf=(id:string)=>initialOwners[id]??deferredOwners[id];
+
  if(loading&&!experience)return<HomeLoading/>;
  if(!experience)return<HomeError message={error||CUSTOMER_COPY.home.loadErrorFallback} onRetry={()=>void retry().catch(()=>undefined)}/>;
  const initialSections=experience.sections.filter(section=>!section.deferred);
@@ -55,7 +63,7 @@ export default function HomeSection({onProductClick}:Props){
 
    {renderEvents('after_categories')}
 
-   {initialSections.map((section,index)=><ProductSection key={section.key} section={section} onProductClick={onProductClick} eagerFirst={index===0} isFirst={index===0}/>) }
+   {initialSections.map((section,index)=><ProductSection key={section.key} section={{...section,items:section.items.filter(item=>ownerOf(item.id)===index)}} onProductClick={onProductClick} eagerFirst={index===0} isFirst={index===0}/>) }
 
    {renderEvents('after_hero')}
 
@@ -63,7 +71,7 @@ export default function HomeSection({onProductClick}:Props){
 
    {renderEvents('before_products')}
 
-   {deferredSections.map(section=><DeferredProductSection key={section.key} descriptor={section} loadSection={loadSection} onProductClick={onProductClick}/>) }
+   {deferredSections.map((section,index)=><DeferredProductSection key={section.key} descriptor={section} loadSection={loadSection} onProductClick={onProductClick} order={initialSections.length+index} ownerOf={ownerOf} onLoaded={claimProducts}/>) }
 
    {experience.interface.footerText?<section className="go-brand-provenance" aria-label={`${experience.brand.name} hakkında`}><span>{experience.brand.name}</span><p>{experience.interface.footerText}</p></section>:null}
 
@@ -79,17 +87,18 @@ function ProductSection({section,onProductClick,eagerFirst=false,isFirst=false}:
  {section.items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{section.items.map((item,index)=><ProductCard key={item.id} item={item} eager={eagerFirst&&index===0} merchandisingLabel={homeMerchandisingSignal(section.source.kind,index)} onClick={()=>onProductClick(item)}/>)}</ul>:<SectionEmptyState source={section.source.kind}/>} 
  </section>;}
 
-function DeferredProductSection({descriptor,loadSection,onProductClick}:{descriptor:HomeSectionModel;loadSection:(key:string)=>Promise<HomeSectionModel|null>;onProductClick:(product:ProductReference)=>void}){
+function DeferredProductSection({descriptor,loadSection,onProductClick,order,ownerOf,onLoaded}:{descriptor:HomeSectionModel;loadSection:(key:string)=>Promise<HomeSectionModel|null>;onProductClick:(product:ProductReference)=>void;order:number;ownerOf:(id:string)=>number|undefined;onLoaded:(order:number,ids:string[])=>void}){
  const hostRef=useRef<HTMLElement|null>(null);const[section,setSection]=useState<HomeSectionModel|null>(null);const[loading,setLoading]=useState(false);const[error,setError]=useState('');const[done,setDone]=useState(false);const requested=useRef(false);
  const copy=homeSectionDisplayCopy(descriptor.source.kind,descriptor.title,descriptor.subtitle);
- const request=()=>{if(requested.current)return;requested.current=true;setLoading(true);setError('');void loadSection(descriptor.key).then(result=>{setSection(result);setDone(true);}).catch(()=>{requested.current=false;setError(CUSTOMER_COPY.home.sectionRefreshError);}).finally(()=>setLoading(false));};
+ const request=()=>{if(requested.current)return;requested.current=true;setLoading(true);setError('');void loadSection(descriptor.key).then(result=>{if(result)onLoaded(order,result.items.map(item=>item.id));setSection(result);setDone(true);}).catch(()=>{requested.current=false;setError(CUSTOMER_COPY.home.sectionRefreshError);}).finally(()=>setLoading(false));};
  useEffect(()=>{const node=hostRef.current;if(!node)return;if(typeof IntersectionObserver==='undefined'){request();return;}const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){request();observer.disconnect();}},{rootMargin:'560px 0px'});observer.observe(node);return()=>observer.disconnect();},[descriptor.key,loadSection]);
  const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${descriptor.source.kind} go-product-section-v2--deferred`;
- // Loaded and empty: leave the section out instead of announcing that it is empty.
- if(done&&!section?.items.length&&!loading&&!error)return null;
+ const items=(section?.items||[]).filter(item=>{const owner=ownerOf(item.id);return owner===undefined||owner===order;});
+ // Loaded and empty (or everything already shown above): leave the section out instead of announcing that it is empty.
+ if(done&&!items.length&&!loading&&!error)return null;
  return<section ref={hostRef} className={sectionClass} aria-labelledby={`home-section-${descriptor.key}`} data-server-section-title={descriptor.title} data-home-source={descriptor.source.kind}>
   <SectionHeader id={`home-section-${descriptor.key}`} eyebrow={copy.eyebrow} title={copy.title} subtitle={copy.subtitle}/>
-  {section?.items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{section.items.map((item,index)=><ProductCard key={item.id} item={item} merchandisingLabel={homeMerchandisingSignal(descriptor.source.kind,index)} onClick={()=>onProductClick(item)}/>)}</ul>:loading?<ProductRowsSkeleton/>:error?<div className="mt-5 flex min-h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-6 dark:border-red-900/60 dark:bg-red-950/30" role="status"><div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800 dark:to-red-900"><AlertCircle aria-hidden="true" className="h-8 w-8 text-red-400"/></div><span className="text-center font-semibold text-red-900 dark:text-red-200">{error}</span><button type="button" onClick={request} className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-red-300 bg-white px-4 font-bold dark:border-red-800 dark:bg-red-950/20"><RefreshCw aria-hidden="true" className="h-4 w-4"/>{CUSTOMER_COPY.home.retry}</button></div>:<SectionEmptyState source={descriptor.source.kind}/>} 
+  {items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{items.map((item,index)=><ProductCard key={item.id} item={item} merchandisingLabel={homeMerchandisingSignal(descriptor.source.kind,index)} onClick={()=>onProductClick(item)}/>)}</ul>:loading?<ProductRowsSkeleton/>:error?<div className="mt-5 flex min-h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-6 dark:border-red-900/60 dark:bg-red-950/30" role="status"><div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800 dark:to-red-900"><AlertCircle aria-hidden="true" className="h-8 w-8 text-red-400"/></div><span className="text-center font-semibold text-red-900 dark:text-red-200">{error}</span><button type="button" onClick={request} className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-red-300 bg-white px-4 font-bold dark:border-red-800 dark:bg-red-950/20"><RefreshCw aria-hidden="true" className="h-4 w-4"/>{CUSTOMER_COPY.home.retry}</button></div>:<SectionEmptyState source={descriptor.source.kind}/>} 
  </section>;
 }
 
