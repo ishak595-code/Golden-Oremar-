@@ -81,7 +81,10 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
  useEffect(()=>{if(!directUrl)return;const frame=window.requestAnimationFrame(()=>{const el=errorRef.current;if(!el)return;const body=el.closest('.go-order-body') as HTMLElement|null;if(body)body.scrollTop+=el.getBoundingClientRect().top-body.getBoundingClientRect().top-8;el.focus({preventScroll:true});});return()=>window.cancelAnimationFrame(frame);},[directUrl]);
  const currency=lines[0]?.currency||'TRY';
  const subtotal=useMemo(()=>lines.reduce((sum,line)=>sum+line.priceMinor*line.quantity,0),[lines]);
- const giftLine=isGift&&recipient.trim()?giftNoteText(recipient,giftMessage):'';
+ /* Never gift wording outside the gift flow, even for one frame after a
+    gift sheet was used on the same page. */
+ const giftMode=gift&&isGift;
+ const giftLine=giftMode&&recipient.trim()?giftNoteText(recipient,giftMessage):'';
  const waUrl=receipt?whatsappOrderUrl(receipt,giftLine):null;
 
  function update<K extends keyof OfflineOrderCustomer>(key:K,value:string){setCustomer(current=>({...current,[key]:value}));if(errors[key])setErrors(current=>({...current,[key]:undefined}));}
@@ -90,13 +93,13 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
   event.preventDefault();if(busy)return;
   if(!method){setError('Bir sipariş yöntemi seçin.');return;}
   const nextErrors=validateOfflineCustomer(customer);setErrors(nextErrors);
-  const recipientMissing=isGift&&recipient.trim().length<2;setRecipientError(recipientMissing?'Hediyeyi alacak kişinin adını yazın.':'');
+  const recipientMissing=giftMode&&recipient.trim().length<2;setRecipientError(recipientMissing?'Hediyeyi alacak kişinin adını yazın.':'');
   const first=Object.keys(nextErrors)[0];
   if(recipientMissing&&(!first||first==='note')){(document.getElementById(`${titleId}-recipient`) as HTMLElement|null)?.focus();return;}
   if(first){(document.getElementById(`${titleId}-${first}`) as HTMLElement|null)?.focus();return;}
   if(!consent){setError('Devam etmek için ön bilgilendirme onay kutusunu işaretleyin.');queueMicrotask(()=>errorRef.current?.focus());return;}
   /* A gift keeps the buyer's contact details and adds who receives it. */
-  const orderCustomer:OfflineOrderCustomer=isGift?{...customer,note:[giftNoteText(recipient,giftMessage),customer.note.trim()].filter(Boolean).join(' | ').slice(0,1000)}:customer;
+  const orderCustomer:OfflineOrderCustomer=giftMode?{...customer,note:[giftNoteText(recipient,giftMessage),customer.note.trim()].filter(Boolean).join(' | ').slice(0,1000)}:customer;
   try{
    setBusy(true);setError('');setDirectUrl(null);
    const result=await submitOfflineOrder({idempotencyKey:keyRef.current,method,source,items,customer:orderCustomer,consent});
@@ -119,7 +122,7 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
  return<div className="go-order-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)onClose();}}>
   <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="go-order-sheet">
    <header className="go-order-head">
-    <div><p className="go-order-eyebrow">{receipt?'Sipariş kodu':'Güvenli sipariş'}</p><h2 id={titleId}>{receipt?'Siparişiniz alındı':isGift?'Hediye gönder':'Siparişi tamamla'}</h2></div>
+    <div><p className="go-order-eyebrow">{receipt?'Sipariş kodu':'Güvenli sipariş'}</p><h2 id={titleId}>{receipt?'Siparişiniz alındı':giftMode?'Hediye gönder':'Siparişi tamamla'}</h2></div>
     <button type="button" onClick={onClose} disabled={busy} aria-label="Kapat" className="go-order-close"><X aria-hidden="true"/></button>
    </header>
 
@@ -150,20 +153,23 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
      {!config.whatsapp.enabled&&!config.bankTransfer.enabled?<p className="go-order-hint">Şu anda sipariş kabul edilemiyor. Lütfen daha sonra tekrar deneyin.</p>:null}
     </fieldset>}
 
-    <div className={`go-order-gift${isGift?' is-on':''}`}>
-     <label className="go-order-check"><input type="checkbox" checked={isGift} onChange={event=>{setIsGift(event.target.checked);setRecipientError('');}}/><span><strong><Gift aria-hidden="true"/>Bu sipariş bir hediye</strong><small>{isGift?'Köyden çıkan bir paket, sizin notunuzla sevdiğinizin kapısında. Pakete fiyat konmaz.':'Sevdiğinize köyden bir hediye gönderin: notunuzla, fiyat bilgisi olmadan.'}</small></span></label>
-     {isGift?<div className="go-order-grid">
+    {/* Gift details only in the flow started with "Hediye Et". A normal
+        purchase ("Hemen Satın Al", cart checkout) is a plain order with no
+        gift wording at all. */}
+    {gift?<div className={`go-order-gift${giftMode?' is-on':''}`}>
+     <label className="go-order-check"><input type="checkbox" checked={giftMode} onChange={event=>{setIsGift(event.target.checked);setRecipientError('');}}/><span><strong><Gift aria-hidden="true"/>Bu sipariş bir hediye</strong><small>{giftMode?'Köyden çıkan bir paket, sizin notunuzla sevdiğinizin kapısında. Pakete fiyat konmaz.':'Sevdiğinize köyden bir hediye gönderin: notunuzla, fiyat bilgisi olmadan.'}</small></span></label>
+     {giftMode?<div className="go-order-grid">
       <div className="go-order-field"><label htmlFor={`${titleId}-recipient`}>Hediyeyi alacak kişi</label><input id={`${titleId}-recipient`} value={recipient} onChange={event=>{setRecipient(event.target.value.slice(0,120));if(recipientError)setRecipientError('');}} maxLength={120} autoComplete="off" aria-invalid={recipientError?true:undefined} aria-describedby={recipientError?`${titleId}-recipient-error`:undefined}/>{recipientError?<em id={`${titleId}-recipient-error`}>{recipientError}</em>:null}</div>
       <div className="go-order-field"><label htmlFor={`${titleId}-giftMessage`}>Hediye mesajı<small> (isteğe bağlı)</small></label><textarea id={`${titleId}-giftMessage`} value={giftMessage} onChange={event=>setGiftMessage(event.target.value.slice(0,300))} rows={2} maxLength={300} placeholder="Örn. Afiyet olsun, seni seviyoruz."/></div>
      </div>:null}
-    </div>
+    </div>:null}
 
-    <fieldset className="go-order-grid"><legend>{isGift?'Sizin bilgileriniz ve hediyenin adresi':'Teslimat ve iletişim'}</legend>
+    <fieldset className="go-order-grid"><legend>{giftMode?'Sizin bilgileriniz ve hediyenin adresi':'Teslimat ve iletişim'}</legend>
      {field('name','Ad soyad',{autoComplete:'name',maxLength:120,required:true})}
      {field('phone','Telefon',{autoComplete:'tel',inputMode:'tel',maxLength:20,required:true,placeholder:'05xx xxx xx xx'})}
      {field('email','E-posta',{autoComplete:'email',inputMode:'email',maxLength:254},true)}
      <div className="go-order-pair">{field('province','İl',{autoComplete:'address-level1',maxLength:80,required:true})}{field('district','İlçe',{autoComplete:'address-level2',maxLength:80,required:true})}</div>
-     <div className="go-order-field"><label htmlFor={`${titleId}-addressLine`}>{isGift?'Hediyenin gideceği açık adres':'Açık adres'}</label><textarea id={`${titleId}-addressLine`} value={customer.addressLine} onChange={event=>update('addressLine',event.target.value.slice(0,500))} rows={3} autoComplete="street-address" aria-invalid={errors.addressLine?true:undefined} aria-describedby={errors.addressLine?`${titleId}-addressLine-error`:undefined}/>{errors.addressLine?<em id={`${titleId}-addressLine-error`}>{errors.addressLine}</em>:null}</div>
+     <div className="go-order-field"><label htmlFor={`${titleId}-addressLine`}>{giftMode?'Hediyenin gideceği açık adres':'Açık adres'}</label><textarea id={`${titleId}-addressLine`} value={customer.addressLine} onChange={event=>update('addressLine',event.target.value.slice(0,500))} rows={3} autoComplete="street-address" aria-invalid={errors.addressLine?true:undefined} aria-describedby={errors.addressLine?`${titleId}-addressLine-error`:undefined}/>{errors.addressLine?<em id={`${titleId}-addressLine-error`}>{errors.addressLine}</em>:null}</div>
      <div className="go-order-field"><label htmlFor={`${titleId}-note`}>Sipariş notu<small> (isteğe bağlı)</small></label><textarea id={`${titleId}-note`} value={customer.note} onChange={event=>update('note',event.target.value.slice(0,1000))} rows={2} placeholder="Teslimat saati, kapı kodu gibi"/></div>
      <label className="go-order-check"><input type="checkbox" checked={remember} onChange={event=>setRemember(event.target.checked)}/><span>Bilgilerimi bu cihazda hatırla</span></label>
     </fieldset>
