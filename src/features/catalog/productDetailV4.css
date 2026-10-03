@@ -41,13 +41,7 @@
 .go-price-card__pack { color: var(--text-main); }
 .go-price-card__kg { font-size: .82rem; font-variant-numeric: tabular-nums; }
 .go-price-card__preorder { margin: .35rem 0 0; font-size: .78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--brand-gold); }
-.go-buybox__tagline { margin: 1.1rem 0 0; font-family: var(--font-serif, Georgia, serif); font-size: 1.08rem; font-style: italic; line-height: 1.55; color: var(--text-main); overflow-wrap: anywhere; }
-.go-buybox__origin { display: flex; align-items: center; gap: .4rem; margin: 1.1rem 0 .5rem; font-size: .78rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--brand-gold); }
-.go-buybox__origin svg { width: .95rem; height: .95rem; flex: 0 0 auto; }
 .go-buybox > .go-detail-accordion--compact { border-bottom: 1px solid var(--border-main); }
-.go-delivery__lead, .go-delivery__text { margin: 0 0 .6rem; line-height: 1.6; color: var(--text-muted); }
-.go-delivery__lead strong { color: var(--text-main); font-weight: 700; }
-.go-detail-returns__title { margin: 0 0 .35rem; font-weight: 700; color: var(--text-main); }
 
 /* Purchase: options and quantity, then one large primary button and two
    quiet secondary ones. */
@@ -173,7 +167,7 @@
 /* Store follow (under "Üreticiye soru sor"): same footprint as the ask button,
    with one short helper line that always wraps instead of overflowing. */
 .go-store-follow { display: grid; gap: .3rem; min-width: 0; }
-.go-store-follow__button { display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; min-height: 3rem; padding: .5rem 1rem; border: 1px solid var(--brand-green); border-radius: 1rem; background: var(--brand-green); color: #fff; font-size: .95rem; font-weight: 800; line-height: 1.2; text-align: center; overflow-wrap: anywhere; touch-action: manipulation; transition: background-color .15s ease, color .15s ease, border-color .15s ease; }
+.go-store-follow__button { display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; min-height: 3rem; padding: .5rem 1rem; border: 1px solid var(--brand-green); border-radius: 1rem; background: var(--brand-green); color: var(--text-on-green, #fff); font-size: .95rem; font-weight: 800; line-height: 1.2; text-align: center; overflow-wrap: anywhere; touch-action: manipulation; transition: background-color .15s ease, color .15s ease, border-color .15s ease; }
 .go-store-follow__button svg { flex: 0 0 auto; width: 1.1rem; height: 1.1rem; }
 .go-store-follow__button.is-following { background: transparent; color: var(--text-main); border-color: color-mix(in srgb, var(--brand-gold) 55%, var(--border-main)); }
 .go-store-follow__button.is-following svg { color: var(--brand-gold); }
@@ -222,3 +216,67 @@
 .go-review-composer__primary:disabled { opacity: .6; }
 .go-review-composer__secondary { border: 1px solid var(--border-main); background: transparent; color: var(--text-main); }
 .go-review-composer__primary:focus-visible, .go-review-composer__secondary:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 2px; }
+
+/* ---------- Product page round 2 (2026-10-03) ----------
+   Larger photo, a prestige line under it, Trendyol-style delivery rows,
+   lighter secondary text on the dark background (WCAG AA, measured), a calm
+   self-hosted body font and more air between the price, the buttons and the
+   sections. */
+
+/* Body font: Inter, subset to Latin + Turkish, weights 400-700 (25 KB woff2,
+   SIL Open Font License, public/fonts/inter-LICENSE.txt). Headings keep the
+   brand serif. */
+@font-face {
+  font-family: "Inter GO";
+  src: url("/fonts/inter-tr.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0020-007E, U+00A0-00FF, U+011E-011F, U+0130-0131, U+015E-015F, U+2013-2014, U+2018-2019, U+201C-201D, U+2022, U+2026, U+20BA, U+00B7, U+2192, U+00D7;
+}
+.go-pdp { font-family: "Inter GO", var(--font-sans); }
+:root[data-color-scheme="dark"] .go-pdp { --text-muted: color-mix(in srgb, var(--text-main) 82%, var(--bg-main)); }
+
+/* Photo: edge to edge on a phone, centred on a tablet, the wide column on a desktop. */
+@media (max-width: 639px) {
+  .go-detail-media { margin-inline: -1rem; }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .go-detail-media { width: 100%; max-width: 36rem; margin-inline: auto; }
+}
+
+/* An older position-based rule (productDetailPrestige.css) rounded the first
+   box of the page, which is now the photo strip: the photo stays square-edged
+   (the frame from 640px up is on .go-gallery). */
+:root[data-app-tab="product-detail"] .go-pdp .go-detail-media .go-gallery .go-gallery__track { border-radius: 0 !important; box-shadow: none; }
+
+/* Prestige line under the photo: place · how it is made · one trait. */
+.go-prestige { margin: .9rem 1rem 0; font-size: .9rem; font-weight: 600; letter-spacing: .015em; line-height: 1.6; color: var(--brand-gold); text-align: center; overflow-wrap: anywhere; }
+.go-prestige__dot { padding-inline: .1rem; }
+@media (min-width: 640px) { .go-prestige { margin-inline: 0; } }
+
+/* Type and spacing in the buy box. */
+.go-buybox__title { font-weight: 700; }
+.go-buybox__subtitle { line-height: 1.6; }
+.go-price-card { margin-top: 1.35rem; }
+.go-buybox > .go-detail-accordion--compact { margin-top: 1.75rem; }
+.go-buy { margin-top: 1.25rem; }
+
+/* Kargo ve teslimat bilgisi: label / value rows. */
+.go-ship { display: grid; margin: 0; }
+.go-ship__row { display: grid; grid-template-columns: minmax(7rem, 38%) 1fr; gap: .75rem; padding: .6rem 0; border-top: 1px solid var(--border-light, var(--border-main)); }
+.go-ship__row:first-child { border-top: 0; padding-top: .1rem; }
+.go-ship dt { font-size: .88rem; color: var(--text-muted); }
+.go-ship dd { margin: 0; font-size: .92rem; font-weight: 600; line-height: 1.5; color: var(--text-main); overflow-wrap: anywhere; }
+
+/* Sections: a little more air and slightly bolder headings. */
+.go-pdp__lower { gap: 2.25rem; margin-top: 2.75rem; }
+.go-detail-accordion__title, .go-producer__title { font-weight: 700; }
+.go-detail-about, .go-detail-story, .go-care__lead { line-height: 1.8; }
+.go-detail-description, .go-care__text, .go-care__list, .go-care__steps { line-height: 1.75; }
+
+/* Recommendations after the reviews: the category page's square-photo cards. */
+.go-detail-recos { margin-top: .5rem; }
+.go-detail-recos > h2.go-detail-recos__title { margin: 0 0 1rem; font-family: var(--font-serif, Georgia, serif); font-size: 1.35rem; font-weight: 700; line-height: 1.25; }
+.go-detail-recos__grid { display: grid; gap: .75rem; }
+@media (min-width: 640px) { .go-detail-recos__grid { grid-template-columns: 1fr 1fr; gap: 1rem; } }

@@ -28,13 +28,12 @@
 .go-artwork--card .go-artwork__seal{margin-bottom:16%;}
 
 /* ---------- Gallery ---------- */
-.go-gallery{position:relative;min-width:0;max-width:100%;border-radius:28px;overflow:hidden;border:1px solid color-mix(in srgb,var(--brand-gold) 28%,var(--border-main));background:var(--bg-card);box-shadow:0 18px 40px rgb(0 0 0 / .28);}
+.go-gallery{position:relative;min-width:0;max-width:100%;overflow:hidden;background:var(--bg-card);}
+@media (min-width:640px){.go-gallery{border-radius:20px;border:1px solid color-mix(in srgb,var(--brand-gold) 22%,var(--border-main));}}
 .go-gallery__track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;outline:none;}
 .go-gallery__track::-webkit-scrollbar{display:none;}
 .go-gallery__track:focus-visible{box-shadow:inset 0 0 0 3px var(--brand-gold);}
 .go-gallery__slide{flex:0 0 100%;aspect-ratio:1/1;scroll-snap-align:center;scroll-snap-stop:always;position:relative;display:grid;}
-@media (min-width:640px){.go-gallery__slide{aspect-ratio:4/3;}}
-@media (min-width:1024px){.go-gallery__slide{aspect-ratio:1/1;}}
 .go-gallery__photo{position:relative;display:block;width:100%;height:100%;padding:0;border:0;background:#0b1712;cursor:zoom-in;}
 .go-gallery__photo img{width:100%;height:100%;object-fit:contain;}
 .go-gallery__zoom{position:absolute;right:14px;top:14px;display:grid;place-items:center;width:40px;height:40px;border-radius:999px;background:rgb(0 0 0 / .5);color:#fff;backdrop-filter:blur(6px);}
@@ -42,20 +41,21 @@
 /* Second photo: where the product comes from. */
 .go-gallery__scene{position:relative;width:100%;height:100%;background:#0b1712;}
 .go-gallery__scene img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
-/* "Temsili görseldir ..." under the slider, never on the photo. */
-.go-gallery__note{margin:.6rem .25rem 0;font-size:.78rem;line-height:1.45;color:var(--text-muted);text-align:center;}
 .go-gallery__arrow{position:absolute;top:50%;z-index:2;display:grid;place-items:center;width:44px;height:44px;margin-top:-22px;border-radius:999px;border:1px solid rgb(255 255 255 / .18);background:rgb(0 0 0 / .45);color:#fff;backdrop-filter:blur(8px);opacity:0;transition:opacity .2s ease,transform .2s ease;}
 .go-gallery__arrow svg{width:20px;height:20px;}
 .go-gallery__arrow--prev{left:12px}.go-gallery__arrow--next{right:12px}
 .go-gallery:hover .go-gallery__arrow,.go-gallery__arrow:focus-visible{opacity:1;}
 @media (hover:none){.go-gallery__arrow{display:none;}}
-.go-gallery__footer{position:absolute;left:0;right:0;bottom:12px;z-index:2;display:flex;align-items:center;justify-content:center;gap:10px;pointer-events:none;}
-.go-gallery__counter{position:absolute;right:14px;bottom:0;padding:4px 10px;border-radius:999px;background:rgb(0 0 0 / .72);color:#fff;font-size:12px;font-weight:800;backdrop-filter:blur(6px);}
-.go-gallery__dots{display:flex;gap:0;padding:0 6px;border-radius:999px;background:rgb(0 0 0 / .32);backdrop-filter:blur(6px);pointer-events:auto;}
-.go-gallery__dot{position:relative;display:grid;place-items:center;width:24px;height:24px;padding:0;border:0;border-radius:999px;background:transparent;transition:width .25s ease;}
-.go-gallery__dot::after{content:"";width:8px;height:8px;border-radius:999px;background:rgb(255 255 255 / .5);transition:width .25s ease,background-color .25s ease;}
-.go-gallery__dot.is-active{width:32px;}
-.go-gallery__dot.is-active::after{width:22px;background:var(--brand-gold);}
+/* Slide indicator: a thin segment bar directly under the image, one segment
+   per slide; each segment is a tappable button with a 20px hit area. */
+.go-gallery__progress{display:flex;gap:6px;padding:0 16px;background:var(--bg-main);}
+.go-gallery__segment{flex:1 1 0;display:block;height:20px;padding:9px 0 0;border:0;background:transparent;cursor:pointer;}
+.go-gallery__segment span{display:block;height:2px;border-radius:2px;background:color-mix(in srgb,var(--text-main) 22%,transparent);transition:background-color .2s ease;}
+.go-gallery__segment.is-active span{background:var(--brand-gold);}
+.go-gallery__segment:focus-visible{outline:none;}
+.go-gallery__segment:focus-visible span{box-shadow:0 0 0 2px var(--brand-gold);}
+@media (min-width:640px){.go-gallery__progress{padding:0 12px;background:var(--bg-card);}}
+@media (prefers-reduced-motion:reduce){.go-gallery__segment span{transition:none;}}
 
 /* ---------- Sections (editorial page, 2026-10-03) ----------
    Calm rows separated by a hairline, closed until tapped. A section opens
@@ -129,9 +129,9 @@
 .go-artwork.go-product-row-v4__artwork{width:64px;height:64px;flex:0 0 64px;border-radius:14px;}
 :root .go-artwork.go-product-row-v4__placeholder{display:grid;background:radial-gradient(120% 90% at 50% 18%,color-mix(in srgb,var(--art-glow) 26%,transparent),transparent 62%),linear-gradient(160deg,var(--art-from),var(--art-to));}
 
-/* Global touch-target rules give every button 44px; the dots keep a 36px
-   invisible hit area through ::before instead. */
-.go-gallery .go-gallery__dot{min-height:0!important;min-width:0!important;height:24px!important;}
+/* Global touch-target rules give every button 44px; the slide segments keep
+   a 20px hit row so the bar stays directly under the image. */
+.go-gallery .go-gallery__segment{min-height:0!important;min-width:0!important;height:20px!important;}
 
 /* Return line under the purchase controls, and the full terms section. */
 .go-detail-returns__lead{margin:0;font-size:15px;line-height:1.7;color:var(--text-main);}

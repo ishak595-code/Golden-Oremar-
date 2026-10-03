@@ -50,9 +50,11 @@ await step('home: product row', '/', p => p.locator('[data-product-link="true"]'
 // which has a clean path (/kategori/<slug>) just like a product page.
 await step('product page: purchase dock replaces the tab bar', PRODUCT, async () => {}, async p => {
   const navVisible = await p.locator('nav[aria-label="Ana gezinme"]').isVisible().catch(() => false);
-  // Editorial page: the buttons sit in the buy box; the phone's calm bottom bar is fixed.
-  const dock = await p.locator('.go-sticky-buy').evaluate(el => getComputedStyle(el).position).catch(() => '');
-  return { ok: !navVisible && dock === 'fixed' && await tabOf(p) === 'product-detail', detail: `tab bar visible=${navVisible}, dock=${dock}, tab=${await tabOf(p)}` };
+  // Editorial page: the buttons sit in the buy box under the price; no bottom
+  // bar repeats the price (removed 2026-10-03, round 2).
+  const bars = await p.locator('.go-sticky-buy').count();
+  const buttons = await p.locator('.go-buy__actions .go-buy__primary').count();
+  return { ok: !navVisible && bars === 0 && buttons === 1 && await tabOf(p) === 'product-detail', detail: `tab bar visible=${navVisible}, bottom bars=${bars}, buy box buttons=${buttons}, tab=${await tabOf(p)}` };
 });
 for (const [tab, expected] of [['Kategoriler', '/?tab=categories'], ['Favoriler', '/?tab=account&view=favorites'], ['Sepet', '/?tab=cart'], ['Hesabım', '/?tab=account'], ['Ana Sayfa', '/?tab=home']]) {
   await step(`bottom navigation from a category page: ${tab}`, '/kategori/bal-sifa', p => p.locator(`nav[aria-label="Ana gezinme"] button[aria-label^="${tab}"]`).click(), async p => ({ ok: addressOf(p) === expected, detail: addressOf(p) }));

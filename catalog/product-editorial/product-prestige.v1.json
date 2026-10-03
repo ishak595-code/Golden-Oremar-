@@ -1,0 +1,305 @@
+{
+  "note": "Ürün sayfasında fotoğrafın hemen altındaki prestij satırı (2026-10-03): yer · üretim yöntemi · kısa özellik. Yalnız ürünün mevcut köken ve üretim bilgisinden (product-editorial.v1.json: origin, production, subtitle; ürün hikâyesi) yazılmıştır; sağlık iddiası yoktur. Veritabanında products.specifications->editorial->prestige alanında, çevrimdışı kopyada editorial.prestige alanında durur.",
+  "rows": [
+    {
+      "id": "1347f7c2-9a3b-4622-ad85-53e70238ffaf",
+      "slug": "daglica-karakovan-petek-bali-101",
+      "legacyId": "101",
+      "prestige": "Yüksekova · Karakovan arıcılığı · Yılda tek hasat"
+    },
+    {
+      "id": "aaabee02-be61-45ca-9007-bba163cf77c0",
+      "slug": "bercelan-yaylasi-bahar-cicek-bali-102",
+      "legacyId": "102",
+      "prestige": "Yüksekova · Yayla arıcılığı · Bahar çiçeklerinden"
+    },
+    {
+      "id": "c17f9a67-5560-449c-a8f2-a372f1625f88",
+      "slug": "avasin-mese-bali-103",
+      "legacyId": "103",
+      "prestige": "Yüksekova · Meşe salgı balı · Geç mevsim hasadı"
+    },
+    {
+      "id": "963b8bfa-8e7a-432d-b809-7cc4306c62e7",
+      "slug": "merez-hatun-un-magara-tulum-peyniri-201",
+      "legacyId": "201",
+      "prestige": "Yüksekova · Mağarada olgunlaştırma · Sekiz ay dinlenir"
+    },
+    {
+      "id": "7517d0c2-e0fe-4c6b-99fe-b6e38925a1df",
+      "slug": "naciye-nin-yayik-tereyagi-202",
+      "legacyId": "202",
+      "prestige": "Yüksekova · Ahşap yayıkta elle dövme · Katkısız"
+    },
+    {
+      "id": "1e22e0e3-3bd3-4359-8b1d-e83eb7501a54",
+      "slug": "havahan-in-otlu-dag-peyniri-203",
+      "legacyId": "203",
+      "prestige": "Yüksekova · Elle toplanan dağ otlarıyla · Salamurada olgunlaşır"
+    },
+    {
+      "id": "35d9cc53-6667-44d5-90c3-3e4132a46d81",
+      "slug": "gunluk-taze-civik-sut-sagimdan-kapiya-204",
+      "legacyId": "204",
+      "prestige": "Yüksekova · Elle sağım · Isıl işlemsiz"
+    },
+    {
+      "id": "b3744415-7a3b-406a-8874-641ce3512beb",
+      "slug": "taze-yayik-ayrani-canli-kultur-205",
+      "legacyId": "205",
+      "prestige": "Yüksekova · Ahşap yayıkta çalkalama · Köy yoğurdundan"
+    },
+    {
+      "id": "dc5c8644-550a-4033-82e1-5637301c277a",
+      "slug": "avasin-deresi-canli-alabaligi-ozel-hasat-301",
+      "legacyId": "301",
+      "prestige": "Yüksekova · Avaşin deresinden · Siparişle hasat"
+    },
+    {
+      "id": "aae99128-f40e-4bc7-929e-f896c00ab313",
+      "slug": "abidin-in-yayla-kuzusu-302",
+      "legacyId": "302",
+      "prestige": "Yüksekova · Yayla otlatması · Siparişle helal kesim"
+    },
+    {
+      "id": "b40c1609-2274-4dc8-9716-377a0f027dfa",
+      "slug": "fahrettin-in-sutten-kesilmis-oglagi-303",
+      "legacyId": "303",
+      "prestige": "Yüksekova · Yamaç keçilerinden · Siparişle kesim"
+    },
+    {
+      "id": "dffffd4a-d660-40df-a682-76cf868858c7",
+      "slug": "salih-in-meralik-ozgur-horozu-304",
+      "legacyId": "304",
+      "prestige": "Yüksekova · Merada serbest gezen · Helal kesim"
+    },
+    {
+      "id": "bfd5e5f6-a2c0-4511-815a-d83f0be8ef78",
+      "slug": "amine-nin-cifte-sari-koy-yumurtasi-305",
+      "legacyId": "305",
+      "prestige": "Yüksekova · Serbest gezen köy tavukları · Elle seçim"
+    },
+    {
+      "id": "dc2c2378-ad63-4bbe-9eab-882165939e54",
+      "slug": "avasin-cam-damacana-suyu-401",
+      "legacyId": "401",
+      "prestige": "Yüksekova · Avaşin kaynağından · Sipariş üzerine dolum"
+    },
+    {
+      "id": "b510b051-a5d7-47cd-9795-878573dd27f8",
+      "slug": "koyun-efsanevi-beyaz-isitma-pres-tasi-402",
+      "legacyId": "402",
+      "prestige": "Yüksekova · Elle seçilip tıraşlanır · Doğal taş"
+    },
+    {
+      "id": "65325abe-33ec-4588-9bcb-b3a9c3e85cb5",
+      "slug": "sobalik-mese-yarigi-403",
+      "legacyId": "403",
+      "prestige": "Yüksekova · Açık havada kurutma · Kuru meşe"
+    },
+    {
+      "id": "611e8fdc-6775-4312-9c6e-3c3769ebc731",
+      "slug": "hatun-ana-nin-eksi-maya-gunesi-tarhana-501",
+      "legacyId": "501",
+      "prestige": "Yüksekova · Güneşte kurutma · Ekşi mayalı"
+    },
+    {
+      "id": "e9941a2c-b441-496c-ae09-6564cba5d3a4",
+      "slug": "sami-usta-nin-kurutulmus-dag-dutlari-502",
+      "legacyId": "502",
+      "prestige": "Yüksekova · Güneşte geleneksel kurutma · Katkısız"
+    },
+    {
+      "id": "9fa01408-b682-4600-a19b-dc7126519c1e",
+      "slug": "kadin-imecesi-odun-atesi-pekmezi-503",
+      "legacyId": "503",
+      "prestige": "Yüksekova · Bakır kazanda, odun ateşinde · Katkısız"
+    },
+    {
+      "id": "d55e016b-ec47-4f92-a900-a2550e6917c5",
+      "slug": "husnu-dayi-nin-kagit-kabuklu-cevizi-504",
+      "legacyId": "504",
+      "prestige": "Yüksekova · Gölgede doğal kurutma · Köy cevizi"
+    },
+    {
+      "id": "24a412fc-19d6-4e82-8e9f-78dae33acce8",
+      "slug": "el-isciligi-mese-palamudu-ekmegi-505",
+      "legacyId": "505",
+      "prestige": "Yüksekova · Odun fırınında · Ekşi mayalı"
+    },
+    {
+      "id": "1b401442-df5f-4b88-a578-100e7bcf9242",
+      "slug": "isli-kaya-uzumleri-tane-kuru-506",
+      "legacyId": "506",
+      "prestige": "Yüksekova · Odun isiyle geleneksel kurutma · Sınırlı hasat"
+    },
+    {
+      "id": "adfee0a8-15f5-4253-9881-870e89536a2a",
+      "slug": "zahter-harmani-dag-kekigi-507",
+      "legacyId": "507",
+      "prestige": "Yüksekova · Gölgede kurutma · Doğadan toplama"
+    },
+    {
+      "id": "787138cf-3248-48e1-a48f-da6ef43aacba",
+      "slug": "sessiz-orman-kuzu-gobegi-mantari-601",
+      "legacyId": "601",
+      "prestige": "Yüksekova · Doğadan toplama · Sınırlı hasat"
+    },
+    {
+      "id": "1780065a-28ac-4261-a2ef-13c39d299195",
+      "slug": "kan-kirmizi-yabani-kizilcik-surubu-seti-602",
+      "legacyId": "602",
+      "prestige": "Yüksekova · Yabani kızılcıktan · Kaynatılıp süzülür"
+    },
+    {
+      "id": "060ab141-6901-4364-9bac-8d47382ab9aa",
+      "slug": "kirik-tas-kaya-tuzu-blogu-kristal-603",
+      "legacyId": "603",
+      "prestige": "Yüksekova · Ocaktan kırma · İşlenmemiş"
+    },
+    {
+      "id": "d810734a-c147-4fa5-a7b6-7182ff5c8ed1",
+      "slug": "gunes-sirri-guzu-yagi-ic-yag-701",
+      "legacyId": "701",
+      "prestige": "Yüksekova · Kısık ateşte eritme · Katkısız"
+    },
+    {
+      "id": "d80d915b-5653-43c9-868e-d376a50095fd",
+      "slug": "sabir-kurutmasi-cicek-bamyasi-702",
+      "legacyId": "702",
+      "prestige": "Yüksekova · İpte, gölgede kurutma · Katkısız"
+    },
+    {
+      "id": "61bdf13e-fb75-4033-b584-3dc43de678d1",
+      "slug": "kekik-aromali-kesik-yogurt-kurud-703",
+      "legacyId": "703",
+      "prestige": "Yüksekova · Güneşte kurutma · Dağ kekiğiyle"
+    },
+    {
+      "id": "feb5bc4c-e9f6-4d79-bbc9-e1afe4b9af2d",
+      "slug": "el-islemesi-tahta-kasik-ve-yayik-tokmagi-704",
+      "legacyId": "704",
+      "prestige": "Yüksekova · El oyması · Ardıç ve şimşir"
+    },
+    {
+      "id": "89e97a7f-66f5-45e4-9a1f-7af1185f9dd9",
+      "slug": "buyuk-iskender-corek-otu-tohumu-705",
+      "legacyId": "705",
+      "prestige": "Yüksekova · Elle eleme · Köy tarlasından"
+    },
+    {
+      "id": "e02d17fb-8b41-4361-9971-365135631d61",
+      "slug": "koylu-isi-aci-kirmizi-biber-706",
+      "legacyId": "706",
+      "prestige": "Yüksekova · Güneşte kurutma, havanda dövme · Katkısız"
+    },
+    {
+      "id": "c5e47259-5b24-4b03-a3ed-da1f16899448",
+      "slug": "kusburnu-marmelati-707",
+      "legacyId": "707",
+      "prestige": "Yüksekova · Yabani kuşburnundan · Süzülerek pişirilir"
+    },
+    {
+      "id": "d16f52a6-f3af-40f8-b309-6f310d5d2c06",
+      "slug": "hakkari-dag-elmasi-801",
+      "legacyId": "801",
+      "prestige": "Yüksekova · Yüksek rakımda · İlaç atılmadan"
+    },
+    {
+      "id": "1e90c6db-fa50-4b05-84f1-2f2224f04f21",
+      "slug": "yuksekova-yayla-domatesi-802",
+      "legacyId": "802",
+      "prestige": "Yüksekova · Ata tohumundan · Toprakta yetişir"
+    },
+    {
+      "id": "6e2b45bf-b3cc-4cc4-bc56-b7d87ef89552",
+      "slug": "dag-cilegi-yabani-803",
+      "legacyId": "803",
+      "prestige": "Yüksekova · Doğadan elle toplama · Kendiliğinden yetişir"
+    },
+    {
+      "id": "56a24565-7268-49db-9715-2ba08035d265",
+      "slug": "eksi-karadut-suyu-804",
+      "legacyId": "804",
+      "prestige": "Yüksekova · Odun ateşinde koyulaştırma · Katkısız"
+    },
+    {
+      "id": "79ea7368-1e8a-49c9-ac02-939a584d661f",
+      "slug": "hardaliye-geleneksel-805",
+      "legacyId": "805",
+      "prestige": "Yüksekova · Geleneksel fermantasyon · Hardal tohumuyla"
+    },
+    {
+      "id": "ec7df8a1-4b85-4b5c-b440-aeae1b17f781",
+      "slug": "kitir-taze-cagla-badem-806",
+      "legacyId": "806",
+      "prestige": "Yüksekova · Günlük elle toplama · Mevsimlik"
+    },
+    {
+      "id": "ae324353-9844-4b34-a71e-491942b4182d",
+      "slug": "ata-tohumu-dag-kekigi-suyu-distile-807",
+      "legacyId": "807",
+      "prestige": "Yüksekova · İmbikte damıtma · Dağ kekiğinden"
+    },
+    {
+      "id": "84714717-f619-4a84-9181-603252bd00c3",
+      "slug": "kislik-kurutulmus-cennet-hurmasi-808",
+      "legacyId": "808",
+      "prestige": "Yüksekova · Askıda kurutma · Bütün meyve"
+    },
+    {
+      "id": "77e8ba53-ccb1-41ef-9151-98a44be1469a",
+      "slug": "kekik-aromali-visne-kompostosu-809",
+      "legacyId": "809",
+      "prestige": "Yüksekova · Odun ateşinde kaynatma · Dağ kekiğiyle"
+    },
+    {
+      "id": "70fc64fc-3a22-4a63-a3b7-59dfd257687e",
+      "slug": "yuksekova-sonbahar-armudu-901",
+      "legacyId": "901",
+      "prestige": "Yüksekova · Dalından elle toplama · Küçük parti"
+    },
+    {
+      "id": "8a0cf6ca-12b9-405f-b3f1-015720bab8fb",
+      "slug": "hakkari-dag-erigi-902",
+      "legacyId": "902",
+      "prestige": "Yüksekova · Mevsiminde elle toplama · İnce kabuklu"
+    },
+    {
+      "id": "ab665608-64ee-4430-8924-b4167a7f4889",
+      "slug": "yuksekova-yayla-kayisisi-903",
+      "legacyId": "903",
+      "prestige": "Yüksekova · Dalında olgunlaşma · Elle toplama"
+    },
+    {
+      "id": "fafb2050-d147-43a7-a278-f0edf3abcb0c",
+      "slug": "yuksekova-yaz-hiyari-904",
+      "legacyId": "904",
+      "prestige": "Yüksekova · Sabah hasadı · Çıtır"
+    },
+    {
+      "id": "f09dcaeb-f8ac-4200-8a3e-a4344505f188",
+      "slug": "hakkari-yayla-karpuzu-905",
+      "legacyId": "905",
+      "prestige": "Yüksekova · Yayla yetiştiriciliği · Tek tek seçilir"
+    },
+    {
+      "id": "9aba0066-f8ad-4519-9008-61208a745897",
+      "slug": "yuksekova-yayla-poleni-906",
+      "legacyId": "906",
+      "prestige": "Yüksekova · Gölgede kurutma · Yayla çiçeklerinden"
+    },
+    {
+      "id": "a82bd3bf-b288-4c62-919b-a762e9c059e9",
+      "slug": "hakkari-ham-propolisi-907",
+      "legacyId": "907",
+      "prestige": "Yüksekova · Elle kazıma · İşlenmemiş"
+    },
+    {
+      "id": "30c7f86c-8b8b-4518-b0ad-bd9574227536",
+      "slug": "tas-degirmen-yuksekova-bulguru-908",
+      "legacyId": "908",
+      "prestige": "Yüksekova · Taş değirmende kırma · Yerli buğdaydan"
+    }
+  ]
+}

@@ -26,9 +26,20 @@ check(/<DetailAccordionGroup/.test(detail), 'Product sections sit in DetailAccor
 for (const [id, label] of [['delivery', 'Kargo ve teslimat bilgisi'], ['story', 'Bu ürünün hikâyesi'], ['info', 'Ürün bilgileri ve özellikleri'], ['safety', 'Sağlık bilgileri'], ['usage', 'Nasıl tüketilir\\?'], ['reviews', 'Müşteri Yorumları']]) {
   check(new RegExp(`<DetailAccordion id="${id}"[^>]*title=[^>]*${label}`).test(detail), `The "${label.replace('\\', '')}" section must be a DetailAccordion (id ${id}).`);
 }
-check(!/go-detail-recos|<ProductRecommendations\b|<ProductRecommendationsRail\b/.test(detail), 'Reviews are the last section of the product page; no recommendation shelf after them.');
+// Round 2 (2026-10-03): after the reviews comes the product-based shelf
+// "Bu ürünün yanına yakışanlar" again (and nothing else).
+check(/<ProductRecommendationsShelf reference=/.test(detail) && detail.indexOf('<ProductRecommendationsShelf ') > detail.indexOf('<DetailAccordion id="reviews"') && !/<ProductRecommendationsRail\b/.test(detail), 'After the reviews: the product-based recommendations shelf, once.');
 check(/<ProductGallery /.test(detail), 'The product images use ProductGallery.');
-check(!/go-return-line/.test(detail) && /<DetailAccordion id="delivery"[\s\S]{0,1600}ShippingReadiness[\s\S]{0,400}withdrawal\.copy\.body/.test(detail), 'Shipping and the withdrawal terms live in "Kargo ve teslimat bilgisi" in the buy box (no separate line under the price).');
+{
+  // "Kargo ve teslimat bilgisi": short label / value rows from real data only
+  // (fee and delivery days from get_shipping_quote_v1, stored pre-order
+  // timing, cold chain, the return right in one line) and nothing else.
+  const delivery = detail.slice(detail.indexOf('<DetailAccordion id="delivery"'), detail.indexOf('</DetailAccordion>', detail.indexOf('<DetailAccordion id="delivery"')));
+  check(!/go-return-line/.test(detail) && /<dl className="go-ship">/.test(delivery) && />Kargo ücreti</.test(delivery) && /getDomesticShippingQuote\(/.test(detail) && /withdrawal\.copy\.title/.test(delivery), 'Shipping and the return right live in "Kargo ve teslimat bilgisi" as short rows (no separate line under the price).');
+  check(!/yarın|withdrawal\.copy\.body|ShippingReadiness|go-detail-returns|Satıcı/.test(delivery), '"Kargo ve teslimat bilgisi" carries no long return steps, seller notes or invented dates.');
+  const quote = read('src/features/catalog/shippingQuote.ts');
+  check(/supabase\.rpc\('get_shipping_quote_v1'/.test(quote) && !/\b(?:[1-9]\d{2,})\b/.test(quote.replace(/\b(?:100000|1000)\b/g, '')), 'Shipping numbers come from the shipping zones (get_shipping_quote_v1), none are written in the code.');
+}
 check(!/[\u2600-\u27BF\u{1F300}-\u{1FAFF}]/u.test(detail), 'The product page uses no emoji; states are shown with line icons.');
 check(/<ul className="go-kunye"/.test(detail) && detail.indexOf('<ul className="go-kunye"') > detail.indexOf('Üreticisini tanı') && detail.indexOf('<ul className="go-kunye"') < detail.indexOf('go-store-ask') && /maps\/search\/\?api=1&query=/.test(detail) && !/go-stock-line/.test(detail) && !/go-origin-strip/.test(detail) && !/go-detail-origin/.test(detail) && !/kind:'origin'/.test(detail) && !/label:'Stok'/.test(detail), 'Maker, village and verification are separate rows (the künye) under "Üreticisini tanı"; the village row opens the map; none of them is repeated as a strip, a line or a footer, and there is no "Stok: Var" row.');
 check(!/go-maker-line/.test(detail) && /productMaker\(detail\?\.slug,detail\?\.makerName\)/.test(detail) && /key:'maker',label:'Üreten'/.test(detail) && !/id="world"/.test(detail) && !/<ProductDetailConnections/.test(detail), 'The maker is named once, in the künye (not again under the product name).');
@@ -37,7 +48,7 @@ check(!/Ürün Videosu<\/h2>/.test(detail) && /kind:'video'/.test(detail), 'The 
 check(/\{hasTraceability\?<DetailAccordion id="trace"/.test(detail), 'The traceability section is hidden while it has nothing to show.');
 check(!/aria-label="Bu ürünü hediye gönder"/.test(detail) && /async function giftNow\(\)[\s\S]{0,500}setOfflineGift\(true\)/.test(detail), 'One gift button; it works for guests through the order sheet.');
 check(/go-stock-pill go-stock-pill--out/.test(detail) && /const lowStock=!soldOut&&!preorder&&tracked/.test(detail), 'Sold out is a pill next to the price; a low stock is said next to the quantity.');
-check(/Sipariş üzerine hazırlanır/.test(detail) && /specifications\?.preOrderTime/.test(detail), 'Pre-orders say so under the price and show the stored harvest and dispatch sentence.');
+check(/Sipariş üzerine hazırlanır/.test(detail) && /specifications\?.preOrderTime/.test(detail) && /'Kargoya veriliş'/.test(detail), 'Pre-orders say so under the price and show the stored harvest and dispatch timing.');
 check(!/aria-labelledby="product-withdrawal-title" className=\{`mt-6 flex gap-3/.test(detail), 'The large always-open withdrawal box must not come back.');
 
 // Title to price: the name, the subtitle and the price; no review prompt or

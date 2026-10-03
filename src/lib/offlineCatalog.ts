@@ -160,6 +160,22 @@ const RESOLVERS: Record<string, Resolver> = {
     if (!/^\d{10,15}$/.test(digits)) return undefined;
     return { whatsapp: { enabled: true, number: digits }, bankTransfer: { enabled: false, accounts: [], paymentWindowHours: 48 }, note: null };
   },
+  // Domestic shipping from the shipped quotes for 1 kg and 2 kg (the zone's
+  // base fee and fee per started kg follow from the two); free from the
+  // zone's threshold. Other countries need the live quote.
+  get_shipping_quote_v1: async args => {
+    if (String(args.p_country_code ?? '').toUpperCase() !== 'TR' || String(args.p_currency ?? 'TRY').toUpperCase() !== 'TRY') return undefined;
+    const shipped = await load('shipping_tr.json');
+    const kg1 = shipped?.kg1, kg2 = shipped?.kg2;
+    if (!kg1 || kg1.available !== true || kg1.manualQuoteRequired === true || !Number.isSafeInteger(kg1.shippingMinor) || !Number.isSafeInteger(kg2?.shippingMinor)) return undefined;
+    const grams = Math.max(1, Math.min(100000, Math.round(Number(args.p_weight_grams) || 1000)));
+    const perKg = Math.max(0, kg2.shippingMinor - kg1.shippingMinor);
+    const base = Math.max(0, kg1.shippingMinor - perKg);
+    const threshold = Number(kg1.freeShippingThresholdMinor);
+    const subtotal = Number(args.p_subtotal_minor) || 0;
+    const free = Number.isSafeInteger(threshold) && threshold > 0 && subtotal >= threshold;
+    return { ...kg1, weightGrams: grams, shippingMinor: free ? 0 : base + perKg * Math.ceil(grams / 1000) };
+  },
   list_public_events_v1: args => load(args.p_include_past === true ? 'events_all.json' : 'events_upcoming.json'),
   get_public_producer_profile_v3: async args => {
     const index = await load('producers.json');
