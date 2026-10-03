@@ -253,21 +253,17 @@
 /* Prestige line under the photo: place · how it is made · one trait. */
 .go-prestige { margin: .9rem 1rem 0; font-size: .9rem; font-weight: 600; letter-spacing: .015em; line-height: 1.6; color: var(--brand-gold); text-align: center; overflow-wrap: anywhere; }
 .go-prestige__dot { padding-inline: .1rem; }
-@media (min-width: 640px) { .go-prestige { margin-inline: 0; } }
+/* "Kargo bizden": always visible, quieter than the prestige line above it. */
+.go-prestige-note { margin: .2rem 1rem 0; font-size: .82rem; font-weight: 500; letter-spacing: .015em; line-height: 1.5; color: var(--text-muted); text-align: center; }
+@media (min-width: 640px) { .go-prestige, .go-prestige-note { margin-inline: 0; } }
+/* Facts table rows with more than one line (Teslimat). */
+.go-facts__line { display: block; }
+.go-facts__line + .go-facts__line { margin-top: .2rem; }
 
 /* Type and spacing in the buy box. */
 .go-buybox__title { font-weight: 700; }
-.go-buybox__subtitle { line-height: 1.6; }
 .go-price-card { margin-top: 1.35rem; }
-.go-buybox > .go-detail-accordion--compact { margin-top: 1.75rem; }
-.go-buy { margin-top: 1.25rem; }
-
-/* Kargo ve teslimat bilgisi: label / value rows. */
-.go-ship { display: grid; margin: 0; }
-.go-ship__row { display: grid; grid-template-columns: minmax(7rem, 38%) 1fr; gap: .75rem; padding: .6rem 0; border-top: 1px solid var(--border-light, var(--border-main)); }
-.go-ship__row:first-child { border-top: 0; padding-top: .1rem; }
-.go-ship dt { font-size: .88rem; color: var(--text-muted); }
-.go-ship dd { margin: 0; font-size: .92rem; font-weight: 600; line-height: 1.5; color: var(--text-main); overflow-wrap: anywhere; }
+.go-buy { margin-top: 1.75rem; }
 
 /* Sections: a little more air and slightly bolder headings. */
 .go-pdp__lower { gap: 2.25rem; margin-top: 2.75rem; }
