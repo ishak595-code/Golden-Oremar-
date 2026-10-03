@@ -100,7 +100,8 @@ function originParts(origin: unknown) {
 function matches(item: Json, args: Args) {
   const query = trLower(args.p_query).trim();
   if (query) {
-    const haystack = trLower([item.name, item.shortDescription, item.category?.name, item.producer?.name, item.origin].join(' '));
+    // formerName: the product's earlier display name, so old searches still find it.
+    const haystack = trLower([item.name, item.formerName, item.shortDescription, item.category?.name, item.producer?.name, item.origin].join(' '));
     if (!query.split(/\s+/).every(word => haystack.includes(word))) return false;
   }
   if (args.p_category_slug && item.category?.slug !== args.p_category_slug) return false;
@@ -252,7 +253,7 @@ const RESOLVERS: Record<string, Resolver> = {
         out.push({ id: item.category.id, kind: 'category', label: item.category.name, value: item.category.slug });
       }
     }
-    for (const item of items) if (trLower(item.name).includes(query)) out.push({ id: item.id, kind: 'product', label: item.name, value: item.slug });
+    for (const item of items) if (trLower(item.name).includes(query) || (item.formerName && trLower(item.formerName).includes(query))) out.push({ id: item.id, kind: 'product', label: item.name, value: item.slug });
     return out.slice(0, limit);
   },
   public_product_recommendations_v1: async args => {

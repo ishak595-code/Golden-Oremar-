@@ -50,7 +50,8 @@ await step('home: product row', '/', p => p.locator('[data-product-link="true"]'
 // which has a clean path (/kategori/<slug>) just like a product page.
 await step('product page: purchase dock replaces the tab bar', PRODUCT, async () => {}, async p => {
   const navVisible = await p.locator('nav[aria-label="Ana gezinme"]').isVisible().catch(() => false);
-  const dock = await p.locator('.product-detail-commerce-dock').evaluate(el => getComputedStyle(el).position).catch(() => '');
+  // Editorial page: the buttons sit in the buy box; the phone's calm bottom bar is fixed.
+  const dock = await p.locator('.go-sticky-buy').evaluate(el => getComputedStyle(el).position).catch(() => '');
   return { ok: !navVisible && dock === 'fixed' && await tabOf(p) === 'product-detail', detail: `tab bar visible=${navVisible}, dock=${dock}, tab=${await tabOf(p)}` };
 });
 for (const [tab, expected] of [['Kategoriler', '/?tab=categories'], ['Favoriler', '/?tab=account&view=favorites'], ['Sepet', '/?tab=cart'], ['Hesabım', '/?tab=account'], ['Ana Sayfa', '/?tab=home']]) {

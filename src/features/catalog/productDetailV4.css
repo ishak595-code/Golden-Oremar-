@@ -1,4 +1,4 @@
-/* Product page v4: price block, delivery row,
+/* Product page v4: buy box, purchase buttons, facts, sections,
    review summary and polished empty state, gallery thumbnails, zoomable
    viewer. Loaded with the product page chunk only. */
 
@@ -23,36 +23,102 @@
 .go-star svg { width: 100%; height: 100%; }
 .go-star--full svg { fill: var(--brand-gold); color: var(--brand-gold); }
 
-/* Price block */
-.go-price-card { margin-top: 1rem; padding: 1rem 1.1rem; border-radius: 1.4rem; border: 1px solid color-mix(in srgb, var(--brand-gold) 30%, var(--border-main)); background: linear-gradient(140deg, color-mix(in srgb, var(--brand-gold) 7%, var(--bg-card)), var(--bg-card) 60%); box-shadow: 0 14px 32px rgb(0 0 0 / .10); }
-.go-price-card__main { display: flex; align-items: flex-end; justify-content: space-between; gap: .75rem; }
-.go-price-card__amounts { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .6rem; min-width: 0; }
-.go-price-card__price { font-size: clamp(1.7rem, 7vw, 2.1rem); font-weight: 900; line-height: 1.05; letter-spacing: -.01em; color: var(--brand-green); font-variant-numeric: tabular-nums; }
+/* Buy box (editorial page, 2026-10-03): title, subtitle, price and pack,
+   one line about the product, origin and delivery, then the buttons. Calm
+   type, generous spacing, no cards inside cards. */
+.go-buybox { display: flex; flex-direction: column; min-width: 0; }
+.go-buybox__title { margin: 0; font-family: var(--font-serif, Georgia, serif); font-size: clamp(1.6rem, 6.2vw, 2.05rem); font-weight: 600; line-height: 1.15; letter-spacing: -.012em; color: var(--text-main); overflow-wrap: anywhere; }
+.go-buybox__subtitle { margin: .4rem 0 0; font-size: .98rem; line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
+.go-price-card { margin-top: 1.1rem; }
+.go-price-card__main { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.go-price-card__amounts { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .6rem; min-width: 0; margin: 0; }
+.go-price-card__price { font-size: clamp(1.55rem, 6vw, 1.85rem); font-weight: 700; line-height: 1.1; letter-spacing: -.01em; color: var(--brand-green); font-variant-numeric: tabular-nums; }
 :root[data-color-scheme="dark"] .go-price-card__price { color: var(--brand-gold); }
 .go-price-card__was { font-size: .85rem; color: var(--text-muted); }
-.go-price-card__discount { order: -1; flex-basis: 100%; width: max-content; max-width: max-content; border-radius: 999px; padding: .2rem .6rem; font-size: .75rem; font-weight: 900; color: #fff; background: #b42318; }
-.go-price-card__unit { margin-top: .45rem; display: flex; flex-wrap: wrap; gap: .35rem .75rem; font-size: .85rem; color: var(--text-muted); }
-.go-price-card__unit > span:first-child { font-weight: 700; color: var(--text-main); }
-.go-price-card__kg { font-variant-numeric: tabular-nums; }
+.go-price-card__discount { order: -1; flex-basis: 100%; width: max-content; max-width: max-content; border-radius: 999px; padding: .15rem .55rem; font-size: .72rem; font-weight: 800; color: #fff; background: #b42318; }
+.go-price-card__missing { margin: 0; font-weight: 700; color: var(--text-muted); }
+.go-price-card__unit { margin: .3rem 0 0; display: flex; flex-wrap: wrap; gap: .25rem .75rem; font-size: .9rem; color: var(--text-muted); }
+.go-price-card__pack { color: var(--text-main); }
+.go-price-card__kg { font-size: .82rem; font-variant-numeric: tabular-nums; }
+.go-price-card__preorder { margin: .35rem 0 0; font-size: .78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--brand-gold); }
+.go-buybox__tagline { margin: 1.1rem 0 0; font-family: var(--font-serif, Georgia, serif); font-size: 1.08rem; font-style: italic; line-height: 1.55; color: var(--text-main); overflow-wrap: anywhere; }
+.go-buybox__origin { display: flex; align-items: center; gap: .4rem; margin: 1.1rem 0 .5rem; font-size: .78rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--brand-gold); }
+.go-buybox__origin svg { width: .95rem; height: .95rem; flex: 0 0 auto; }
+.go-buybox > .go-detail-accordion--compact { border-bottom: 1px solid var(--border-main); }
+.go-delivery__lead, .go-delivery__text { margin: 0 0 .6rem; line-height: 1.6; color: var(--text-muted); }
+.go-delivery__lead strong { color: var(--text-main); font-weight: 700; }
+.go-detail-returns__title { margin: 0 0 .35rem; font-weight: 700; color: var(--text-main); }
 
-/* Purchase dock: live total above the buttons */
-.go-dock-summary { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: 0 .2rem .5rem; font-size: .78rem; color: var(--text-muted); }
-.go-dock-summary__what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.go-dock-summary__total { display: inline-flex; align-items: baseline; gap: .35rem; white-space: nowrap; }
-.go-dock-summary__total strong { font-size: 1rem; font-weight: 900; color: var(--text-main); font-variant-numeric: tabular-nums; }
-:root[data-app-tab="product-detail"] #root > .min-h-screen { padding-bottom: 8.6rem !important; }
+/* Purchase: options and quantity, then one large primary button and two
+   quiet secondary ones. */
+.go-buy { display: grid; gap: .9rem; margin-top: 0; min-width: 0; }
+.go-buy > :first-child:not(.go-order-config) { margin-top: 1rem; }
+.go-buy__field { display: grid; gap: .35rem; font-size: .85rem; font-weight: 700; color: var(--text-main); }
+.go-buy__qty { display: flex; align-items: center; gap: .75rem; }
+.go-buy__qty-label { font-size: .9rem; font-weight: 700; color: var(--text-main); }
+.go-buy__low { font-size: .8rem; font-weight: 700; color: #b45309; }
+:root[data-color-scheme="dark"] .go-buy__low { color: #fbbf24; }
+.go-buy__stepper { display: inline-flex; align-items: center; margin-left: auto; border: 1px solid var(--border-main); border-radius: 999px; background: var(--bg-card); }
+.go-buy__stepper button { display: grid; place-items: center; min-width: 2.75rem; min-height: 2.75rem; border: 0; background: transparent; color: var(--text-main); border-radius: 999px; touch-action: manipulation; }
+.go-buy__stepper button svg { width: 1rem; height: 1rem; }
+.go-buy__stepper button:disabled { opacity: .35; cursor: not-allowed; }
+.go-buy__stepper output { min-width: 2rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.go-buy__issue { margin: 0; padding: .7rem .9rem; border-radius: .9rem; background: #fffbeb; color: #78350f; font-size: .88rem; line-height: 1.5; }
+:root[data-color-scheme="dark"] .go-buy__issue { background: rgb(69 26 3 / .35); color: #fde68a; }
+.go-buy__actions { display: grid; gap: .6rem; }
+.go-buy__actions button { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-width: 0; border-radius: .95rem; font-weight: 700; line-height: 1.2; text-align: center; touch-action: manipulation; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
+.go-buy__actions button svg { flex: 0 0 auto; width: 1.05rem; height: 1.05rem; }
+.go-buy__actions button span { min-width: 0; overflow-wrap: anywhere; }
+.go-buy__actions button:disabled { opacity: .5; cursor: not-allowed; }
+.go-buy__actions button:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 2px; }
+.go-buy__primary { min-height: 3.4rem; border: 1px solid var(--brand-green, #0f5132); background: var(--brand-green, #0f5132); color: var(--text-on-green, #fff); font-size: 1.02rem; box-shadow: 0 8px 22px color-mix(in srgb, var(--brand-green, #0f5132) 20%, transparent); }
+.go-buy__secondary { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.go-buy__secondary button { min-height: 3rem; padding: .4rem .6rem; border: 1px solid var(--border-main); background: transparent; color: var(--text-main); font-size: .92rem; }
+.go-buy__secondary button:hover { border-color: color-mix(in srgb, var(--brand-gold) 55%, var(--border-main)); }
+.go-buy__secondary .product-detail-commerce-gift svg { color: var(--brand-gold); }
 
-/* Delivery row */
-.go-delivery-row { margin-top: 1rem; display: flex; width: 100%; align-items: center; gap: .8rem; padding: .85rem 1rem; border-radius: 1.1rem; border: 1px solid var(--border-main); background: var(--bg-card); color: var(--text-main); text-align: left; transition: border-color .15s ease; }
-.go-delivery-row:hover { border-color: color-mix(in srgb, var(--brand-gold) 50%, var(--border-main)); }
-.go-delivery-row:focus-visible { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-gold) 55%, transparent); }
-.go-delivery-row__icon { display: grid; place-items: center; flex: 0 0 auto; width: 2.5rem; height: 2.5rem; border-radius: .8rem; background: color-mix(in srgb, var(--brand-green) 10%, transparent); color: var(--brand-green); }
-:root[data-color-scheme="dark"] .go-delivery-row__icon { color: var(--brand-gold); background: color-mix(in srgb, var(--brand-gold) 12%, transparent); }
-.go-delivery-row__icon svg { width: 1.25rem; height: 1.25rem; }
-.go-delivery-row__text { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: .1rem; }
-.go-delivery-row__text strong { font-size: .92rem; font-weight: 800; }
-.go-delivery-row__text span { font-size: .8rem; line-height: 1.35; color: var(--text-muted); }
-.go-delivery-row__go { flex: 0 0 auto; width: 1.1rem; height: 1.1rem; color: var(--text-muted); }
+/* Hazırlama tercihleri: one quiet row inside the purchase area. */
+.go-order-config { border-bottom: 1px solid var(--border-main); }
+.go-buy__field + .go-order-config { border-top: 1px solid var(--border-main); }
+.go-order-config__header { display: flex; width: 100%; align-items: center; gap: .75rem; min-height: 3.25rem; padding: .7rem 2px; text-align: left; }
+.go-order-config__titles { display: grid; flex: 1; min-width: 0; gap: .1rem; }
+.go-order-config__title { font-size: .92rem; font-weight: 700; color: var(--text-main); }
+.go-order-config__summary { font-size: .85rem; color: var(--text-muted); overflow-wrap: anywhere; }
+.go-order-config__change { flex: 0 0 auto; font-size: .8rem; font-weight: 700; color: var(--brand-gold); }
+.go-order-config .go-order-config__chevron { flex: 0 0 auto; width: 1.1rem; height: 1.1rem; color: var(--text-muted); }
+.go-order-config__body { padding: .25rem 2px 1rem; }
+.go-order-config__lead { margin: 0 0 .9rem; font-size: .88rem; line-height: 1.55; color: var(--text-muted); }
+.go-order-config__note { margin: .9rem 0 0; font-size: .78rem; line-height: 1.45; color: var(--text-muted); }
+
+/* Lower page: one reading column. */
+.go-pdp__lower { display: grid; gap: 1.75rem; max-width: 46rem; margin: 2.25rem auto 0; min-width: 0; }
+.go-detail-about { margin: 0 0 .9rem; font-size: 16px; line-height: 1.8; color: var(--text-main); overflow-wrap: anywhere; }
+.go-detail-description + .go-detail-features, .go-detail-about + .go-detail-features { margin-top: 1rem; }
+.go-detail-description { margin-bottom: 1rem !important; }
+
+/* Four facts, always in view. */
+.go-facts { display: grid; margin: 0; }
+.go-facts__row { display: grid; grid-template-columns: minmax(6.5rem, 34%) 1fr; gap: 1rem; padding: .8rem 2px; border-bottom: 1px solid var(--border-light, var(--border-main)); }
+.go-facts dt { font-size: .78rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); align-self: center; }
+.go-facts dd { margin: 0; font-size: .98rem; font-weight: 600; color: var(--text-main); overflow-wrap: anywhere; }
+
+/* Health and how to use it: reading text. */
+.go-care { display: grid; gap: .7rem; min-width: 0; }
+.go-care__lead { margin: 0; font-size: 15.5px; line-height: 1.75; color: var(--text-main); overflow-wrap: anywhere; }
+.go-care__title { margin: .6rem 0 0; font-family: inherit; font-size: .9rem; font-weight: 700; color: var(--text-main); }
+.go-care__text { margin: 0; font-size: .92rem; line-height: 1.65; color: var(--text-muted); }
+.go-care__list, .go-care__steps { margin: 0; padding-left: 1.2rem; display: grid; gap: .35rem; font-size: .95rem; line-height: 1.65; color: var(--text-main); }
+.go-care__list { list-style: disc; }
+.go-care__steps { list-style: decimal; }
+.go-care__list--small { font-size: .82rem; color: var(--text-muted); }
+.go-care__note { margin: 0; font-size: .8rem; line-height: 1.5; color: var(--text-muted); }
+.go-care__meta { margin: 0; font-size: .8rem; color: var(--text-muted); }
+.go-care__video { margin-top: .5rem; }
+
+/* Üreticisini tanı. */
+.go-producer { display: grid; gap: .7rem; min-width: 0; }
+.go-producer__title { margin: 0 0 .2rem; font-family: var(--font-serif, Georgia, serif); font-size: 1.35rem; font-weight: 600; line-height: 1.25; color: var(--text-main); }
+.go-producer .go-kunye { margin: 0; }
 
 /* Text never leaves its box (2026-10-03). Story and description are
    closed sections that open to the full text: no preview, no clamp, no fade.
@@ -102,13 +168,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .go-viewer-img, .go-gallery__thumb { transition: none; }
-}
-
-/* Desktop: the purchase actions sit in the buy box instead of floating over
-   the page; the phone keeps the fixed dock within thumb reach. */
-@media (min-width: 1024px) {
-  :root[data-app-tab="product-detail"] .product-detail-commerce-dock { position: static; left: auto; right: auto; bottom: auto; max-width: none; margin-top: 1.25rem; box-shadow: none; backdrop-filter: none; }
-  :root[data-app-tab="product-detail"] #root > .min-h-screen { padding-bottom: 2rem !important; }
 }
 
 /* Store follow (under "Üreticiye soru sor"): same footprint as the ask button,

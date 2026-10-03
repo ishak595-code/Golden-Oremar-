@@ -25,9 +25,9 @@ const required=[
  ['premium-mobile-product-card','go-product-card-v2'],
  ['premium-mobile-category-rail','go-category-rail'],
  ['voice-search-listening-state','Sesli arama dinleniyor'],
- ['live-product-recommendations','live-product-recommendations'],
+ ['editorial-product-detail','go-pdp__lower'],
  ['cold-chain-card-state','Soğuk Zincir'],
 ];
 const missing=required.filter(([,marker])=>!bundle.includes(marker));
 if(missing.length){console.error(`[native-feature-runtime] ${platform} synced bundle is missing consolidated feature markers:`);for(const[label,marker]of missing)console.error(`- ${label}: ${marker}`);process.exit(1);}
-console.log(`Native feature runtime check passed for ${platform}: Premium Mobile V2 Home, server-composed/deferred storefront data, voice-search state, premium product/category presentation, theme/sound, FAQ, product safety, search accessibility, app updates, live recommendations and cold-chain UX are present in the synced native shell assets (${textFiles.length} text assets checked).`);
+console.log(`Native feature runtime check passed for ${platform}: Premium Mobile V2 Home, server-composed/deferred storefront data, voice-search state, premium product/category presentation, theme/sound, FAQ, product safety, search accessibility, app updates, the editorial product page and cold-chain UX are present in the synced native shell assets (${textFiles.length} text assets checked).`);

@@ -1,115 +1,58 @@
-/* Product detail replaces the primary tab bar with one fixed purchase-action dock while respecting safe areas. */
+/* Product detail (2026-10-03, editorial page): the primary tab bar steps
+   aside; the purchase buttons live in the buy box under the price, and on a
+   phone a calm bar (pack, price, "Sepete Ekle") appears at the bottom only
+   while those buttons are out of view. Safe areas are respected. */
 :root[data-app-tab="product-detail"] nav[aria-label="Ana gezinme"] {
   display: none !important;
 }
 
 :root[data-app-tab="product-detail"] #root > .min-h-screen {
-  padding-bottom: 6.9rem !important;
+  padding-bottom: calc(5.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
 }
 
 :root[data-app-tab="product-detail"] section[aria-label="Ürün görselleri"] .hide-scrollbar button {
   background: var(--bg-card);
 }
 
-:root[data-app-tab="product-detail"] .product-detail-commerce-dock {
+/* Bottom bar (phones and tablets). */
+.go-sticky-buy {
   position: fixed;
   z-index: 75;
-  left: calc(.75rem + var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
-  right: calc(.75rem + var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
-  bottom: calc(.7rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
-  max-width: 44rem;
+  left: calc(.6rem + var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
+  right: calc(.6rem + var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
+  bottom: calc(.6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  max-width: 40rem;
   margin: 0 auto;
-  padding: .65rem;
-  border: 1px solid color-mix(in srgb, var(--border-main) 74%, transparent);
-  border-radius: 1.2rem;
-  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
-  box-shadow: 0 18px 45px rgb(5 24 16 / .22);
-  backdrop-filter: blur(18px);
-}
-
-:root[data-app-tab="product-detail"] .product-detail-commerce-actions {
-  grid-template-columns: minmax(0,.82fr) minmax(0,1fr) minmax(0,1.16fr) !important;
-  gap: .5rem !important;
-}
-
-:root[data-app-tab="product-detail"] .product-detail-commerce-actions > button {
-  min-width: 0;
-  min-height: 3.4rem !important;
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: .3rem;
-  border-radius: .9rem !important;
-  padding: .35rem .3rem !important;
-  font-size: clamp(.7rem, 2.65vw, .84rem);
-  line-height: 1.08;
-  text-align: center;
+  gap: .75rem;
+  padding: .55rem .55rem .55rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--border-main) 70%, transparent);
+  border-radius: 1.1rem;
+  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
+  box-shadow: 0 12px 32px rgb(5 24 16 / .18);
+  backdrop-filter: blur(16px);
+  transform: translateY(calc(100% + 1.5rem));
+  opacity: 0;
+  visibility: hidden;
+  transition: transform .22s ease, opacity .22s ease, visibility 0s linear .22s;
 }
-
-:root[data-app-tab="product-detail"] .product-detail-commerce-actions > button span {
-  min-width: 0;
-  overflow-wrap: anywhere;
+.go-sticky-buy.is-visible { transform: none; opacity: 1; visibility: visible; transition: transform .22s ease, opacity .22s ease, visibility 0s; }
+.go-sticky-buy__summary { display: grid; min-width: 0; flex: 1; gap: .05rem; }
+.go-sticky-buy__pack { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .78rem; color: var(--text-muted); }
+.go-sticky-buy__price { font-size: 1.05rem; font-weight: 800; color: var(--text-main); font-variant-numeric: tabular-nums; }
+.go-sticky-buy__cart {
+  display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: .45rem;
+  min-height: 3rem; padding: 0 1.25rem; border: 0; border-radius: .85rem;
+  background: var(--brand-green, #0f5132); color: var(--text-on-green, #fff);
+  font-size: .95rem; font-weight: 800; white-space: nowrap; touch-action: manipulation;
 }
-
-:root[data-app-tab="product-detail"] .product-detail-commerce-gift {
-  border: 1px solid var(--border-main);
-  background: var(--bg-card);
-  color: var(--text-main);
-}
-
-:root[data-app-tab="product-detail"] .product-detail-commerce-gift svg {
-  flex: 0 0 auto;
-  color: var(--brand-gold, #b89135);
-}
-
-:root[data-app-tab="product-detail"] .product-detail-commerce-cart {
-  border: 1px solid var(--brand-green, #0f5132);
-  background: var(--bg-card);
-  color: var(--brand-green, #0f5132);
-}
-
-:root[data-app-tab="product-detail"] .product-detail-commerce-cart svg {
-  flex: 0 0 auto;
-}
-
-:root[data-app-tab="product-detail"] .product-detail-commerce-buy {
-  border: 1px solid var(--brand-green, #0f5132);
-  background: var(--brand-green, #0f5132);
-  color: var(--text-on-green, #05120d);
-  box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-green, #0f5132) 22%, transparent);
-}
-
-@media (max-width: 420px) {
-  :root[data-app-tab="product-detail"] #root > .min-h-screen {
-    padding-bottom: 6.55rem !important;
-  }
-
-  :root[data-app-tab="product-detail"] .product-detail-commerce-dock {
-    left: calc(.45rem + var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
-    right: calc(.45rem + var(--safe-area-inset-right, env(safe-area-inset-right, 0px)));
-    bottom: calc(.45rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
-    padding: .5rem;
-  }
-
-  :root[data-app-tab="product-detail"] .product-detail-commerce-actions {
-    grid-template-columns: minmax(0,.8fr) minmax(0,1fr) minmax(0,1.18fr) !important;
-    gap: .35rem !important;
-  }
-
-  :root[data-app-tab="product-detail"] .product-detail-commerce-actions > button {
-    min-height: 3.35rem !important;
-    padding-inline: .2rem !important;
-  }
-}
-
-@media (max-width: 350px) {
-  :root[data-app-tab="product-detail"] #root > .min-h-screen {
-    padding-bottom: 6.55rem !important;
-  }
-
-  :root[data-app-tab="product-detail"] .product-detail-commerce-actions > button {
-    font-size: .68rem;
-  }
+.go-sticky-buy__cart svg { width: 1.05rem; height: 1.05rem; }
+.go-sticky-buy__cart:disabled { opacity: .5; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .go-sticky-buy, .go-sticky-buy.is-visible { transition: none; } }
+@media (min-width: 1024px) {
+  .go-sticky-buy { display: none; }
+  :root[data-app-tab="product-detail"] #root > .min-h-screen { padding-bottom: 2rem !important; }
 }
 
 /* The safety centre button (report/block, required for user content) stays
@@ -130,7 +73,9 @@
   .go-safety-fab__label { display: inline; }
 }
 @media (max-width: 1023px) {
-  :root[data-app-tab="product-detail"] .go-safety-fab,
+  :root[data-app-tab="product-detail"] .go-safety-fab {
+    bottom: calc(5.4rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  }
   :root[data-cart-dock="on"] .go-safety-fab {
     bottom: calc(6.6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   }

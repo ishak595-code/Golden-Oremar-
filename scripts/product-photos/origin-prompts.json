@@ -1,0 +1,359 @@
+{
+ "model": "bytedance-seedream-5-pro",
+ "aspect_ratio": "1:1",
+ "resolution": "2K",
+ "kind": "origin",
+ "how": "Second gallery photo (origin). Generate one image per entry from its prompt, check it (no text, logos or faces), then add {\"slug\":..., \"url\":..., \"kind\":\"origin\"} to scripts/product-photos/sources.json and push; the product-photos-import workflow writes public/product-photos/origin/<slug>.webp and src/features/media/productOriginPhotoManifest.ts, and the product page shows it as slide 2.",
+ "products": [
+  {
+   "id": "aae99128-f40e-4bc7-929e-f896c00ab313",
+   "legacyId": 302,
+   "slug": "abidin-in-yayla-kuzusu-302",
+   "name": "Yayla Kuzusu",
+   "prompt": "A flock of lambs grazing on a green high mountain pasture (yayla) under rugged grey peaks, late afternoon light, wildflowers in the foreground. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "bfd5e5f6-a2c0-4511-815a-d83f0be8ef78",
+   "legacyId": 305,
+   "slug": "amine-nin-cifte-sari-koy-yumurtasi-305",
+   "name": "Çifte Sarı Köy Yumurtası",
+   "prompt": "Free-range village hens scratching in a dusty mountain-village yard beside a stone wall and a wooden coop, morning light, distant snowy peaks. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "ae324353-9844-4b34-a71e-491942b4182d",
+   "legacyId": 807,
+   "slug": "ata-tohumu-dag-kekigi-suyu-distile-807",
+   "name": "Dağ Kekiği Suyu",
+   "prompt": "A traditional copper alembic (imbik) steaming over a small wood fire in a rustic stone room, bundles of dried wild thyme hanging nearby, a glass bottle catching the clear distillate. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "dc2c2378-ad63-4bbe-9eab-882165939e54",
+   "legacyId": 401,
+   "slug": "avasin-cam-damacana-suyu-401",
+   "name": "Dağ Kaynak Suyu",
+   "prompt": "A clear mountain spring flowing out between mossy rocks in a high valley, cold clean water, green slopes and distant peaks. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "dc5c8644-550a-4033-82e1-5637301c277a",
+   "legacyId": 301,
+   "slug": "avasin-deresi-canli-alabaligi-ozel-hasat-301",
+   "name": "Dere Alabalığı",
+   "prompt": "A cold, clear mountain stream rushing over smooth stones in a green valley, early morning mist, rugged peaks behind. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "c17f9a67-5560-449c-a8f2-a372f1625f88",
+   "legacyId": 103,
+   "slug": "avasin-mese-bali-103",
+   "name": "Meşe Balı",
+   "prompt": "An old oak forest on a mountain slope in late summer, wooden beehives standing among the oak trees, golden light. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "aaabee02-be61-45ca-9007-bba163cf77c0",
+   "legacyId": 102,
+   "slug": "bercelan-yaylasi-bahar-cicek-bali-102",
+   "name": "Bahar Çiçek Balı",
+   "prompt": "Wooden beehives on a flowering high mountain meadow in spring, bees around wild flowers, snow-capped peaks in the distance. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "89e97a7f-66f5-45e4-9a1f-7af1185f9dd9",
+   "legacyId": 705,
+   "slug": "buyuk-iskender-corek-otu-tohumu-705",
+   "name": "Çörek Otu",
+   "prompt": "Hands (no face visible) sieving black nigella seeds through a round wooden sieve over a linen cloth, seeds falling into a bez kese, rustic village courtyard light. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "6e2b45bf-b3cc-4cc4-bc56-b7d87ef89552",
+   "legacyId": 803,
+   "slug": "dag-cilegi-yabani-803",
+   "name": "Yabani Dağ Çileği",
+   "prompt": "Tiny wild strawberries growing among grass and rocks on a sunny mountain slope, close-up, a small woven basket half-filled beside them. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "1347f7c2-9a3b-4622-ad85-53e70238ffaf",
+   "legacyId": 101,
+   "slug": "daglica-karakovan-petek-bali-101",
+   "name": "Karakovan Petek Balı",
+   "prompt": "Traditional log hives (karakovan) carved from tree trunks standing on a rocky mountain slope, wild flowers, dramatic peaks and clear sky. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "56a24565-7268-49db-9715-2ba08035d265",
+   "legacyId": 804,
+   "slug": "eksi-karadut-suyu-804",
+   "name": "Ekşi Karadut Suyu",
+   "prompt": "Ripe black mulberries on a branch of an old mulberry tree in a mountain village, a copper pot simmering over a wood fire in the background. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "24a412fc-19d6-4e82-8e9f-78dae33acce8",
+   "legacyId": 505,
+   "slug": "el-isciligi-mese-palamudu-ekmegi-505",
+   "name": "Meşe Palamudu Ekmeği",
+   "prompt": "A wood-fired stone village oven with glowing embers, a huge round loaf on a long wooden peel, oak acorns in a basket nearby. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "feb5bc4c-e9f6-4d79-bbc9-e1afe4b9af2d",
+   "legacyId": 704,
+   "slug": "el-islemesi-tahta-kasik-ve-yayik-tokmagi-704",
+   "name": "Tahta Kaşık ve Yayık Tokmağı",
+   "prompt": "Hands (no face visible) carving a wooden spoon with a small knife, fresh wood shavings on a weathered workbench, soft daylight from a stone-walled workshop window. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "b40c1609-2274-4dc8-9716-377a0f027dfa",
+   "legacyId": 303,
+   "slug": "fahrettin-in-sutten-kesilmis-oglagi-303",
+   "name": "Sütten Kesilmiş Oğlak",
+   "prompt": "Young goats on a steep rocky mountain slope with green shrubs, soft evening light, high peaks behind. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "d810734a-c147-4fa5-a7b6-7182ff5c8ed1",
+   "legacyId": 701,
+   "slug": "gunes-sirri-guzu-yagi-ic-yag-701",
+   "name": "Kuzu İç Yağı",
+   "prompt": "A heavy pot of tail fat slowly melting over a low wood fire in a rustic village kitchen, clear golden fat being strained into a jar. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "35d9cc53-6667-44d5-90c3-3e4132a46d81",
+   "legacyId": 204,
+   "slug": "gunluk-taze-civik-sut-sagimdan-kapiya-204",
+   "name": "Günlük Taze Süt",
+   "prompt": "A metal milk pail beside a calm cow in a mountain village barn doorway, morning light, green pasture and peaks outside. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "d16f52a6-f3af-40f8-b309-6f310d5d2c06",
+   "legacyId": 801,
+   "slug": "hakkari-dag-elmasi-801",
+   "name": "Dağ Elması",
+   "prompt": "Small red mountain apples on old trees in a high-altitude orchard, rocky slopes and blue sky behind, autumn light. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "8a0cf6ca-12b9-405f-b3f1-015720bab8fb",
+   "legacyId": 902,
+   "slug": "hakkari-dag-erigi-902",
+   "name": "Dağ Eriği",
+   "prompt": "Green and yellow mountain plums on a branch, a small wooden crate below the tree, sunny mountain village orchard. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "a82bd3bf-b288-4c62-919b-a762e9c059e9",
+   "legacyId": 907,
+   "slug": "hakkari-ham-propolisi-907",
+   "name": "Ham Propolis",
+   "prompt": "Close-up of a weathered wooden beehive frame edge with dark raw propolis, a hive tool resting on it, mountain meadow softly blurred behind. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "f09dcaeb-f8ac-4200-8a3e-a4344505f188",
+   "legacyId": 905,
+   "slug": "hakkari-yayla-karpuzu-905",
+   "name": "Yayla Karpuzu",
+   "prompt": "Watermelons ripening on vines in a high plateau field, dry warm soil, mountains in the distance, late summer light. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "79ea7368-1e8a-49c9-ac02-939a584d661f",
+   "legacyId": 805,
+   "slug": "hardaliye-geleneksel-805",
+   "name": "Hardaliye",
+   "prompt": "Bunches of dark grapes and a clay crock beside crushed mustard seeds on a rustic table in a stone cellar, soft window light. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "611e8fdc-6775-4312-9c6e-3c3769ebc731",
+   "legacyId": 501,
+   "slug": "hatun-ana-nin-eksi-maya-gunesi-tarhana-501",
+   "name": "Ekşi Mayalı Tarhana",
+   "prompt": "Small tarhana pieces drying on a white cloth spread on a flat village rooftop under the sun, mountains in the background. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "1e22e0e3-3bd3-4359-8b1d-e83eb7501a54",
+   "legacyId": 203,
+   "slug": "havahan-in-otlu-dag-peyniri-203",
+   "name": "Otlu Dağ Peyniri",
+   "prompt": "Wild mountain herbs freshly gathered in a basket on a high meadow, a wheel of white herbed cheese resting on a cloth nearby. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "d55e016b-ec47-4f92-a900-a2550e6917c5",
+   "legacyId": 504,
+   "slug": "husnu-dayi-nin-kagit-kabuklu-cevizi-504",
+   "name": "Kağıt Kabuklu Ceviz",
+   "prompt": "Walnuts drying in the shade on woven trays under an old walnut tree, a mountain village stone house behind. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "1b401442-df5f-4b88-a578-100e7bcf9242",
+   "legacyId": 506,
+   "slug": "isli-kaya-uzumleri-tane-kuru-506",
+   "name": "İsli Kaya Üzümü",
+   "prompt": "Clusters of small dark grapes hanging to dry in a smoky stone room with soft wood smoke and window light, a filled natural cotton drawstring bag (bez kese) of raisins in the foreground. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "9fa01408-b682-4600-a19b-dc7126519c1e",
+   "legacyId": 503,
+   "slug": "kadin-imecesi-odun-atesi-pekmezi-503",
+   "name": "Odun Ateşi Pekmezi",
+   "prompt": "A large copper cauldron of grape molasses simmering over a wood fire outdoors, wooden stirring paddle, steam rising, mountain village backdrop. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "1780065a-28ac-4261-a2ef-13c39d299195",
+   "legacyId": 602,
+   "slug": "kan-kirmizi-yabani-kizilcik-surubu-seti-602",
+   "name": "Yabani Kızılcık Şurubu",
+   "prompt": "Bright red wild cornelian cherries on thorny branches on a mountain slope, a small copper pot and glass bottle on a stone ledge. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "61bdf13e-fb75-4033-b584-3dc43de678d1",
+   "legacyId": 703,
+   "slug": "kekik-aromali-kesik-yogurt-kurud-703",
+   "name": "Kekikli Kurut",
+   "prompt": "Small balls of dried yoghurt (kurut) laid out on a cloth drying in the sun on a village rooftop, sprigs of wild thyme, mountains behind. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "77e8ba53-ccb1-41ef-9151-98a44be1469a",
+   "legacyId": 809,
+   "slug": "kekik-aromali-visne-kompostosu-809",
+   "name": "Kekikli Vişne Kompostosu",
+   "prompt": "Sour cherries and sprigs of wild thyme beside a pot simmering on a wood stove in a rustic village kitchen, soft daylight. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "060ab141-6901-4364-9bac-8d47382ab9aa",
+   "legacyId": 603,
+   "slug": "kirik-tas-kaya-tuzu-blogu-kristal-603",
+   "name": "Kristal Kaya Tuzu",
+   "prompt": "Rough chunks of crystalline rock salt in a natural rock face with a hand pick resting nearby, raw mountain stone texture. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "84714717-f619-4a84-9181-603252bd00c3",
+   "legacyId": 808,
+   "slug": "kislik-kurutulmus-cennet-hurmasi-808",
+   "name": "Kuru Cennet Hurması",
+   "prompt": "Persimmons hanging on strings to dry under the eaves of a stone village house, autumn light, mountains in the distance. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "ec7df8a1-4b85-4b5c-b440-aeae1b17f781",
+   "legacyId": 806,
+   "slug": "kitir-taze-cagla-badem-806",
+   "name": "Taze Çağla",
+   "prompt": "Fresh green almonds on the branch of an almond tree in spring, a small woven basket below, mountain slope background. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "e02d17fb-8b41-4361-9971-365135631d61",
+   "legacyId": 706,
+   "slug": "koylu-isi-aci-kirmizi-biber-706",
+   "name": "Acı Pul Biber",
+   "prompt": "Long red peppers drying on strings in the sun against a stone wall, a stone mortar with crushed pepper flakes below. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "b510b051-a5d7-47cd-9795-878573dd27f8",
+   "legacyId": 402,
+   "slug": "koyun-efsanevi-beyaz-isitma-pres-tasi-402",
+   "name": "Beyaz Isıtma ve Pres Taşı",
+   "prompt": "Smooth white oval river stones on a riverbank in a mountain valley, clear water and green slopes behind. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "c5e47259-5b24-4b03-a3ed-da1f16899448",
+   "legacyId": 707,
+   "slug": "kusburnu-marmelati-707",
+   "name": "Kuşburnu Marmelatı",
+   "prompt": "Ripe red rosehips on wild bushes on a mountain slope in autumn, a small basket of picked rosehips on a rock. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "963b8bfa-8e7a-432d-b809-7cc4306c62e7",
+   "legacyId": 201,
+   "slug": "merez-hatun-un-magara-tulum-peyniri-201",
+   "name": "Mağara Tulum Peyniri",
+   "prompt": "The entrance of a natural rock cave in the mountains, cheese wrapped in skins resting on a stone ledge inside, cool dim light. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "7517d0c2-e0fe-4c6b-99fe-b6e38925a1df",
+   "legacyId": 202,
+   "slug": "naciye-nin-yayik-tereyagi-202",
+   "name": "Yayık Tereyağı",
+   "prompt": "A traditional wooden butter churn (yayık) in a village house with fresh butter on a wooden board, soft window light. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "d80d915b-5653-43c9-868e-d376a50095fd",
+   "legacyId": 702,
+   "slug": "sabir-kurutmasi-cicek-bamyasi-702",
+   "name": "Kuru Çiçek Bamyası",
+   "prompt": "Strings of small okra flowers drying in the shade on a rope under a wooden porch of a stone village house. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "dffffd4a-d660-40df-a682-76cf868858c7",
+   "legacyId": 304,
+   "slug": "salih-in-meralik-ozgur-horozu-304",
+   "name": "Meralık Köy Horozu",
+   "prompt": "A rooster walking freely on a grassy mountain meadow beside a village stone wall, morning light, peaks behind. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "e9941a2c-b441-496c-ae09-6564cba5d3a4",
+   "legacyId": 502,
+   "slug": "sami-usta-nin-kurutulmus-dag-dutlari-502",
+   "name": "Kuru Dağ Dutu",
+   "prompt": "White and purple mulberries drying in the sun on a cloth on a flat rooftop, a mountain village and peaks behind. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "787138cf-3248-48e1-a48f-da6ef43aacba",
+   "legacyId": 601,
+   "slug": "sessiz-orman-kuzu-gobegi-mantari-601",
+   "name": "Kuzu Göbeği Mantarı",
+   "prompt": "Morel mushrooms growing on the forest floor among leaves and moss in a mountain woodland, soft dappled light. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "65325abe-33ec-4588-9bcb-b3a9c3e85cb5",
+   "legacyId": 403,
+   "slug": "sobalik-mese-yarigi-403",
+   "name": "Sobalık Meşe Odunu",
+   "prompt": "Split oak logs stacked to dry in the open air beside a stone village house, mountains behind, autumn light. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "30c7f86c-8b8b-4518-b0ad-bd9574227536",
+   "legacyId": 908,
+   "slug": "tas-degirmen-yuksekova-bulguru-908",
+   "name": "Taş Değirmen Bulguru",
+   "prompt": "An old stone mill grinding wheat, coarse bulgur falling into a cloth sack, warm light in a rustic mill room. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "b3744415-7a3b-406a-8874-641ce3512beb",
+   "legacyId": 205,
+   "slug": "taze-yayik-ayrani-canli-kultur-205",
+   "name": "Yayık Ayranı",
+   "prompt": "A wooden churn and a large clay bowl of frothy ayran in a rustic village kitchen, morning window light. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "70fc64fc-3a22-4a63-a3b7-59dfd257687e",
+   "legacyId": 901,
+   "slug": "yuksekova-sonbahar-armudu-901",
+   "name": "Sonbahar Armudu",
+   "prompt": "Ripe autumn pears on an old pear tree in a mountain orchard, a wooden crate on the grass below, golden light. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "1e90c6db-fa50-4b05-84f1-2f2224f04f21",
+   "legacyId": 802,
+   "slug": "yuksekova-yayla-domatesi-802",
+   "name": "Yayla Domatesi",
+   "prompt": "Ripe red tomatoes on vines in a small mountain village garden, rich dark soil, peaks in the distance. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "ab665608-64ee-4430-8924-b4167a7f4889",
+   "legacyId": 903,
+   "slug": "yuksekova-yayla-kayisisi-903",
+   "name": "Yayla Kayısısı",
+   "prompt": "Ripe apricots on the branch in a high plateau orchard, single-layer wooden crate below, sunny summer light. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "9aba0066-f8ad-4519-9008-61208a745897",
+   "legacyId": 906,
+   "slug": "yuksekova-yayla-poleni-906",
+   "name": "Yayla Poleni",
+   "prompt": "Golden pollen pellets drying in the shade on a fine cloth tray beside wooden beehives on a flowering mountain meadow. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "fafb2050-d147-43a7-a278-f0edf3abcb0c",
+   "legacyId": 904,
+   "slug": "yuksekova-yaz-hiyari-904",
+   "name": "Yaz Hıyarı",
+   "prompt": "Fresh cucumbers on vines in a mountain village garden in early morning light, dew on leaves, peaks behind. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  },
+  {
+   "id": "adfee0a8-15f5-4253-9881-870e89536a2a",
+   "legacyId": 507,
+   "slug": "zahter-harmani-dag-kekigi-507",
+   "name": "Dağ Kekiği",
+   "prompt": "Wild thyme (zahter) growing on a sunny rocky mountain slope, small bunches drying in the shade on a cloth nearby. Square editorial documentary photograph, photo-realistic, natural light, true-to-life colours, subtle film grain, calm earthy mood of the Hakkari / Yüksekova mountains, matching the existing Golden Oremar product photos. No text, no labels, no logos, no brand marks, no people's faces (hands only if a person appears). Not over-saturated, not CGI."
+  }
+ ]
+}
