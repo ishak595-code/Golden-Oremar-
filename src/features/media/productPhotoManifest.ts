@@ -2,10 +2,13 @@
 // in public/product-photos; a real uploaded photo always takes precedence.
 export const SHIPPED_PRODUCT_PHOTOS: readonly string[] = [
  "abidin-in-yayla-kuzusu-302",
+ "amine-nin-cifte-sari-koy-yumurtasi-305",
  "ata-tohumu-dag-kekigi-suyu-distile-807",
  "avasin-cam-damacana-suyu-401",
  "avasin-mese-bali-103",
  "bercelan-yaylasi-bahar-cicek-bali-102",
+ "buyuk-iskender-corek-otu-tohumu-705",
+ "dag-cilegi-yabani-803",
  "hakkari-ham-propolisi-907",
  "sessiz-orman-kuzu-gobegi-mantari-601"
 ];
