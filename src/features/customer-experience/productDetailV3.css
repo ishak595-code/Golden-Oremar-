@@ -261,3 +261,7 @@
 .go-kunye__go { display: inline-flex; align-items: center; gap: .3rem; flex-shrink: 0; font-size: .78rem; font-weight: 800; color: var(--brand-gold); }
 .go-kunye__go svg { width: .95rem; height: .95rem; }
 .go-product-card__badge { white-space: nowrap; }
+/* Product card photos crop from the centre everywhere (list, grid, rails,
+   home rows, store page, cart and favourites), so the product stays in view
+   even when the card frame is taller or wider than the square photo. */
+:where(.go-product-card__media,.go-artwork--photo,.go-product-recommendations__media,.go-product-recommendations__item,.go-reference-product-row__media,.go-store-row-art) img,img.go-product-row-v4__image,img.object-cover{object-fit:cover;object-position:center center;}
