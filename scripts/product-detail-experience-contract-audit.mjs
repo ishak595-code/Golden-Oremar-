@@ -13,6 +13,7 @@
 import fs from 'node:fs';
 
 const failures = [];
+const gallery_src = () => fs.readFileSync('src/features/catalog/ProductGallery.tsx', 'utf8');
 const check = (condition, message) => { if (!condition) failures.push(message); };
 const read = file => fs.readFileSync(file, 'utf8');
 
@@ -35,6 +36,17 @@ check(!/aria-label="Bu ürünü hediye gönder"/.test(detail) && /async function
 check(/go-stock-pill go-stock-pill--out/.test(detail) && /if\(!soldOut&&!preorder\)kunye\.push/.test(detail), 'Sold out is a pill next to the price; in-stock and low-stock are said in the künye.');
 check(/Sipariş üzerine hazırlanır/.test(detail) && /specifications\?.preOrderTime/.test(detail), 'Pre-orders say so under the price and show the stored harvest and dispatch sentence.');
 check(!/aria-labelledby="product-withdrawal-title" className=\{`mt-6 flex gap-3/.test(detail), 'The large always-open withdrawal box must not come back; the line and the section replace it.');
+
+// Product page v4 (2026-10-03): rating summary under the title, a polished
+// empty review state that never invents reviews, a delivery row, the story
+// open with "Devamını oku", thumbnails and a zoomable viewer.
+check(/className="go-rating-row"/.test(detail) && /İlk yorumu sen yaz/.test(detail), 'The title must be followed by the rating summary, or "İlk yorumu sen yaz" when there are no reviews.');
+check(/className="go-reviews-empty"/.test(detail) && /her yorum gerçek bir siparişe bağlıdır/.test(detail) && /go-reviews__bars/.test(detail), 'Reviews show a rating distribution, and an empty state that explains reviews come only from delivered orders.');
+check(/className="go-delivery-row"/.test(detail), 'A delivery row sits under the purchase actions.');
+check(/initialOpen=\{storyText\?'story':null\}/.test(detail) && /Devamını oku/.test(detail), 'The story section is open on arrival and long stories fold behind "Devamını oku".');
+check(/go-gallery__thumbs/.test(gallery_src()) , 'The gallery shows thumbnails when there are two or more photos.');
+check(/viewerZoom/.test(detail) && /onTouchEnd=/.test(detail), 'The full-screen viewer zooms on tap and swipes between photos.');
+check(!/weightGrams[^;]*kgPrice|kgPriceMinor=[^;]*packageWeight/.test(detail), 'The kilogram price comes from the net amount on the label, never from the packed shipping weight.');
 
 const accordion = read('src/features/catalog/DetailAccordion.tsx');
 check(/aria-expanded=\{open\}/.test(accordion) && /aria-controls=\{panelId\}/.test(accordion) && /role="region"/.test(accordion), 'Accordion headers must be buttons with aria-expanded and aria-controls, panels labelled regions.');
