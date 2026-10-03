@@ -24,5 +24,18 @@ export const SHIPPED_PRODUCT_PHOTOS: readonly string[] = [
  "hardaliye-geleneksel-805",
  "hatun-ana-nin-eksi-maya-gunesi-tarhana-501",
  "havahan-in-otlu-dag-peyniri-203",
+ "husnu-dayi-nin-kagit-kabuklu-cevizi-504",
+ "isli-kaya-uzumleri-tane-kuru-506",
+ "kadin-imecesi-odun-atesi-pekmezi-503",
+ "kan-kirmizi-yabani-kizilcik-surubu-seti-602",
+ "kekik-aromali-kesik-yogurt-kurud-703",
+ "kekik-aromali-visne-kompostosu-809",
+ "kirik-tas-kaya-tuzu-blogu-kristal-603",
+ "kislik-kurutulmus-cennet-hurmasi-808",
+ "kitir-taze-cagla-badem-806",
+ "koylu-isi-aci-kirmizi-biber-706",
+ "koyun-efsanevi-beyaz-isitma-pres-tasi-402",
+ "kusburnu-marmelati-707",
+ "merez-hatun-un-magara-tulum-peyniri-201",
  "sessiz-orman-kuzu-gobegi-mantari-601"
 ];
