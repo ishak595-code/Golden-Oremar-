@@ -69,6 +69,7 @@ check(/const write=composer\|\|<button type="button" onClick=\{onWrite\} classNa
 const composerSrc = read('src/features/catalog/ProductReviewComposer.tsx');
 check(/listReviewableOrderItems\(\)/.test(composerSrc) && /entry\.productId===productId/.test(composerSrc) && /submitVerifiedReview\(/.test(composerSrc) && /Teslim aldıktan sonra yorum yazabilirsiniz/.test(composerSrc) && /Yorum şu anda gönderilemiyor/.test(composerSrc), 'The review form only accepts delivered orders of this product and says so in Turkish when there is nothing to review or the service is unreachable.');
 
+check(/function sameOriginImage\(path:string\)/.test(read('src/features/catalog/producerStorefrontApi.ts')) && /if\(sameOriginImage\(path\)\)return path;/.test(read('src/features/catalog/producerStorefrontApi.ts')), 'The store page accepts the same-origin brand images the offline catalogue copy points at, so it still opens while Supabase is unavailable.');
 const accordion = read('src/features/catalog/DetailAccordion.tsx');
 check(/aria-label=\{title\}/.test(accordion) && /aria-describedby=\{teaser\?teaserId:undefined\}/.test(accordion), 'Section headers are named by the title alone; the teaser is read once, as the description, never twice.');
 check(/aria-expanded=\{open\}/.test(accordion) && /aria-controls=\{panelId\}/.test(accordion) && /role="region"/.test(accordion), 'Accordion headers must be buttons with aria-expanded and aria-controls, panels labelled regions.');
