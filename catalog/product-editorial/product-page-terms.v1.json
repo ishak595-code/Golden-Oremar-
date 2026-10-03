@@ -1,0 +1,352 @@
+[
+ {
+  "id": "aae99128-f40e-4bc7-929e-f896c00ab313",
+  "slug": "abidin-in-yayla-kuzusu-302",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "Hazırlık süresi üretici onayından sonra sipariş ekranında kesinleştirilir",
+  "coldChain": true
+ },
+ {
+  "id": "bfd5e5f6-a2c0-4511-815a-d83f0be8ef78",
+  "slug": "amine-nin-cifte-sari-koy-yumurtasi-305",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": true
+ },
+ {
+  "id": "ae324353-9844-4b34-a71e-491942b4182d",
+  "slug": "ata-tohumu-dag-kekigi-suyu-distile-807",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "dc2c2378-ad63-4bbe-9eab-882165939e54",
+  "slug": "avasin-cam-damacana-suyu-401",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "Hazırlık süresi üretici onayından sonra sipariş ekranında kesinleştirilir",
+  "coldChain": false
+ },
+ {
+  "id": "dc5c8644-550a-4033-82e1-5637301c277a",
+  "slug": "avasin-deresi-canli-alabaligi-ozel-hasat-301",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "Hazırlık süresi üretici onayından sonra sipariş ekranında kesinleştirilir",
+  "coldChain": true
+ },
+ {
+  "id": "c17f9a67-5560-449c-a8f2-a372f1625f88",
+  "slug": "avasin-mese-bali-103",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "aaabee02-be61-45ca-9007-bba163cf77c0",
+  "slug": "bercelan-yaylasi-bahar-cicek-bali-102",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "89e97a7f-66f5-45e4-9a1f-7af1185f9dd9",
+  "slug": "buyuk-iskender-corek-otu-tohumu-705",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "6e2b45bf-b3cc-4cc4-bc56-b7d87ef89552",
+  "slug": "dag-cilegi-yabani-803",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "Yeni sezon hasadıyla gönderilir (Haziran-Temmuz)",
+  "coldChain": true
+ },
+ {
+  "id": "1347f7c2-9a3b-4622-ad85-53e70238ffaf",
+  "slug": "daglica-karakovan-petek-bali-101",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "56a24565-7268-49db-9715-2ba08035d265",
+  "slug": "eksi-karadut-suyu-804",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "24a412fc-19d6-4e82-8e9f-78dae33acce8",
+  "slug": "el-isciligi-mese-palamudu-ekmegi-505",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "Hazırlık süresi üretici onayından sonra sipariş ekranında kesinleştirilir",
+  "coldChain": false
+ },
+ {
+  "id": "feb5bc4c-e9f6-4d79-bbc9-e1afe4b9af2d",
+  "slug": "el-islemesi-tahta-kasik-ve-yayik-tokmagi-704",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "b40c1609-2274-4dc8-9716-377a0f027dfa",
+  "slug": "fahrettin-in-sutten-kesilmis-oglagi-303",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "Hazırlık süresi üretici onayından sonra sipariş ekranında kesinleştirilir",
+  "coldChain": true
+ },
+ {
+  "id": "d810734a-c147-4fa5-a7b6-7182ff5c8ed1",
+  "slug": "gunes-sirri-guzu-yagi-ic-yag-701",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": true
+ },
+ {
+  "id": "35d9cc53-6667-44d5-90c3-3e4132a46d81",
+  "slug": "gunluk-taze-civik-sut-sagimdan-kapiya-204",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "Hazırlık süresi üretici onayından sonra sipariş ekranında kesinleştirilir",
+  "coldChain": true
+ },
+ {
+  "id": "d16f52a6-f3af-40f8-b309-6f310d5d2c06",
+  "slug": "hakkari-dag-elmasi-801",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "8a0cf6ca-12b9-405f-b3f1-015720bab8fb",
+  "slug": "hakkari-dag-erigi-902",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "Yeni sezon hasadıyla gönderilir (Ağustos-Eylül)",
+  "coldChain": false
+ },
+ {
+  "id": "a82bd3bf-b288-4c62-919b-a762e9c059e9",
+  "slug": "hakkari-ham-propolisi-907",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "f09dcaeb-f8ac-4200-8a3e-a4344505f188",
+  "slug": "hakkari-yayla-karpuzu-905",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "Yeni sezon hasadıyla gönderilir (Ağustos-Eylül)",
+  "coldChain": false
+ },
+ {
+  "id": "79ea7368-1e8a-49c9-ac02-939a584d661f",
+  "slug": "hardaliye-geleneksel-805",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "611e8fdc-6775-4312-9c6e-3c3769ebc731",
+  "slug": "hatun-ana-nin-eksi-maya-gunesi-tarhana-501",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "1e22e0e3-3bd3-4359-8b1d-e83eb7501a54",
+  "slug": "havahan-in-otlu-dag-peyniri-203",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": true
+ },
+ {
+  "id": "d55e016b-ec47-4f92-a900-a2550e6917c5",
+  "slug": "husnu-dayi-nin-kagit-kabuklu-cevizi-504",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "1b401442-df5f-4b88-a578-100e7bcf9242",
+  "slug": "isli-kaya-uzumleri-tane-kuru-506",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "9fa01408-b682-4600-a19b-dc7126519c1e",
+  "slug": "kadin-imecesi-odun-atesi-pekmezi-503",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "1780065a-28ac-4261-a2ef-13c39d299195",
+  "slug": "kan-kirmizi-yabani-kizilcik-surubu-seti-602",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "61bdf13e-fb75-4033-b584-3dc43de678d1",
+  "slug": "kekik-aromali-kesik-yogurt-kurud-703",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "77e8ba53-ccb1-41ef-9151-98a44be1469a",
+  "slug": "kekik-aromali-visne-kompostosu-809",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "060ab141-6901-4364-9bac-8d47382ab9aa",
+  "slug": "kirik-tas-kaya-tuzu-blogu-kristal-603",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "84714717-f619-4a84-9181-603252bd00c3",
+  "slug": "kislik-kurutulmus-cennet-hurmasi-808",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "ec7df8a1-4b85-4b5c-b440-aeae1b17f781",
+  "slug": "kitir-taze-cagla-badem-806",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "Yeni sezon hasadıyla gönderilir (Nisan-Mayıs)",
+  "coldChain": false
+ },
+ {
+  "id": "e02d17fb-8b41-4361-9971-365135631d61",
+  "slug": "koylu-isi-aci-kirmizi-biber-706",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "b510b051-a5d7-47cd-9795-878573dd27f8",
+  "slug": "koyun-efsanevi-beyaz-isitma-pres-tasi-402",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "c5e47259-5b24-4b03-a3ed-da1f16899448",
+  "slug": "kusburnu-marmelati-707",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "963b8bfa-8e7a-432d-b809-7cc4306c62e7",
+  "slug": "merez-hatun-un-magara-tulum-peyniri-201",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": true
+ },
+ {
+  "id": "7517d0c2-e0fe-4c6b-99fe-b6e38925a1df",
+  "slug": "naciye-nin-yayik-tereyagi-202",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": true
+ },
+ {
+  "id": "d80d915b-5653-43c9-868e-d376a50095fd",
+  "slug": "sabir-kurutmasi-cicek-bamyasi-702",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "dffffd4a-d660-40df-a682-76cf868858c7",
+  "slug": "salih-in-meralik-ozgur-horozu-304",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": true
+ },
+ {
+  "id": "e9941a2c-b441-496c-ae09-6564cba5d3a4",
+  "slug": "sami-usta-nin-kurutulmus-dag-dutlari-502",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "787138cf-3248-48e1-a48f-da6ef43aacba",
+  "slug": "sessiz-orman-kuzu-gobegi-mantari-601",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "Hazırlık süresi üretici onayından sonra sipariş ekranında kesinleştirilir",
+  "coldChain": true
+ },
+ {
+  "id": "65325abe-33ec-4588-9bcb-b3a9c3e85cb5",
+  "slug": "sobalik-mese-yarigi-403",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "30c7f86c-8b8b-4518-b0ad-bd9574227536",
+  "slug": "tas-degirmen-yuksekova-bulguru-908",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "b3744415-7a3b-406a-8874-641ce3512beb",
+  "slug": "taze-yayik-ayrani-canli-kultur-205",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": true
+ },
+ {
+  "id": "70fc64fc-3a22-4a63-a3b7-59dfd257687e",
+  "slug": "yuksekova-sonbahar-armudu-901",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "1e90c6db-fa50-4b05-84f1-2f2224f04f21",
+  "slug": "yuksekova-yayla-domatesi-802",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "Yeni sezon hasadıyla gönderilir (Temmuz-Eylül)",
+  "coldChain": false
+ },
+ {
+  "id": "ab665608-64ee-4430-8924-b4167a7f4889",
+  "slug": "yuksekova-yayla-kayisisi-903",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "Yeni sezon hasadıyla gönderilir (Temmuz-Ağustos)",
+  "coldChain": false
+ },
+ {
+  "id": "9aba0066-f8ad-4519-9008-61208a745897",
+  "slug": "yuksekova-yayla-poleni-906",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ },
+ {
+  "id": "fafb2050-d147-43a7-a278-f0edf3abcb0c",
+  "slug": "yuksekova-yaz-hiyari-904",
+  "returnText": "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır",
+  "dispatchText": "Yeni sezon hasadıyla gönderilir (Temmuz-Eylül)",
+  "coldChain": false
+ },
+ {
+  "id": "adfee0a8-15f5-4253-9881-870e89536a2a",
+  "slug": "zahter-harmani-dag-kekigi-507",
+  "returnText": "14 gün içinde, paket açılmamışsa ücretsiz iade",
+  "dispatchText": "2-4 iş günü içinde kargoya verilir",
+  "coldChain": false
+ }
+]

@@ -34,8 +34,9 @@
 .go-price-card__amounts { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .6rem; min-width: 0; margin: 0; }
 .go-price-card__price { font-size: clamp(1.55rem, 6vw, 1.85rem); font-weight: 700; line-height: 1.1; letter-spacing: -.01em; color: var(--brand-green); font-variant-numeric: tabular-nums; }
 :root[data-color-scheme="dark"] .go-price-card__price { color: var(--brand-gold); }
-.go-price-card__was { font-size: .85rem; color: var(--text-muted); }
-.go-price-card__discount { order: -1; flex-basis: 100%; width: max-content; max-width: max-content; border-radius: 999px; padding: .15rem .55rem; font-size: .72rem; font-weight: 800; color: #fff; background: #b42318; }
+.go-price-card__was { font-size: .95rem; color: var(--text-muted); text-decoration: line-through; text-decoration-thickness: 1px; font-variant-numeric: tabular-nums; }
+/* "%20 · 80 TL indirim" sits after the struck price and wraps below it on narrow screens. */
+.go-price-card__discount { align-self: center; white-space: nowrap; font-variant-numeric: tabular-nums; border-radius: 999px; padding: .15rem .55rem; font-size: .72rem; font-weight: 800; color: #fff; background: #b42318; }
 .go-price-card__missing { margin: 0; font-weight: 700; color: var(--text-muted); }
 .go-price-card__unit { margin: .3rem 0 0; display: flex; flex-wrap: wrap; gap: .25rem .75rem; font-size: .9rem; color: var(--text-muted); }
 .go-price-card__pack { color: var(--text-main); }

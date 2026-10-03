@@ -45,7 +45,8 @@ check(!/go-store-card__verified/.test(detail) && !/Doğrulanmış resmi mağaza/
 check(!/Ürün Videosu<\/h2>/.test(detail) && /kind:'video'/.test(detail), 'The product video is a gallery slide, not a separate block.');
 check(/\{hasTraceability\?<DetailAccordion id="trace"/.test(detail), 'The traceability section is hidden while it has nothing to show.');
 check(!/aria-label="Bu ürünü hediye gönder"/.test(detail) && /async function giftNow\(\)[\s\S]{0,500}setOfflineGift\(true\)/.test(detail), 'One gift button; it works for guests through the order sheet.');
-check(/go-stock-pill go-stock-pill--out/.test(detail) && /const lowStock=!soldOut&&!preorder&&tracked/.test(detail), 'Sold out is a pill next to the price; a low stock is said next to the quantity.');
+check(!/go-stock-pill/.test(detail) && !/go-buy__low/.test(detail) && /const stockFact=!variant\?'':soldOut\?'Tükendi':preorder\?'Ön sipariş':tracked&&variantStock!==null&&variantStock<=5\?`Son \$\{variantStock\} adet`:stockReady\?'Stokta':''/.test(detail) && /\['İade',\[returnText\]\],\['Stok',\[stockFact\]\],\['Teslimat',deliveryLines\]/.test(detail), 'Stock is one row in the facts table right under İade (Tükendi / Son N adet / Stokta / Ön sipariş), not a pill near the price or a note by the quantity.');
+check(/soldOut\?'Tükendi':preorder\?'Sipariş Ver':'Sepete Ekle'/.test(detail) && /disabled=\{busy\|\|!purchaseReady\}/.test(detail), 'A sold-out product says Tükendi on its disabled buy button.');
 check(/Sipariş üzerine hazırlanır/.test(detail) && /specifications\?.preOrderTime/.test(detail) && /const dispatchLine=/.test(detail), 'Pre-orders say so under the price and show the stored harvest and dispatch timing in the Teslimat row.');
 check(!/aria-labelledby="product-withdrawal-title" className=\{`mt-6 flex gap-3/.test(detail), 'The large always-open withdrawal box must not come back.');
 

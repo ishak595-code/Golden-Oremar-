@@ -27,6 +27,26 @@ function cleanTranscript(value: unknown) {
   return value.trim().replace(/\s+/g, ' ').slice(0, 100);
 }
 
+/**
+ * "bal bal" -> "bal", "kuru üzüm kuru üzüm" -> "kuru üzüm": a phrase the
+ * recogniser returned twice in a row. A real query that repeats a word
+ * differently ("bal ve bal mumu") is left alone.
+ */
+export function collapseRepeatedPhrase(value: unknown) {
+  const text = cleanTranscript(value);
+  const words = text.split(' ').filter(Boolean);
+  for (let size = 1; size <= words.length / 2; size += 1) {
+    if (words.length % size) continue;
+    const head = words.slice(0, size).join(' ').toLocaleLowerCase('tr-TR');
+    let repeated = true;
+    for (let start = size; start < words.length; start += size) {
+      if (words.slice(start, start + size).join(' ').toLocaleLowerCase('tr-TR') !== head) { repeated = false; break; }
+    }
+    if (repeated) return words.slice(0, size).join(' ');
+  }
+  return text;
+}
+
 function errorCode(error: unknown) {
   const candidate = error as { code?: unknown; message?: unknown } | null;
   return String(candidate?.code || candidate?.message || '').trim().toLowerCase();
@@ -56,7 +76,7 @@ async function recognizeNative(language: string) {
   nativeActive = true;
   try {
     const result = await NativeSpeech.start({ language });
-    const text = cleanTranscript(result?.text);
+    const text = collapseRepeatedPhrase(result?.text);
     if (!text) throw Object.assign(new Error('speech_no_match'), { code: 'speech_no_match' });
     return text;
   } finally {
@@ -85,15 +105,20 @@ function recognizeWeb(language: string, onInterim?: (text: string) => void) {
       if (activeWebRecognition === recognition) activeWebRecognition = null;
       callback();
     };
+    // The final text is rebuilt from every result on each event. Chrome on
+    // Android sends the same final result again in later events; adding it up
+    // gave "bal bal" and a search for the phrase twice.
     recognition.onresult = event => {
-      let visible = '';
-      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+      const finals: string[] = [];
+      let interimText = '';
+      for (let index = 0; index < event.results.length; index += 1) {
         const transcript = cleanTranscript(event.results[index]?.[0]?.transcript);
         if (!transcript) continue;
-        visible = `${visible} ${transcript}`.trim();
-        if (event.results[index]?.isFinal) finalText = `${finalText} ${transcript}`.trim();
+        if (event.results[index]?.isFinal) finals.push(transcript);
+        else interimText = `${interimText} ${transcript}`.trim();
       }
-      const interim = cleanTranscript(visible || finalText);
+      finalText = collapseRepeatedPhrase(finals.join(' '));
+      const interim = collapseRepeatedPhrase(`${finalText} ${interimText}`);
       if (interim) onInterim?.(interim);
     };
     recognition.onerror = event => finish(() => reject(Object.assign(new Error(String(event?.error || 'speech_failed')), { code: String(event?.error || 'speech_failed') })));

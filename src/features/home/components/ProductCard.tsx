@@ -9,7 +9,9 @@ import'./ProductCard.css';
 
 function formatMinor(value:number,currency:string){
  const normalized=currency.trim().toUpperCase();
- const amount=(value/100).toLocaleString('tr-TR',{minimumFractionDigits:2,maximumFractionDigits:2});
+ // "3.200 TL" as on the product page; kuruş only when there are some.
+ const digits=value%100===0?0:2;
+ const amount=(value/100).toLocaleString('tr-TR',{minimumFractionDigits:digits,maximumFractionDigits:digits});
  if(normalized==='TRY')return`${amount} TL`;
  try{return new Intl.NumberFormat('tr-TR',{style:'currency',currency:normalized,minimumFractionDigits:2,maximumFractionDigits:2}).format(value/100);}catch{return`${amount} ${normalized}`;}
 }

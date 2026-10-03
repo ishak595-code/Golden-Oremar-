@@ -77,7 +77,16 @@ function localizeImages<T>(value: T): T {
 /** The shipped home catalogue, or null when the copy is missing (then the original error stands). */
 async function catalogItems(): Promise<Json[] | null> {
   const home = await load('home_catalog.json');
-  return Array.isArray(home?.items) ? home.items : null;
+  if (!Array.isArray(home?.items)) return null;
+  // One entry per product id, so search, suggestions and recommendations can
+  // never list a product twice.
+  const seen = new Set<string>();
+  return home.items.filter((item: Json) => {
+    const id = String(item?.id ?? '');
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
 }
 
 async function slugFor(reference: unknown): Promise<string> {
@@ -116,6 +125,20 @@ function matches(item: Json, args: Args) {
   if (args.p_in_stock === true && item.stockMode !== 'untracked' && !(Number(item.availableQuantity) > 0)) return false;
   if (args.p_featured === true && item.featured !== true) return false;
   return true;
+}
+
+function relevance(item: Json, rawQuery: unknown) {
+  const words = trLower(rawQuery).trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return 0;
+  const name = trLower(item.name), former = trLower(item.formerName);
+  let score = 0;
+  for (const word of words) {
+    if (new RegExp(`(^|\\s)${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(name)) score += 4;
+    else if (name.includes(word)) score += 3;
+    else if (former.includes(word)) score += 2;
+    else if (trLower(item.category?.name).includes(word)) score += 1;
+  }
+  return score;
 }
 
 function sortItems(items: Json[], sort: unknown) {
@@ -233,7 +256,11 @@ const RESOLVERS: Record<string, Resolver> = {
     const limit = Math.min(100, Math.max(1, Number(args.p_limit) || 20)), offset = Math.max(0, Number(args.p_offset) || 0);
     const items = await catalogItems();
     if (!items) return undefined;
-    const hits = sortItems(items.filter(item => matches(item, args)), args.p_sort).map(item => ({ ...withoutHomeSection(item), relevance: 1 }));
+    const sorted = sortItems(items.filter(item => matches(item, args)), args.p_sort);
+    // Best match first, as the live search ranks: "bal" lists the honeys
+    // before a product that only mentions it in its category or description.
+    const ranked = ['price_asc', 'price_desc', 'rating'].includes(String(args.p_sort)) ? sorted : sorted.map((item, index) => ({ item, index, score: relevance(item, args.p_query) })).sort((a, b) => b.score - a.score || a.index - b.index).map(row => row.item);
+    const hits = ranked.map(item => ({ ...withoutHomeSection(item), relevance: 1 }));
     return { items: hits.slice(offset, offset + limit), total: hits.length, limit, offset, query: args.p_query ?? null };
   },
   catalog_search_facets_v1: async args => {
@@ -270,6 +297,11 @@ const RESOLVERS: Record<string, Resolver> = {
       }
     }
     for (const item of items) if (trLower(item.name).includes(query) || (item.formerName && trLower(item.formerName).includes(query))) out.push({ id: item.id, kind: 'product', label: item.name, value: item.slug });
+    // Within categories and within products, a label that starts with the
+    // typed word comes first ("bal": Bal & Dağ Bitkileri before Et, Balık).
+    const rank = (label: string) => { const text = trLower(label); return text.startsWith(query) ? 0 : text.split(/[\s,&]+/).some(word => word.startsWith(query)) ? 1 : 2; };
+    const kindOrder = (kind: string) => (kind === 'category' ? 0 : 1);
+    out.sort((a, b) => kindOrder(a.kind) - kindOrder(b.kind) || rank(a.label) - rank(b.label));
     return out.slice(0, limit);
   },
   public_product_recommendations_v1: async args => {
