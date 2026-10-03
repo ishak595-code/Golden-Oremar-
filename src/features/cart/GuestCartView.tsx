@@ -4,7 +4,7 @@ import{publicCatalogUrl}from'./api';
 import{formatMoney}from'./checkoutHelpers';
 import{clearGuestCart,removeGuestCartLines,setGuestCartQuantity,useGuestCart}from'./guestCart';
 import OfflineOrderSheet from'../orders/OfflineOrderSheet';
-import{isBrandFallbackImage,shippedProductPhoto}from'../catalog/ProductArtwork';
+import ProductArtwork,{isBrandFallbackImage,shippedProductPhoto}from'../catalog/ProductArtwork';
 import{getOfflineOrderingConfig,offlineOrderingAvailable}from'../orders/offlineOrderApi';
 import'./cart.css';
 
@@ -40,8 +40,8 @@ export default function GuestCartView({onBack,onOpenProduct,authSlot}:{onBack?:(
  return<div className="go-cart mx-auto max-w-5xl space-y-6 p-4 sm:p-6" role="region" aria-labelledby="guest-cart-title">
   <header className="rounded-3xl bg-brand-green p-5 text-brand-on-green sm:p-6"><div className="flex items-center gap-3">{onBack?<button type="button" onClick={onBack} aria-label="Alışverişe dön" className="min-h-11 min-w-11 shrink-0 rounded-xl border border-white/30 p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><ArrowLeft className="mx-auto h-5 w-5" aria-hidden="true"/></button>:null}<div className="min-w-0"><h1 id="guest-cart-title" className="text-2xl font-bold">Sepetim</h1><p className="mt-1 text-sm font-semibold">{count} ürün{mixedCurrency?'':` · ${formatMoney(subtotal,currency)}`}</p></div></div></header>
 
-  <section className="rounded-3xl border bg-white p-5 dark:bg-gray-900 sm:p-6" aria-labelledby="guest-cart-items"><h2 id="guest-cart-items" className="text-lg font-bold">Sepetteki ürünler</h2><div className="mt-5 space-y-5">{lines.map(line=>{const image=line.imagePath&&!isBrandFallbackImage(line.imagePath)?publicCatalogUrl(line.imagePath):(shippedProductPhoto(line.productSlug,'small')||(line.imagePath?publicCatalogUrl(line.imagePath):''));return<article key={line.key} className="go-cart-item flex gap-4 border-b pb-5 last:border-0">
-   <button type="button" onClick={()=>onOpenProduct?.(line.productSlug)} aria-label={`${line.productName} ürün sayfasını aç`} className="shrink-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{image?<img src={image} alt="" loading="lazy" className="h-24 w-24 rounded-2xl object-cover"/>:<span className="grid h-24 w-24 place-items-center rounded-2xl bg-gray-100 text-xs text-gray-600 dark:text-gray-300 dark:bg-gray-800">Görsel yok</span>}</button>
+  <section className="rounded-3xl border bg-white p-5 dark:bg-gray-900 sm:p-6" aria-labelledby="guest-cart-items"><h2 id="guest-cart-items" className="text-lg font-bold">Sepetteki ürünler</h2><div className="mt-5 space-y-5">{lines.map(line=>{const image=line.imagePath&&!isBrandFallbackImage(line.imagePath)?publicCatalogUrl(line.imagePath):(shippedProductPhoto(line.productSlug,'small')||'');return<article key={line.key} className="go-cart-item flex gap-4 border-b pb-5 last:border-0">
+   <button type="button" onClick={()=>onOpenProduct?.(line.productSlug)} aria-label={`${line.productName} ürün sayfasını aç`} className="shrink-0 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{image?<img src={image} alt="" loading="lazy" className="h-24 w-24 rounded-2xl object-cover"/>:<span className="block h-24 w-24 overflow-hidden rounded-2xl"><ProductArtwork name={line.productName} slug={line.productSlug} variant="tile"/></span>}</button>
    <div className="min-w-0 flex-1">
     <h3 className="font-bold leading-snug"><button type="button" onClick={()=>onOpenProduct?.(line.productSlug)} className="text-left hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold">{line.productName}</button></h3>
     <p className="mt-1 text-sm leading-5 text-gray-600 dark:text-gray-300">{[line.variantName,line.producerName].filter(Boolean).join(' · ')}</p>
