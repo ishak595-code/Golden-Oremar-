@@ -1,0 +1,61 @@
+/* Home in the light themes (İnci Beyazı, Zümrüt, Yakut, Şampanya).
+   The home prestige styles (homePrestigeV3.css, components/ProductCard.css,
+   premiumMobileV2.css) are drawn in obsidian forest. In a light theme the home
+   screen now follows the chosen theme like every other screen: the forest
+   palette is mapped to the theme's own variables (src/index.css) and the
+   hand-picked dark colours get their light counterparts. The bottom tab bar
+   stays forest in every theme, as before. Dark themes are unchanged. */
+
+:root[data-color-scheme="light"][data-app-tab="home"] header,
+:root[data-color-scheme="light"][data-app-tab="home"] .go-premium-home-v2{
+  --go-forest-950:var(--bg-main);--go-forest-900:var(--bg-card);--go-forest-850:var(--bg-card);--go-forest-800:var(--bg-card);
+  --go-forest-750:var(--border-light);--go-forest-700:var(--border-light);
+  --go-ivory:var(--text-main);--go-ivory-soft:var(--text-muted-darker);--go-muted:var(--text-muted);--go-muted-2:var(--text-muted);
+  --go-border:var(--border-main);--go-border-soft:var(--border-light);--go-gold:var(--brand-gold);--go-gold-strong:var(--brand-gold);
+}
+:root[data-color-scheme="light"][data-app-tab="home"] body,
+:root[data-color-scheme="light"][data-app-tab="home"] #root,
+:root[data-color-scheme="light"][data-app-tab="home"] #root>.min-h-screen{background:var(--bg-main)!important;color:var(--text-main)!important;}
+:root[data-color-scheme="light"][data-app-tab="home"] header{border-color:var(--border-light)!important;background:color-mix(in srgb,var(--bg-main) 96%,transparent)!important;box-shadow:0 1px 0 var(--border-light)!important;}
+:root[data-color-scheme="light"][data-go-header-compact="true"][data-app-tab="home"] header{box-shadow:0 8px 24px rgb(0 0 0 / .08)!important;}
+:root[data-color-scheme="light"][data-app-tab="home"] header input[aria-label="Ürün, üretici veya köy ara"]{background:var(--bg-card)!important;color:var(--text-main)!important;}
+
+:root[data-color-scheme="light"][data-app-tab="home"] .go-premium-home-v2{
+  background:radial-gradient(120% 52% at 50% -8%,color-mix(in srgb,var(--brand-gold) 8%,transparent),transparent 58%),var(--bg-main);
+  color:var(--text-main);
+}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-section-header__eyebrow,
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-section-v2--seasonal .go-section-header__eyebrow,
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-section-v2--preorder .go-section-header__eyebrow,
+:root[data-color-scheme="light"][data-app-tab="home"] .go-campaign-v2__copy>span{color:var(--brand-gold);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-section-header h2{color:var(--text-main);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-section-header p,
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-section-v2 .go-section-header p{color:var(--text-muted);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-category-card{border-color:var(--border-main);background:var(--bg-card);box-shadow:0 6px 18px rgb(0 0 0 / .05);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-category-card:active{border-color:var(--brand-gold);background:var(--bg-card);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-category-card__media{background:color-mix(in srgb,var(--brand-green) 8%,var(--bg-card));}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-category-card__copy strong{color:var(--text-main);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-category-card__copy span{color:var(--text-muted);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-campaign-v2{border-color:var(--border-main);background:var(--bg-card);box-shadow:0 12px 30px rgb(0 0 0 / .06);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-discover-all{border-color:var(--border-main);background:var(--bg-card);color:var(--text-main);box-shadow:none;}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-discover-all:active{background:var(--border-light);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-home-section-empty{border-color:var(--border-main);background:var(--bg-card);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-home-section-empty strong{color:var(--text-main);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-home-section-empty span{color:var(--text-muted);}
+
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4{color:var(--text-main);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4:active,
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4:focus-visible{background:color-mix(in srgb,var(--brand-green) 7%,transparent);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4__item:not(:last-child)::after{background:linear-gradient(90deg,color-mix(in srgb,var(--brand-gold) 25%,transparent),var(--border-light),transparent 94%);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4__image,
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4__placeholder{border-color:var(--border-light);background:var(--bg-card);box-shadow:0 6px 16px rgb(0 0 0 / .08);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4__title,
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4__price{color:var(--text-main);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4__meta,
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4__verification{color:var(--text-muted)!important;}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4__verification::before,
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4__chevron{color:var(--text-muted);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4__badge{border-color:color-mix(in srgb,var(--brand-gold) 35%,transparent);background:color-mix(in srgb,var(--brand-gold) 9%,transparent);color:var(--brand-gold);}
+@media(hover:hover){
+  :root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4:hover{background:color-mix(in srgb,var(--brand-green) 5%,transparent);}
+}

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { showAppToast } from '../../lib/appToast';
 import { RefreshCw, Upload, User } from 'lucide-react';
 import { Panel, ErrorState } from './ui';
 import { getPrivateAssetSignedUrl, removeCustomerAvatar, updateProfile, uploadCustomerAvatar } from './api';
@@ -162,7 +163,7 @@ export default function ProfilePanel({ overview, onChanged }: {
       await onChanged();
       setDisplayName(normalizedName);
       setPhone(normalizedPhone);
-      setMessage('Profil bilgileriniz güncellendi.');
+      setMessage('Profil bilgileriniz güncellendi.');showAppToast('Kaydedildi');
     } catch {
       setError('Profil bilgileriniz şu anda güncellenemedi. Lütfen yeniden deneyin.');
     } finally {
@@ -171,7 +172,7 @@ export default function ProfilePanel({ overview, onChanged }: {
   }
 
   return (
-    <Panel title="Profilimi Düzenle" description="Ad, telefon, uygulama dili ve pazarlama izninizi yönetin.">
+    <Panel title="Profilimi Düzenle" description="Ad, telefon, e-posta dili ve pazarlama izninizi yönetin.">
       <form onSubmit={save} className="space-y-4" aria-busy={saving || avatarBusy}>
         {error ? <ErrorState message={error} /> : null}
         {message ? <div role="status" aria-live="polite" className="rounded-2xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:bg-green-950/30 dark:text-green-200">{message}</div> : null}
@@ -218,12 +219,13 @@ export default function ProfilePanel({ overview, onChanged }: {
         </label>
 
         <label className="block">
-          <span className="text-sm font-semibold">Uygulama dili</span>
+          <span className="text-sm font-semibold">E-posta dili</span>
           <select required disabled={saving} value={locale} onChange={e => setLocale(e.target.value as AccountOverview['profile']['locale'])}
             className="mt-1 min-h-11 w-full rounded-xl border border-gray-300 bg-transparent px-3 disabled:opacity-60 dark:border-gray-700">
             <option value="tr">Türkçe</option><option value="en">English</option><option value="de">Deutsch</option>
             <option value="fr">Français</option><option value="ku">Kurdî</option><option value="ar">العربية</option>
           </select>
+          <span className="mt-1 block text-xs text-gray-500">Ödeme makbuzu e-postaları bu dilde gönderilir. Uygulama arayüzü Türkçedir.</span>
         </label>
 
         <label className="flex min-h-11 items-start gap-3 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
