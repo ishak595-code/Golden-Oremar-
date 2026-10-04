@@ -22,6 +22,7 @@ import{buildProductUrl,buildProducerUrl,buildSearchUrl,buildTabUrl,parsePublicRo
 import HomeSection from'./features/home/HomeSection';
 import{useNativeDeepLinks}from'./features/navigation/useNativeDeepLinks';
 import{runBackHandlers}from'./features/navigation/backHandlers';
+import{APP_TOAST_EVENT}from'./lib/appToast';
 
 const AdminPage=React.lazy(()=>import('./pages/AdminPage').then(module=>({default:module.AdminPage})));
 const AccountCenter=React.lazy(()=>import('./features/account/AccountCenter'));
@@ -88,7 +89,10 @@ function AppContent(){
  const[adminSession,setAdminSession]=useState<{checked:boolean;isAdmin:boolean;roles:string[]}>({checked:false,isAdmin:false,roles:[]});
  const isAdminLoggedIn=adminSession.checked&&adminSession.isAdmin;
 
- const showToast=useCallback((message:string)=>{setToast({message,visible:true});window.setTimeout(()=>setToast(previous=>({...previous,visible:false})),3200);},[]);
+ const toastTimerRef=useRef(0);
+ const showToast=useCallback((message:string)=>{setToast({message,visible:true});window.clearTimeout(toastTimerRef.current);toastTimerRef.current=window.setTimeout(()=>setToast(previous=>({...previous,visible:false})),3200);},[]);
+ // Screens in lazy chunks confirm a save through src/lib/appToast.ts.
+ useEffect(()=>{const onToast=(event:Event)=>{const message=(event as CustomEvent<unknown>).detail;if(typeof message==='string')showToast(message);};window.addEventListener(APP_TOAST_EVENT,onToast);return()=>window.removeEventListener(APP_TOAST_EVENT,onToast);},[showToast]);
 
  useEffect(()=>{
   const normalizedUrl=resolvedInitialTab===initialTab?window.location.href:tabUrl('home');

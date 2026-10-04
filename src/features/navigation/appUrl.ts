@@ -40,6 +40,8 @@ export const PUBLIC_PATH = {
 } as const;
 const NAVIGATION_PROTOCOLS = new Set(['http:', 'https:', 'capacitor:']);
 const PUBLIC_PROTOCOLS = new Set(['http:', 'https:']);
+// Settings screens (src/features/account/SettingsPanel.tsx).
+const SETTINGS_SUBVIEWS = new Set(['theme', 'sound', 'password', 'notifications', 'newsletter', 'sessions', 'closure']);
 const ACCOUNT_VIEWS = new Set([
   'menu', 'home', 'profile', 'orders', 'reviews', 'addresses', 'favorites', 'followed-producers', 'gifts',
   'payments', 'notifications', 'settings', 'seller', 'producer-products', 'producer-profile-edit', 'support',
@@ -325,6 +327,7 @@ function safeAccountView(value: unknown) {
   const suffix = normalized.slice(separator + 1);
   if ((prefix === 'messages' || prefix === 'orders') && cleanPublicReference(suffix)) return `${prefix}:${suffix}`;
   if (prefix === 'seller' && SELLER_SUBVIEWS.has(suffix)) return `seller:${suffix}`;
+  if (prefix === 'settings' && SETTINGS_SUBVIEWS.has(suffix)) return `settings:${suffix}`;
   return null;
 }
 function safeAdminView(value: unknown) {

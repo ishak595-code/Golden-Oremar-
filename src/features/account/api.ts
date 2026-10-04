@@ -15,7 +15,6 @@ import type {
   FollowedProducerItem,
   GiftOrder,
   NewsletterSummary,
-  NotificationPreferences,
   NotificationsPage,
   OrdersPage,
   PaymentActivityPage,
@@ -197,7 +196,7 @@ function normalizeProfileUpdate(value:unknown,expected:{displayName:string;phone
   const userId=uuid(value.userId,'Kullanıcı kimliği');
   const displayName=requiredText(value.displayName,'Görünen ad',120);
   const phone=textAllowEmpty(value.phone,'Telefon',40);
-  const locale=requiredText(value.locale,'Uygulama dili',8);if(!LOCALES.has(locale))throw new Error('Uygulama dili doğrulanamadı.');
+  const locale=requiredText(value.locale,'E-posta dili',8);if(!LOCALES.has(locale))throw new Error('E-posta dili doğrulanamadı.');
   const marketingConsent=booleanValue(value.marketingConsent,'Pazarlama izni');
   if(displayName!==expected.displayName||phone!==(expected.phone??'')||locale!==expected.locale||marketingConsent!==expected.marketingConsent)throw new Error('Profil güncelleme sonucu istenen değişiklikle eşleşmiyor.');
   return{userId,displayName,phone:phone||null,locale,marketingConsent};
@@ -241,7 +240,6 @@ function normalizeGiftOrders(value:unknown):GiftOrder[]{if(!Array.isArray(value)
 
 function normalizePaymentActivity(value:unknown):PaymentActivityPage{if(!isRecord(value)||!Array.isArray(value.items))throw new Error('Ödeme geçmişi şu anda yüklenemedi. Lütfen tekrar deneyin.');const limit=integer(value.limit,'Ödeme liste limiti',1,50),offset=integer(value.offset,'Ödeme liste başlangıcı');if(value.items.length>limit)throw new Error('Ödeme geçmişi beklenen limiti aşıyor.');return{total:integer(value.total,'Toplam ödeme hareketi'),limit,offset,items:value.items.map((item,index)=>{if(!isRecord(item))throw new Error(`${index+1}. ödeme hareketi doğrulanamadı.`);return{id:uuid(item.id,`${index+1}. ödeme kimliği`),orderId:uuid(item.orderId,`${index+1}. sipariş kimliği`),orderNumber:requiredText(item.orderNumber,`${index+1}. sipariş numarası`,160),provider:requiredText(item.provider,`${index+1}. ödeme sağlayıcısı`,120),paymentMethodType:enumValue(item.paymentMethodType,`${index+1}. ödeme yöntemi`,PAYMENT_METHOD_TYPES,40),amountMinor:integer(item.amountMinor,`${index+1}. ödeme tutarı`,1),currency:currencyCode(item.currency,`${index+1}. ödeme para birimi`),status:enumValue(item.status,`${index+1}. ödeme durumu`,PAYMENT_ACTIVITY_STATUSES,40),failureCode:optionalText(item.failureCode,`${index+1}. hata kodu`,160),failureMessage:optionalText(item.failureMessage,`${index+1}. hata açıklaması`,1000),authorizedAt:dateTime(item.authorizedAt,`${index+1}. yetkilendirme tarihi`,false),capturedAt:dateTime(item.capturedAt,`${index+1}. tahsilat tarihi`,false),createdAt:dateTime(item.createdAt,`${index+1}. ödeme oluşturma tarihi`) as string,updatedAt:dateTime(item.updatedAt,`${index+1}. ödeme güncelleme tarihi`) as string}})}}
 
-function normalizeNotificationPreferences(value:unknown):NotificationPreferences{if(!isRecord(value))throw new Error('Bildirim tercihleri doğrulanamadı.');return{pushEnabled:booleanValue(value.pushEnabled,'Push bildirimi tercihi'),orderPush:booleanValue(value.orderPush,'Sipariş bildirimi tercihi'),paymentPush:booleanValue(value.paymentPush,'Ödeme bildirimi tercihi'),shipmentPush:booleanValue(value.shipmentPush,'Kargo bildirimi tercihi'),returnPush:booleanValue(value.returnPush,'İade bildirimi tercihi'),messagePush:booleanValue(value.messagePush,'Mesaj bildirimi tercihi'),reviewPush:booleanValue(value.reviewPush,'Yorum bildirimi tercihi'),producerPush:booleanValue(value.producerPush,'Üretici bildirimi tercihi'),systemPush:booleanValue(value.systemPush,'Sistem bildirimi tercihi'),campaignPush:booleanValue(value.campaignPush,'Kampanya bildirimi tercihi')}}
 function normalizeNotifications(value:unknown):NotificationsPage{if(!isRecord(value)||!Array.isArray(value.items))throw new Error('Bildirim listesi doğrulanamadı.');return{unreadCount:integer(value.unreadCount,'Okunmamış bildirim sayısı'),items:value.items.map((item,index):AccountNotification=>{if(!isRecord(item))throw new Error(`${index+1}. bildirim doğrulanamadı.`);return{id:uuid(item.id,`${index+1}. bildirim kimliği`),type:enumValue(item.type,`${index+1}. bildirim türü`,NOTIFICATION_TYPES as Set<AccountNotification['type']>,40),title:requiredText(item.title,`${index+1}. bildirim başlığı`,160),message:requiredText(item.message,`${index+1}. bildirim mesajı`,5000),actionUrl:safeInternalOrHttpsUrl(item.actionUrl,`${index+1}. bildirim bağlantısı`),metadata:metadataObject(item.metadata,`${index+1}. bildirim metadata alanı`),readAt:dateTime(item.readAt,`${index+1}. bildirim okunma tarihi`,false),createdAt:dateTime(item.createdAt,`${index+1}. bildirim tarihi`) as string,expiresAt:dateTime(item.expiresAt,`${index+1}. bildirim sona erme tarihi`,false)}})}}
 
 function normalizeHelpDocument(value:unknown,key:string):AccountHelpDocument|null{
@@ -292,7 +290,7 @@ export async function getAccountOverview():Promise<AccountOverview>{const{data,e
 export async function updateProfile(input:{displayName:string;phone?:string|null;locale:string;marketingConsent:boolean}){
   const displayName=requiredText(input.displayName,'Görünen ad',120);if(displayName.length<2)throw new Error('Görünen ad doğrulanamadı.');
   const phone=phoneValue(input.phone,'Telefon',false);
-  const locale=requiredText(input.locale,'Uygulama dili',8);if(!LOCALES.has(locale))throw new Error('Uygulama dili doğrulanamadı.');
+  const locale=requiredText(input.locale,'E-posta dili',8);if(!LOCALES.has(locale))throw new Error('E-posta dili doğrulanamadı.');
   const marketingConsent=booleanValue(input.marketingConsent,'Pazarlama izni');
   const expected={displayName,phone,locale,marketingConsent};
   const{data,error}=await supabase.rpc('update_customer_profile',{p_display_name:displayName,p_phone:phone,p_locale:locale,p_marketing_consent:marketingConsent});
@@ -316,8 +314,6 @@ export async function listFollowedProducers():Promise<FollowedProducerItem[]>{co
 export async function toggleProducerFollow(producerId:string){const id=uuid(producerId,'Üretici kimliği');const{data,error}=await supabase.rpc('toggle_producer_follow_v1',{p_producer_id:id});return normalizeFollowToggle(unwrap<unknown>(data,error),id);}
 export async function listGiftOrders():Promise<GiftOrder[]>{const{data,error}=await supabase.rpc('list_my_gift_orders_v1');return normalizeGiftOrders(unwrap<unknown>(data,error));}
 export async function listPaymentActivity(limit=20,offset=0):Promise<PaymentActivityPage>{const{data,error}=await supabase.rpc('list_my_payment_activity_v1',{p_limit:validatedLimit(limit,50),p_offset:validatedOffset(offset)});return normalizePaymentActivity(unwrap<unknown>(data,error));}
-export async function getNotificationPreferences():Promise<NotificationPreferences>{const{data,error}=await supabase.rpc('get_my_notification_preferences_v1');return normalizeNotificationPreferences(unwrap<unknown>(data,error));}
-export async function updateNotificationPreferences(input:NotificationPreferences){const normalized=normalizeNotificationPreferences(input);const{data,error}=await supabase.rpc('update_my_notification_preferences_v1',{p_push_enabled:normalized.pushEnabled,p_order_push:normalized.orderPush,p_payment_push:normalized.paymentPush,p_shipment_push:normalized.shipmentPush,p_return_push:normalized.returnPush,p_message_push:normalized.messagePush,p_review_push:normalized.reviewPush,p_producer_push:normalized.producerPush,p_system_push:normalized.systemPush,p_campaign_push:normalized.campaignPush});return normalizeNotificationPreferences(unwrap<unknown>(data,error));}
 export async function requestAccountClosure(reason:string){const normalized=reason.trim();if(normalized.length<5||normalized.length>2000)throw new Error('Hesap kapatma gerekçesi 5 ile 2000 karakter arasında olmalıdır.');const{data,error}=await supabase.rpc('request_account_closure_v1',{p_reason:normalized});return normalizeClosureRequest(unwrap<unknown>(data,error));}
 export async function cancelAccountClosure(){const{data,error}=await supabase.rpc('cancel_account_closure_v1');return normalizeClosureCancel(unwrap<unknown>(data,error));}
 

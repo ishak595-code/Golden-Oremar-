@@ -11,6 +11,7 @@ import PremiumImage from'./components/PremiumImage';
 import ProductCard from'./components/ProductCard';
 import SectionHeader from'./components/SectionHeader';
 import'./homePrestigeV3.css';
+import'./homeLightThemes.css';
 import{scrollBehavior}from'../../lib/reducedMotion';
 import{buildTabUrl}from'../navigation/appUrl';
 

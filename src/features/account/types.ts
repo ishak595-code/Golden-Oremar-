@@ -307,19 +307,6 @@ export interface AccountHelpDocument {
 
 export type AccountHelpContent = Record<AccountHelpKey, AccountHelpDocument | null>;
 
-export interface NotificationPreferences {
-  pushEnabled: boolean;
-  orderPush: boolean;
-  paymentPush: boolean;
-  shipmentPush: boolean;
-  returnPush: boolean;
-  messagePush: boolean;
-  reviewPush: boolean;
-  producerPush: boolean;
-  systemPush: boolean;
-  campaignPush: boolean;
-}
-
 export interface AccountNotification {
   id: string;
   type: NotificationType;

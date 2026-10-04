@@ -5,7 +5,7 @@ import{NOTIFICATION_SOUND_OPTIONS,getNotificationSound,getNotificationSoundEnabl
 import{updateMyAppPreferences}from'../preferences/api';
 
 type PreferenceMode='all'|'theme'|'sound';
-type Props={theme:AppTheme;onThemeChange?:(theme:AppTheme)=>void;mode?:PreferenceMode;onSaved?:()=>void;};
+type Props={theme:AppTheme;onThemeChange?:(theme:AppTheme)=>void;mode?:PreferenceMode;onSaved?:(message:string)=>void;};
 
 export default function PremiumPreferencesPanel({theme,onThemeChange,mode='all',onSaved}:Props){
  const[sound,setSound]=useState<NotificationSoundId>(()=>getNotificationSound());
@@ -19,22 +19,22 @@ export default function PremiumPreferencesPanel({theme,onThemeChange,mode='all',
  async function chooseTheme(next:AppTheme){
   if(saving)return;const label=APP_THEME_OPTIONS.find(item=>item.id===next)?.label||'Tema';
   onThemeChange?.(next);setError('');setStatus(`${label} seçildi.`);
-  try{setSaving('theme');await updateMyAppPreferences({theme:next});setStatus(`${label} tercihiniz kaydedildi.`);onSaved?.();}
-  catch{setError('Tema seçildi ancak tercihiniz şu anda kaydedilemedi. Daha sonra tekrar deneyin.');}
+  try{setSaving('theme');await updateMyAppPreferences({theme:next});setStatus(`${label} tercihiniz kaydedildi.`);onSaved?.('Tema kaydedildi');}
+  catch{onSaved?.('Bu cihazda kaydedildi');setError('Tema bu cihazda kaydedildi ancak hesabınıza eşitlenemedi. Bağlantı gelince yeniden seçebilirsiniz.');}
   finally{setSaving(null);}
  }
  async function preview(next:NotificationSoundId){if(previewing)return;try{setPreviewing(next);const played=await playNotificationSound(next,{force:true});if(!played)setStatus('Ses önizlemesi cihazınızın ses ayarları nedeniyle çalınamadı.');}finally{window.setTimeout(()=>setPreviewing(null),900);}}
  async function chooseSound(next:NotificationSoundId){
   if(saving)return;const label=NOTIFICATION_SOUND_OPTIONS.find(item=>item.id===next)?.label||'Bildirim sesi';
   setNotificationSound(next);setSound(next);setError('');setStatus(`${label} seçildi.`);
-  try{setSaving('sound');await updateMyAppPreferences({notificationSound:next});setStatus(`${label} tercihiniz kaydedildi.`);void preview(next);onSaved?.();}
-  catch{setError('Ses seçildi ancak tercihiniz şu anda kaydedilemedi. Daha sonra tekrar deneyin.');}
+  try{setSaving('sound');await updateMyAppPreferences({notificationSound:next});setStatus(`${label} tercihiniz kaydedildi.`);void preview(next);onSaved?.('Bildirim sesi kaydedildi');}
+  catch{onSaved?.('Bu cihazda kaydedildi');setError('Ses bu cihazda kaydedildi ancak hesabınıza eşitlenemedi. Bağlantı gelince yeniden seçebilirsiniz.');}
   finally{setSaving(null);}
  }
  async function toggleEnabled(next:boolean){
   if(saving)return;setNotificationSoundEnabled(next);setEnabled(next);setError('');setStatus(next?'Bildirim sesleri açıldı.':'Bildirim sesleri kapatıldı.');if(next)void preview(sound);
-  try{setSaving('enabled');await updateMyAppPreferences({notificationSoundEnabled:next});}
-  catch{setError(`Bildirim sesleri ${next?'açıldı':'kapatıldı'} ancak tercihiniz şu anda kaydedilemedi. Daha sonra tekrar deneyin.`);}
+  try{setSaving('enabled');await updateMyAppPreferences({notificationSoundEnabled:next});onSaved?.(next?'Bildirim sesleri açıldı':'Bildirim sesleri kapatıldı');}
+  catch{onSaved?.('Bu cihazda kaydedildi');setError(`Bildirim sesleri bu cihazda ${next?'açıldı':'kapatıldı'} ancak hesabınıza eşitlenemedi.`);}
   finally{setSaving(null);}
  }
  const selectedTheme=APP_THEME_OPTIONS.find(item=>item.id===theme)?.label||'Tema';
