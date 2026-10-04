@@ -13,9 +13,11 @@
   background: var(--bg-card);
 }
 
-/* The safety centre button (report/block, required for user content) stays
-   reachable everywhere without covering the page: an icon above the tab bar
-   on phones, lifted above the checkout bar where it shows. */
+/* The safety centre button (report/block, required for user content) floats
+   only on browsing screens (see src/features/store/safetyCenter.ts): an icon
+   above the tab bar on phones. Those screens get extra bottom room so the end
+   of the page always scrolls clear of it; form/settings/message screens open
+   the centre from an inline entry instead. */
 .go-safety-fab {
   display: inline-flex;
   align-items: center;
@@ -36,5 +38,19 @@
   }
   :root[data-cart-dock="on"] .go-safety-fab {
     bottom: calc(6.6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  }
+}
+
+/* Room for the floating safety button at the end of browsing pages. */
+@media (max-width: 1023px) {
+  :root[data-safety-fab="on"] #root > .min-h-screen {
+    padding-bottom: calc(9.5rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
+  }
+  /* "Başa dön" stacks above the safety button instead of overlapping it. */
+  :root[data-safety-fab="on"] .go-scroll-top {
+    bottom: calc(9.1rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
+  }
+  :root[data-safety-fab="on"][data-app-tab="product-detail"] #root > .min-h-screen {
+    padding-bottom: calc(5rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important;
   }
 }

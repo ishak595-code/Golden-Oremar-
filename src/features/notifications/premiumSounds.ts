@@ -21,11 +21,11 @@ export type NotificationSoundOption = {
    synthesis intentionally avoid novelty animal imitations: Golden Oremar uses a
    restrained five-sound sonic identity that feels native to a premium commerce app. */
 export const NOTIFICATION_SOUND_OPTIONS: NotificationSoundOption[] = [
-  { id: 'oremar-drop', label: 'Oremar Kristali', description: 'Kısa kristal dokunuş ve yumuşak su kuyruğu. Varsayılan Golden Oremar imzası.', file: 'go_sound_oremar_drop.wav', webGain: 0.06 },
-  { id: 'mountain-birds', label: 'Dağ Esintisi', description: 'Hafif hava dokusu üzerinde iki zarif yüksek nota; ferah ve sakin.', file: 'go_sound_mountain_birds.wav', webGain: 0.0335 },
-  { id: 'dawn-rooster', label: 'Şafak İmzası', description: 'Sıcak üç notalı sabah motifi; doğal çağrışımlı ama taklit ses kullanmaz.', file: 'go_sound_dawn_rooster.wav', webGain: 0.0319 },
-  { id: 'partridge-call', label: 'Zümrüt Yankı', description: 'Derin zümrüt tonunda iki kısa yankı ve ince harmonik kapanış.', file: 'go_sound_partridge_call.wav', webGain: 0.0297 },
-  { id: 'highland-bell', label: 'Şampanya Çanı', description: 'Yumuşak metalik parlaklık ve kısa, rafine bir premium kapanış.', file: 'go_sound_highland_bell.wav', webGain: 0.0497 },
+  { id: 'oremar-drop', label: 'Oremar Kristali', description: 'Kristal gibi kısa ve berrak bir ses.', file: 'go_sound_oremar_drop.wav', webGain: 0.06 },
+  { id: 'mountain-birds', label: 'Dağ Esintisi', description: 'Dağ havası gibi ferah ve sakin bir ses.', file: 'go_sound_mountain_birds.wav', webGain: 0.0335 },
+  { id: 'dawn-rooster', label: 'Şafak İmzası', description: 'Sıcak, üç notalı bir sabah melodisi.', file: 'go_sound_dawn_rooster.wav', webGain: 0.0319 },
+  { id: 'partridge-call', label: 'Zümrüt Yankı', description: 'Derin ve yumuşak, iki kısa yankı.', file: 'go_sound_partridge_call.wav', webGain: 0.0297 },
+  { id: 'highland-bell', label: 'Şampanya Çanı', description: 'Zarif ve parlak, kısa bir çan sesi.', file: 'go_sound_highland_bell.wav', webGain: 0.0497 },
 ];
 
 const SOUND_KEY = 'golden-oremar:notification-sound:v1';
