@@ -1,5 +1,5 @@
 import { PushNotifications } from '@capacitor/push-notifications';
-import { ANDROID_SILENT_CHANNEL_ID, NOTIFICATION_SOUND_OPTIONS, androidChannelIdFor } from './premiumSounds';
+import { ANDROID_SILENT_CHANNEL_ID, NOTIFICATION_SOUND_OPTIONS, RETIRED_ANDROID_CHANNEL_IDS, androidChannelIdFor } from './premiumSounds';
 
 let soundChannelsReady: Promise<void> | null = null;
 
@@ -22,6 +22,8 @@ export function ensureAndroidSoundChannels(legacyChannelId: string) {
         });
       }
       await PushNotifications.createChannel({ id: ANDROID_SILENT_CHANNEL_ID, name: 'Golden Oremar · Sessiz', description, importance: 2 });
+      // Sound files changed in 1.3.14: drop the -v1 channels (their sound is fixed).
+      for (const id of RETIRED_ANDROID_CHANNEL_IDS) await PushNotifications.deleteChannel({ id }).catch(() => {});
     })().catch(error => {
       soundChannelsReady = null;
       if (process.env.NODE_ENV === 'development') console.warn('Notification channels failed', error);
