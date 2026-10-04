@@ -17,7 +17,7 @@ require(workflow.includes('npm run audit:release')&&workflow.includes('npx tsc -
 require(workflow.includes('jarsigner -verify'),'Google Play AAB signature verification is missing.');
 require(/applicationId\s+["']com\.goldenoremar\.app["']/.test(gradle),'Android applicationId drifted from the Play package.');
 require(/targetSdk\s*=\s*rootProject\.ext\.targetSdkVersion/.test(gradle),'Android target SDK contract is missing.');
-require(/versionCode\s*=\s*16\b/.test(gradle)&&/versionName\s*=\s*["']1\.3\.12["']/.test(gradle),'Google Play release identity must remain 1.3.12 build 16 for this release.');
-require(workflow.includes("grep -q 'versionCode = 16' android/app/build.gradle")&&workflow.includes(`grep -q 'versionName = "1.3.12"' android/app/build.gradle`)&&workflow.includes('releaseName: Golden Oremar 1.3.12 (16)'),'The Google Play workflow must check and name the same release (1.3.12 build 16) as build.gradle.');
+require(/versionCode\s*=\s*17\b/.test(gradle)&&/versionName\s*=\s*["']1\.3\.13["']/.test(gradle),'Google Play release identity must remain 1.3.13 build 17 for this release.');
+require(workflow.includes("grep -q 'versionCode = 17' android/app/build.gradle")&&workflow.includes(`grep -q 'versionName = "1.3.13"' android/app/build.gradle`)&&workflow.includes('releaseName: Golden Oremar 1.3.13 (17)'),'The Google Play workflow must check and name the same release (1.3.13 build 17) as build.gradle.');
 require(notes.trim().length>=80,'Turkish Google Play release notes are missing or too short.');
 if(failures.length){console.error('Golden Oremar Google Play release contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}console.log('Golden Oremar Google Play release contract audit passed: production AAB, package identity, pinned publisher action, signing/service-account gates and release notes are fail-closed.');
