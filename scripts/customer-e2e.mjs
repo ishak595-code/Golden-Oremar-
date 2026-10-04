@@ -153,7 +153,7 @@ async function verifyProductCommerceJourney(page){
  mark('gift_flow_opens',true);
  await shot(page,'05-gift');
  await page.getByRole('button',{name:'Hediye ekranını kapat'}).click();
- const buyNow=page.getByRole('button',{name:/Hemen Satın Al/i});
+ const buyNow=page.getByRole('button',{name:/Hemen Al/i});
  if(!(await visible(buyNow,3000)))throw new Error('BUY_NOW_ACTION_MISSING');
  await buyNow.click();
  await page.getByRole('heading',{name:'Sepetim'}).waitFor({state:'visible',timeout:15000});

@@ -284,29 +284,55 @@
 .go-detail-recos__grid { display: grid; gap: .75rem; }
 @media (min-width: 640px) { .go-detail-recos__grid { grid-template-columns: 1fr 1fr; gap: 1rem; } }
 
-/* Buy bar: Hediye Et, Sepete Ekle and the direct button are fixed to the
-   bottom of the screen on the product page (which has no bottom navigation),
-   as in the big shopping apps. The buttons exist once: here. */
+/* Buy bar, fixed to the bottom of the screen on the product page (which has
+   no bottom navigation). Calm and exact: the price when it is not already on
+   screen, a quiet "Hemen Al", and "Sepete Ekle" as the one filled button. */
 .go-pdp .go-buy__actions.product-detail-commerce-dock {
   position: fixed; z-index: 55;
   left: max(.5rem, env(safe-area-inset-left, 0px)); right: max(.5rem, env(safe-area-inset-right, 0px));
   bottom: calc(.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
-  display: grid; grid-template-columns: auto minmax(max-content, 1fr) minmax(0, 1fr); align-items: stretch; gap: .45rem;
-  max-width: 44rem; margin: 0 auto; padding: .5rem;
-  border: 1px solid color-mix(in srgb, var(--brand-gold) 35%, var(--border-main)); border-radius: 1.3rem;
+  display: flex; align-items: center; gap: .5rem;
+  max-width: 44rem; margin: 0 auto; padding: .55rem;
+  border: 1px solid color-mix(in srgb, var(--brand-gold) 30%, var(--border-main)); border-radius: 1.35rem;
   background: color-mix(in srgb, var(--bg-card) 95%, transparent);
   -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
   box-shadow: 0 14px 34px rgb(0 0 0 / .3);
 }
-.go-pdp .product-detail-commerce-dock .go-buy__secondary { display: contents; }
-.go-pdp .product-detail-commerce-dock button { min-height: 3.2rem; padding: .3rem .6rem; font-size: .92rem; white-space: normal; }
-.go-pdp .product-detail-commerce-dock .product-detail-commerce-gift { order: 1; flex-direction: column; gap: .15rem; min-width: 3.9rem; padding-inline: .5rem; font-size: .72rem; font-weight: 700; }
-.go-pdp .product-detail-commerce-dock .product-detail-commerce-gift svg { width: 1.2rem; height: 1.2rem; }
-.go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { order: 2; min-height: 3.2rem; padding-inline: .7rem; font-size: .92rem; white-space: nowrap; box-shadow: none; }
+.go-buy-dock__price { flex: 0 0 auto; padding: 0 .35rem 0 .5rem; font-size: 1.08rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-main); }
+.go-pdp .product-detail-commerce-dock button { min-height: 3.4rem; border-radius: 1rem; white-space: nowrap; }
 .go-pdp .product-detail-commerce-dock button span { overflow-wrap: normal; }
-@media (max-width: 359px) { .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart svg { display: none; } .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { padding-inline: .65rem; font-size: .86rem; } .go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { font-size: .86rem; } .go-pdp .product-detail-commerce-dock .product-detail-commerce-gift { min-width: 3.4rem; } }
-.go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { order: 3; border-color: var(--brand-gold); background: var(--brand-gold); color: var(--text-on-gold, #1c1503); font-weight: 800; }
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { flex: 0 0 auto; padding: 0 1.05rem; border: 1px solid var(--border-main); background: transparent; color: var(--text-main); font-size: .95rem; font-weight: 700; }
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-buy:hover { border-color: color-mix(in srgb, var(--brand-gold) 55%, var(--border-main)); }
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { flex: 1 1 0; min-width: 0; padding: 0 .9rem; font-size: 1rem; font-weight: 800; box-shadow: none; }
+@media (max-width: 359px) {
+  .go-pdp .product-detail-commerce-dock { gap: .4rem; }
+  .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart svg { display: none; }
+  .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { font-size: .92rem; padding: 0 .5rem; }
+  .go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { font-size: .88rem; padding: 0 .7rem; }
+  /* Very narrow phones: the two buttons need the whole bar. */
+  .go-buy-dock__price { display: none; }
+}
 /* The on-screen keyboard and the bar never fight for the same space. */
 :root[data-native-keyboard="open"] .go-pdp .product-detail-commerce-dock { display: none; }
 /* Room at the end of the page so the bar never hides the last lines. */
 .go-pdp { padding-bottom: 6.5rem !important; }
+
+/* Gift: a card of its own. A thin-line icon, one warm sentence, what the
+   gift includes, and a quiet way in. */
+.go-gift-card {
+  display: flex; align-items: center; gap: .85rem; width: 100%; min-height: 4.6rem; margin-top: .35rem; padding: .9rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--brand-gold) 38%, var(--border-main)); border-radius: 1.15rem;
+  background: linear-gradient(140deg, color-mix(in srgb, var(--brand-gold) 9%, transparent), transparent 70%);
+  color: var(--text-main); text-align: left; touch-action: manipulation; transition: border-color .15s ease;
+}
+.go-gift-card:hover { border-color: var(--brand-gold); }
+.go-gift-card:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 2px; }
+.go-gift-card:disabled { opacity: .55; cursor: not-allowed; }
+.go-gift-card__icon { display: grid; place-items: center; flex: 0 0 auto; width: 2.6rem; height: 2.6rem; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--brand-gold) 45%, transparent); }
+.go-gift-card__icon svg { width: 1.2rem; height: 1.2rem; stroke-width: 1.5; color: var(--brand-gold); }
+.go-gift-card__copy { display: flex; flex-direction: column; gap: .2rem; min-width: 0; flex: 1 1 auto; }
+.go-gift-card__title { font-family: var(--font-serif, Georgia, serif); font-size: 1.02rem; font-weight: 700; line-height: 1.25; }
+.go-gift-card__meta { font-size: .8rem; line-height: 1.45; color: var(--text-muted); }
+.go-gift-card__cta { display: inline-flex; align-items: center; gap: .1rem; flex: 0 0 auto; font-size: .88rem; font-weight: 800; white-space: nowrap; color: var(--brand-gold); }
+.go-gift-card__cta svg { width: 1rem; height: 1rem; }
+@media (max-width: 359px) { .go-gift-card { flex-wrap: wrap; } .go-gift-card__cta { margin-left: 3.45rem; } }
