@@ -86,7 +86,7 @@ check(/<span className="go-price-card__pack">\{packLine\}<\/span>|className="go-
 
 // 3. Buttons: one filled primary (Sepete Ekle), one quiet second action (Hemen Al), gifting as its own card; flows unchanged.
 const actions = jsx.slice(jsx.indexOf('className="go-buy__actions'), jsx.indexOf('</section>', jsx.indexOf('className="go-buy__actions')));
-check(actions.indexOf('product-detail-commerce-cart go-buy__primary') >= 0 && actions.indexOf('product-detail-commerce-buy') >= 0 && actions.indexOf('product-detail-commerce-buy') < actions.indexOf('product-detail-commerce-cart') && actions.indexOf('product-detail-commerce-cart') < actions.indexOf('product-detail-commerce-gift go-gift-card'), 'The bar holds the quiet "Hemen Al" and the primary "Sepete Ekle"; "Hediye Et" is a card of its own under the purchase details.');
+check(actions.indexOf('product-detail-commerce-cart go-buy__primary') >= 0 && actions.indexOf('product-detail-commerce-buy') >= 0 && actions.indexOf('product-detail-commerce-buy') < actions.indexOf('product-detail-commerce-cart') && actions.indexOf('product-detail-commerce-cart') < actions.indexOf('product-detail-commerce-gift go-gift-card__button'), 'The bar holds the quiet "Hemen Al" and the primary "Sepete Ekle"; "Hediye Et" is a card of its own under the purchase details.');
 check(/onClick=\{\(\)=>void addToCart\(\)\}/.test(actions) && /onClick=\{\(\)=>void buyNow\(\)\}/.test(actions) && /onClick=\{\(\)=>void giftNow\(\)\}/.test(actions), 'Each button keeps its own flow (cart, buy now, gift).');
 
 // 4. Removed clutter stays removed.

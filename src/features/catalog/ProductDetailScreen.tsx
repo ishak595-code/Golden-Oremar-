@@ -90,8 +90,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const swipeStartRef=useRef<{x:number;y:number}|null>(null);
  const requestId=useRef(0);
  const imageViewerDialogRef=useAccessibleDialog<HTMLDivElement>(imageViewerOpen,()=>setImageViewerOpen(false));
- const priceCardRef=useRef<HTMLDivElement>(null);
- const[priceInView,setPriceInView]=useState(true);
  
  // Page metadata from the loaded product, via the same builder the build-time
  // prerender uses. This runs after the live data arrives, so the document
@@ -246,8 +244,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  }
  async function copyTrace(code:string){try{await copyText(code);setStatus('İzlenebilirlik kodu kopyalandı.');}catch{setError('Kod kopyalanamadı.');}}
 
- useEffect(()=>{const el=priceCardRef.current;if(!el||typeof IntersectionObserver==='undefined'){setPriceInView(true);return;}const observer=new IntersectionObserver(entries=>{const entry=entries[entries.length-1];if(entry)setPriceInView(entry.isIntersecting);},{threshold:0});observer.observe(el);return()=>observer.disconnect();},[loading,detail?.id]);
-
  if(loading)return<div role="status" aria-live="polite" className="mx-auto max-w-5xl p-8 text-center text-brand-muted">Ürün hazırlanıyor…</div>;
  if(error&&!detail)return<div className="mx-auto max-w-5xl p-5"><div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div><button type="button" onClick={onBack} className="mt-4 min-h-11 rounded-full border border-brand-border px-5 font-bold"><ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4"/>Geri dön</button></div>;
  if(!detail)return null;
@@ -381,7 +377,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    <section className="go-buybox" aria-labelledby="product-detail-title">
     <h1 id="product-detail-title" ref={titleRef} className="go-buybox__title">{detailName}</h1>
 
-    <div ref={priceCardRef} className="go-price-card">
+    <div className="go-price-card">
      <div className="go-price-card__main">
       {priceReady?(discountShown?<p className="go-price-card__amounts"><span className="sr-only" aria-live="polite">{`Önceki fiyat ${priceText(oldTotalMinor,currency)}, şimdi ${priceText(totalMinor,currency)}`}</span><span className="go-price-card__price" aria-hidden="true">{priceText(totalMinor,currency)}</span><s className="go-price-card__was" aria-hidden="true">{priceText(oldTotalMinor,currency)}</s><span className="go-price-card__discount" aria-hidden="true">%{discountPercent} · {priceText(dropMinor,currency)} indirim</span></p>:<p className="go-price-card__amounts"><span className="go-price-card__price" aria-live="polite">{priceText(totalMinor,currency)}</span></p>):<p className="go-price-card__missing">Fiyat şu anda gösterilemiyor</p>}
      </div>
@@ -400,21 +396,24 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
      {/* The buy bar, fixed to the bottom of the screen. One clear hierarchy:
          "Sepete Ekle" is the main, filled button; "Hemen Al" is the quiet
-         second action. The price joins the bar only while the price above
-         is scrolled out of view, so it is never on screen twice. */}
+         second action. The total sits on the left, so both buttons fall
+         under the right thumb. On wide screens the bar is not fixed: the
+         same row sits in the purchase column. */}
      <div className="go-buy__actions product-detail-commerce-dock" role="group" aria-label="Satın al">
-      {priceReady&&!priceInView?<span className="go-buy-dock__price"><span className="sr-only">Fiyat: </span>{priceText(totalMinor,currency)}</span>:null}
+      {priceReady?<span className="go-buy-dock__price"><span className="go-buy-dock__label">Toplam</span><strong>{priceText(totalMinor,currency)}</strong></span>:null}
       <button type="button" onClick={()=>void buyNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-buy"><span>{buyLabel}</span></button>
       <button type="button" onClick={()=>void addToCart()} disabled={busy||!purchaseReady} className="product-detail-commerce-cart go-buy__primary"><ShoppingCart aria-hidden="true"/><span>{purchaseLabel}</span></button>
      </div>
      {stockFact?<p className={`go-stock-status go-stock-status--${stockTone}`} aria-live="polite"><span className="go-stock-status__dot" aria-hidden="true"/><span className="sr-only">Stok durumu: </span><span>{stockFact}</span></p>:null}
      {/* Gifting is its own experience, not a third button squeezed into
-         the bar: one calm card under the purchase details. */}
-     {soldOut?null:<button type="button" onClick={()=>void giftNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-gift go-gift-card">
-      <span className="go-gift-card__icon" aria-hidden="true"><Gift/></span>
-      <span className="go-gift-card__copy"><span className="go-gift-card__title">Bu ürünü sevdiklerinize gönderin</span><span className="go-gift-card__meta">Özel notunuzla · Fiyat bilgisi olmadan · Doğrudan adresine</span></span>
-      <span className="go-gift-card__cta">Hediye Et<ChevronRight aria-hidden="true"/></span>
-     </button>}
+         the bar: a small line above, the invitation, what the gift
+         includes, and one clearly named button. */}
+     {soldOut?null:<div className="go-gift-card">
+      <p className="go-gift-card__eyebrow"><Gift aria-hidden="true"/>Sevdiklerinize özel</p>
+      <p className="go-gift-card__title">Bu ürünü sevdiklerinize hediye edin</p>
+      <p className="go-gift-card__meta">Özel notunuzla · Fiyat bilgisi olmadan · Doğrudan adresine</p>
+      <button type="button" onClick={()=>void giftNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-gift go-gift-card__button"><span>Hediye Olarak Gönder</span><ChevronRight aria-hidden="true"/></button>
+     </div>}
     </div>
    </section>
   </div>
