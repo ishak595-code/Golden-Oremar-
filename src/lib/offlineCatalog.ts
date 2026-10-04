@@ -199,6 +199,10 @@ const RESOLVERS: Record<string, Resolver> = {
     const free = Number.isSafeInteger(threshold) && threshold > 0 && subtotal >= threshold;
     return { ...kg1, weightGrams: grams, shippingMinor: free ? 0 : base + perKg * Math.ceil(grams / 1000) };
   },
+  // Help, FAQ and the legal pages (Turkish copy): the help centre and the
+  // public legal pages stay readable while the backend is down.
+  list_public_faq_v1: args => String(args.p_locale ?? 'tr').toLowerCase().startsWith('tr') ? load('faq_tr.json') : Promise.resolve(undefined),
+  get_account_help_content_v1: args => String(args.p_locale ?? 'tr').toLowerCase() === 'tr' ? load('help_tr.json') : Promise.resolve(undefined),
   list_public_events_v1: args => load(args.p_include_past === true ? 'events_all.json' : 'events_upcoming.json'),
   get_public_producer_profile_v3: async args => {
     const index = await load('producers.json');

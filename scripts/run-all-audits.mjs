@@ -72,6 +72,7 @@ const audits=[
  'store-follow-simulation-contract-audit.mjs',
  'store-readiness-contract-audit.mjs',
  'settings-experience-contract-audit.mjs',
+ 'help-center-contract-audit.mjs',
  'vercel-runtime-config-audit.mjs',
 ];
 

@@ -58,6 +58,9 @@ async function collect() {
     'offline_ordering.json': await rpc('get_public_offline_ordering_v1'),
     'events_upcoming.json': await rpc('list_public_events_v1', { p_include_past: false }),
     'events_all.json': await rpc('list_public_events_v1', { p_include_past: true }),
+    // Help centre, FAQ and the legal pages (src/features/help).
+    'faq_tr.json': await rpc('list_public_faq_v1', { p_locale: 'tr' }),
+    'help_tr.json': await rpc('get_account_help_content_v1', { p_locale: 'tr' }),
     // Domestic shipping quote for 1 kg and 2 kg (fee per kg and the
     // free-shipping threshold follow from the two; see offlineCatalog.ts).
     'shipping_tr.json': {

@@ -58,6 +58,8 @@ const HELP_KEYS=['about','returns','privacy','terms'] as const;
 function unwrap<T>(data:T|null,error:unknown):T{if(error)throw error;return data as T;}
 function isRecord(value:unknown):value is Record<string,unknown>{return Boolean(value)&&typeof value==='object'&&!Array.isArray(value);}
 function requiredText(value:unknown,label:string,max=500){const text=typeof value==='string'?value.trim():'';if(!text||text.length>max||/[\u0000-\u001F\u007F]/.test(text))throw new Error(`${label} doğrulanamadı.`);return text;}
+// Documents (markdown/HTML) are multi-line: tab and line breaks are allowed, other control characters are not.
+function documentText(value:unknown,label:string,max:number){if(typeof value!=='string'||value.length>max||/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value))throw new Error(`${label} doğrulanamadı.`);return value;}
 function textAllowEmpty(value:unknown,label:string,max=5000){if(typeof value!=='string'||value.length>max||/[\u0000-\u001F\u007F]/.test(value))throw new Error(`${label} doğrulanamadı.`);return value;}
 function optionalText(value:unknown,label:string,max=1000){if(value==null||value==='')return null;if(typeof value!=='string')throw new Error(`${label} doğrulanamadı.`);const text=value.trim();if(!text)return null;if(text.length>max||/[\u0000-\u001F\u007F]/.test(text))throw new Error(`${label} doğrulanamadı.`);return text;}
 function uuid(value:unknown,label:string){const text=requiredText(value,label,36);if(!UUID_RE.test(text))throw new Error(`${label} doğrulanamadı.`);return text;}
@@ -246,7 +248,7 @@ function normalizeHelpDocument(value:unknown,key:string):AccountHelpDocument|nul
   if(value==null)return null;
   if(!isRecord(value))throw new Error(`${key} yardım belgesi doğrulanamadı.`);
   const locale=requiredText(value.locale,`${key} belge dili`,8);if(!LOCALES.has(locale))throw new Error(`${key} belge dili doğrulanamadı.`);
-  return{id:uuid(value.id,`${key} belge kimliği`),slug:requiredText(value.slug,`${key} belge slug`,240),title:requiredText(value.title,`${key} belge başlığı`,300),summary:textAllowEmpty(value.summary,`${key} belge özeti`,2000),markdown:textAllowEmpty(value.markdown,`${key} markdown`,100000),sanitizedHtml:textAllowEmpty(value.sanitizedHtml,`${key} güvenli HTML`,200000),heroImagePath:optionalText(value.heroImagePath,`${key} görsel yolu`,2048),locale:locale as AccountHelpDocument['locale'],publishedAt:dateTime(value.publishedAt,`${key} yayın tarihi`,false),updatedAt:dateTime(value.updatedAt,`${key} güncelleme tarihi`) as string};
+  return{id:uuid(value.id,`${key} belge kimliği`),slug:requiredText(value.slug,`${key} belge slug`,240),title:requiredText(value.title,`${key} belge başlığı`,300),summary:textAllowEmpty(value.summary,`${key} belge özeti`,2000),markdown:documentText(value.markdown,`${key} markdown`,100000),sanitizedHtml:documentText(value.sanitizedHtml,`${key} güvenli HTML`,200000),heroImagePath:optionalText(value.heroImagePath,`${key} görsel yolu`,2048),locale:locale as AccountHelpDocument['locale'],publishedAt:dateTime(value.publishedAt,`${key} yayın tarihi`,false),updatedAt:dateTime(value.updatedAt,`${key} güncelleme tarihi`) as string};
 }
 function normalizeHelpContent(value:unknown):AccountHelpContent{
   if(!isRecord(value))throw new Error('Yardım içeriği şu anda yüklenemedi. Lütfen tekrar deneyin.');
