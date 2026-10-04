@@ -91,6 +91,8 @@ if(enStrings){
 expect(Boolean(privacyPage),'Publishable privacy-policy page must exist in the web build.');
 expect(Boolean(termsPage),'Publishable terms page must exist in the web build.');
 if(vercel){expect(vercel.includes('/gizlilik-politikasi')&&vercel.includes('/kullanim-sartlari'),'Stable legal-page routes must be configured.');}
+{const viteConfig=read('vite.config.ts');const deny=(viteConfig.match(/navigateFallbackDenylist:\s*\[([^\]]*)\]/)||[])[1]||'';expect(deny.includes('kullanim-sartlari')&&deny.includes('gizlilik-politikasi'),'The service worker must not answer the static legal pages with the app shell (navigateFallbackDenylist).');}
+{const voice=read('src/features/catalog/voiceSearchAdapter.ts');expect(/speech_not_supported/.test(voice)&&/code\.includes\('not_supported'\)/.test(voice),'A browser without speech recognition must get the "desteklenmiyor" message, not the generic voice error.');}
 
 if(failures.length){console.error('Golden Oremar store-readiness contract audit failed:');for(const failure of failures)console.error(`- ${failure}`);process.exit(1);}
 console.log('Golden Oremar store-readiness contract audit passed: live-mirrored UGC migrations, fail-closed RLS policies, Android signed-AAB pipeline, retained debug APK, iOS Release archive, Turkish/English permission localization, exact-head preflight gates and public legal routes are all enforced by repository contracts.');

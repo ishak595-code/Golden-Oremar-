@@ -50,8 +50,10 @@ export default defineConfig(() => ({
         clientsClaim: true,
         skipWaiting: true,
         // Prerendered SEO pages and the static data folders are real files;
-        // only app routes fall back to the shell.
-        navigateFallbackDenylist: [/^\/offline-catalog\//, /^\/assets\//, /^\/brand\//, /^\/product-photos\//, /^\/\.well-known\//],
+        // only app routes fall back to the shell. The legal pages are static
+        // HTML too: without them here a returning visitor (and the sales-terms
+        // link in the order form) got the home page instead of the terms.
+        navigateFallbackDenylist: [/^\/offline-catalog\//, /^\/assets\//, /^\/brand\//, /^\/product-photos\//, /^\/\.well-known\//, /^\/kullanim-sartlari\/?$/, /^\/gizlilik-politikasi\/?$/],
         runtimeCaching: [
           {
             // The offline catalogue answers when Supabase is down. Network

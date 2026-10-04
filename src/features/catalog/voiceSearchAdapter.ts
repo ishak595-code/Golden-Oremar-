@@ -58,7 +58,7 @@ export function voiceSearchErrorMessage(error: unknown) {
   if (code.includes('microphone_denied') || code.includes('not-allowed') || code.includes('permission')) {
     return 'Mikrofon izni verilmedi.|Cihaz ayarlarından Golden Oremar uygulamasına mikrofon erişimi vermelisiniz. Şimdilik arama kutusunu kullanabilirsiniz.';
   }
-  if (code.includes('speech_unavailable') || code.includes('not-supported')) {
+  if (code.includes('speech_unavailable') || code.includes('not-supported') || code.includes('not_supported')) {
     return 'Sesli arama bu cihazda desteklenmiyor.|Tarayıcınız veya cihazınız sesli aramayı desteklemiyor. Arama kutusunu kullanabilirsiniz.';
   }
   if (code.includes('speech_no_match') || code.includes('no-speech')) {
