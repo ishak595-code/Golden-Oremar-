@@ -266,9 +266,10 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  if(maker||makerVillage)kunye.push({key:'maker',label:'Üreten',text:maker||`${makerVillage} üreticileri`});
  if(producerLocation){const place=producerLocation.split(',').map(part=>part.trim()).filter(Boolean).map((part,index)=>index===0&&part.includes(' - ')?part.split(' - ').pop()!.trim():part).join(', ');kunye.push({key:'village',label:'Köy',text:producerLocation,href:`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`});}
  {const official=detail?.producer?.storeKind==='official';const notes=[detail?.producer?.originVerified===true?'Menşei doğrulandı':'',detail?.producer?.verified===true?(official?'resmi mağaza':'doğrulanmış üretici'):'',...activeBadges.filter((badge:any)=>!['official_store','verified_origin'].includes(safeText(badge.key,80))).map((badge:any)=>safeText(badge.label,120)).filter(Boolean).slice(0,3)].filter(Boolean);if(notes.length)kunye.push({key:'verified',label:'Doğrulama',text:notes.join(', ')});}
- // "Stok" in the facts table, right under İade, from the chosen pack's real
+ // Stock status directly under the buy buttons, from the chosen pack's real
  // stock: Tükendi, Son N adet (5 or fewer), Stokta; pre-orders say Ön sipariş.
  const stockFact=!variant?'':soldOut?'Tükendi':preorder?'Ön sipariş':tracked&&variantStock!==null&&variantStock<=5?`Son ${variantStock} adet`:stockReady?'Stokta':'';
+ const stockTone=soldOut?'out':preorder?'preorder':stockFact.startsWith('Son ')?'low':'in';
  const producerId=safeReference(detail?.producer?.id,160);
  const productId=safeReference(detail?.id,160);
  const questionReady=Boolean(producerId&&productId);
@@ -329,7 +330,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const returnText=typeof editorial.returnText==='string'?ed('returnText',200):computedReturn;
  // The shipping fee line ("Kargo bizden") is shown once, under the photo; it is not repeated here.
  const deliveryLines=[dispatchLine,...(coldChain?['Soğuk zincirle gönderilir']:[])];
- const facts:Array<[string,string[]]>=([['Kökeni',[ed('origin',120)]],['Üretim',[productionFact]],['Ambalaj',[ed('packaging',120)]],['İade',[returnText]],['Stok',[stockFact]],['Teslimat',deliveryLines]] as Array<[string,string[]]>).map(([label,lines]):[string,string[]]=>[label,lines.filter(Boolean)]).filter(([,lines])=>lines.length>0);
+ const facts:Array<[string,string[]]>=([['Kökeni',[ed('origin',120)]],['Üretim',[productionFact]],['Ambalaj',[ed('packaging',120)]],['İade',[returnText]],['Teslimat',deliveryLines]] as Array<[string,string[]]>).map(([label,lines]):[string,string[]]=>[label,lines.filter(Boolean)]).filter(([,lines])=>lines.length>0);
  function startReview(){if(!authenticated){onLoginRequired();return;}setReviewComposerOpen(true);}
  // Following the store: same data as the store page and Hesabım > Takip
  // Ettiğim Satıcılar (toggle_producer_follow_v1). Not an aria-pressed
@@ -397,6 +398,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
        <button type="button" onClick={()=>void giftNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-gift"><Gift aria-hidden="true"/><span>Hediye Et</span></button>
       </div>
      </div>
+     {stockFact?<p className={`go-stock-status go-stock-status--${stockTone}`} aria-live="polite"><span className="go-stock-status__dot" aria-hidden="true"/><span className="sr-only">Stok durumu: </span><span>{stockFact}</span></p>:null}
     </div>
    </section>
   </div>
