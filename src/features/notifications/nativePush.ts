@@ -106,6 +106,12 @@ async function handleRegistration(token: Token) {
   }
 }
 
+// Per-sound Android channels live in a lazy chunk (kept out of the web entry bundle).
+function ensureAndroidSoundChannels() {
+  if (Capacitor.getPlatform() !== 'android') return Promise.resolve();
+  return import('./androidSoundChannels').then(module => module.ensureAndroidSoundChannels(PUSH_CHANNEL_ID));
+}
+
 export async function initNativePushListeners() {
   if (!isNativePushPlatform() || listenersReady) return;
   if (listenersInitialization) return listenersInitialization;
@@ -125,6 +131,7 @@ export async function initNativePushListeners() {
     ]);
     listenerHandles = handles;
     listenersReady = true;
+    void ensureAndroidSoundChannels();
   })();
 
   try {
@@ -180,13 +187,7 @@ export async function enableNativePushRegistration(): Promise<NativePushRegistra
   }
   if (permission.receive !== 'granted') return { status: 'denied' };
 
-  if (Capacitor.getPlatform() === 'android') {
-    await PushNotifications.createChannel({
-      id: PUSH_CHANNEL_ID,
-      name: 'Golden Oremar',
-      description: 'Sipariş, ödeme, teslimat ve hesap bildirimleri',
-    });
-  }
+  await ensureAndroidSoundChannels();
 
   if (pendingRegistration) settleRegistration(new Error('Yeni cihaz kaydı başlatıldı.'));
   const result = new Promise<NativePushRegistrationResult>((resolve, reject) => {

@@ -14,11 +14,32 @@ type Delivery = {
   action_url: string | null;
   metadata: Record<string, unknown> | null;
   unread_count: number;
+  /** Customer's saved Golden Oremar sound, filled from push_delivery_sound_preferences_v1. */
+  sound?: { id: string; enabled: boolean } | null;
 };
 
 type SendResult = { ok: boolean; error?: string; disableToken?: boolean };
 
 const MAX_BATCH = 100;
+// Android channels created by the app (src/features/notifications/nativePush.ts):
+// one per Golden Oremar sound in res/raw, plus a silent one. Keep in sync with
+// androidChannelIdFor() in src/features/notifications/premiumSounds.ts.
+const LEGACY_ANDROID_CHANNEL = "golden-oremar-updates";
+const ANDROID_SOUND_FILES: Record<string, string> = {
+  "oremar-drop": "go_sound_oremar_drop",
+  "mountain-birds": "go_sound_mountain_birds",
+  "dawn-rooster": "go_sound_dawn_rooster",
+  "partridge-call": "go_sound_partridge_call",
+  "highland-bell": "go_sound_highland_bell",
+};
+function androidSound(delivery: Delivery): { channel_id: string; sound?: string } {
+  const choice = delivery.sound;
+  if (!choice) return { channel_id: LEGACY_ANDROID_CHANNEL };
+  if (!choice.enabled) return { channel_id: "go-sound-silent-v1" };
+  const id = ANDROID_SOUND_FILES[choice.id] ? choice.id : "oremar-drop";
+  // `sound` covers Android < 8, which has no channels.
+  return { channel_id: `go-sound-${id}-v1`, sound: ANDROID_SOUND_FILES[id] };
+}
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
 const FCM_ENDPOINT = (projectId: string) => `https://fcm.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/messages:send`;
@@ -121,7 +142,7 @@ async function sendFcm(delivery: Delivery): Promise<SendResult> {
         android: {
           priority: "high",
           notification: {
-            channel_id: "golden-oremar-updates",
+            ...androidSound(delivery),
             notification_count: count,
           },
         },
@@ -221,6 +242,19 @@ export default {
     if (error) return Response.json({ ok: false, error: "claim_failed", detail: error.message }, { status: 500 });
 
     const deliveries = (Array.isArray(data) ? data : []) as Delivery[];
+    if (deliveries.length) {
+      // The customer's chosen sound picks the Android channel. If the lookup
+      // fails the push still goes out on the legacy (system sound) channel.
+      const { data: sounds, error: soundError } = await ctx.supabaseAdmin.rpc("push_delivery_sound_preferences_v1", {
+        p_delivery_ids: deliveries.map(delivery => delivery.delivery_id),
+      });
+      if (soundError) console.error("push_sound_preferences_failed", soundError.message);
+      const byDelivery = new Map<number, { id: string; enabled: boolean }>();
+      for (const row of (Array.isArray(sounds) ? sounds : []) as Array<{ delivery_id: number; notification_sound: string; notification_sound_enabled: boolean }>) {
+        byDelivery.set(Number(row.delivery_id), { id: String(row.notification_sound), enabled: row.notification_sound_enabled !== false });
+      }
+      for (const delivery of deliveries) delivery.sound = byDelivery.get(Number(delivery.delivery_id)) ?? null;
+    }
     let sent = 0;
     let failed = 0;
     for (const delivery of deliveries) {
