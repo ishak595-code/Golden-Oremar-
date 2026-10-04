@@ -26,19 +26,19 @@ const MAX_BATCH = 100;
 // androidChannelIdFor() in src/features/notifications/premiumSounds.ts.
 const LEGACY_ANDROID_CHANNEL = "golden-oremar-updates";
 const ANDROID_SOUND_FILES: Record<string, string> = {
-  "oremar-drop": "go_sound_oremar_drop",
-  "mountain-birds": "go_sound_mountain_birds",
-  "dawn-rooster": "go_sound_dawn_rooster",
-  "partridge-call": "go_sound_partridge_call",
-  "highland-bell": "go_sound_highland_bell",
+  "oremar-drop": "go_sound_damla_v2",
+  "mountain-birds": "go_sound_kaval_v2",
+  "dawn-rooster": "go_sound_ocak_v2",
+  "partridge-call": "go_sound_suru_cani_v2",
+  "highland-bell": "go_sound_bal_v2",
 };
 function androidSound(delivery: Delivery): { channel_id: string; sound?: string } {
   const choice = delivery.sound;
   if (!choice) return { channel_id: LEGACY_ANDROID_CHANNEL };
-  if (!choice.enabled) return { channel_id: "go-sound-silent-v1" };
+  if (!choice.enabled) return { channel_id: "go-sound-silent-v2" };
   const id = ANDROID_SOUND_FILES[choice.id] ? choice.id : "oremar-drop";
   // `sound` covers Android < 8, which has no channels.
-  return { channel_id: `go-sound-${id}-v1`, sound: ANDROID_SOUND_FILES[id] };
+  return { channel_id: `go-sound-${id}-v2`, sound: ANDROID_SOUND_FILES[id] };
 }
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
