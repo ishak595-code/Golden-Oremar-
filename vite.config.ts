@@ -56,6 +56,17 @@ export default defineConfig(() => ({
         navigateFallbackDenylist: [/^\/offline-catalog\//, /^\/assets\//, /^\/brand\//, /^\/product-photos\//, /^\/\.well-known\//, /^\/kullanim-sartlari\/?$/, /^\/gizlilik-politikasi\/?$/],
         runtimeCaching: [
           {
+            // Golden Oremar notification sounds (public/sounds/*.wav): fetched
+            // on first preview/alert, then served from cache, also offline.
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/sounds/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'go-notification-sounds-v1',
+              expiration: { maxEntries: 12 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
             // The offline catalogue answers when Supabase is down. Network
             // first keeps it current; the cached copy covers a phone with no
             // signal at all, so the showcase still opens.
