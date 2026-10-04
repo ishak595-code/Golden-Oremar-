@@ -33,19 +33,21 @@ import {
   X,
   Megaphone,
   MessageCircle,
+  MessageSquareText,
 } from 'lucide-react';
 import { useCustomerSession } from '../features/auth/useCustomerSession';
 import { useAuthorization } from '../features/auth/AuthorizationContext';
 import { getPublicStorefrontConfig } from '../features/storefront/api';
 import { useAccessibleDialog } from '../features/accessibility/useAccessibleDialog';
 import { firstAllowedAdminTab, permissionForAdminTab, type AdminTab } from './adminCapabilities';
+import { FEEDBACK_CHANGED_EVENT, getUnreadFeedbackCount } from './feedbackAdminApi';
 
 interface AdminLayoutProps { children: React.ReactNode; activeTab: AdminTab; setActiveTab: (tab: AdminTab) => void; onLogout: () => void | Promise<void>; onBack?: () => void; }
 type MenuItem = { id: AdminTab; label: string; icon: React.ComponentType<{ className?: string; 'aria-hidden'?: React.AriaAttributes['aria-hidden'] }>; };
 type MenuGroup = { title: string; items: MenuItem[] };
 
 const ADMIN_MENU_GROUPS: MenuGroup[] = [
-  { title: 'Genel', items: [{ id: 'dashboard', label: 'Panel', icon: LayoutDashboard },{id:'production-readiness',label:'Üretim Hazırlığı',icon:Rocket}] },
+  { title: 'Genel', items: [{ id: 'dashboard', label: 'Panel', icon: LayoutDashboard },{id:'production-readiness',label:'Üretim Hazırlığı',icon:Rocket},{ id: 'feedback', label: 'Geri Bildirimler', icon: MessageSquareText }] },
   { title: 'E-Ticaret', items: [
     { id: 'official-store-products', label: 'Resmi Mağaza Ürünleri', icon: PackagePlus },
     { id: 'products', label: 'Ürün Yönetimi', icon: ShoppingBag },
@@ -130,6 +132,17 @@ export function AdminLayout({ children, activeTab, setActiveTab, onLogout, onBac
   const navigate = (tab: AdminTab) => { if(!can(permissionForAdminTab(tab)))return;setActiveTab(tab); setIsSidebarOpen(false); };
   const visibleBrandName = brandLoading ? 'Yönetim' : brandName || 'Yönetim';
   const canReadNotifications=can('notification.read');
+  const canReadFeedback=can('support.read');
+  const [feedbackUnread, setFeedbackUnread] = useState(0);
+  /* Unread Geri bildirim count for the menu badge; the feedback screen reports changes right away. */
+  useEffect(() => {
+    if (!canReadFeedback) return;
+    let cancelled = false;
+    getUnreadFeedbackCount().then(count => { if (!cancelled) setFeedbackUnread(count); }).catch(() => {});
+    const onChange = (event: Event) => { const count = Number((event as CustomEvent).detail?.unreadCount); if (Number.isSafeInteger(count) && count >= 0) setFeedbackUnread(count); };
+    window.addEventListener(FEEDBACK_CHANGED_EVENT, onChange);
+    return () => { cancelled = true; window.removeEventListener(FEEDBACK_CHANGED_EVENT, onChange); };
+  }, [canReadFeedback, activeTab]);
 
   return <div className="min-h-screen bg-brand-main text-brand-text">
     {isSidebarOpen ? <button type="button" className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setIsSidebarOpen(false)} aria-label="Yönetim menüsünü kapat" tabIndex={-1}/> : null}
@@ -138,13 +151,13 @@ export function AdminLayout({ children, activeTab, setActiveTab, onLogout, onBac
         <button type="button" onClick={() => {const target=firstAllowedAdminTab(can);if(target)navigate(target);}} className="min-w-0 text-left focus-visible:rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold" aria-label={`${visibleBrandName} yönetim ana sayfası`}><div className="truncate text-xl font-black text-brand-green dark:text-brand-gold">{visibleBrandName}</div><div className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-brand-muted">Yönetim Paneli</div></button>
         <button type="button" onClick={() => setIsSidebarOpen(false)} className="min-h-11 min-w-11 rounded-xl p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 lg:hidden" aria-label="Menüyü kapat"><X className="mx-auto h-5 w-5" aria-hidden="true"/></button>
       </div>
-      <nav className="flex-1 space-y-7 overflow-y-auto px-4 py-5" aria-label="Panel navigasyonu">{visibleMenuGroups.map(group => <div key={group.title}><h2 className="px-3 text-xs font-bold uppercase tracking-wider text-brand-muted">{group.title}</h2><div className="mt-2 space-y-1">{group.items.map(item => { const Icon=item.icon; const active=activeTab===item.id; return <button key={item.id} type="button" onClick={()=>navigate(item.id)} aria-current={active?'page':undefined} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left font-semibold ${active?'bg-brand-green text-brand-on-green shadow-sm':'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}`}><Icon className="h-5 w-5 shrink-0" aria-hidden="true"/><span>{item.label}</span></button>;})}</div></div>)}</nav>
+      <nav className="flex-1 space-y-7 overflow-y-auto px-4 py-5" aria-label="Panel navigasyonu">{visibleMenuGroups.map(group => <div key={group.title}><h2 className="px-3 text-xs font-bold uppercase tracking-wider text-brand-muted">{group.title}</h2><div className="mt-2 space-y-1">{group.items.map(item => { const Icon=item.icon; const active=activeTab===item.id; return <button key={item.id} type="button" onClick={()=>navigate(item.id)} aria-current={active?'page':undefined} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left font-semibold ${active?'bg-brand-green text-brand-on-green shadow-sm':'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'}`}><Icon className="h-5 w-5 shrink-0" aria-hidden="true"/><span className="flex-1">{item.label}</span>{item.id==='feedback'&&feedbackUnread>0?<span className={`min-w-6 rounded-full px-2 py-0.5 text-center text-xs font-black ${active?'bg-white/25':'bg-amber-500 text-white'}`} aria-label={`${feedbackUnread} okunmamış`}>{feedbackUnread>99?'99+':feedbackUnread}</span>:null}</button>;})}</div></div>)}</nav>
       <div className="space-y-2 border-t border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
         <div className="rounded-xl bg-white p-3 dark:bg-gray-900/60"><div className="truncate text-sm font-bold text-gray-900 dark:text-white">{userName}</div><div className="mt-1 text-xs text-gray-500">{roleLabel}</div></div>
         {onBack ? <button type="button" onClick={onBack} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border bg-white px-4 font-semibold dark:bg-gray-700"><ArrowLeft className="h-5 w-5" aria-hidden="true"/>Ana uygulamaya dön</button> : null}
         <button type="button" onClick={() => void onLogout()} className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-red-50 px-4 font-semibold text-red-700 dark:bg-red-950/30 dark:text-red-300"><LogOut className="h-5 w-5" aria-hidden="true"/>Güvenli çıkış</button>
       </div>
     </aside>
-    <div className="min-h-screen lg:pl-72"><header className="sticky z-30 flex min-h-16 items-center gap-3 border-b border-gray-200 bg-white/95 px-4 backdrop-blur dark:border-gray-700 dark:bg-gray-800/95 sm:px-6 lg:px-8" style={{top:'env(safe-area-inset-top, 0px)', paddingTop:'env(safe-area-inset-top, 0px)'}}><button type="button" onClick={() => setIsSidebarOpen(true)} className="min-h-11 min-w-11 rounded-xl p-2 lg:hidden" aria-label="Yönetim menüsünü aç" aria-expanded={isSidebarOpen} aria-controls="admin-sidebar"><Menu className="mx-auto h-6 w-6" aria-hidden="true"/></button>{activeTab!=='dashboard'&&can('admin.access')?<button type="button" onClick={()=>navigate('dashboard')} className="min-h-11 min-w-11 rounded-xl p-2" aria-label="Panele dön"><ArrowLeft className="mx-auto h-5 w-5" aria-hidden="true"/></button>:null}<div className="min-w-0 flex-1"><div className="truncate text-lg font-bold text-gray-900 dark:text-white">{activeItem?.label||'Yetkili Alan'}</div><div className="hidden text-xs text-gray-500 sm:block">Yetki bazlı yönetim operasyonları</div></div>{canReadNotifications?<button type="button" onClick={()=>navigate('notifications')} className="min-h-11 min-w-11 rounded-xl p-2" aria-label="Bildirim merkezini aç"><Bell className="mx-auto h-5 w-5" aria-hidden="true"/></button>:null}<button type="button" onClick={()=>window.location.reload()} className="min-h-11 min-w-11 rounded-xl p-2" aria-label="Uygulama görünümünü yenile"><RefreshCw className="mx-auto h-5 w-5" aria-hidden="true"/></button></header><section className="p-4 sm:p-6 lg:p-8"><div className="mx-auto max-w-7xl">{children}</div></section></div>
+    <div className="min-h-screen lg:pl-72"><header className="sticky z-30 flex min-h-16 items-center gap-3 border-b border-gray-200 bg-white/95 px-4 backdrop-blur dark:border-gray-700 dark:bg-gray-800/95 sm:px-6 lg:px-8" style={{top:'env(safe-area-inset-top, 0px)', paddingTop:'env(safe-area-inset-top, 0px)'}}><button type="button" onClick={() => setIsSidebarOpen(true)} className="relative min-h-11 min-w-11 rounded-xl p-2 lg:hidden" aria-label={feedbackUnread>0?`Yönetim menüsünü aç, ${feedbackUnread} okunmamış geri bildirim`:'Yönetim menüsünü aç'} aria-expanded={isSidebarOpen} aria-controls="admin-sidebar"><Menu className="mx-auto h-6 w-6" aria-hidden="true"/>{feedbackUnread>0?<span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-amber-500" aria-hidden="true"/>:null}</button>{activeTab!=='dashboard'&&can('admin.access')?<button type="button" onClick={()=>navigate('dashboard')} className="min-h-11 min-w-11 rounded-xl p-2" aria-label="Panele dön"><ArrowLeft className="mx-auto h-5 w-5" aria-hidden="true"/></button>:null}<div className="min-w-0 flex-1"><div className="truncate text-lg font-bold text-gray-900 dark:text-white">{activeItem?.label||'Yetkili Alan'}</div><div className="hidden text-xs text-gray-500 sm:block">Yetki bazlı yönetim operasyonları</div></div>{canReadNotifications?<button type="button" onClick={()=>navigate('notifications')} className="min-h-11 min-w-11 rounded-xl p-2" aria-label="Bildirim merkezini aç"><Bell className="mx-auto h-5 w-5" aria-hidden="true"/></button>:null}<button type="button" onClick={()=>window.location.reload()} className="min-h-11 min-w-11 rounded-xl p-2" aria-label="Uygulama görünümünü yenile"><RefreshCw className="mx-auto h-5 w-5" aria-hidden="true"/></button></header><section className="p-4 sm:p-6 lg:p-8"><div className="mx-auto max-w-7xl">{children}</div></section></div>
   </div>;
 }
