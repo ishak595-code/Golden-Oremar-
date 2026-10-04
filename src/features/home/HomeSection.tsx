@@ -79,7 +79,7 @@ export default function HomeSection({onProductClick}:Props){
    <button type="button" className="go-discover-all" onClick={()=>navigateToCategories()}><span>{CUSTOMER_COPY.home.discoverAll}</span><ArrowRight aria-hidden="true"/></button>
   </div>
  </div>
- {showScrollTop?<button type="button" onClick={()=>window.scrollTo({top:0,behavior:scrollBehavior()})} aria-label="Başa dön" className="fixed bottom-[116px] right-4 z-50 grid h-14 w-14 place-items-center rounded-full border-2 border-brand-green bg-white shadow-2xl transition-all hover:scale-105 hover:border-brand-gold hover:bg-brand-gold/5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:bg-gray-900" style={{bottom:'calc(116px + env(safe-area-inset-bottom, 0px))'}}><ArrowUp aria-hidden="true" className="h-6 w-6 text-brand-green dark:text-brand-gold"/></button>:null}
+ {showScrollTop?<button type="button" onClick={()=>window.scrollTo({top:0,behavior:scrollBehavior()})} aria-label="Başa dön" className="go-scroll-top fixed bottom-[116px] right-4 z-50 grid h-14 w-14 place-items-center rounded-full border-2 border-brand-green bg-white shadow-2xl transition-all hover:scale-105 hover:border-brand-gold hover:bg-brand-gold/5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:bg-gray-900" style={{bottom:'calc(116px + env(safe-area-inset-bottom, 0px))'}}><ArrowUp aria-hidden="true" className="h-6 w-6 text-brand-green dark:text-brand-gold"/></button>:null}
  </>;
 }
 
