@@ -76,6 +76,7 @@ const audits=[
  'offline-order-sync-contract-audit.mjs',
  'producer-question-contract-audit.mjs',
  'store-sender-identity-contract-audit.mjs',
+ 'admin-feedback-inbox-contract-audit.mjs',
  'vercel-runtime-config-audit.mjs',
 ];
 

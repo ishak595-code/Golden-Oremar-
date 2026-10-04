@@ -2,6 +2,7 @@ import type { PermissionKey } from '../features/auth/permissions';
 
 export const ADMIN_TAB_PERMISSIONS = {
   dashboard:'analytics.read',
+  feedback:'support.read',
   'production-readiness':'system.read',
   'business-compliance':'system.configure',
   'release-setup':'system.configure',
