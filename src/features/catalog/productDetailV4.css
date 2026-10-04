@@ -284,31 +284,29 @@
 .go-detail-recos__grid { display: grid; gap: .75rem; }
 @media (min-width: 640px) { .go-detail-recos__grid { grid-template-columns: 1fr 1fr; gap: 1rem; } }
 
-/* Buy bar: the same actions, within reach while the page is scrolled. It
-   sits where the bottom navigation sits on other screens (the product page
-   has no bottom navigation) and appears only when the buttons in the page
-   are out of view. */
-.go-buy-bar {
+/* Buy bar: Hediye Et, Sepete Ekle and the direct button are fixed to the
+   bottom of the screen on the product page (which has no bottom navigation),
+   as in the big shopping apps. The buttons exist once: here. */
+.go-pdp .go-buy__actions.product-detail-commerce-dock {
   position: fixed; z-index: 55;
   left: max(.5rem, env(safe-area-inset-left, 0px)); right: max(.5rem, env(safe-area-inset-right, 0px));
   bottom: calc(.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); align-items: center; gap: .5rem;
-  max-width: 44rem; margin-inline: auto; padding: .5rem;
-  border: 1px solid color-mix(in srgb, var(--brand-gold) 35%, var(--border-main)); border-radius: 1.25rem;
-  background: color-mix(in srgb, var(--bg-card) 94%, transparent);
+  display: grid; grid-template-columns: auto minmax(max-content, 1fr) minmax(0, 1fr); align-items: stretch; gap: .45rem;
+  max-width: 44rem; margin: 0 auto; padding: .5rem;
+  border: 1px solid color-mix(in srgb, var(--brand-gold) 35%, var(--border-main)); border-radius: 1.3rem;
+  background: color-mix(in srgb, var(--bg-card) 95%, transparent);
   -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
-  box-shadow: 0 14px 34px rgb(0 0 0 / .28);
-  animation: go-buy-bar-in .22s ease-out;
+  box-shadow: 0 14px 34px rgb(0 0 0 / .3);
 }
-@keyframes go-buy-bar-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .go-buy-bar { animation: none; } }
-.go-buy-bar button { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; min-width: 0; min-height: 3.1rem; border-radius: .95rem; font-size: .92rem; font-weight: 800; line-height: 1.15; white-space: nowrap; touch-action: manipulation; }
-.go-buy-bar button:disabled { opacity: .5; cursor: not-allowed; }
-.go-buy-bar button:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 2px; }
-.go-buy-bar__cart { padding: 0 .8rem; border: 1px solid var(--border-main); background: transparent; color: var(--text-main); }
-.go-buy-bar__cart svg { width: 1.15rem; height: 1.15rem; color: var(--brand-gold); }
-.go-buy-bar__buy { padding: 0 1rem; border: 1px solid var(--brand-green, #0f5132); background: var(--brand-green, #0f5132); color: var(--text-on-green, #fff); box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-green, #0f5132) 22%, transparent); }
+.go-pdp .product-detail-commerce-dock .go-buy__secondary { display: contents; }
+.go-pdp .product-detail-commerce-dock button { min-height: 3.2rem; padding: .3rem .6rem; font-size: .92rem; white-space: normal; }
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-gift { order: 1; flex-direction: column; gap: .15rem; min-width: 3.9rem; padding-inline: .5rem; font-size: .72rem; font-weight: 700; }
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-gift svg { width: 1.2rem; height: 1.2rem; }
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { order: 2; min-height: 3.2rem; padding-inline: .7rem; font-size: .92rem; white-space: nowrap; box-shadow: none; }
+.go-pdp .product-detail-commerce-dock button span { overflow-wrap: normal; }
+@media (max-width: 359px) { .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart svg { display: none; } .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { padding-inline: .65rem; font-size: .86rem; } .go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { font-size: .86rem; } .go-pdp .product-detail-commerce-dock .product-detail-commerce-gift { min-width: 3.4rem; } }
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { order: 3; border-color: var(--brand-gold); background: var(--brand-gold); color: var(--text-on-gold, #1c1503); font-weight: 800; }
 /* The on-screen keyboard and the bar never fight for the same space. */
-:root[data-native-keyboard="open"] .go-buy-bar { display: none; }
+:root[data-native-keyboard="open"] .go-pdp .product-detail-commerce-dock { display: none; }
 /* Room at the end of the page so the bar never hides the last lines. */
-:root[data-buy-bar="on"] .go-pdp { padding-bottom: 5.5rem; }
+.go-pdp { padding-bottom: 6.5rem !important; }
