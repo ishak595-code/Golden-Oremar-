@@ -1,6 +1,6 @@
 import { userFacingError } from '../../lib/userFacingError';
 import React, { useRef, useState } from 'react';
-import { Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react';
+import { ChevronRight, Eye, EyeOff, FileText, HelpCircle, LifeBuoy, LockKeyhole, Mail, MessageSquareHeart, Shield, UserRound } from 'lucide-react';
 import {
   getSocialAuthAvailability,
   requestPasswordReset,
@@ -70,10 +70,13 @@ export default function AuthScreen({
   onAuthenticated,
   title = 'Golden Oremar Hesabı',
   description = 'Siparişlerinizi, favorilerinizi ve satıcı işlemlerinizi güvenle yönetin.',
+  onOpenHelp,
 }: {
   onAuthenticated?: () => void;
   title?: string;
   description?: string;
+  /** Opens a help centre screen (help, help:faq, …); shown to guests on the account tab. */
+  onOpenHelp?: (view: string) => void;
 }) {
   const socialAvailability = getSocialAuthAvailability();
   const hasSocialAuth = socialAvailability.google || socialAvailability.facebook || socialAvailability.apple;
@@ -228,6 +231,22 @@ export default function AuthScreen({
       </div>
 
       {/* No note when social sign-in is off: customers only ever see buttons that work. */}
+      {onOpenHelp ? <nav aria-label="Yardım ve bilgi" className="mt-6">
+        <h2 className="mb-2 px-1 text-xs font-black uppercase tracking-wider text-brand-muted">Yardım ve bilgi</h2>
+        <div className="overflow-hidden rounded-2xl border-2 border-brand-border bg-brand-card shadow-sm">
+          {([
+            ['help', 'Yardım ve destek', LifeBuoy],
+            ['help:faq', 'Sık sorulan sorular', HelpCircle],
+            ['help:feedback', 'Geri bildirim', MessageSquareHeart],
+            ['help:legal:privacy', 'Gizlilik', Shield],
+            ['help:legal', 'Politikalar ve yasal bilgiler', FileText],
+          ] as const).map(([view, label, Icon], index) => <button key={view} type="button" onClick={() => onOpenHelp(view)} className={`flex min-h-14 w-full items-center gap-3 px-4 text-left font-bold text-brand-text transition-colors hover:bg-brand-gold/5 ${index ? 'border-t border-brand-border' : ''} ${focusClass}`}>
+            <Icon className="h-5 w-5 shrink-0 text-brand-green dark:text-brand-gold" aria-hidden="true" />
+            <span className="flex-1">{label}</span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-brand-muted" aria-hidden="true" />
+          </button>)}
+        </div>
+      </nav> : null}
     </section>
   </section>;
 }

@@ -25,15 +25,16 @@ const source = read('src/lib/offlineCatalog.ts');
 const block = source.slice(source.indexOf('const RESOLVERS'), source.indexOf('export const OFFLINE_CATALOG_RPCS'));
 const rpcs = [...block.matchAll(/^\s{2}([a-z][a-z0-9_]*):/gm)].map(m => m[1]);
 check(rpcs.length >= 15, `Expected the catalogue resolvers, found ${rpcs.length}.`);
-// get_shipping_quote_v1 is a stable (read-only) public quote from the shipping zones.
-const READ_ONLY = /^(get_public_|list_public_|search_catalog_|catalog_search_|public_product_|get_product_reviews_|get_shipping_quote_v1$)/;
+// get_shipping_quote_v1 is a stable (read-only) public quote from the shipping zones;
+// get_account_help_content_v1 returns the published legal/help documents (anon may call it).
+const READ_ONLY = /^(get_public_|list_public_|search_catalog_|catalog_search_|public_product_|get_product_reviews_|get_shipping_quote_v1$|get_account_help_content_v1$)/;
 for (const rpc of rpcs) check(READ_ONLY.test(rpc), `${rpc} is answered from the shipped copy but is not a public read-only catalogue call.`);
 check(/response\.status === 402 \|\| response\.status >= 500/.test(source), 'resilientFetch must fall back only on 402 or a 5xx answer (and network errors).');
 check(!/status === 4(0[0-13-9]|[1-9]\d)/.test(source), 'resilientFetch must not hide client errors such as 400, 401 or 403.');
 
 // Files the resolvers read exist.
 const OUT = 'public/offline-catalog';
-for (const file of ['brand.json', 'home_catalog.json', 'categories.json', 'home_experience.json', 'storefront_config.json', 'contact_config.json', 'events_upcoming.json', 'events_all.json', 'producers.json']) {
+for (const file of ['brand.json', 'home_catalog.json', 'categories.json', 'home_experience.json', 'storefront_config.json', 'contact_config.json', 'events_upcoming.json', 'events_all.json', 'producers.json', 'faq_tr.json', 'help_tr.json']) {
   check(fs.existsSync(path.join(OUT, file)), `${OUT}/${file} is missing.`);
 }
 const home = JSON.parse(read(path.join(OUT, 'home_catalog.json')));

@@ -36,6 +36,7 @@ const PublicProducerScreen=React.lazy(()=>import('./features/catalog/PublicProdu
 const ProductDetailScreen=React.lazy(()=>import('./features/catalog/ProductDetailScreen'));
 const CatalogSearchResults=React.lazy(()=>import('./features/catalog/CatalogSearchResults'));
 const AuthScreen=React.lazy(()=>import('./features/auth/AuthScreen'));
+const HelpCenter=React.lazy(()=>import('./features/help/HelpCenter'));
 const GuestCartView=React.lazy(()=>import('./features/cart/GuestCartView'));
 const PasswordRecoveryScreen=React.lazy(()=>import('./features/auth/PasswordRecoveryScreen'));
 const CartCheckoutFlow=React.lazy(()=>import('./features/cart/CartCheckoutFlow'));
@@ -250,7 +251,9 @@ function AppContent(){
   if(currentTab==='search-results')return<CatalogSearchResults query={searchQuery} categorySlug={searchCategorySlug} producerId={searchProducerId} authenticated={!!currentUser} onBack={goBack} onSearch={value=>openSearch(value)} onVoice={triggerVoiceSearch} isListening={isListening} onOpenProduct={slug=>openProduct(slug)} onAddToCart={async(item,quantity)=>{await addToCart({id:item.id,slug:item.slug,name:item.name,variantId:item.variant?.id},quantity);}} onLoginRequired={()=>{showToast('Bu işlem için hesabınıza giriş yapın.');openAccount('menu');}}/>;
   if(currentTab==='account'){
    if(authRecovery.recoveryPending)return<PasswordRecoveryScreen onCompleted={()=>{authRecovery.finishRecovery();setAccountView('menu');showToast('Şifreniz güvenle güncellendi.');}} onCancelled={()=>{authRecovery.finishRecovery();setCurrentUser(null);setAccountView('menu');showToast('Şifre sıfırlama işlemi iptal edildi.');}}/>;
-   if(!authReady)return<RouteLoading label="Hesabınız doğrulanıyor"/>;if(!currentUser)return<AuthScreen title="Golden Oremar Hesabı" onAuthenticated={()=>setAccountView('menu')}/>;if(accountView==='vendor-apply')return<ProducerApplicationFlow currentUser={currentUser} onBack={()=>setAccountView('menu')}/>;
+   // Help, FAQ, feedback and the legal pages open signed in or not.
+   if(accountView==='help'||accountView==='support'||accountView.startsWith('help:'))return<HelpCenter view={accountView==='support'?'help':accountView} currentUser={currentUser} locale={currentUser?.locale||'tr'} onNavigate={openAccount} onExit={()=>openAccount('menu')} onOpenContact={()=>navigateToTab('contact')} onOpenMessages={currentUser?()=>openAccount('messages'):undefined}/>;
+   if(!authReady)return<RouteLoading label="Hesabınız doğrulanıyor"/>;if(!currentUser)return<AuthScreen title="Golden Oremar Hesabı" onAuthenticated={()=>setAccountView('menu')} onOpenHelp={openAccount}/>;if(accountView==='vendor-apply')return<ProducerApplicationFlow currentUser={currentUser} onBack={()=>setAccountView('menu')}/>;
    // Account screens get the same page gutter as every other screen.
    return<div className="go-account-page mx-auto max-w-5xl px-4 pb-6 pt-4 sm:px-6"><AccountCenter requestedView={accountView} onNavigateView={openAccount} theme={appearanceTheme} onThemeChange={setAppearanceTheme} onBack={goBack} onOpenProduct={slug=>openProduct(slug)} onOpenProducer={slug=>openProducer(slug)} onStartGift={()=>navigateToTab('home')} onOpenContact={()=>navigateToTab('contact')} onOpenHealth={()=>navigateToTab('health')} onOpenEvents={()=>navigateToTab('events')} onOpenAdmin={()=>{setAdminView('dashboard');navigateToTab('admin');}} onOpenSellerApplication={()=>setAccountView('vendor-apply')} onUnreadNotificationCountChange={setUnreadCount} onOpenNotificationAction={(url,metadata)=>handleNotificationAction(url,metadata)}/></div>;
   }

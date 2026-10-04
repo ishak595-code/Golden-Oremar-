@@ -30,9 +30,82 @@ function renderSafeNode(node: ChildNode, key: string): React.ReactNode {
   return <React.Fragment key={key}>{children}</React.Fragment>;
 }
 
-export default function SafePublishedBody({ source, className = '' }: { source: string; className?: string }) {
+/** **bold** inside one line of published markdown; everything else stays plain text. */
+function inlineMarkdown(text: string, key: string): React.ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).filter(Boolean).map((part, index) => (
+    /^\*\*[^*]+\*\*$/.test(part) ? <strong key={`${key}-${index}`}>{part.slice(2, -2)}</strong> : <React.Fragment key={`${key}-${index}`}>{part}</React.Fragment>
+  ));
+}
+
+/** Paragraph lines: a line ending in two spaces breaks the line (markdown hard break). */
+function paragraphLines(lines: string[], key: string): React.ReactNode[] {
+  return lines.flatMap((line, index) => {
+    const parts = inlineMarkdown(line.trim(), `${key}-${index}`);
+    if (index === lines.length - 1) return parts;
+    return [...parts, / {2,}$/.test(line) ? <br key={`${key}-br-${index}`} /> : ' '];
+  });
+}
+
+/**
+ * The legal and help documents are published as markdown (headings, lists,
+ * paragraphs, hard breaks, bold). Rendered as React elements, never as HTML.
+ */
+export function MarkdownBody({ source, hideLeadingTitle = false, className = '' }: { source: string; hideLeadingTitle?: boolean; className?: string }) {
+  const lines = source.replace(/\r\n?/g, '\n').split('\n');
+  const blocks: React.ReactNode[] = [];
+  let paragraph: string[] = [];
+  let list: { ordered: boolean; items: string[] } | null = null;
+  let seenContent = false;
+  const flush = () => {
+    const key = `md-${blocks.length}`;
+    if (paragraph.length) blocks.push(<p key={key} className="mt-3 leading-7 text-brand-text/90">{paragraphLines(paragraph, key)}</p>);
+    else if (list) {
+      const items = list.items.map((item, index) => <li key={`${key}-${index}`} className="pl-1">{inlineMarkdown(item, `${key}-${index}`)}</li>);
+      blocks.push(list.ordered
+        ? <ol key={key} className="mt-3 list-decimal space-y-2 pl-6 leading-7 text-brand-text/90">{items}</ol>
+        : <ul key={key} className="mt-3 list-disc space-y-2 pl-6 leading-7 text-brand-text/90 marker:text-brand-gold">{items}</ul>);
+    }
+    paragraph = [];
+    list = null;
+  };
+  for (const raw of lines) {
+    const heading = raw.match(/^(#{1,6})\s+(.*)$/);
+    const bullet = raw.match(/^\s*[-*]\s+(.*)$/);
+    const numbered = raw.match(/^\s*\d+[.)]\s+(.*)$/);
+    if (!raw.trim()) { flush(); continue; }
+    if (heading) {
+      flush();
+      const level = heading[1].length;
+      const text = heading[2].trim();
+      if (hideLeadingTitle && level === 1 && !seenContent) { seenContent = true; continue; }
+      seenContent = true;
+      const key = `md-${blocks.length}`;
+      blocks.push(level <= 2
+        ? <h2 key={key} className="mt-7 text-lg font-black text-brand-green first:mt-0 dark:text-brand-gold">{inlineMarkdown(text, key)}</h2>
+        : <h3 key={key} className="mt-5 text-base font-bold text-brand-text first:mt-0">{inlineMarkdown(text, key)}</h3>);
+      continue;
+    }
+    seenContent = true;
+    if (bullet || numbered) {
+      const ordered = !bullet;
+      if (paragraph.length || (list && list.ordered !== ordered)) flush();
+      if (!list) list = { ordered, items: [] };
+      list.items.push((bullet ? bullet[1] : numbered![1]).trim());
+      continue;
+    }
+    if (list) flush();
+    paragraph.push(raw);
+  }
+  flush();
+  return <div className={`break-words ${className}`.trim()}>{blocks}</div>;
+}
+
+const LOOKS_LIKE_HTML = /<\/?(p|h[1-6]|ul|ol|li|strong|em|br|a|div|blockquote)\b[^>]*>/i;
+
+export default function SafePublishedBody({ source, className = '', hideLeadingTitle = false }: { source: string; className?: string; hideLeadingTitle?: boolean }) {
   const safeSource = typeof source === 'string' ? source.trim().slice(0, 200000) : '';
   if (!safeSource) return null;
+  if (!LOOKS_LIKE_HTML.test(safeSource)) return <MarkdownBody source={safeSource} hideLeadingTitle={hideLeadingTitle} className={className} />;
   if (typeof DOMParser === 'undefined') {
     const text = safeSource.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     return <div className={`whitespace-pre-wrap break-words leading-7 text-gray-700 dark:text-gray-300 ${className}`.trim()}>{text}</div>;

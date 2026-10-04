@@ -1,13 +1,15 @@
 {
  "exportedAt": "2026-10-01",
  "source": "live database, project rmfcziawxjgcnxexbrvw",
- "note": "md5 of each file in Postgres jsonb text form. Files changed on 2026-10-01 evening were written byte-for-byte from value::text in the live database and checked against md5(value::text) there; unchanged files are from the earlier export. On 2026-10-03 the product editorial migration (20261003050000_product_editorial_v1) renamed the 50 products and added the editorial block: product/*.json and safety/*.json were patched and checked against md5(value::text) in the live database (product files compared without the producer object, whose ratingAverage 0.00 prints as 0 in JSON); card names and formerName were patched in home_catalog, home_experience, sections and producer files. Later on 2026-10-03 the prestige migration (20261003150000_product_editorial_prestige_v1) added editorial.prestige to the 50 product files, checked the same way. shipping_tr.json (get_shipping_quote_v1 for TR, 1 kg and 2 kg) was added the same day from the live database. In the evening the product page content migration (20261003200000_product_page_content_v1) added editorial.returnText, editorial.dispatchText, editorial.coldChain and the top-level shipping object to the 50 product files, checked the same way (50/50 equal).",
+ "note": "md5 of each file in Postgres jsonb text form. Files changed on 2026-10-01 evening were written byte-for-byte from value::text in the live database and checked against md5(value::text) there; unchanged files are from the earlier export. On 2026-10-03 the product editorial migration (20261003050000_product_editorial_v1) renamed the 50 products and added the editorial block: product/*.json and safety/*.json were patched and checked against md5(value::text) in the live database (product files compared without the producer object, whose ratingAverage 0.00 prints as 0 in JSON); card names and formerName were patched in home_catalog, home_experience, sections and producer files. Later on 2026-10-03 the prestige migration (20261003150000_product_editorial_prestige_v1) added editorial.prestige to the 50 product files, checked the same way. shipping_tr.json (get_shipping_quote_v1 for TR, 1 kg and 2 kg) was added the same day from the live database. In the evening the product page content migration (20261003200000_product_page_content_v1) added editorial.returnText, editorial.dispatchText, editorial.coldChain and the top-level shipping object to the 50 product files, checked the same way (50/50 equal). On 2026-10-04 faq_tr.json (list_public_faq_v1 for tr, 13 questions) and help_tr.json (get_account_help_content_v1 for tr: terms, privacy, returns, about) were added from the live database and checked against md5(value::text) there, so help, FAQ and the legal pages open while the backend is down.",
  "files": {
   "brand.json": "b23bdb5c891877e62442496a10cd3752",
   "categories.json": "6da4f430deeffc6de4f4b30569d433cc",
   "contact_config.json": "83636010b85fa6aa22b1dc630cb8d374",
   "events_all.json": "899aafe1f398911bb9bbf48a61863a05",
   "events_upcoming.json": "4b94e600023048b281310756b3ba793f",
+  "faq_tr.json": "008052b1ed9d53f1a07ca33bf7801832",
+  "help_tr.json": "d1b7394ddd856dea19db553d61815523",
   "home_catalog.json": "3f8658b18425a167d25ee98c42259232",
   "home_experience.json": "1986ce80527bb46728aa174e55f95d61",
   "offline_ordering.json": "02e7025c14ace198150eb6325ff6c0c8",
@@ -118,7 +120,7 @@
   "sections/offers.json": "f1a8346f964157b55d459b3bbc3b7e79",
   "sections/pre_order.json": "46c185cd47cdc12f383a3d7ec389b02d",
   "sections/seasonal.json": "2aa49a2409d880a085cda54b9a0f4612",
-  "storefront_config.json": "981c2161421620ab6ddd12d5dce4f1ae",
-  "shipping_tr.json": "a7a1b28759d624c2267e8b065bf86ef2"
+  "shipping_tr.json": "a7a1b28759d624c2267e8b065bf86ef2",
+  "storefront_config.json": "981c2161421620ab6ddd12d5dce4f1ae"
  }
 }

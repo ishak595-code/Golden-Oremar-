@@ -78,11 +78,12 @@ if(followedUi&&followedApi){
  need(followedApi,"uuid(data.producerId,'Üreticikimliği')!==id||data.following!==false",'Unfollow must verify producer identity and explicit false state.');
 }
 
-const supportUi=read('src/features/account/SupportPanel.tsx');
+// Help centre (replaced SupportPanel): legal and help copy comes only from the canonical help content.
+const supportUi=read('src/features/help/HelpCenter.tsx');
 if(supportUi){
  forbid(supportUi,/function publishedItem\(|useState<any>/,'Support UI must not create a second raw help-content normalizer.');
  match(supportUi,/AccountHelpContent/,'Support UI must use AccountHelpContent.');
- need(supportUi,'setData(awaitgetAccountHelpContent(locale))','Support UI must consume canonical help content directly.');
+ need(supportUi,'setDocs(awaitgetAccountHelpContent(helpLocale))','Support UI must consume canonical help content directly.');
  match(supportUi,/Geçici veya uydurma hukuki metin gösterilmiyor/,'Support UI must fail closed instead of inventing legal copy.');
 }
 
