@@ -2,8 +2,9 @@ import React,{useEffect,useId,useMemo,useRef,useState}from'react';
 import{Building2,Check,CircleCheck,Copy,Gift,Loader2,MessageCircle,ShieldCheck,UserPlus,X}from'lucide-react';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 import{formatMoney}from'../cart/checkoutHelpers';
-import{getOfflineOrderingConfig,newOrderRequestKey,offlineOrderErrorMessage,orderServiceUnavailable,submitOfflineOrder,whatsappDirectOrderUrl,validateOfflineCustomer,whatsappOrderUrl,type OfflineOrderCustomer,type OfflineOrderLineInput,type OfflineOrderMethod,type OfflineOrderReceipt,type OfflineOrderingConfig}from'./offlineOrderApi';
+import{getOfflineOrderingConfig,newOrderRequestKey,offlineOrderErrorMessage,orderRefusedByRules,orderServiceUnavailable,submitOfflineOrder,submitOrderFallback,whatsappDirectOrderUrl,validateOfflineCustomer,whatsappOrderUrl,type OfflineOrderCustomer,type OfflineOrderLineInput,type OfflineOrderMethod,type OfflineOrderReceipt,type OfflineOrderingConfig}from'./offlineOrderApi';
 import{isSnapshotMode}from'../../lib/offlineCatalog';
+import{currentDeviceUserId,deviceCodeFor,savePendingOrder,type PendingOrderLine}from'./pendingOrders';
 import'./offlineOrder.css';
 
 export type OfflineOrderSummaryLine={key:string;productName:string;variantName:string;quantity:number;priceMinor:number;currency:string};
@@ -62,12 +63,14 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
  const showJoin=authenticated===false&&Boolean(onLoginRequired)&&!isSnapshotMode();
  function join(){onClose();onLoginRequired?.();}
  const keyRef=useRef(newOrderRequestKey());
+ const pendingRef=useRef<null|(()=>void)>(null);
+ const[savedOnDevice,setSavedOnDevice]=useState('');
  const errorRef=useRef<HTMLDivElement>(null);
  const dialogRef=useAccessibleDialog<HTMLDivElement>(open,()=>{if(!busy)onClose();});
 
  useEffect(()=>{
   if(!open)return;
-  setReceipt(null);setError('');setDirectUrl(null);setErrors({});setConsent(false);setCopied('');setIsGift(gift);setRecipient('');setGiftMessage('');setRecipientError('');keyRef.current=newOrderRequestKey();
+  setReceipt(null);setError('');setDirectUrl(null);setSavedOnDevice('');pendingRef.current=null;setErrors({});setConsent(false);setCopied('');setIsGift(gift);setRecipient('');setGiftMessage('');setRecipientError('');keyRef.current=newOrderRequestKey();
   const saved=readSavedContact();
   setCustomer({...EMPTY,...saved,...Object.fromEntries(Object.entries(prefill||{}).filter(([,value])=>typeof value==='string'&&value.trim()))});
   let active=true;setConfigError(false);
@@ -107,7 +110,17 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
    setReceipt(result);onSubmitted?.(result);
   }catch(err){
    const number=config?.whatsapp.number||null;
-   if(orderServiceUnavailable(err)&&number){setDirectUrl(whatsappDirectOrderUrl(number,lines,orderCustomer,method));setError(method==='bank_transfer'&&config?.bankTransfer.accounts.length?'Sipariş sistemimiz şu anda yanıt vermiyor. Siparişinizi aşağıdaki düğmeyle WhatsApp\'tan gönderin; kargo dahil toplam tutar onaylanınca aşağıdaki hesaba ödeme yapabilirsiniz.':'Sipariş sistemimiz şu anda yanıt vermiyor. Siparişinizi aşağıdaki düğmeyle doğrudan WhatsApp\'tan gönderin; ürünler ve teslimat bilgileriniz mesajda hazır.');saveContact(customer,remember);}
+   const pendingLines:PendingOrderLine[]=items.map((item,index)=>{const line=lines.length===items.length?lines[index]:undefined;return{variantId:item.variantId,quantity:item.quantity,productName:line?.productName||'Ürün',variantName:line?.variantName||'',unitPriceMinor:line?.priceMinor||0,currency:line?.currency||'TRY',...(item.selectedOptions?{selectedOptions:item.selectedOptions}:{})};});
+   if(!orderRefusedByRules(err)){
+    /* The order path failed but the database may still answer: record it on the simpler path (same key). */
+    try{const result=await submitOrderFallback({idempotencyKey:keyRef.current,method,source,lines:pendingLines.map(line=>({...line})),customer:orderCustomer,reason:'order_path_failed'});const shown=method==='bank_transfer'&&!result.bankTransfer&&config?.bankTransfer.enabled?{...result,bankTransfer:config.bankTransfer}:result;saveContact(customer,remember);setReceipt(shown);onSubmitted?.(shown);return;}catch{/* not reachable either: WhatsApp below */}
+   }
+   if(orderServiceUnavailable(err)&&number){
+    const code=deviceCodeFor(keyRef.current);const key=keyRef.current;const userId=await currentDeviceUserId();
+    /* Kept on this device only once the customer actually sends it on WhatsApp; recorded on the server when it answers again. */
+    pendingRef.current=()=>{savePendingOrder({key,userId,method,source,lines:pendingLines,customer:orderCustomer});setSavedOnDevice(code);};
+    setDirectUrl(whatsappDirectOrderUrl(number,lines,orderCustomer,method,code));setError(method==='bank_transfer'&&config?.bankTransfer.accounts.length?'Sipariş sistemimiz şu anda yanıt vermiyor. Siparişinizi aşağıdaki düğmeyle WhatsApp\'tan gönderin; kargo dahil toplam tutar onaylanınca aşağıdaki hesaba ödeme yapabilirsiniz.':'Sipariş sistemimiz şu anda yanıt vermiyor. Siparişinizi aşağıdaki düğmeyle doğrudan WhatsApp\'tan gönderin; ürünler ve teslimat bilgileriniz mesajda hazır.');saveContact(customer,remember);
+   }
    else setError(offlineOrderErrorMessage(err));
    if(!orderServiceUnavailable(err)||!config?.whatsapp.number)queueMicrotask(()=>errorRef.current?.focus());
   }
@@ -184,7 +197,8 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
     <label className="go-order-check go-order-consent"><input type="checkbox" checked={consent} onChange={event=>{setConsent(event.target.checked);if(event.target.checked)setError('');}}/><span>Ön bilgilendirme özetini ve <a href="/kullanim-sartlari" target="_blank" rel="noopener noreferrer">Kullanım ve Mesafeli Satış Esasları</a>'nı okudum, onaylıyorum.</span></label>
 
     {error?<div ref={errorRef} tabIndex={-1} role="alert" className="go-order-alert">{error}</div>:null}
-    {directUrl?<a href={directUrl} target="_blank" rel="noopener noreferrer" className="go-order-primary mb-3"><MessageCircle aria-hidden="true"/>WhatsApp'tan sipariş gönder</a>:null}
+    {directUrl?<a href={directUrl} target="_blank" rel="noopener noreferrer" onClick={()=>pendingRef.current?.()} className="go-order-primary mb-3"><MessageCircle aria-hidden="true"/>WhatsApp'tan sipariş gönder</a>:null}
+    {directUrl?<p role="status" className="go-order-hint mb-3">{savedOnDevice?`Sipariş bu cihaza kaydedildi (kod ${savedOnDevice}). Bağlantı gelince sistemimize otomatik iletilir ve Siparişlerim'de görünür.`:`Gönderdiğinizde sipariş bu cihazda da saklanır; bağlantı gelince sistemimize otomatik iletilir.`}</p>:null}
     {directUrl&&method==='bank_transfer'&&config?.bankTransfer.accounts.length?<section className="go-order-bank" aria-label="Havale ve EFT bilgileri">{config.bankTransfer.accounts.map(account=><article key={account.iban}><p className="go-order-bank__name"><Building2 aria-hidden="true"/>{account.bankName}{account.branch?<small> · {account.branch}</small>:null}</p><p className="go-order-bank__holder">{account.accountHolder}</p><p className="go-order-bank__iban">{account.iban}</p><button type="button" className="go-order-copy" onClick={()=>void copy(account.iban,account.iban.replace(/\s/g,''))}>{copied===account.iban?<Check aria-hidden="true"/>:<Copy aria-hidden="true"/>}<span>{copied===account.iban?'Kopyalandı':'IBAN kopyala'}</span></button></article>)}<p className="go-order-hint">Açıklama alanına adınızı ve soyadınızı yazın. Ödemeden önce toplam tutarı WhatsApp'ta onaylatın.</p></section>:null}
     {directUrl?null:<div className="go-order-actions go-order-actions--sticky">
      <button type="submit" disabled={busy||!config||!method} className="go-order-primary">{busy?<><Loader2 aria-hidden="true" className="go-spin"/>Kaydediliyor…</>:method==='bank_transfer'?<><Building2 aria-hidden="true"/>Siparişi oluştur ve IBAN'ı gör</>:<><MessageCircle aria-hidden="true"/>Siparişi oluştur</>}</button>

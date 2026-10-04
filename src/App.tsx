@@ -15,7 +15,7 @@ import{getAdminSessionStatus,signOutCurrentSession}from'./features/auth/api';
 import{getCart as getServerCart,publicCatalogUrl as serverCatalogUrl,resolveDefaultVariant,setCartItem as setServerCartItem}from'./features/cart/api';
 import{GUEST_CART_EVENT,addToGuestCart,guestCartCount,mergeGuestCartIntoAccount,readGuestCart}from'./features/cart/guestCart';
 import{useDeviceTheme}from'./features/appearance/useDeviceTheme';
-import{useConnectivity}from'./features/resilience/useConnectivity';
+import{NETWORK_RESTORED_EVENT,useConnectivity}from'./features/resilience/useConnectivity';
 import{SnapshotModeNotice}from'./features/resilience/SnapshotModeNotice';
 import{subscribeNativePushActions}from'./features/notifications/nativePush';
 import{buildProductUrl,buildProducerUrl,buildSearchUrl,buildTabUrl,parsePublicRoute,resolveAppActionTarget}from'./features/navigation/appUrl';
@@ -176,6 +176,8 @@ function AppContent(){
   return()=>{active=false;};
  },[authReady,currentUser?.id]);
 
+ /* Orders sent on WhatsApp while the order service was down are kept on the device; record them once it answers. */
+ useEffect(()=>{if(!authReady)return;const userId=currentUser?.id??null;let stopped=false;const run=()=>{let waiting=false;try{waiting=(window.localStorage.getItem('golden-oremar:pending-orders:v1')||'').includes('"status":"pending"');}catch{waiting=false;}if(stopped||!waiting||navigator.onLine===false)return;void import('./features/orders/pendingOrders').then(m=>m.syncPendingOrders(userId)).catch(()=>{});};run();window.addEventListener('online',run);window.addEventListener(NETWORK_RESTORED_EVENT,run);return()=>{stopped=true;window.removeEventListener('online',run);window.removeEventListener(NETWORK_RESTORED_EVENT,run);};},[authReady,currentUser?.id]);
  useEffect(()=>{if(authReady&&currentTab==='admin'&&adminSession.checked&&!adminSession.isAdmin){setAccountView('menu');window.history.replaceState({goldenOremar:true,goldenOremarDepth:routeDepth,tab:'account'},'',tabUrl('account'));setCurrentTab('account');showToast('Bu alan için doğrulanmış yönetici yetkisi gerekiyor.');}},[authReady,currentTab,adminSession.checked,adminSession.isAdmin,routeDepth,showToast]);
  useEffect(()=>{let active=true;if(!currentUser){setFavorites([]);return()=>{active=false;};}serverFavoriteReferences().then(references=>{if(active)setFavorites(references);}).catch(error=>{if(process.env.NODE_ENV==='development')console.error('Favorites sync error:',error);});return()=>{active=false;};},[currentUser?.id]);
 
