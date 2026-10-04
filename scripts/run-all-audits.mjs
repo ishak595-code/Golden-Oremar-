@@ -79,6 +79,7 @@ const audits=[
  'admin-feedback-inbox-contract-audit.mjs',
  'notification-sound-files-contract-audit.mjs',
  'safety-fab-placement-contract-audit.mjs',
+ 'search-bar-single-clear-contract-audit.mjs',
  'vercel-runtime-config-audit.mjs',
 ];
 
