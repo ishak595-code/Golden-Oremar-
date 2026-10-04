@@ -66,6 +66,12 @@
 .go-buy__actions button span { min-width: 0; overflow-wrap: anywhere; }
 .go-buy__actions button:disabled { opacity: .5; cursor: not-allowed; }
 .go-buy__actions button:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 2px; }
+/* Stock status under the buy buttons: one small, calm line. */
+.go-stock-status { display: flex; align-items: center; justify-content: center; gap: .45rem; margin: .1rem 0 0; font-size: .82rem; font-weight: 600; letter-spacing: .015em; line-height: 1.4; color: var(--text-muted); }
+.go-stock-status__dot { flex: 0 0 auto; width: .45rem; height: .45rem; border-radius: 999px; background: var(--text-muted); }
+.go-stock-status--in .go-stock-status__dot { background: var(--brand-green); }
+.go-stock-status--low { color: var(--brand-gold); }
+.go-stock-status--low .go-stock-status__dot { background: var(--brand-gold); }
 .go-buy__primary { min-height: 3.4rem; border: 1px solid var(--brand-green, #0f5132); background: var(--brand-green, #0f5132); color: var(--text-on-green, #fff); font-size: 1.02rem; box-shadow: 0 8px 22px color-mix(in srgb, var(--brand-green, #0f5132) 20%, transparent); }
 .go-buy__secondary { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
 .go-buy__secondary button { min-height: 3rem; padding: .4rem .6rem; border: 1px solid var(--border-main); background: transparent; color: var(--text-main); font-size: .92rem; }
