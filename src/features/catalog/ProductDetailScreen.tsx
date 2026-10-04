@@ -90,6 +90,11 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const swipeStartRef=useRef<{x:number;y:number}|null>(null);
  const requestId=useRef(0);
  const imageViewerDialogRef=useAccessibleDialog<HTMLDivElement>(imageViewerOpen,()=>setImageViewerOpen(false));
+ /* The buy buttons stay within reach: when the buttons in the page scroll
+    out of view, a slim bar with the same actions appears at the bottom of
+    the screen. It is shown only then, so the buttons never appear twice. */
+ const buyActionsRef=useRef<HTMLDivElement>(null);
+ const[buyBarVisible,setBuyBarVisible]=useState(false);
  
  // Page metadata from the loaded product, via the same builder the build-time
  // prerender uses. This runs after the live data arrives, so the document
@@ -244,6 +249,10 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  }
  async function copyTrace(code:string){try{await copyText(code);setStatus('İzlenebilirlik kodu kopyalandı.');}catch{setError('Kod kopyalanamadı.');}}
 
+ useEffect(()=>{const el=buyActionsRef.current;if(!el||typeof IntersectionObserver==='undefined'){setBuyBarVisible(false);return;}const observer=new IntersectionObserver(entries=>{const entry=entries[entries.length-1];if(entry)setBuyBarVisible(!entry.isIntersecting);},{threshold:0});observer.observe(el);return()=>observer.disconnect();},[loading,detail?.id,variantId]);
+ const buyBarShown=buyBarVisible&&!soldOut&&priceReady&&!offlineOrderOpen&&!imageViewerOpen;
+ useEffect(()=>{const root=document.documentElement;if(buyBarShown)root.setAttribute('data-buy-bar','on');else root.removeAttribute('data-buy-bar');return()=>root.removeAttribute('data-buy-bar');},[buyBarShown]);
+
  if(loading)return<div role="status" aria-live="polite" className="mx-auto max-w-5xl p-8 text-center text-brand-muted">Ürün hazırlanıyor…</div>;
  if(error&&!detail)return<div className="mx-auto max-w-5xl p-5"><div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div><button type="button" onClick={onBack} className="mt-4 min-h-11 rounded-full border border-brand-border px-5 font-bold"><ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4"/>Geri dön</button></div>;
  if(!detail)return null;
@@ -355,7 +364,11 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  if(productVideoUrl)gallerySlides.push({kind:'video',key:`video:${productVideoUrl}`,url:productVideoUrl});
  const showHealth=hasHealthInfo(safetyContent);
  const showUsage=hasUsageInfo(safetyContent,productVideoUrl||null);
- const purchaseLabel=busy?'İşleniyor…':soldOut?'Tükendi':preorder?'Sipariş Ver':'Sepete Ekle';
+ /* The cart button says the same thing on every product. The direct button
+    is "Hemen Satın Al", or for products prepared to order "Ön Siparişle
+    Ayırt": the product is set aside for the customer, not bought off a shelf. */
+ const purchaseLabel=busy?'İşleniyor…':soldOut?'Tükendi':'Sepete Ekle';
+ const buyLabel=preorder?'Ön Siparişle Ayırt':'Hemen Satın Al';
 
  return<article className="go-pdp mx-auto max-w-6xl px-4 pb-10 sm:px-6">
   <div className="sticky z-30 -mx-4 mb-4 flex min-h-16 items-center gap-2 border-b border-brand-border bg-brand-card/95 px-4 backdrop-blur-xl sm:-mx-6 sm:px-6" style={{top:'env(safe-area-inset-top, 0px)', paddingTop:'env(safe-area-inset-top, 0px)'}}>
@@ -391,10 +404,10 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
      {!purchaseReady&&!soldOut&&stockReady?<p className="go-buy__issue">{purchaseIssueMessage()}</p>:null}
 
-     <div className="go-buy__actions product-detail-commerce-dock" role="group" aria-label="Satın al">
+     <div ref={buyActionsRef} className="go-buy__actions product-detail-commerce-dock" role="group" aria-label="Satın al">
       <button type="button" onClick={()=>void addToCart()} disabled={busy||!purchaseReady} className="product-detail-commerce-cart go-buy__primary"><ShoppingCart aria-hidden="true"/><span>{purchaseLabel}</span></button>
       <div className="go-buy__secondary">
-       <button type="button" onClick={()=>void buyNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-buy">{preorder?<span>Siparişi Tamamla</span>:<span>Hemen Satın Al</span>}</button>
+       <button type="button" onClick={()=>void buyNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-buy"><span>{buyLabel}</span></button>
        <button type="button" onClick={()=>void giftNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-gift"><Gift aria-hidden="true"/><span>Hediye Et</span></button>
       </div>
      </div>
@@ -446,7 +459,11 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
 
   {imageViewerOpen&&selectedImageUrl?<div className="fixed inset-0 z-[120] flex bg-black/95 p-2 sm:p-5"><div ref={imageViewerDialogRef} role="dialog" aria-modal="true" aria-labelledby="product-image-viewer-title" tabIndex={-1} className="mx-auto flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-black/95 text-white outline-none"><div className="flex min-h-14 items-center gap-3 border-b border-white/15 px-3 sm:px-4"><h2 id="product-image-viewer-title" className="min-w-0 flex-1 truncate text-sm font-black">{detailName}</h2><span className="hidden text-xs font-semibold text-white/60 sm:inline">{viewerZoom?'Uzaklaştırmak için dokunun':'Yakınlaştırmak için dokunun'}</span>{images.length>1?<span className="text-xs font-bold text-white/70">{selectedImageIndex+1} / {images.length}</span>:null}<button type="button" onClick={()=>setImageViewerOpen(false)} aria-label="Görseli kapat" className="grid min-h-11 min-w-11 place-items-center rounded-full border-2 border-white/20 bg-white/10 transition hover:bg-white/20"><X aria-hidden="true" className="h-5 w-5"/></button></div><div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2 sm:p-4" style={{touchAction:viewerZoom?'none':'pan-y pinch-zoom'}} onTouchStart={event=>{if(event.touches.length!==1){swipeStartRef.current=null;return;}const touch=event.touches[0];swipeStartRef.current={x:touch.clientX,y:touch.clientY};}} onTouchMove={event=>{if(!viewerZoom||event.touches.length!==1)return;const rect=event.currentTarget.getBoundingClientRect();const touch=event.touches[0];setViewerZoom({x:Math.max(0,Math.min(100,(touch.clientX-rect.left)/rect.width*100)),y:Math.max(0,Math.min(100,(touch.clientY-rect.top)/rect.height*100))});}} onTouchEnd={event=>{const start=swipeStartRef.current;swipeStartRef.current=null;if(!start||viewerZoom||images.length<2)return;const touch=event.changedTouches[0];const dx=touch.clientX-start.x,dy=touch.clientY-start.y;if(Math.abs(dx)>48&&Math.abs(dx)>Math.abs(dy)*1.4)moveImage(dx<0?1:-1);}} onMouseMove={event=>{if(!viewerZoom)return;const rect=event.currentTarget.getBoundingClientRect();setViewerZoom({x:(event.clientX-rect.left)/rect.width*100,y:(event.clientY-rect.top)/rect.height*100});}}>{images.length>1?<button type="button" onClick={()=>moveImage(-1)} aria-label="Önceki ürün görseli" className="absolute left-2 z-10 grid min-h-12 min-w-12 place-items-center rounded-full border-2 border-white/20 bg-black/70 backdrop-blur-sm transition hover:bg-black/85 sm:left-4 sm:min-h-14 sm:min-w-14"><ChevronLeft aria-hidden="true" className="h-6 w-6 sm:h-7 sm:w-7"/></button>:null}<img src={selectedImageUrl} alt={safeText(selectedImage.alt,300)||detailName} className={`go-viewer-img max-h-full max-w-full object-contain${viewerZoom?' is-zoomed':''}`} style={viewerZoom?{transform:'scale(2.4)',transformOrigin:`${viewerZoom.x}% ${viewerZoom.y}%`}:undefined} onClick={event=>{if(viewerZoom){setViewerZoom(null);return;}const rect=event.currentTarget.getBoundingClientRect();setViewerZoom({x:(event.clientX-rect.left)/rect.width*100,y:(event.clientY-rect.top)/rect.height*100});}} decoding="async" onError={e=>{const img=e.currentTarget;if(img.dataset.fallback)return;img.dataset.fallback='1';img.src='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5"%3E%3Crect x="3" y="3" width="18" height="18" rx="2" ry="2"%3E%3C/rect%3E%3Ccircle cx="8.5" cy="8.5" r="1.5"%3E%3C/circle%3E%3Cpolyline points="21 15 16 10 5 21"%3E%3C/polyline%3E%3C/svg%3E';img.style.maxWidth='240px';img.style.opacity='0.3';}}/>{images.length>1?<button type="button" onClick={()=>moveImage(1)} aria-label="Sonraki ürün görseli" className="absolute right-2 z-10 grid min-h-12 min-w-12 place-items-center rounded-full border-2 border-white/20 bg-black/70 backdrop-blur-sm transition hover:bg-black/85 sm:right-4 sm:min-h-14 sm:min-w-14"><ChevronRight aria-hidden="true" className="h-6 w-6 sm:h-7 sm:w-7"/></button>:null}</div>{images.length>1?<div className="hide-scrollbar flex gap-2 overflow-x-auto border-t border-white/15 p-3 sm:p-4">{images.slice(0,12).map((image:any,index:number)=>{const src=publicCatalogUrl(image?.path);const isSelected=selectedImage?.path===image.path;return src?<button type="button" key={`viewer-${safeText(image.path,1200)}:${index}`} onClick={()=>setSelectedImagePath(safeText(image.path,1200))} aria-label={`${detailName} görseli ${index+1}`} aria-pressed={isSelected} className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 bg-white/5 transition sm:h-20 sm:w-20 ${isSelected?'border-brand-gold shadow-lg':'border-white/20 hover:border-white/40'}`}><img src={src} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain p-1" onError={e=>{const img=e.currentTarget;if(img.dataset.fallback)return;img.dataset.fallback='1';img.src='data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"%3E%3Cpath d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"%3E%3C/path%3E%3Cpolyline points="9 22 9 12 15 12 15 22"%3E%3C/polyline%3E%3C/svg%3E';img.style.padding='12px';img.style.opacity='0.25';}}/>{isSelected?<div className="absolute inset-0 rounded-xl ring-2 ring-inset ring-brand-gold" aria-hidden="true"/>:null}</button>:null;})}</div>:null}</div></div>:null}
-  <OfflineOrderSheet open={offlineOrderOpen} onClose={()=>setOfflineOrderOpen(false)} gift={offlineGift} authenticated={authenticated} onLoginRequired={onLoginRequired} source="product" lines={variantReference&&priceMinor!==null&&currency?[{key:variantReference,productName:safeText(detail?.name,300),variantName:safeText(variant?.name,240),quantity,priceMinor,currency}]:[]} items={variantReference?[{variantId:variantReference,quantity,selectedOptions:selectedOptionsPayload()}]:[]}/>
+  {buyBarShown?<div className="go-buy-bar" role="group" aria-label="Hızlı satın al">
+   <button type="button" onClick={()=>void addToCart()} disabled={busy||!purchaseReady} className="go-buy-bar__cart"><ShoppingCart aria-hidden="true"/><span>{purchaseLabel}</span></button>
+   <button type="button" onClick={()=>void buyNow()} disabled={busy||!purchaseReady} className="go-buy-bar__buy">{buyLabel}</button>
+  </div>:null}
+  <OfflineOrderSheet open={offlineOrderOpen} onClose={()=>setOfflineOrderOpen(false)} gift={offlineGift} preorder={preorder} preorderNote={preorder?dispatchLine:''} authenticated={authenticated} onLoginRequired={onLoginRequired} source="product" lines={variantReference&&priceMinor!==null&&currency?[{key:variantReference,productName:safeText(detail?.name,300),variantName:safeText(variant?.name,240),quantity,priceMinor,currency}]:[]} items={variantReference?[{variantId:variantReference,quantity,selectedOptions:selectedOptionsPayload()}]:[]}/>
  </article>;
 }
 

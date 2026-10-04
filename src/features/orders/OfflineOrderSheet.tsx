@@ -1,5 +1,5 @@
 import React,{useEffect,useId,useMemo,useRef,useState}from'react';
-import{Building2,Check,CircleCheck,Copy,Gift,Loader2,MessageCircle,ShieldCheck,UserPlus,X}from'lucide-react';
+import{CalendarClock,Building2,Check,CircleCheck,Copy,Gift,Loader2,MessageCircle,ShieldCheck,UserPlus,X}from'lucide-react';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 import{formatMoney}from'../cart/checkoutHelpers';
 import{getOfflineOrderingConfig,newOrderRequestKey,offlineOrderErrorMessage,orderRefusedByRules,orderServiceUnavailable,submitOfflineOrder,submitOrderFallback,whatsappDirectOrderUrl,validateOfflineCustomer,whatsappOrderUrl,type OfflineOrderCustomer,type OfflineOrderLineInput,type OfflineOrderMethod,type OfflineOrderReceipt,type OfflineOrderingConfig}from'./offlineOrderApi';
@@ -22,6 +22,10 @@ type Props={
  /** When false and onLoginRequired is given, the sheet invites the guest to join. */
  authenticated?:boolean;
  onLoginRequired?:()=>void;
+ /** The product is prepared to order: the sheet speaks of a pre-order, not a purchase off the shelf. */
+ preorder?:boolean;
+ /** When it is sent, in the store's own words (e.g. "Yeni sezon hasadıyla gönderilir"). */
+ preorderNote?:string;
 };
 
 const CONTACT_KEY='golden-oremar:order-contact:v1';
@@ -41,7 +45,7 @@ async function copyText(value:string){try{await navigator.clipboard.writeText(va
  * pre-contract information, get an order code. WhatsApp continues in the
  * chat with a prefilled message; bank transfer shows the IBAN to pay to.
  */
-export default function OfflineOrderSheet({open,onClose,source,lines,items,prefill,onSubmitted,gift=false,authenticated,onLoginRequired}:Props){
+export default function OfflineOrderSheet({open,onClose,source,lines,items,prefill,onSubmitted,gift=false,authenticated,onLoginRequired,preorder=false,preorderNote=''}:Props){
  const titleId=useId();
  const[config,setConfig]=useState<OfflineOrderingConfig|null>(null);
  const[configError,setConfigError]=useState(false);
@@ -88,7 +92,7 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
     gift sheet was used on the same page. */
  const giftMode=gift&&isGift;
  const giftLine=giftMode&&recipient.trim()?giftNoteText(recipient,giftMessage):'';
- const waUrl=receipt?whatsappOrderUrl(receipt,giftLine):null;
+ const waUrl=receipt?whatsappOrderUrl(receipt,[preorder?'Bu bir ön sipariştir.':'',giftLine].filter(Boolean).join(' ')):null;
 
  function update<K extends keyof OfflineOrderCustomer>(key:K,value:string){setCustomer(current=>({...current,[key]:value}));if(errors[key])setErrors(current=>({...current,[key]:undefined}));}
 
@@ -135,12 +139,12 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
  return<div className="go-order-backdrop" onMouseDown={event=>{if(event.target===event.currentTarget&&!busy)onClose();}}>
   <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className="go-order-sheet">
    <header className="go-order-head">
-    <div><p className="go-order-eyebrow">{receipt?'Sipariş kodu':'Güvenli sipariş'}</p><h2 id={titleId}>{receipt?'Siparişiniz alındı':giftMode?'Hediye gönder':'Siparişi tamamla'}</h2></div>
+    <div><p className="go-order-eyebrow">{receipt?(preorder?'Ön sipariş kodu':'Sipariş kodu'):preorder?'Ön sipariş':'Güvenli sipariş'}</p><h2 id={titleId}>{receipt?(preorder?'Ön siparişiniz alındı':'Siparişiniz alındı'):giftMode?'Hediye gönder':preorder?'Ön siparişle ayırtın':'Siparişi tamamla'}</h2></div>
     <button type="button" onClick={onClose} disabled={busy} aria-label="Kapat" className="go-order-close"><X aria-hidden="true"/></button>
    </header>
 
    {receipt?<div className="go-order-body">
-    <div className="go-order-done"><CircleCheck aria-hidden="true"/><div><p className="go-order-code">{receipt.reference}</p><p>{receipt.method==='whatsapp'?'Siparişiniz kaydedildi. WhatsApp mesajını gönderin, ödeme ve teslimatı hemen onaylayalım.':'Siparişiniz kaydedildi. Ödemeyi aşağıdaki hesaba yapın, açıklamaya sipariş kodunu yazın.'}</p></div><button type="button" className="go-order-copy" onClick={()=>void copy('code',receipt.reference)}>{copied==='code'?<Check aria-hidden="true"/>:<Copy aria-hidden="true"/>}<span>{copied==='code'?'Kopyalandı':'Kodu kopyala'}</span></button></div>
+    <div className="go-order-done"><CircleCheck aria-hidden="true"/><div><p className="go-order-code">{receipt.reference}</p><p>{receipt.method==='whatsapp'?`${preorder?'Ön siparişiniz':'Siparişiniz'} kaydedildi. WhatsApp mesajını gönderin, ödeme ve teslimatı hemen onaylayalım.`:`${preorder?'Ön siparişiniz':'Siparişiniz'} kaydedildi. Ödemeyi aşağıdaki hesaba yapın, açıklamaya sipariş kodunu yazın.`}</p></div><button type="button" className="go-order-copy" onClick={()=>void copy('code',receipt.reference)}>{copied==='code'?<Check aria-hidden="true"/>:<Copy aria-hidden="true"/>}<span>{copied==='code'?'Kopyalandı':'Kodu kopyala'}</span></button></div>
     <dl className="go-order-totals"><div><dt>Ürünler</dt><dd>{formatMoney(receipt.subtotalMinor,receipt.currency)}</dd></div><div><dt>Kargo</dt><dd>{receipt.shippingMinor===null?'Onayda bildirilir':receipt.shippingMinor===0?'Ücretsiz':formatMoney(receipt.shippingMinor,receipt.currency)}</dd></div><div className="is-total"><dt>Ödenecek tutar</dt><dd>{formatMoney(receipt.totalMinor,receipt.currency)}</dd></div></dl>
     {receipt.method==='bank_transfer'&&receipt.bankTransfer?<section className="go-order-bank" aria-label="Havale ve EFT bilgileri">
      {receipt.bankTransfer.accounts.map(account=><article key={account.iban}><p className="go-order-bank__name"><Building2 aria-hidden="true"/>{account.bankName}{account.branch?<small> · {account.branch}</small>:null}</p><p className="go-order-bank__holder">{account.accountHolder}</p><p className="go-order-bank__iban">{account.iban}</p><button type="button" className="go-order-copy" onClick={()=>void copy(account.iban,account.iban.replace(/\s/g,''))}>{copied===account.iban?<Check aria-hidden="true"/>:<Copy aria-hidden="true"/>}<span>{copied===account.iban?'Kopyalandı':'IBAN kopyala'}</span></button></article>)}
@@ -154,6 +158,7 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
    </div>
 
    :<form className="go-order-body" onSubmit={submit} noValidate>
+    {preorder?<p className="go-order-preorder"><CalendarClock aria-hidden="true"/><span>Bu ürün raftan değil, sizin için ayrılarak hazırlanır.{preorderNote?` ${preorderNote.replace(/[.\s]+$/,'')}.`:''}</span></p>:null}
     <p className="go-order-lead">Kartla online ödeme açılana kadar siparişinizi WhatsApp veya Havale/EFT ile alıyoruz.{showJoin?' Üye olmadan da sipariş verebilirsiniz.':''}</p>
     {showJoin?<aside className="go-order-join" aria-label="Üyelik"><p className="go-order-join__title"><UserPlus aria-hidden="true"/>Üye olun, ayrıcalıklar sizin olsun</p><p>Siparişleriniz hesabınıza kaydedilir, adresiniz hazır gelir, kampanyaları ve üyelere özel fırsatları ilk siz duyarsınız.</p><button type="button" onClick={join} className="go-order-secondary">Ücretsiz üye ol</button><p className="go-order-join__skip">İstemezseniz üye olmadan devam edin.</p></aside>:null}
     <ul className="go-order-lines" aria-label="Sipariş özeti">{lines.map(line=><li key={line.key}><span><strong>{line.quantity} x {line.productName}</strong>{line.variantName?<small>{line.variantName}</small>:null}</span><b>{formatMoney(line.priceMinor*line.quantity,line.currency)}</b></li>)}<li className="is-total"><span>Ara toplam</span><b>{formatMoney(subtotal,currency)}</b></li></ul>
@@ -201,7 +206,7 @@ export default function OfflineOrderSheet({open,onClose,source,lines,items,prefi
     {directUrl?<p role="status" className="go-order-hint mb-3">{savedOnDevice?`Sipariş bu cihaza kaydedildi (kod ${savedOnDevice}). Bağlantı gelince sistemimize otomatik iletilir ve Siparişlerim'de görünür.`:`Gönderdiğinizde sipariş bu cihazda da saklanır; bağlantı gelince sistemimize otomatik iletilir.`}</p>:null}
     {directUrl&&method==='bank_transfer'&&config?.bankTransfer.accounts.length?<section className="go-order-bank" aria-label="Havale ve EFT bilgileri">{config.bankTransfer.accounts.map(account=><article key={account.iban}><p className="go-order-bank__name"><Building2 aria-hidden="true"/>{account.bankName}{account.branch?<small> · {account.branch}</small>:null}</p><p className="go-order-bank__holder">{account.accountHolder}</p><p className="go-order-bank__iban">{account.iban}</p><button type="button" className="go-order-copy" onClick={()=>void copy(account.iban,account.iban.replace(/\s/g,''))}>{copied===account.iban?<Check aria-hidden="true"/>:<Copy aria-hidden="true"/>}<span>{copied===account.iban?'Kopyalandı':'IBAN kopyala'}</span></button></article>)}<p className="go-order-hint">Açıklama alanına adınızı ve soyadınızı yazın. Ödemeden önce toplam tutarı WhatsApp'ta onaylatın.</p></section>:null}
     {directUrl?null:<div className="go-order-actions go-order-actions--sticky">
-     <button type="submit" disabled={busy||!config||!method} className="go-order-primary">{busy?<><Loader2 aria-hidden="true" className="go-spin"/>Kaydediliyor…</>:method==='bank_transfer'?<><Building2 aria-hidden="true"/>Siparişi oluştur ve IBAN'ı gör</>:<><MessageCircle aria-hidden="true"/>Siparişi oluştur</>}</button>
+     <button type="submit" disabled={busy||!config||!method} className="go-order-primary">{busy?<><Loader2 aria-hidden="true" className="go-spin"/>Kaydediliyor…</>:method==='bank_transfer'?<><Building2 aria-hidden="true"/>{preorder?'Ön siparişi oluştur ve IBAN\'ı gör':'Siparişi oluştur ve IBAN\'ı gör'}</>:<><MessageCircle aria-hidden="true"/>{preorder?'Ön siparişi oluştur':'Siparişi oluştur'}</>}</button>
      <p className="go-order-secure"><ShieldCheck aria-hidden="true"/>Bilgileriniz yalnız bu siparişin teslimatı için kullanılır.</p>
     </div>}
    </form>}

@@ -66,6 +66,9 @@ need(sheet, 'const giftMode=gift&&isGift;', 'A normal purchase must never be sen
 need(sheet, 'Ücretsiz üye ol', 'Guests must be invited to join from the order sheet.');
 need(sheet, 'üye olmadan devam edin', 'The invitation to join must never block a guest order.');
 
+need(sheet, "preorder?'Ön siparişle ayırtın'", 'For pre-order products the sheet speaks of a pre-order.');
+need(sheet, "'Ön siparişi oluştur'", 'The pre-order sheet submit button must say pre-order.');
+
 const detail = read('src/features/catalog/ProductDetailScreen.tsx');
 need(detail, '<OfflineOrderSheet', 'The product page must offer ordering without online payment.');
 need(detail, /async function buyNow\(\)[\s\S]{0,400}setOfflineOrderOpen\(true\)/, '"Hemen Satın Al" must open the order sheet while card payment is off.');

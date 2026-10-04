@@ -290,3 +290,7 @@
 .go-order-gift .go-order-check small { font-size: .88rem; line-height: 1.5; color: var(--text-muted); }
 .go-order-gift .go-order-check input { accent-color: var(--brand-gold); }
 .go-order-gift .go-order-grid { margin: .9rem 0 0; }
+
+/* Pre-order: one calm line that says the product is set aside and when it ships. */
+.go-order-preorder { display: flex; align-items: flex-start; gap: .6rem; margin: 0 0 .9rem; padding: .8rem .95rem; border: 1px solid color-mix(in srgb, var(--brand-gold) 45%, var(--border-main)); border-radius: 1rem; background: color-mix(in srgb, var(--brand-gold) 8%, transparent); font-size: .92rem; font-weight: 600; line-height: 1.5; color: var(--text-main); }
+.go-order-preorder svg { width: 1.15rem; height: 1.15rem; margin-top: .1rem; flex-shrink: 0; color: var(--brand-gold); }
