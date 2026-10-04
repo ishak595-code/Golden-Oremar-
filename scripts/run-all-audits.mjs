@@ -73,6 +73,7 @@ const audits=[
  'store-readiness-contract-audit.mjs',
  'settings-experience-contract-audit.mjs',
  'help-center-contract-audit.mjs',
+ 'offline-order-sync-contract-audit.mjs',
  'vercel-runtime-config-audit.mjs',
 ];
 

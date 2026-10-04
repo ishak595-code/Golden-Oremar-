@@ -171,6 +171,63 @@ export async function submitOfflineOrder(input: {
   return normalizeReceipt(data);
 }
 
+/**
+ * The normal order path failed for a server-side reason while the database
+ * may still answer: record the order on the simpler fallback path (same
+ * key, so it can never be stored twice). See
+ * supabase/migrations/20261004190000_order_requests_mine_and_fallback_v1.sql.
+ */
+export async function submitOrderFallback(input: {
+  idempotencyKey: string;
+  method: OfflineOrderMethod;
+  source: 'product' | 'cart';
+  lines: Array<{ variantId: string; quantity: number; productName: string; variantName: string; unitPriceMinor: number }>;
+  customer: OfflineOrderCustomer;
+  reason: 'order_path_failed' | 'offline_sync';
+}) {
+  const items = input.lines
+    .filter(line => UUID_RE.test(line.variantId) && Number.isSafeInteger(line.quantity) && line.quantity > 0 && Number.isSafeInteger(line.unitPriceMinor) && line.unitPriceMinor > 0)
+    .map(line => ({ variantId: line.variantId, quantity: Math.min(50, line.quantity), unitPriceMinor: line.unitPriceMinor, productName: line.productName.slice(0, 200) || 'Ürün', variantName: (line.variantName || '').slice(0, 200) }));
+  if (!items.length) throw new Error('Siparişte ürün bulunamadı.');
+  const phone = normalizeCustomerPhone(input.customer.phone);
+  const { data, error } = await supabase.rpc('submit_order_request_fallback_v1', {
+    p_idempotency_key: input.idempotencyKey,
+    p_method: input.method,
+    p_source: input.source,
+    p_items: items,
+    p_customer: { ...input.customer, phone: phone || input.customer.phone.trim() },
+    p_consent: true,
+    p_reason: input.reason,
+  });
+  if (error) throw error;
+  return normalizeReceipt(data);
+}
+
+export type MyOrderRequest = {
+  reference: string; idempotencyKey: string; method: OfflineOrderMethod; status: string;
+  items: Array<{ productName: string; variantName: string | null; quantity: number; lineTotalMinor: number }>;
+  currency: string; shippingMinor: number | null; totalMinor: number; pricesVerified: boolean; createdAt: string;
+};
+
+/** WhatsApp and Havale/EFT orders placed from this account (Siparişlerim). */
+export async function listMyOrderRequests(limit = 20): Promise<MyOrderRequest[]> {
+  const { data, error } = await supabase.rpc('list_my_order_requests_v1', { p_limit: Math.min(50, Math.max(1, limit)), p_offset: 0 });
+  if (error) throw error;
+  const rows = record(data) && Array.isArray(data.items) ? data.items : [];
+  return rows.filter(record).map(row => ({
+    reference: str(row.reference, 20),
+    idempotencyKey: str(row.idempotencyKey, 100),
+    method: (row.method === 'bank_transfer' ? 'bank_transfer' : 'whatsapp') as OfflineOrderMethod,
+    status: str(row.status, 20),
+    items: Array.isArray(row.items) ? row.items.filter(record).map(item => ({ productName: str(item.productName, 200), variantName: str(item.variantName, 200) || null, quantity: int(item.quantity) || 0, lineTotalMinor: int(item.lineTotalMinor) || 0 })) : [],
+    currency: str(row.currency, 3) || 'TRY',
+    shippingMinor: int(row.shippingMinor),
+    totalMinor: int(row.totalMinor) || 0,
+    pricesVerified: row.pricesVerified !== false,
+    createdAt: str(row.createdAt, 40),
+  })).filter(row => /^GO-\d{6}-[A-Z0-9]{4}$/.test(row.reference));
+}
+
 /** The message the customer sends; the order code lets the store find it. */
 export function whatsappOrderMessage(receipt: OfflineOrderReceipt, extra = '') {
   const lines = receipt.items.map(item => `- ${item.quantity} x ${item.productName} (${[item.variantName, item.options].filter(Boolean).join(', ')}) ${formatMoney(item.lineTotalMinor, receipt.currency)}`);
@@ -196,6 +253,11 @@ export function whatsappOrderUrl(receipt: OfflineOrderReceipt, extra = '') {
  * as opposed to the customer's input being refused. In that case the sheet
  * offers sending the order straight to WhatsApp so the sale is not lost.
  */
+/** The order rules refused it (stock, input, limits): the fallback path must not bypass that. */
+export function orderRefusedByRules(error: unknown) {
+  return /^(?:invalid_|order_|insufficient_stock|product_not_available|duplicate_order_items|rate_limit_exceeded|mixed_currency|consent_required|empty_order)/.test(String((error as { message?: unknown })?.message || ''));
+}
+
 export function orderServiceUnavailable(error: unknown) {
   const e = (error || {}) as { message?: unknown; status?: unknown; code?: unknown };
   const message = String(e.message || '');
@@ -205,11 +267,12 @@ export function orderServiceUnavailable(error: unknown) {
 }
 
 /** A complete order written into a WhatsApp message, for when the service is down. */
-export function whatsappDirectOrderUrl(number: string, lines: Array<{ productName: string; variantName: string; quantity: number; priceMinor: number; currency: string }>, customer: OfflineOrderCustomer, method: OfflineOrderMethod) {
+export function whatsappDirectOrderUrl(number: string, lines: Array<{ productName: string; variantName: string; quantity: number; priceMinor: number; currency: string }>, customer: OfflineOrderCustomer, method: OfflineOrderMethod, deviceCode = '') {
   const currency = lines[0]?.currency || 'TRY';
   const subtotal = lines.reduce((sum, line) => sum + line.priceMinor * line.quantity, 0);
   const text = [
     `Merhaba, Golden Oremar'dan sipariş vermek istiyorum.`,
+    deviceCode ? `Geçici sipariş kodu: ${deviceCode}` : '',
     ...lines.map(line => `- ${line.quantity} x ${line.productName}${line.variantName ? ` (${line.variantName})` : ''} ${formatMoney(line.priceMinor * line.quantity, line.currency)}`),
     `Ara toplam: ${formatMoney(subtotal, currency)} (kargo ve kesin tutarı onaylarsınız)`,
     `Ad soyad: ${customer.name.trim()}`,

@@ -8,6 +8,7 @@ import{EmptyState,ErrorState,LoadingState,Money,Panel}from'./ui';
 import ReturnRequestDialog from'./ReturnRequestDialog';
 import ReturnDetailDialog from'./ReturnDetailDialog';
 import ProducerQuestionComposer from'./ProducerQuestionComposer';
+import MyOrderRequests from'../orders/MyOrderRequests';
 import{useAccessibleDialog}from'../accessibility/useAccessibleDialog';
 
 const PAGE_SIZE=20;
@@ -26,6 +27,7 @@ function negativeMinor(value:number){return-value;}
 function formatDate(value:string|null){if(!value)return'Tarih yok';const date=new Date(value);return Number.isNaN(date.getTime())?'Tarih kullanılamıyor':date.toLocaleString('tr-TR');}
 
 export default function OrdersPanel({initialOrderId,onOpenReviews}:{initialOrderId?:string|null;onOpenReviews?:()=>void}){
+ const[requestCount,setRequestCount]=useState(0);
  const[page,setPage]=useState<OrdersPageData|null>(null);const[detail,setDetail]=useState<OrderDetailData|null>(null);const[error,setError]=useState('');const[listStatus,setListStatus]=useState('');const[loading,setLoading]=useState(true);const[loadingMore,setLoadingMore]=useState(false);const[openingId,setOpeningId]=useState<string|null>(null);const[detailError,setDetailError]=useState('');const[detailStatus,setDetailStatus]=useState('');const[returnOrderId,setReturnOrderId]=useState<string|null>(null);const[returnDetailId,setReturnDetailId]=useState<string|null>(null);const[cancelCandidate,setCancelCandidate]=useState<CancelCandidate|null>(null);const[cancelBusy,setCancelBusy]=useState(false);const[questionContext,setQuestionContext]=useState<QuestionContext|null>(null);
  const nestedOpen=Boolean(returnOrderId||returnDetailId||cancelCandidate);
  const orderDialogRef=useAccessibleDialog<HTMLDivElement>(Boolean(detail)&&!nestedOpen,()=>{setQuestionContext(null);setDetail(null);});
@@ -56,14 +58,15 @@ export default function OrdersPanel({initialOrderId,onOpenReviews}:{initialOrder
  async function refreshDetail(id:string){try{setDetailError('');setDetailStatus('');const updated=await getOrderDetail(id);setDetail(updated);await load(true);setDetailStatus('Sipariş detayı güncellendi.');}catch(e:any){setDetailError(e?.message?.trim()||'Sipariş detayı yenilenemedi.');}}
  async function confirmCancel(){if(!cancelCandidate||cancelBusy)return;try{setCancelBusy(true);setDetailError('');setDetailStatus('');await cancelOrder(cancelCandidate.id);setCancelCandidate(null);setQuestionContext(null);setDetail(null);await load(true);setListStatus('Sipariş başarıyla iptal edildi. Satıcı ve admin bilgilendirildi.');}catch(error){const message=error instanceof Error?error.message:'';if(message.includes('İptal için çok geç')){setDetailError('Bu sipariş artık iptal edilemez. Sipariş zaten hazırlanıyor veya kargoya verildi. İade talebi oluşturabilirsiniz.');}else if(message.includes('zaten iptal')){setDetailError('Bu sipariş zaten iptal edilmiş.');}else if(message.includes('ödeme')){setDetailError('Ödenmiş siparişler otomatik olarak iptal edilemez. Destek ekibiyle iletişime geçin.');}else{setDetailError('Sipariş şu anda iptal edilemedi. Lütfen durumu kontrol edip yeniden deneyin. Sorun devam ederse destek ekibiyle iletişime geçin.');}setCancelCandidate(null);}finally{setCancelBusy(false);}}
  if(loading)return<LoadingState label="Siparişler yükleniyor"/>;
- if(!page)return<Panel title="Siparişlerim" description="Sipariş, ödeme, kargo, iade ve geri ödeme durumlarını tek yerden izleyin."><ErrorState message={error||'Siparişlerinizi şu anda gösteremiyoruz.'} onRetry={()=>void load(true)}/></Panel>;
+ if(!page)return<Panel title="Siparişlerim" description="Sipariş, ödeme, kargo, iade ve geri ödeme durumlarını tek yerden izleyin."><MyOrderRequests/><ErrorState message={error||'Siparişlerinizi şu anda gösteremiyoruz.'} onRetry={()=>void load(true)}/></Panel>;
  const items=page.items;const total=page.total;const hasMore=items.length<total;
  const returns=detail?.returns??[];const activeReturn=returns.find(r=>['requested','under_review','approved','in_transit','received'].includes(r.status));
  return<Panel title="Siparişlerim" description="Sipariş, ödeme, kargo, iade, geri ödeme ve satın alma sonrası üretici sorularını tek yerden yönetin.">
   {error?<ErrorState message={error} onRetry={()=>void load(true)}/>:null}
   {listStatus?<div role="status" aria-live="polite" className="mb-3 rounded-xl bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950/30 dark:text-green-200">{listStatus}</div>:null}
   <div className="sr-only" aria-live="polite">{openingId?'Sipariş detayı yükleniyor.':loadingMore?'Daha fazla sipariş yükleniyor.':''}</div>
-  {!items.length?<EmptyState title="Henüz sipariş yok" body="Sipariş verdiğinizde tüm durum geçmişi burada görünecek."/>:<>
+  <MyOrderRequests onCount={setRequestCount}/>
+  {!items.length?requestCount?null:<EmptyState title="Henüz sipariş yok" body="Sipariş verdiğinizde tüm durum geçmişi burada görünecek."/>:<>
    <div className="mb-3 text-sm text-gray-500">{items.length} / {total} sipariş gösteriliyor</div>
    <div className="space-y-3">{items.map(o=>{const busy=openingId===o.id;return <button type="button" key={o.id} disabled={Boolean(openingId)} aria-busy={busy} onClick={()=>void open(o.id)} className="min-h-14 w-full rounded-xl border border-gray-200 p-4 text-left disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-gray-700"><div className="flex justify-between gap-3"><div><div className="font-bold">{o.orderNumber}{o.gift?<span className="text-xs text-brand-gold"> • Hediye</span>:null}</div><div className="mt-1 text-sm text-gray-500">{busy?'Detay yükleniyor…':`${statusText[o.status]} • ${o.itemCount} ürün`}</div>{o.trackingNumber?<div className="mt-1 text-xs text-gray-500">Takip: {o.trackingNumber}</div>:null}</div><div className="font-bold"><Money minor={o.totalMinor} currency={o.currency}/></div></div></button>;})}</div>
    {hasMore?<div className="mt-5 flex justify-center"><button type="button" disabled={loadingMore} onClick={()=>void load(false)} className="min-h-11 rounded-xl border border-brand-green px-5 font-bold text-brand-green disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:text-brand-gold">{loadingMore?'Yükleniyor…':'Daha fazla sipariş göster'}</button></div>:null}
