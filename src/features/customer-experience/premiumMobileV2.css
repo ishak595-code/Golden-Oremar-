@@ -19,7 +19,7 @@
 
 :root[data-app-tab="home"] header{
  border-color:var(--go-border-soft)!important;background:rgb(6 19 14 / .975)!important;box-shadow:0 1px 0 rgb(255 255 255 / .025)!important;
- backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important;transition:background-color 180ms var(--go-ease),box-shadow 180ms var(--go-ease)!important;contain:layout paint style;
+ backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important;transition:background-color 180ms var(--go-ease),box-shadow 180ms var(--go-ease)!important;
 }
 :root[data-app-tab="home"] header>div:last-child{padding-inline:var(--go-mobile-pad)!important;}
 :root[data-app-tab="home"] header>div:last-child>div{min-height:72px!important;gap:var(--go-space-3)!important;transition:min-height 220ms var(--go-ease),gap 220ms var(--go-ease)!important;}
@@ -147,3 +147,9 @@ nav[aria-label="Ana gezinme"] button svg{width:22px!important;height:22px!import
    button colour; a light-theme text class on the label (gray-600 on forest,
    2.4:1) made them unreadable in the light themes. */
 nav[aria-label="Ana gezinme"] button span.truncate{color:inherit!important;}
+
+/* One clear button only: the browser's own search "x" (Chrome, Android
+   WebView, Safari) sat next to our "Aramayı temizle" button, so the box
+   showed two crosses. */
+.go-search-bar input[type="search"]::-webkit-search-cancel-button,
+.go-search-bar input[type="search"]::-webkit-search-decoration{-webkit-appearance:none;appearance:none;display:none;}
