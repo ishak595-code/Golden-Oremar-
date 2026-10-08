@@ -73,3 +73,41 @@
 :root[data-app-tab="home"] .go-category-card__copy{flex:0 1 auto;padding:0;}
 :root[data-app-tab="home"] .go-category-card__copy strong{display:block;font-size:14px;white-space:nowrap;}
 :root[data-app-tab="home"] .go-category-card__copy span{display:none;}
+
+/* "Bugünün Önerisi": one product in large at the top of the page. */
+:root[data-app-tab="home"] .go-spotlight{margin-top:0;}
+:root[data-app-tab="home"] .go-campaign-v2 + .go-spotlight{margin-top:20px;}
+:root[data-app-tab="home"] .go-spotlight + .go-home-categories,
+:root[data-app-tab="home"] .go-campaign-v2 + .go-home-categories{margin-top:30px;}
+.go-spotlight__card{display:flex;flex-direction:column;overflow:hidden;border:1px solid color-mix(in srgb,var(--brand-gold) 34%,#1b382c);border-radius:24px;background:linear-gradient(160deg,#10281d 0%,#091b13 100%);box-shadow:0 18px 44px rgb(0 0 0 / .22),inset 0 1px 0 rgb(255 255 255 / .03);color:inherit;text-decoration:none;transition:transform .18s ease,border-color .18s ease;}
+.go-spotlight__card:active{transform:scale(.988);}
+.go-spotlight__card:hover{border-color:color-mix(in srgb,var(--brand-gold) 60%,#1b382c);}
+.go-spotlight__card:focus-visible{outline:3px solid var(--brand-gold);outline-offset:3px;}
+.go-spotlight__media{position:relative;display:block;aspect-ratio:16/10;overflow:hidden;background:#0d2118;}
+.go-spotlight__media img,.go-spotlight__media .go-artwork{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.go-spotlight__media::after{content:"";position:absolute;inset:auto 0 0;height:38%;background:linear-gradient(180deg,transparent,rgb(6 19 14 / .55));pointer-events:none;}
+.go-spotlight__badge{position:absolute;z-index:1;top:14px;left:14px;padding:6px 11px;border:1px solid rgb(212 183 95 / .55);border-radius:999px;background:rgb(6 19 14 / .72);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);color:#e6cd82;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;}
+.go-spotlight__copy{display:flex;flex-direction:column;gap:8px;padding:18px 18px 18px;}
+.go-spotlight__eyebrow{color:#cfb15d;font-size:10.5px;font-weight:820;letter-spacing:.16em;text-transform:uppercase;}
+.go-spotlight__name{color:#f7f1e7;font-family:var(--font-serif);font-size:clamp(25px,6.8vw,32px);font-weight:720;line-height:1.08;letter-spacing:-.02em;text-wrap:balance;}
+.go-spotlight__note{color:#b4c1ba;font-size:14px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+.go-spotlight__foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:6px;}
+.go-spotlight__price{display:flex;flex-direction:column;color:#f7f1e7;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.1;}
+.go-spotlight__price small{margin-top:4px;color:#9fb0a7;font-size:12.5px;font-weight:600;}
+.go-spotlight__cta{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 18px;border-radius:14px;background:var(--brand-gold);color:var(--text-on-gold,#1c1503);font-size:15px;font-weight:800;white-space:nowrap;}
+.go-spotlight__cta svg{width:18px;height:18px;}
+@media(min-width:768px){
+ .go-spotlight__card{flex-direction:row;}
+ .go-spotlight__media{flex:0 0 52%;aspect-ratio:auto;min-height:300px;}
+ .go-spotlight__copy{justify-content:center;padding:28px;}
+}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-spotlight__card{border-color:color-mix(in srgb,var(--brand-gold) 40%,var(--border-main));background:var(--bg-card);box-shadow:0 14px 34px rgb(0 0 0 / .07);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-spotlight__name{color:var(--text-main);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-spotlight__note,:root[data-color-scheme="light"][data-app-tab="home"] .go-spotlight__price small{color:var(--text-muted);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-spotlight__price{color:var(--text-main);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-spotlight__eyebrow{color:var(--brand-gold);}
+.go-spotlight--skeleton .go-spotlight__card{border-color:#1b382c;}
+.go-spotlight--skeleton .go-spotlight__copy{min-height:170px;}
+.go-spotlight--skeleton i{display:block;height:14px;border-radius:7px;background:#14301f;}
+.go-spotlight--skeleton i:first-child{width:38%;}.go-spotlight--skeleton i:nth-child(2){width:72%;height:26px;}.go-spotlight--skeleton i:nth-child(3){width:90%;}
+@media(min-width:768px){.go-spotlight--skeleton .go-spotlight__copy{min-height:300px;}}

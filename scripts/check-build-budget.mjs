@@ -6,7 +6,9 @@ const maxChunkBytes = 450 * 1024;
 // 256 KiB since Oct 2026: the entry carries the representative product photo
 // manifest (src/features/media/productPhotoManifest.ts, ~2 KiB of slugs for
 // all 50 products); main was already within 0.3 KiB of the old 250 KiB limit.
-const maxEntryBytes = 256 * 1024;
+// 260 KiB since 8 Oct 2026: the seasonal copy for the four seasons and the
+// "Bugünün Önerisi" pick live in the entry (the card itself is lazy).
+const maxEntryBytes = 260 * 1024;
 
 if (!fs.existsSync(assetsDir)) {
   console.error('Bundle budget audit failed: dist/assets does not exist. Run the production build first.');

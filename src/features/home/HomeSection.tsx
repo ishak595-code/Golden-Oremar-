@@ -10,6 +10,9 @@ import CategoryCard from'./components/CategoryCard';
 import PremiumImage from'./components/PremiumImage';
 import ProductCard from'./components/ProductCard';
 import SectionHeader from'./components/SectionHeader';
+import{pickSpotlight}from'./components/spotlightPick';
+// Its own chunk: the customer entry bundle has a fixed budget.
+const HomeSpotlight=React.lazy(()=>import('./components/HomeSpotlight'));
 import'./homePrestigeV3.css';
 import'./homeLightThemes.css';
 import{scrollBehavior}from'../../lib/reducedMotion';
@@ -42,7 +45,13 @@ export default function HomeSection({onProductClick}:Props){
  const initialOwners=useMemo(()=>{const owners:Record<string,number>={};(experience?.sections||[]).filter(section=>!section.deferred).forEach((section,order)=>{for(const item of section.items)if(owners[item.id]===undefined)owners[item.id]=order;});return owners;},[experience]);
  const[deferredOwners,setDeferredOwners]=useState<Record<string,number>>({});
  const claimProducts=useCallback((order:number,ids:string[])=>setDeferredOwners(current=>{let next=current;for(const id of ids){const owner=current[id];if(owner===undefined||owner>order){if(next===current)next={...current};next[id]=order;}}return next;}),[]);
- const ownerOf=(id:string)=>initialOwners[id]??deferredOwners[id];
+ /* "Bugünün Önerisi" at the top, picked from the seasonal showcase (loaded
+    early for it). The product it shows is left out of the sections below. */
+ const[seasonalItems,setSeasonalItems]=useState<HomeSectionModel['items']|null>(null);
+ const seasonalKey=experience?.sections.find(section=>section.source.kind==='seasonal')?.key||null;
+ useEffect(()=>{if(!experience)return;if(!seasonalKey){setSeasonalItems([]);return;}let live=true;void loadSection(seasonalKey).then(section=>{if(live)setSeasonalItems(section?.items||[]);}).catch(()=>{if(live)setSeasonalItems([]);});return()=>{live=false;};},[experience,seasonalKey,loadSection]);
+ const spotlight=useMemo(()=>experience&&seasonalItems?pickSpotlight(seasonalItems,experience.sections.find(section=>!section.deferred)?.items||[]):null,[experience,seasonalItems]);
+ const ownerOf=(id:string)=>id===spotlight?.id?-1:initialOwners[id]??deferredOwners[id];
 
  if(loading&&!experience)return<HomeLoading/>;
  if(!experience)return<HomeError message={error||CUSTOMER_COPY.home.loadErrorFallback} onRetry={()=>void retry().catch(()=>undefined)}/>;
@@ -55,6 +64,12 @@ export default function HomeSection({onProductClick}:Props){
   <div className="go-premium-home-v2" data-home-contract-version={experience.version} data-home-prestige-contract="single-row-v4">
   <h1 className="sr-only">{experience.brand.name} ürünleri</h1>
   <div className="go-home-content">
+   {/* A live campaign leads the page, as in the big shopping apps. */}
+   {experience.campaign?<CampaignCard campaign={experience.campaign}/>:null}
+
+   {/* The space is held while the pick loads, so nothing below jumps. */}
+   {seasonalItems===null?<SpotlightSkeleton/>:spotlight?<React.Suspense fallback={<SpotlightSkeleton/>}><HomeSpotlight item={spotlight} title={experience.interface.heroTitle} subtitle={experience.interface.heroSubtitle} buttonText={experience.interface.heroButtonText} onOpen={()=>onProductClick(spotlight)}/></React.Suspense>:null}
+
    {orderedCategories.length?<section className="go-home-section go-home-categories" aria-labelledby="home-categories-title" data-server-heading={experience.interface.categoriesTitle}>
     <SectionHeader id="home-categories-title" title={homeCategoriesTitle(experience.interface.categoriesTitle)} subtitle={CUSTOMER_COPY.home.categoriesSubtitle}/>
     <div className="go-category-rail hide-scrollbar" role="list" aria-label={homeCategoriesTitle(experience.interface.categoriesTitle)}>
@@ -67,8 +82,6 @@ export default function HomeSection({onProductClick}:Props){
    {initialSections.map((section,index)=><ProductSection key={section.key} section={{...section,items:section.items.filter(item=>ownerOf(item.id)===index)}} onProductClick={onProductClick} eagerFirst={index===0} isFirst={index===0}/>) }
 
    {renderEvents('after_hero')}
-
-   {experience.campaign?<CampaignCard campaign={experience.campaign}/>:null}
 
    {renderEvents('before_products')}
 
@@ -108,4 +121,5 @@ function SectionEmptyState({source}:{source:HomeSectionModel['source']['kind']})
 function CampaignCard({campaign}:{campaign:{title:string;description:string|null;bannerPath:string|null}}){const banner=campaign.bannerPath?publicCatalogUrl(campaign.bannerPath):null;return<section className="go-home-section go-campaign-v2" aria-label={campaign.title}>{banner?<PremiumImage src={banner} alt="" className="go-campaign-v2__media"/>:null}<div className="go-campaign-v2__copy"><span>Kampanya</span><h2>{campaign.title}</h2>{campaign.description?<p>{campaign.description}</p>:null}</div></section>;}
 function HomeError({message,onRetry}:{message:string;onRetry:()=>void}){return<div className="go-home-state" role="alert"><div className="grid h-24 w-24 place-items-center rounded-3xl bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800 dark:to-red-900"><AlertCircle aria-hidden="true" className="h-12 w-12 text-red-400"/></div><h1 className="mt-4 text-2xl font-bold">Ana sayfayı yenileyemedik</h1><p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{message}</p><button type="button" onClick={onRetry} className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl border-2 border-red-300 bg-white px-4 font-bold dark:border-red-800 dark:bg-red-950/20"><RefreshCw aria-hidden="true" className="h-4 w-4"/>Yeniden dene</button></div>;}
 function ProductRowsSkeleton(){return<div className="go-product-list-v4 go-product-list-v4--skeleton flex flex-col gap-4" role="status" aria-label="Ürünler yükleniyor">{[0,1,2].map(index=><div className="go-product-skeleton" key={index}><span/><div><i/><i/><i/></div></div>)}</div>;}
+function SpotlightSkeleton(){return<div className="go-home-section go-spotlight go-spotlight--skeleton" aria-hidden="true"><div className="go-spotlight__card"><span className="go-spotlight__media"/><span className="go-spotlight__copy"><i/><i/><i/></span></div></div>;}
 function HomeLoading(){return<div className="go-premium-home-v2"><div className="go-home-content"><section className="go-home-section"><div className="go-heading-skeleton"/><div className="go-category-skeleton-rail">{[0,1,2].map(index=><div className="go-category-skeleton" key={index}/>)}</div></section><section className="go-home-section"><div className="go-heading-skeleton go-heading-skeleton--wide"/><ProductRowsSkeleton/></section></div></div>;}
