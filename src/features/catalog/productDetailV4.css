@@ -284,42 +284,67 @@
 .go-detail-recos__grid { display: grid; gap: .75rem; }
 @media (min-width: 640px) { .go-detail-recos__grid { grid-template-columns: 1fr 1fr; gap: 1rem; } }
 
-/* Buy bar. Phones and tablets: a full-width bar resting on the bottom edge
-   of the screen, as in the big shopping apps (the product page has no bottom
-   navigation there). It carries only the two buttons: a quiet "Hemen Al" and
-   "Sepete Ekle" as the one filled button, on the right under the thumb. The
-   price stays on the page, under the product name. */
+/* Buy bar. Phones and tablets: a full-width bar resting on the bottom edge,
+   laid out like the big shopping apps: total and delivery line on the left,
+   a compact "Hemen Al" (icon over the word), then the wide, filled "Sepete
+   Ekle" on the right, under the thumb.
+   Solid background and its own compositing layer, without backdrop-filter:
+   on some Android WebViews (Samsung) a fixed bar with a backdrop blur stops
+   painting after the page re-renders, and the buttons seem to vanish. */
 .go-pdp .go-buy__actions.product-detail-commerce-dock {
   position: fixed; z-index: 55; left: 0; right: 0; bottom: 0;
-  display: flex; align-items: center; gap: .6rem; margin: 0;
-  padding: .6rem max(.85rem, env(safe-area-inset-right, 0px)) calc(.6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) max(.85rem, env(safe-area-inset-left, 0px));
+  display: flex; align-items: center; gap: .55rem; margin: 0;
+  padding: .55rem max(.85rem, env(safe-area-inset-right, 0px)) calc(.55rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) max(.85rem, env(safe-area-inset-left, 0px));
   border-top: 1px solid color-mix(in srgb, var(--brand-gold) 28%, var(--border-main));
-  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
-  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  background: var(--bg-card);
   box-shadow: 0 -8px 24px rgb(0 0 0 / .18);
+  transform: translateZ(0);
 }
+.go-buy-dock__price { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; margin: 0 .25rem 0 0; line-height: 1.15; }
+.go-buy-dock__price strong { font-size: 1.12rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-main); }
+.go-buy-dock__price span { margin-top: .2rem; font-size: .76rem; font-weight: 700; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .go-pdp .product-detail-commerce-dock button { min-height: 3.25rem; border-radius: .95rem; white-space: nowrap; }
 .go-pdp .product-detail-commerce-dock button span { overflow-wrap: normal; }
-.go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { flex: 1 1 0; min-width: 0; padding: 0 .9rem; border: 1px solid color-mix(in srgb, var(--brand-gold) 45%, var(--border-main)); background: transparent; color: var(--text-main); font-size: .98rem; font-weight: 700; }
+.go-pdp .product-detail-commerce-dock button[aria-disabled="true"] { opacity: .7; cursor: progress; }
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { flex: 0 0 auto; flex-direction: column; gap: .15rem; min-width: 4.9rem; padding: .3rem .6rem; border: 1px solid color-mix(in srgb, var(--brand-gold) 55%, var(--border-main)); background: transparent; color: var(--text-main); font-size: .8rem; font-weight: 800; }
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-buy svg { width: 1.15rem; height: 1.15rem; color: var(--brand-gold); }
 .go-pdp .product-detail-commerce-dock .product-detail-commerce-buy:hover { border-color: var(--brand-gold); }
-.go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { flex: 1.35 1 0; min-width: 0; padding: 0 .9rem; font-size: 1rem; font-weight: 800; box-shadow: none; }
-/* Small phones: the cart icon steps aside so both labels fit. */
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { flex: 0 1 11rem; min-width: 8.2rem; padding: 0 1rem; font-size: 1.02rem; font-weight: 800; box-shadow: none; }
+/* Without a price (still loading) the buttons share the bar. */
+.go-pdp .product-detail-commerce-dock:not(:has(.go-buy-dock__price)) .product-detail-commerce-cart { flex: 1 1 auto; }
+/* Small phones (up to 374px): a little tighter, so "Kargo bizden" fits. */
 @media (max-width: 374px) {
-  .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart svg { display: none; }
+  .go-pdp .go-buy__actions.product-detail-commerce-dock { gap: .45rem; padding-left: max(.7rem, env(safe-area-inset-left, 0px)); padding-right: max(.7rem, env(safe-area-inset-right, 0px)); }
+  .go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { min-width: 4.5rem; padding: .3rem .45rem; }
+  .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { flex-basis: 9rem; min-width: 7.2rem; padding: 0 .7rem; font-size: .97rem; }
+  .go-buy-dock__price strong { font-size: 1.05rem; }
 }
-/* Tablets: the bar still spans the screen; the buttons gather in a centred
-   column so they do not stretch across a wide display. */
+/* Tablets: the same bar, centred in a column so it does not stretch. */
 @media (min-width: 640px) {
   .go-pdp .go-buy__actions.product-detail-commerce-dock { padding-left: max(1.25rem, calc((100% - 40rem) / 2)); padding-right: max(1.25rem, calc((100% - 40rem) / 2)); gap: .75rem; }
+  .go-buy-dock__price strong { font-size: 1.3rem; }
+  .go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { min-width: 6rem; }
+  .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { flex-basis: 15rem; }
 }
-/* The on-screen keyboard and the bar never fight for the same space. */
-:root[data-native-keyboard="open"] .go-pdp .product-detail-commerce-dock { display: none; }
+/* "Sepete eklendi", just above the bar for a few seconds. */
+.go-buy-dock__added { position: fixed; z-index: 56; left: .75rem; right: .75rem; bottom: calc(4.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); display: flex; align-items: center; gap: .55rem; max-width: 38rem; margin: 0 auto; padding: .55rem .6rem .55rem .9rem; border: 1px solid color-mix(in srgb, var(--brand-green, #0f5132) 60%, transparent); border-radius: 1rem; background: var(--bg-card); box-shadow: 0 10px 28px rgb(0 0 0 / .28); color: var(--text-main); font-size: .92rem; font-weight: 700; transform: translateZ(0); }
+.go-buy-dock__added svg { flex: 0 0 auto; width: 1.2rem; height: 1.2rem; color: var(--brand-gold); }
+.go-buy-dock__added span { flex: 1 1 auto; min-width: 0; }
+.go-buy-dock__added button { flex: 0 0 auto; min-height: 2.75rem; padding: 0 .9rem; border-radius: .75rem; background: var(--brand-green, #0f5132); color: var(--text-on-green, #fff); font-weight: 800; }
+/* The on-screen keyboard and the bar never fight for the same space: the bar
+   steps aside only while a text field on this page has the focus, so a stale
+   keyboard signal can never hide it for good. */
+:root[data-native-keyboard="open"] .go-pdp:has(:is(input, textarea, select, [contenteditable="true"]):focus) .product-detail-commerce-dock,
+:root[data-native-keyboard="open"] .go-pdp:has(:is(input, textarea, select, [contenteditable="true"]):focus) .go-buy-dock__added { display: none; }
 /* Room at the end of the page so the bar never hides the last lines. */
-.go-pdp { padding-bottom: calc(5.5rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important; }
+.go-pdp { padding-bottom: calc(6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important; }
 /* Computers: no fixed bar. The same two buttons sit in the purchase column
    beside the photo, where a mouse expects them. */
 @media (min-width: 1024px) {
-  .go-pdp .go-buy__actions.product-detail-commerce-dock { position: static; margin: 0; padding: 0; border: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; gap: .75rem; }
+  .go-pdp .go-buy__actions.product-detail-commerce-dock { position: static; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; transform: none; gap: .75rem; }
+  .go-buy-dock__price { display: none; }
+  .go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { flex-direction: row; font-size: .95rem; }
+  .go-buy-dock__added { position: static; margin: .75rem 0 0; max-width: none; box-shadow: none; transform: none; }
   .go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { flex: 0 0 auto; min-width: 10rem; min-height: 3.5rem; }
   .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { flex: 1 1 0; min-height: 3.5rem; }
   .go-pdp { padding-bottom: 3rem !important; }

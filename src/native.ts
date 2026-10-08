@@ -138,6 +138,19 @@ async function initNativeKeyboardSignals() {
       root.style.removeProperty('--native-keyboard-height');
     }),
   ]);
+  // A missed keyboardDidHide (a field removed while focused, a sheet closed
+  // with the keyboard up) must not leave the app thinking the keyboard is
+  // open: once no text field has the focus, the flag goes.
+  document.addEventListener('focusout', () => {
+    window.setTimeout(() => {
+      const active = document.activeElement;
+      const typing = active instanceof HTMLElement && (active.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName));
+      if (!typing) {
+        delete root.dataset.nativeKeyboard;
+        root.style.removeProperty('--native-keyboard-height');
+      }
+    }, 250);
+  });
 }
 
 function unsupportedUpdateState(reason = 'platform_not_supported'): NativeAppUpdateState {

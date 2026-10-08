@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{addToGuestCart}from'../cart/guestCart';
-import{ArrowLeft,BadgeCheck,Bell,BellRing,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,Package,PackageCheck,Plus,QrCode,RotateCcw,Share2,ShieldCheck,ShoppingCart,Sprout,Star,Store,Truck,User,X}from'lucide-react';
+import{ArrowLeft,BadgeCheck,Bell,BellRing,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,Package,PackageCheck,Plus,QrCode,RotateCcw,Share2,ShieldCheck,Sprout,Star,Store,Truck,User,X,Zap}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProducerFollow,toggleProductFavorite}from'./api';
 // The review form is loaded only when a customer taps "Değerlendirme yaz".
 const ProductReviewComposer=React.lazy(()=>import('./ProductReviewComposer'));
@@ -201,6 +201,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
   addToGuestCart({variantId:variantReference!,selectedOptions:selectedOptionsPayload(),productSlug:safeText(detail?.slug,220)||safeText(detail?.id,160),productName:safeText(detail?.name,300),variantName:safeText(variant?.name,240),producerName:safeText(detail?.producer?.name,240),priceMinor:priceMinor!,currency:currency!,imagePath:safeText((images.find((item:any)=>item?.primary===true)||images[0])?.path,1000)||null},quantity);
  }
  async function addToCart(){
+  if(busy)return;
   if(!purchaseReady||!variantReference){setError(purchaseIssueMessage());return;}
   if(!authenticated){try{setError('');addToGuestCartFromPage();setStatus(preorder?'Sipariş sepete eklendi.':'Sepete eklendi.');}catch(err){setError(err instanceof Error&&err.message?err.message:'Ürün sepete eklenemedi.');}return;}
   try{setBusy(true);setError('');setStatus('');await setCartItem({variantId:variantReference,quantity,selectedOptions:selectedOptionsPayload()});await onCartChanged?.();setStatus(preorder?'Sipariş sepete eklendi.':'Sepete eklendi.');}
@@ -221,6 +222,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
   if(authenticated)onGift(detail.slug||detail.id,quantity);else onLoginRequired();
  }
  async function buyNow(){
+  if(busy)return;
   if(!purchaseReady||!variantReference){setError(purchaseIssueMessage());return;}
   try{setBusy(true);setError('');setOfflineGift(false);if(!(await onlinePaymentOpen())&&offlineOrderingAvailable(await getOfflineOrderingConfig())){setOfflineOrderOpen(true);return;}}catch{/* fall back to the cart */}finally{setBusy(false);}
   if(!authenticated){try{setError('');addToGuestCartFromPage();navigateToCart();}catch(err){setError(err instanceof Error&&err.message?err.message:'Satın alma işlemi başlatılamadı.');}return;}
@@ -372,7 +374,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
   </div>
 
   {error?<div role="alert" className="mb-4 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div>:null}
-  {status?<div role="status" aria-live="polite" className="mb-4 rounded-2xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">{cartAdded?<div className="flex items-center justify-between gap-3"><span>{status}</span><button type="button" onClick={navigateToCart} className="min-h-11 rounded-full border-2 border-green-700 bg-green-700 px-3 font-black text-white shadow-sm transition-all hover:bg-green-800">Sepete Git</button></div>:status}</div>:null}
+  {status&&!cartAdded?<div role="status" aria-live="polite" className="mb-4 rounded-2xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">{status}</div>:null}
 
   <div className="go-detail-grid grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-10">
    <div className="go-detail-media"><ProductGallery slides={gallerySlides} productName={detailName} productSlug={safeText(detail?.slug,220)} categorySlug={categorySlug} categoryName={categoryName} productType={safeText(detail?.handlingProfile?.productType,60)} safetyClass={safeText(detail?.handlingProfile?.safetyClass,60)} onOpenPhoto={path=>{setSelectedImagePath(path);setImageViewerOpen(true);}}/>{prestigeParts.length?<p className="go-prestige">{prestigeParts.map((part,index)=><React.Fragment key={part}>{index?<span className="go-prestige__dot" aria-hidden="true"> · </span>:null}<span>{part}</span></React.Fragment>)}</p>:null}<p className="go-prestige-note">{shippingLine}</p></div>
@@ -397,15 +399,21 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
      {!purchaseReady&&!soldOut&&stockReady?<p className="go-buy__issue">{purchaseIssueMessage()}</p>:null}
 
-     {/* The buy bar, resting on the bottom edge of the screen with only the
-         two buttons: "Hemen Al" quiet, "Sepete Ekle" filled on the right,
-         under the thumb. The price stays on the page, under the name. On wide
-         screens the bar is not fixed: the same row sits in the purchase
-         column. */}
+     {/* The buy bar, resting on the bottom edge of phones and tablets, laid
+         out like the big shopping apps: the total and the delivery line on
+         the left, then a compact "Hemen Al" and the wide, filled "Sepete
+         Ekle" under the right thumb. On wide screens it is not fixed: the
+         two buttons sit in the purchase column under the price card. The
+         buttons are never disabled while a request runs (a disabled button
+         drops the screen reader's focus); aria-disabled says so instead. */}
      <div className="go-buy__actions product-detail-commerce-dock" role="group" aria-label="Satın al">
-      <button type="button" onClick={()=>void buyNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-buy"><span>{buyLabel}</span></button>
-      <button type="button" onClick={()=>void addToCart()} disabled={busy||!purchaseReady} className="product-detail-commerce-cart go-buy__primary"><ShoppingCart aria-hidden="true"/><span>{purchaseLabel}</span></button>
+      {priceReady?<p className="go-buy-dock__price"><strong>{priceText(totalMinor,currency)}</strong><span>{shippingLine}</span></p>:null}
+      <button type="button" onClick={()=>void buyNow()} disabled={!purchaseReady} aria-disabled={busy||undefined} className="product-detail-commerce-buy"><Zap aria-hidden="true"/><span>{buyLabel}</span></button>
+      <button type="button" onClick={()=>void addToCart()} disabled={!purchaseReady} aria-disabled={busy||undefined} className="product-detail-commerce-cart go-buy__primary"><span>{purchaseLabel}</span></button>
      </div>
+     {/* "Sepete eklendi" right above the bar, where the eyes are, for a few
+         seconds; the status at the top of the page stays for other news. */}
+     {cartAdded?<div className="go-buy-dock__added" role="status"><CheckCircle2 aria-hidden="true"/><span>{status}</span><button type="button" onClick={navigateToCart}>Sepete Git</button></div>:null}
      {stockFact?<p className={`go-stock-status go-stock-status--${stockTone}`} aria-live="polite"><span className="go-stock-status__dot" aria-hidden="true"/><span className="sr-only">Stok durumu: </span><span>{stockFact}</span></p>:null}
      {/* Gifting is its own experience, not a third button squeezed into
          the bar: a small line above, the invitation, what the gift
