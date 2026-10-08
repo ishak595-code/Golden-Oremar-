@@ -161,12 +161,12 @@ jobs:
           node - <<'NODE'
           const pkg = require('./package.json');
           const expected = {
-            '@capacitor/android':'8.5.0',
+            '@capacitor/android':'8.5.3',
             '@capacitor/app':'8.1.1',
             '@capacitor/browser':'8.0.4',
-            '@capacitor/core':'8.5.0',
+            '@capacitor/core':'8.5.3',
             '@capacitor/haptics':'8.0.2',
-            '@capacitor/ios':'8.5.0',
+            '@capacitor/ios':'8.5.3',
             '@capacitor/keyboard':'8.0.5',
             '@capacitor/network':'8.0.1',
             '@capacitor/splash-screen':'8.0.2',
@@ -176,7 +176,7 @@ jobs:
             if (pkg.dependencies?.[name] !== version) throw new Error(`${name}: expected ${version}, got ${pkg.dependencies?.[name]}`);
           }
           if (pkg.dependencies?.firebase) throw new Error('Firebase must not return to the runtime dependency graph.');
-          if (pkg.devDependencies?.['@capacitor/cli'] !== '8.5.0') throw new Error('@capacitor/cli must be 8.5.0');
+          if (pkg.devDependencies?.['@capacitor/cli'] !== '8.5.3') throw new Error('@capacitor/cli must be 8.5.3');
           NODE
           grep -q "com.android.tools.build:gradle:9.3.0" android/build.gradle
           if grep -q 'kotlin-gradle-plugin' android/build.gradle; then exit 1; fi
