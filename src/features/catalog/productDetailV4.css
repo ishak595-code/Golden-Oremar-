@@ -356,7 +356,8 @@
 .go-gift-card__eyebrow { display: flex; align-items: center; gap: .45rem; font-size: .7rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--brand-gold); }
 .go-gift-card__eyebrow svg { width: 1rem; height: 1rem; stroke-width: 1.5; }
 .go-gift-card__title { font-family: var(--font-serif, Georgia, serif); font-size: 1.2rem; font-weight: 700; line-height: 1.25; }
-.go-gift-card__meta { font-size: .84rem; line-height: 1.5; color: var(--text-muted); }
+.go-gift-card__meta { margin-top: .15rem !important; font-size: .86rem; font-style: italic; line-height: 1.5; text-align: center; color: var(--text-muted); }
+@media (min-width: 640px) { .go-gift-card__meta { text-align: left; } }
 .go-gift-card__button {
   display: inline-flex; align-items: center; justify-content: center; gap: .35rem; width: 100%; min-height: 3.25rem; margin-top: .55rem; padding: 0 1rem;
   border: 1px solid var(--brand-gold); border-radius: 1rem; background: transparent; color: var(--brand-gold);

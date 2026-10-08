@@ -414,8 +414,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
      {soldOut?null:<div className="go-gift-card">
       <p className="go-gift-card__eyebrow"><Gift aria-hidden="true"/>Sevdiklerinize özel</p>
       <p className="go-gift-card__title">Bu ürünü sevdiklerinize hediye edin</p>
-      <p className="go-gift-card__meta">Özel notunuzla · Fiyat bilgisi olmadan · Doğrudan adresine</p>
       <button type="button" onClick={()=>void giftNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-gift go-gift-card__button"><span>Hediye Olarak Gönder</span><ChevronRight aria-hidden="true"/></button>
+      <p className="go-gift-card__meta">Köyden sevdiğinizin kapısına; sizin notunuzla, fiyat bilgisi olmadan.</p>
      </div>}
     </div>
    </section>
