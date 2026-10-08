@@ -367,3 +367,6 @@
 .go-gift-card__button:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 2px; }
 .go-gift-card__button:disabled { opacity: .55; cursor: not-allowed; }
 @media (min-width: 640px) { .go-gift-card__button { width: auto; min-width: 16rem; justify-self: start; } }
+
+/* The künye under the gift card: first thing in the lower page. */
+.go-pdp__lower > .go-kunye--top { margin: 0 0 1.25rem; }

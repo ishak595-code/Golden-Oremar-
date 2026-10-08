@@ -87,7 +87,7 @@ for (const [name, path, overrides] of screens) {
   record((await frame.getAttribute('allowfullscreen')) !== null && ((await frame.getAttribute('allow')) || '').includes('fullscreen'), 'player allowed to go full screen');
   record((await frame.getAttribute('referrerpolicy')) === 'strict-origin-when-cross-origin', 'referrer policy YouTube requires');
   // Return terms live in the İade row of the facts table (2026-10-03, round 3).
-  record(await page.locator('.go-facts__row', { hasText: '14 gün içinde, paket açılmamışsa ücretsiz iade' }).count() === 1, 'honey: 14-day return row');
+  record(await page.locator('.go-kunye--top li', { hasText: '14 gün içinde, paket açılmamışsa ücretsiz iade' }).count() === 1, 'honey: 14-day return row');
   await context.close();
 }
 {
@@ -96,7 +96,7 @@ for (const [name, path, overrides] of screens) {
   await routeSupabase(page, { get_public_product_detail_v6: 'detail_perishable.json' });
   await page.goto(BASE + '/urun/daglica-karakovan-petek-bali-101');
   await page.waitForTimeout(2200);
-  record(await page.locator('.go-facts__row', { hasText: 'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır' }).count() === 1, 'raw milk: no-withdrawal notice');
+  record(await page.locator('.go-kunye--top li', { hasText: 'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır' }).count() === 1, 'raw milk: no-withdrawal notice');
   record(await page.locator('#product-video-heading').count() === 0, 'no video section when the product has none');
   await context.close();
 }

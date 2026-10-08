@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{addToGuestCart}from'../cart/guestCart';
-import{ArrowLeft,BadgeCheck,Bell,BellRing,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,PackageCheck,Plus,QrCode,Share2,ShieldCheck,ShoppingCart,Star,Store,User,X}from'lucide-react';
+import{ArrowLeft,BadgeCheck,Bell,BellRing,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,Package,PackageCheck,Plus,QrCode,RotateCcw,Share2,ShieldCheck,ShoppingCart,Sprout,Star,Store,Truck,User,X}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProducerFollow,toggleProductFavorite}from'./api';
 // The review form is loaded only when a customer taps "Değerlendirme yaz".
 const ProductReviewComposer=React.lazy(()=>import('./ProductReviewComposer'));
@@ -262,9 +262,9 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const makerVillage=maker?'':shortOrigin(detail?.origin,true);
  // Künye under "Üreticisini tanı": who made it, where, what is verified.
  // One row each. The village row opens the place on a map.
- const kunye:{key:string;label:string;text:string;href?:string}[]=[];
- if(maker||makerVillage)kunye.push({key:'maker',label:'Üreten',text:maker||`${makerVillage} üreticileri`});
+ const kunye:{key:string;label:string;text:string;href?:string;lines?:string[]}[]=[];
  if(producerLocation){const place=producerLocation.split(',').map(part=>part.trim()).filter(Boolean).map((part,index)=>index===0&&part.includes(' - ')?part.split(' - ').pop()!.trim():part).join(', ');kunye.push({key:'village',label:'Köy',text:producerLocation,href:`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`});}
+ if(maker||makerVillage)kunye.push({key:'maker',label:'Üreten',text:maker||`${makerVillage} üreticileri`});
  {const official=detail?.producer?.storeKind==='official';const notes=[detail?.producer?.originVerified===true?'Menşei doğrulandı':'',detail?.producer?.verified===true?(official?'resmi mağaza':'doğrulanmış üretici'):'',...activeBadges.filter((badge:any)=>!['official_store','verified_origin'].includes(safeText(badge.key,80))).map((badge:any)=>safeText(badge.label,120)).filter(Boolean).slice(0,3)].filter(Boolean);if(notes.length)kunye.push({key:'verified',label:'Doğrulama',text:notes.join(', ')});}
  // Stock status directly under the buy buttons, from the chosen pack's real
  // stock: Tükendi, Son N adet (5 or fewer), Stokta; pre-orders say Ön sipariş.
@@ -330,7 +330,10 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const returnText=typeof editorial.returnText==='string'?ed('returnText',200):computedReturn;
  // The shipping fee line ("Kargo bizden") is shown once, under the photo; it is not repeated here.
  const deliveryLines=[dispatchLine,...(coldChain?['Soğuk zincirle gönderilir']:[])];
- const facts:Array<[string,string[]]>=([['Kökeni',[ed('origin',120)]],['Üretim',[productionFact]],['Ambalaj',[ed('packaging',120)]],['İade',[returnText]],['Teslimat',deliveryLines]] as Array<[string,string[]]>).map(([label,lines]):[string,string[]]=>[label,lines.filter(Boolean)]).filter(([,lines])=>lines.length>0);
+ const facts:Array<[string,string[]]>=([['Kökeni',[producerLocation?'':ed('origin',120)]],['Teslimat',deliveryLines],['İade',[returnText]],['Ambalaj',[ed('packaging',120)]],['Üretim',[productionFact]]] as Array<[string,string[]]>).map(([label,lines]):[string,string[]]=>[label,lines.filter(Boolean)]).filter(([,lines])=>lines.length>0);
+ const infoRows:typeof kunye=[...kunye.filter(row=>row.key!=='verified'),...facts.map(([label,lines])=>({key:label,label,text:lines.join(' '),lines}))];
+ const verifiedRows=kunye.filter(row=>row.key==='verified');
+ const renderKunyeRow=(row:typeof kunye[number])=>{const Icon=({maker:User,village:MapPin,verified:BadgeCheck,Teslimat:Truck,'İade':RotateCcw,Ambalaj:Package,'Üretim':Sprout,Kökeni:MapPin} as Record<string,typeof MapPin>)[row.key]||CheckCircle2;const body=<><span className="go-kunye__icon" aria-hidden="true"><Icon/></span><span className="go-kunye__text"><span className="go-kunye__label">{row.label}</span>{row.lines?row.lines.map(line=><span key={line} className="go-kunye__value">{line}</span>):<span className="go-kunye__value">{row.text}</span>}</span>{row.href?<span className="go-kunye__go" aria-hidden="true"><span>Haritada aç</span><ExternalLink/></span>:null}</>;return<li key={row.key}>{row.href?<a href={row.href} target="_blank" rel="noopener noreferrer" className="go-kunye__row go-kunye__row--link" aria-label={`${row.label}: ${row.text}. Haritada aç`}>{body}</a>:<div className="go-kunye__row">{body}</div>}</li>;};
  function startReview(){if(!authenticated){onLoginRequired();return;}setReviewComposerOpen(true);}
  // Following the store: same data as the store page and Hesabım > Takip
  // Ettiğim Satıcılar (toggle_producer_follow_v1). Not an aria-pressed
@@ -419,6 +422,11 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
   </div>
 
   <div className="go-pdp__lower">
+   {/* What a buyer checks first, in one list right under the purchase area:
+       the village (opens on a map), who made it, delivery, returns, then the
+       rest. Each fact appears once on the page. */}
+   {infoRows.length?<ul className="go-kunye go-kunye--top" data-product-kunye="true" aria-label="Ürün künyesi">{infoRows.map(renderKunyeRow)}</ul>:null}
+
    <DetailAccordionGroup>
     {storyText?<DetailAccordion id="story" title="Bu ürünün hikâyesi"><p className="go-detail-story">{storyText}</p></DetailAccordion>:null}
     <DetailAccordion id="info" title="Ürün bilgileri ve özellikleri">
@@ -428,8 +436,6 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
      <ProductFacts detail={detail} variant={variant} qualifier={ed('qualifier',160)} packLine={packLine}/>
     </DetailAccordion>
    </DetailAccordionGroup>
-
-   {facts.length?<dl className="go-facts" aria-label="Kısa bilgiler">{facts.map(([label,lines])=><div key={label} className="go-facts__row"><dt>{label}</dt><dd>{lines.map(line=><span key={line} className="go-facts__line">{line}</span>)}</dd></div>)}</dl>:null}
 
    {showHealth||showUsage||hasTraceability||(Array.isArray(detail.certifications)&&detail.certifications.length)?<DetailAccordionGroup>
     {showHealth?<DetailAccordion id="safety" title={isNonFood?'Güvenli kullanım':'Sağlık bilgileri'}><HealthInfo content={safetyContent}/></DetailAccordion>:null}
@@ -446,7 +452,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
       <span className="go-store-card__meta">Mağazanın tüm ürünlerini gör</span></span>
      <span className="go-store-card__go"><ChevronRight aria-hidden="true"/></span>
     </button>:null}
-    {kunye.length?<ul className="go-kunye" data-product-kunye="true" aria-label="Ürün künyesi">{kunye.map(row=>{const Icon=({maker:User,village:MapPin,verified:BadgeCheck} as Record<string,typeof MapPin>)[row.key];const body=<><span className="go-kunye__icon" aria-hidden="true"><Icon/></span><span className="go-kunye__text"><span className="go-kunye__label">{row.label}</span><span className="go-kunye__value">{row.text}</span></span>{row.href?<span className="go-kunye__go" aria-hidden="true"><span>Haritada aç</span><ExternalLink/></span>:null}</>;return<li key={row.key}>{row.href?<a href={row.href} target="_blank" rel="noopener noreferrer" className="go-kunye__row go-kunye__row--link" aria-label={`${row.label}: ${row.text}. Haritada aç`}>{body}</a>:<div className="go-kunye__row">{body}</div>}</li>;})}</ul>:null}
+    {verifiedRows.length?<ul className="go-kunye" aria-label="Doğrulama">{verifiedRows.map(renderKunyeRow)}</ul>:null}
     {questionReady?<button type="button" onClick={()=>{if(!authenticated){onLoginRequired();return;}setQuestionOpen(value=>!value);setError('');setStatus('');}} aria-expanded={questionOpen} className="go-store-ask"><MessageCircle aria-hidden="true"/>Üreticiye soru sor</button>:null}
     {questionOpen&&producerId&&productId?<ProducerQuestionComposer className="mt-1" context={{kind:'product',producerId,productId,productName:detailName}} onCancel={()=>setQuestionOpen(false)} onStarted={()=>{setQuestionOpen(false);setStatus('Sorunuz üreticiye gönderildi. Yanıtı Hesabım > Mesajlarım bölümünden takip edebilirsiniz.');}}/>:null}
     {producerId?<div className="go-store-follow"><button type="button" onClick={()=>void toggleFollow()} disabled={followBusy} aria-describedby={`store-follow-hint-${producerId}`} className={`go-store-follow__button${following?' is-following':''}`}>{following?<BellRing aria-hidden="true"/>:<Bell aria-hidden="true"/>}<span>{followBusy?'Güncelleniyor…':following?'Takip ediliyor':'Mağazayı takip et'}</span></button><p id={`store-follow-hint-${producerId}`} role={followError?'alert':undefined} className={`go-store-follow__hint${followError?' is-error':''}`}>{followError||(following?'Yeni ürünlerinden haberin olacak · Bırakmak için dokun':'Yeni ürünler gelince haberin olsun')}</p></div>:null}
