@@ -14,7 +14,7 @@ const iosProject = read('ios/App/App.xcodeproj/project.pbxproj');
 const workflow = read('.github/workflows/mobile-quality.yml');
 const nativeFeatureCheck = read('scripts/native-feature-runtime-check.mjs');
 
-const capacitorStable = '8.5.0';
+const capacitorStable = '8.5.3';
 expect(pkg.dependencies?.['@capacitor/android'] === capacitorStable, `@capacitor/android must remain on stable ${capacitorStable}.`);
 expect(pkg.dependencies?.['@capacitor/core'] === capacitorStable, `@capacitor/core must remain on stable ${capacitorStable}.`);
 expect(pkg.dependencies?.['@capacitor/ios'] === capacitorStable, `@capacitor/ios must remain on stable ${capacitorStable}.`);
@@ -60,4 +60,4 @@ for (const marker of ['Yakut Prestige','golden-oremar:notification-sound:v1','li
   expect(nativeFeatureCheck.includes(marker), `Native feature runtime check is missing marker: ${marker}`);
 }
 
-console.log('Mobile platform contract OK: Android API 24-37.0 with AGP 9.3/Gradle 9.5, Capacitor 8.5.0, iOS 15+ with Xcode 26.6, authenticated OIDC E2E and native feature asset verification preserved.');
+console.log('Mobile platform contract OK: Android API 24-37.0 with AGP 9.3/Gradle 9.5, Capacitor 8.5.3, iOS 15+ with Xcode 26.6, authenticated OIDC E2E and native feature asset verification preserved.');
