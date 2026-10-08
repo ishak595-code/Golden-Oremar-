@@ -251,7 +251,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const editorial:Record<string,unknown>=detail?.editorial&&typeof detail.editorial==='object'&&!Array.isArray(detail.editorial)?detail.editorial:{};
  const ed=(key:string,max=600)=>safeText(editorial[key],max);
  // A short, clean name. A qualifier that used to sit in parentheses
- // ("Tane kuru") is listed under "Ürün bilgileri ve özellikleri" instead.
+ // ("Tane kuru") is listed under "Özellikleri ve içeriği" instead.
  const detailName=cleanTitle(safeText(detail.name,300))||'Ürün';
  const isNonFood=detail?.handlingProfile?.safetyClass==='non_food_safety'||detail?.handlingProfile?.productType==='non_food';
  const categoryName=safeText(detail?.category?.name,160);
@@ -260,7 +260,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  const maker=productMaker(detail?.slug,detail?.makerName);
  // No confirmed person yet: name the village's producers, which the origin record supports. Never a guessed person.
  const makerVillage=maker?'':shortOrigin(detail?.origin,true);
- // Künye under "Üreticisini tanı": who made it, where, what is verified.
+ // Künye under "Üreticisiyle tanışın": who made it, where, what is verified.
  // One row each. The village row opens the place on a map.
  const kunye:{key:string;label:string;text:string;href?:string;lines?:string[]}[]=[];
  if(producerLocation){const place=producerLocation.split(',').map(part=>part.trim()).filter(Boolean).map((part,index)=>index===0&&part.includes(' - ')?part.split(' - ').pop()!.trim():part).join(', ');kunye.push({key:'village',label:'Köy',text:producerLocation,href:`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`});}
@@ -397,13 +397,12 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
      {!purchaseReady&&!soldOut&&stockReady?<p className="go-buy__issue">{purchaseIssueMessage()}</p>:null}
 
-     {/* The buy bar, fixed to the bottom of the screen. One clear hierarchy:
-         "Sepete Ekle" is the main, filled button; "Hemen Al" is the quiet
-         second action. The total sits on the left, so both buttons fall
-         under the right thumb. On wide screens the bar is not fixed: the
-         same row sits in the purchase column. */}
+     {/* The buy bar, resting on the bottom edge of the screen with only the
+         two buttons: "Hemen Al" quiet, "Sepete Ekle" filled on the right,
+         under the thumb. The price stays on the page, under the name. On wide
+         screens the bar is not fixed: the same row sits in the purchase
+         column. */}
      <div className="go-buy__actions product-detail-commerce-dock" role="group" aria-label="Satın al">
-      {priceReady?<span className="go-buy-dock__price"><span className="go-buy-dock__label">Toplam</span><strong>{priceText(totalMinor,currency)}</strong></span>:null}
       <button type="button" onClick={()=>void buyNow()} disabled={busy||!purchaseReady} className="product-detail-commerce-buy"><span>{buyLabel}</span></button>
       <button type="button" onClick={()=>void addToCart()} disabled={busy||!purchaseReady} className="product-detail-commerce-cart go-buy__primary"><ShoppingCart aria-hidden="true"/><span>{purchaseLabel}</span></button>
      </div>
@@ -428,8 +427,8 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    {infoRows.length?<ul className="go-kunye go-kunye--top" data-product-kunye="true" aria-label="Ürün künyesi">{infoRows.map(renderKunyeRow)}</ul>:null}
 
    <DetailAccordionGroup>
-    {storyText?<DetailAccordion id="story" title="Bu ürünün hikâyesi"><p className="go-detail-story">{storyText}</p></DetailAccordion>:null}
-    <DetailAccordion id="info" title="Ürün bilgileri ve özellikleri">
+    {storyText?<DetailAccordion id="story" title={isNonFood?'Ustalığın hikâyesi':'Bu lezzetin hikâyesi'} teaser="Köyden kapınıza uzanan yolculuk"><p className="go-detail-story">{storyText}</p></DetailAccordion>:null}
+    <DetailAccordion id="info" title="Özellikleri ve içeriği" teaser="Ne aldığınızı tüm ayrıntısıyla bilin">
      {aboutText?<p className="go-detail-about">{aboutText}</p>:null}
      {descriptionText?<p className="go-detail-description">{descriptionText}</p>:null}
      {featureItems.length?<ul className="go-detail-features">{featureItems.map((item,index)=><li key={`${item}-${index}`}><CheckCircle2 aria-hidden="true"/><span>{item}</span></li>)}</ul>:null}
@@ -438,14 +437,14 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    </DetailAccordionGroup>
 
    {showHealth||showUsage||hasTraceability||(Array.isArray(detail.certifications)&&detail.certifications.length)?<DetailAccordionGroup>
-    {showHealth?<DetailAccordion id="safety" title={isNonFood?'Güvenli kullanım':'Sağlık bilgileri'}><HealthInfo content={safetyContent}/></DetailAccordion>:null}
-    {showUsage?<DetailAccordion id="usage" title={isNonFood?'Nasıl kullanılır?':'Nasıl tüketilir?'}><UsageInfo content={safetyContent} productName={detailName} galleryVideoUrl={productVideoUrl||null}/></DetailAccordion>:null}
-    {hasTraceability?<DetailAccordion id="trace" title="Lot ve izlenebilirlik"><Traceability detail={detail} hasTraceability={hasTraceability} onCopy={copyTrace}/></DetailAccordion>:null}
-    {Array.isArray(detail.certifications)&&detail.certifications.length?<DetailAccordion id="certs" title="Sertifikalar"><Certifications items={detail.certifications}/></DetailAccordion>:null}
+    {showHealth?<DetailAccordion id="safety" title={isNonFood?'Güvenle kullanın':'Sağlığınız için'} teaser="Bilmeniz gerekenler, açık ve net"><HealthInfo content={safetyContent}/></DetailAccordion>:null}
+    {showUsage?<DetailAccordion id="usage" title={isNonFood?'Kullanım rehberi':'En güzel nasıl tüketilir?'} teaser={isNonFood?'En iyi sonuç için adım adım':'Tadını doruğa taşıyan öneriler'}><UsageInfo content={safetyContent} productName={detailName} galleryVideoUrl={productVideoUrl||null}/></DetailAccordion>:null}
+    {hasTraceability?<DetailAccordion id="trace" title="İzlenebilirlik ve lot bilgisi" teaser="Hangi partiden geldiğini kendiniz görün"><Traceability detail={detail} hasTraceability={hasTraceability} onCopy={copyTrace}/></DetailAccordion>:null}
+    {Array.isArray(detail.certifications)&&detail.certifications.length?<DetailAccordion id="certs" title="Belgeleri ve sertifikaları" teaser="Kalitesi belgeyle kayıtlı"><Certifications items={detail.certifications}/></DetailAccordion>:null}
    </DetailAccordionGroup>:null}
 
    <section className="go-producer" aria-labelledby="product-producer-heading">
-    <h2 id="product-producer-heading" className="go-producer__title">Üreticisini tanı</h2>
+    <h2 id="product-producer-heading" className="go-producer__title">Üreticisiyle tanışın</h2>
     {detail.producer?.id?<button type="button" onClick={()=>onProducer(String(detail.producer.id),safeText(detail.producer.slug,220)||String(detail.producer.id),safeText(detail.producer.name,240)||'Üretici')} className="go-store-card" aria-label={`${safeText(detail.producer.name,240)||'Üretici'} mağazasına git`}>
      <span className="go-store-card__logo" aria-hidden="true">{safeText(detail.producer.logoPath,600)&&publicCatalogUrl(safeText(detail.producer.logoPath,600))?<img src={publicCatalogUrl(safeText(detail.producer.logoPath,600))||undefined} alt="" loading="lazy" decoding="async" onError={event=>{event.currentTarget.style.display='none';}}/>:null}<Store/></span>
      <span className="go-store-card__body"><span className="go-store-card__name"><span>{safeText(detail.producer.name,240)||'Üretici'}</span></span>
@@ -459,7 +458,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
    </section>
 
    <DetailAccordionGroup>
-    <DetailAccordion id="reviews" title="Müşteri Yorumları" teaser={reviewCount?`${averageRating!==null?averageRating.toFixed(1):'-'} puan · ${reviewCount} yorum`:'Tadına bakan ilk siz olun, ilk yorumu siz yazın'}><Reviews reviews={reviews} reviewCount={reviewCount} averageRating={averageRating} onWrite={startReview} composer={reviewComposerOpen&&productId?<React.Suspense fallback={<p className="go-review-composer__note">Yorum formu açılıyor…</p>}><ProductReviewComposer productId={productId} productName={detailName} onClose={()=>setReviewComposerOpen(false)}/></React.Suspense>:null}/></DetailAccordion>
+    <DetailAccordion id="reviews" title="Müşterilerimiz anlatıyor" teaser={reviewCount?`${averageRating!==null?averageRating.toFixed(1):'-'} puan · ${reviewCount} yorum`:'Tadına bakan ilk siz olun, ilk yorumu siz yazın'}><Reviews reviews={reviews} reviewCount={reviewCount} averageRating={averageRating} onWrite={startReview} composer={reviewComposerOpen&&productId?<React.Suspense fallback={<p className="go-review-composer__note">Yorum formu açılıyor…</p>}><ProductReviewComposer productId={productId} productName={detailName} onClose={()=>setReviewComposerOpen(false)}/></React.Suspense>:null}/></DetailAccordion>
    </DetailAccordionGroup>
 
    <ProductRecommendationsShelf reference={safeText(detail.slug,220)||reference} currentId={productId} onOpenProduct={next=>onOpenProduct?onOpenProduct(next):pushInternalRoute(buildProductUrl(next),'product-detail')} onAddToCart={(item,quantity)=>onAddCatalogItem?.(item,quantity)}/>

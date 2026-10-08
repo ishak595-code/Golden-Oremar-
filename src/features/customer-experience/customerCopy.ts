@@ -49,7 +49,16 @@ export const CUSTOMER_COPY={
  },
 }as const;
 
+// The titles the store was seeded with. While a section still carries one of
+// these, the crafted copy above is shown; once a super admin writes their own
+// title or description in "Ana sayfa ürün vitrinleri", theirs wins.
+const SEEDED_SECTION_TEXT=new Set(['Öne Çıkan Ürünler','Ön Siparişe Açık','Mevsimlik Ürünler','Yeni Eklenenler','Fiyat Avantajı Olanlar','Üreticiden Seçimler','Golden Oremar vitrini için seçilmiş ürünler.','Hazırlık süresi bulunan ve ön siparişle sunulan ürünler.','Mevsimsel stok modeliyle sunulan ürünler.','Yakın zamanda yayına alınan ürünler.','Geçerli karşılaştırma fiyatı bulunan ürünler.','Vitrin için kürasyonla seçilmiş ürünler.','Kategoriler']);
+const custom=(value:string)=>{const text=String(value||'').trim();return text&&!SEEDED_SECTION_TEXT.has(text)?text:'';};
+
 export function homeSectionDisplayCopy(source:HomePresentationSource,serverTitle:string,serverSubtitle:string):SectionCopy{
- const copy=HOME_SECTION_COPY[source];
- return copy||{eyebrow:'Golden Oremar',title:serverTitle,subtitle:serverSubtitle};
+ const copy=HOME_SECTION_COPY[source]||{eyebrow:'Golden Oremar',title:serverTitle,subtitle:serverSubtitle};
+ return{eyebrow:copy.eyebrow,title:custom(serverTitle)||copy.title,subtitle:custom(serverSubtitle)||copy.subtitle};
 }
+
+/** The categories heading: the super admin's own title, else the crafted one. */
+export function homeCategoriesTitle(serverTitle:string){return custom(serverTitle)||CUSTOMER_COPY.home.categoriesTitle;}

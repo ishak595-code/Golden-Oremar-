@@ -116,7 +116,7 @@
 .go-care__meta { margin: 0; font-size: .8rem; color: var(--text-muted); }
 .go-care__video { margin-top: .5rem; }
 
-/* Üreticisini tanı. */
+/* Üreticisiyle tanışın. */
 .go-producer { display: grid; gap: .7rem; min-width: 0; }
 .go-producer__title { margin: 0 0 .2rem; font-family: var(--font-serif, Georgia, serif); font-size: 1.35rem; font-weight: 600; line-height: 1.25; color: var(--text-main); }
 .go-producer .go-kunye { margin: 0; }
@@ -184,7 +184,7 @@
 .go-store-follow__hint.is-error { color: #b91c1c; font-weight: 700; }
 :root[data-color-scheme="dark"] .go-store-follow__hint.is-error { color: #fca5a5; }
 
-/* Review form opened from "Değerlendirme yaz" inside Müşteri Yorumları. */
+/* Review form opened from "Değerlendirme yaz" inside the reviews section. */
 .go-review-composer { min-width: 0; overflow-wrap: anywhere; }
 .go-review-composer__note { display: flex; align-items: center; gap: .5rem; margin: 0; font-size: .88rem; font-weight: 700; color: var(--text-muted); }
 .go-review-composer__spin { width: 1rem; height: 1rem; animation: go-spin 1s linear infinite; }
@@ -284,61 +284,42 @@
 .go-detail-recos__grid { display: grid; gap: .75rem; }
 @media (min-width: 640px) { .go-detail-recos__grid { grid-template-columns: 1fr 1fr; gap: 1rem; } }
 
-/* Buy bar. Phones and tablets: fixed to the bottom of the screen (the
-   product page has no bottom navigation there). The total sits on the left
-   and the two buttons on the right, under the thumb: a quiet "Hemen Al" and
-   "Sepete Ekle" as the one filled button. */
+/* Buy bar. Phones and tablets: a full-width bar resting on the bottom edge
+   of the screen, as in the big shopping apps (the product page has no bottom
+   navigation there). It carries only the two buttons: a quiet "Hemen Al" and
+   "Sepete Ekle" as the one filled button, on the right under the thumb. The
+   price stays on the page, under the product name. */
 .go-pdp .go-buy__actions.product-detail-commerce-dock {
-  position: fixed; z-index: 55;
-  left: max(.5rem, env(safe-area-inset-left, 0px)); right: max(.5rem, env(safe-area-inset-right, 0px));
-  bottom: calc(.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
-  display: flex; align-items: center; justify-content: flex-end; gap: .5rem;
-  max-width: 44rem; margin: 0 auto; padding: .55rem .55rem .55rem 1rem;
-  border: 1px solid color-mix(in srgb, var(--brand-gold) 30%, var(--border-main)); border-radius: 1.35rem;
-  background: color-mix(in srgb, var(--bg-card) 95%, transparent);
+  position: fixed; z-index: 55; left: 0; right: 0; bottom: 0;
+  display: flex; align-items: center; gap: .6rem; margin: 0;
+  padding: .6rem max(.85rem, env(safe-area-inset-right, 0px)) calc(.6rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) max(.85rem, env(safe-area-inset-left, 0px));
+  border-top: 1px solid color-mix(in srgb, var(--brand-gold) 28%, var(--border-main));
+  background: color-mix(in srgb, var(--bg-card) 96%, transparent);
   -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
-  box-shadow: 0 14px 34px rgb(0 0 0 / .3);
+  box-shadow: 0 -8px 24px rgb(0 0 0 / .18);
 }
-.go-buy-dock__price { display: flex; flex-direction: column; flex: 0 0 auto; margin-right: auto; line-height: 1.15; }
-.go-buy-dock__label { font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); }
-.go-buy-dock__price strong { font-size: 1.1rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--text-main); }
-.go-pdp .product-detail-commerce-dock button { min-height: 3.4rem; border-radius: 1rem; white-space: nowrap; }
+.go-pdp .product-detail-commerce-dock button { min-height: 3.25rem; border-radius: .95rem; white-space: nowrap; }
 .go-pdp .product-detail-commerce-dock button span { overflow-wrap: normal; }
-.go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { flex: 0 0 auto; padding: 0 1rem; border: 1px solid var(--border-main); background: transparent; color: var(--text-main); font-size: .95rem; font-weight: 700; }
-.go-pdp .product-detail-commerce-dock .product-detail-commerce-buy:hover { border-color: color-mix(in srgb, var(--brand-gold) 55%, var(--border-main)); }
-.go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { flex: 0 0 auto; min-width: 9.4rem; padding: 0 1rem; font-size: 1rem; font-weight: 800; box-shadow: none; }
-/* Phones: the words come first. The cart icon steps aside so the total
-   and both labels fit on one line; the buttons stay on the right. */
-@media (max-width: 430px) {
-  .go-pdp .product-detail-commerce-dock { padding-left: .85rem; }
-  .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart svg { display: none; }
-  .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { min-width: 7.2rem; padding: 0 .85rem; font-size: .96rem; }
-  .go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { padding: 0 .8rem; font-size: .9rem; }
-}
-/* Small phones: the two buttons take the whole bar (the total is on the
-   page, right under the product name). */
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { flex: 1 1 0; min-width: 0; padding: 0 .9rem; border: 1px solid color-mix(in srgb, var(--brand-gold) 45%, var(--border-main)); background: transparent; color: var(--text-main); font-size: .98rem; font-weight: 700; }
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-buy:hover { border-color: var(--brand-gold); }
+.go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { flex: 1.35 1 0; min-width: 0; padding: 0 .9rem; font-size: 1rem; font-weight: 800; box-shadow: none; }
+/* Small phones: the cart icon steps aside so both labels fit. */
 @media (max-width: 374px) {
-  .go-buy-dock__price { display: none; }
-  .go-pdp .product-detail-commerce-dock { padding-left: .55rem; }
-  .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { flex: 1 1 0; min-width: 0; }
+  .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart svg { display: none; }
 }
-/* Tablets: a wider bar, with roomier buttons still gathered on the right. */
+/* Tablets: the bar still spans the screen; the buttons gather in a centred
+   column so they do not stretch across a wide display. */
 @media (min-width: 640px) {
-  .go-pdp .go-buy__actions.product-detail-commerce-dock { left: 1.25rem; right: 1.25rem; padding: .65rem .65rem .65rem 1.4rem; gap: .65rem; }
-  .go-buy-dock__price strong { font-size: 1.25rem; }
-  .go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { min-width: 9rem; }
-  .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { min-width: 14rem; }
+  .go-pdp .go-buy__actions.product-detail-commerce-dock { padding-left: max(1.25rem, calc((100% - 40rem) / 2)); padding-right: max(1.25rem, calc((100% - 40rem) / 2)); gap: .75rem; }
 }
 /* The on-screen keyboard and the bar never fight for the same space. */
 :root[data-native-keyboard="open"] .go-pdp .product-detail-commerce-dock { display: none; }
 /* Room at the end of the page so the bar never hides the last lines. */
-.go-pdp { padding-bottom: 6.5rem !important; }
-/* Computers: no floating bar. The same two buttons sit in the purchase
-   column beside the photo, where a mouse expects them; the price is already
-   right above, so it is not repeated. */
+.go-pdp { padding-bottom: calc(5.5rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))) !important; }
+/* Computers: no fixed bar. The same two buttons sit in the purchase column
+   beside the photo, where a mouse expects them. */
 @media (min-width: 1024px) {
-  .go-pdp .go-buy__actions.product-detail-commerce-dock { position: static; max-width: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; gap: .75rem; justify-content: stretch; }
-  .go-buy-dock__price { display: none; }
+  .go-pdp .go-buy__actions.product-detail-commerce-dock { position: static; margin: 0; padding: 0; border: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; gap: .75rem; }
   .go-pdp .product-detail-commerce-dock .product-detail-commerce-buy { flex: 0 0 auto; min-width: 10rem; min-height: 3.5rem; }
   .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { flex: 1 1 0; min-height: 3.5rem; }
   .go-pdp { padding-bottom: 3rem !important; }

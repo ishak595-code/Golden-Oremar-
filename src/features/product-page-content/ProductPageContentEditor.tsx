@@ -23,7 +23,7 @@ const HELP:Record<PageTextKey,{label:string;help:string;rows?:number}>={
  packaging:{label:'Ambalaj',help:'Örn: Cam kavanoz, özel bez kese. Boş bırakılırsa satır gizlenir.'},
  returnText:{label:'İade',help:'Örn: 14 gün içinde, paket açılmamışsa ücretsiz iade. Çabuk bozulan ürünlerde: Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır. Boş bırakılırsa satır gizlenir.'},
  dispatchText:{label:'Teslimat (kargoya veriliş)',help:'Örn: 2-4 iş günü içinde kargoya verilir. Ön siparişte: Yeni sezon hasadıyla gönderilir (Haziran-Temmuz). Boş bırakılırsa bu cümle gizlenir.'},
- about:{label:'Ürün bilgileri',help:'"Ürün bilgileri ve özellikleri" bölümünün ilk paragrafı: ürün nedir, nasıl yapılır. Hikâyede geçen cümleler sayfada tekrar edilmez. Sağlık beyanı yazmayın.',rows:6},
+ about:{label:'Ürün bilgileri',help:'"Özellikleri ve içeriği" bölümünün ilk paragrafı: ürün nedir, nasıl yapılır. Hikâyede geçen cümleler sayfada tekrar edilmez. Sağlık beyanı yazmayın.',rows:6},
 };
 
 function tl(minor:number){const digits=minor%100===0?0:2;return`${(minor/100).toLocaleString('tr-TR',{minimumFractionDigits:digits,maximumFractionDigits:digits})} TL`;}
@@ -76,7 +76,7 @@ export default function ProductPageContentEditor({productId,productName,onClose,
     <label className="go-pce__check"><input type="checkbox" checked={draft.coldChain} onChange={event=>set('coldChain',event.target.checked)}/><span>Teslimat satırında "Soğuk zincirle gönderilir" yazsın</span></label>
     <p className="go-pce__help">Stok satırı (Stokta / Son 3 adet / Tükendi) stok miktarından otomatik gelir.</p>
    </fieldset>
-   <fieldset className="go-pce__group"><legend>Ürün bilgileri ve özellikleri</legend>{field('about')}</fieldset>
+   <fieldset className="go-pce__group"><legend>Özellikleri ve içeriği</legend>{field('about')}</fieldset>
    <p className="go-pce__note">Ürün adı, hikâye (en fazla 1500 karakter), açıklama, özellikler, fiyat ve eski fiyat (indirim), fotoğraflar, sağlık bilgileri ve nasıl tüketilir ürünün düzenleme adımlarında değiştirilir.</p>
    {notice?<p role="status" className="go-pce__ok">{notice}</p>:null}
    <div className="go-pce__actions"><button type="submit" disabled={saving||!dirty} className="go-pce__save">{saving?<Loader2 aria-hidden="true" className="animate-spin"/>:<Save aria-hidden="true"/>}{saving?'Kaydediliyor…':'Kaydet'}</button><button type="button" onClick={onClose} className="go-pce__cancel">{dirty?'Vazgeç':'Kapat'}</button></div>

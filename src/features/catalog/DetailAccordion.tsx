@@ -19,7 +19,7 @@ import{ChevronDown,type LucideIcon}from'lucide-react';
  *
  * Accessibility: each header is a real button with aria-expanded and
  * aria-controls, named by its short title alone; the panel is a region
- * labelled by it. Only the reviews section has a one-line note under its
+ * labelled by it. Each section has a one-line note under its
  * title, read once as the button's description.
  */
 

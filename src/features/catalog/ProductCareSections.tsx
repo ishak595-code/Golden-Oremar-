@@ -2,7 +2,7 @@ import React from'react';
 import ProductVideo from'../media/ProductVideo';
 
 /**
- * The product page's "Sağlık bilgileri" and "Nasıl tüketilir?" sections,
+ * The product page's "Sağlığınız için" and "En güzel nasıl tüketilir?" sections,
  * from the published product health content (get_public_product_safety_v3).
  *
  * Each section is plain reading text inside its own collapsible section on

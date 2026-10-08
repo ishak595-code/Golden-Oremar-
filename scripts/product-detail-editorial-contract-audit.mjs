@@ -3,10 +3,10 @@
 // One shared page for every product, in this order:
 //   photo (gallery with a slim slide bar) -> prestige line ("Yüksekova · Odun
 //   isiyle geleneksel kurutma · Sınırlı hasat") -> "Kargo bizden" -> title
-//   -> price (unit price × quantity) + pack -> buttons -> "Bu ürünün hikâyesi"
-//   -> "Ürün bilgileri ve özellikleri" -> facts table (Kökeni, Üretim,
-//   Ambalaj, İade, Teslimat) -> "Sağlık bilgileri" -> "Nasıl tüketilir?"
-//   -> "Üreticisini tanı" -> reviews -> "Sofranızı bu lezzetlerle tamamlayın".
+//   -> price (unit price × quantity) + pack -> buttons -> "Bu lezzetin hikâyesi"
+//   -> "Özellikleri ve içeriği" -> facts table (Kökeni, Üretim,
+//   Ambalaj, İade, Teslimat) -> "Sağlığınız için" -> "En güzel nasıl
+//   tüketilir?" -> "Üreticisiyle tanışın" -> reviews -> "Seçkinizi tamamlayın".
 // Round 3 (2026-10-03): no subtitle line and no "Kargo ve teslimat bilgisi"
 // section; return and delivery terms live once, in the facts table.
 // Round 2 (2026-10-03): the price is shown once (no bottom bar repeating it
@@ -41,12 +41,12 @@ const order = [
   ['buttons', 'className="go-buy__actions product-detail-commerce-dock"'],
   ['gift card', '<div className="go-gift-card">'],
   ['künye (village, maker, delivery, returns)', '<ul className="go-kunye go-kunye--top"'],
-  ['Bu ürünün hikâyesi', '<DetailAccordion id="story" title="Bu ürünün hikâyesi"'],
-  ['Ürün bilgileri ve özellikleri', '<DetailAccordion id="info" title="Ürün bilgileri ve özellikleri"'],
-  ['Sağlık bilgileri', "<DetailAccordion id=\"safety\" title={isNonFood?'Güvenli kullanım':'Sağlık bilgileri'}"],
-  ['Nasıl tüketilir?', "<DetailAccordion id=\"usage\" title={isNonFood?'Nasıl kullanılır?':'Nasıl tüketilir?'}"],
-  ['Üreticisini tanı', '>Üreticisini tanı</h2>'],
-  ['reviews', '<DetailAccordion id="reviews" title="Müşteri Yorumları"'],
+  ['Bu lezzetin hikâyesi', "<DetailAccordion id=\"story\" title={isNonFood?'Ustalığın hikâyesi':'Bu lezzetin hikâyesi'}"],
+  ['Özellikleri ve içeriği', '<DetailAccordion id="info" title="Özellikleri ve içeriği"'],
+  ['Sağlığınız için', "<DetailAccordion id=\"safety\" title={isNonFood?'Güvenle kullanın':'Sağlığınız için'}"],
+  ['En güzel nasıl tüketilir?', "<DetailAccordion id=\"usage\" title={isNonFood?'Kullanım rehberi':'En güzel nasıl tüketilir?'}"],
+  ['Üreticisiyle tanışın', '>Üreticisiyle tanışın</h2>'],
+  ['reviews', '<DetailAccordion id="reviews" title="Müşterilerimiz anlatıyor"'],
   ['recommendations', '<ProductRecommendationsShelf '],
 ];
 let last = -1;
@@ -65,9 +65,9 @@ check(!/go-sticky-buy|stickyBuy/.test(detail), 'No bottom bar repeating the pric
 check(!/'Köyden sofranıza'|go-buybox__tagline|go-buybox__origin/.test(jsx), 'The framed tagline and "Köyden sofranıza" row under the photo are replaced by the prestige line.');
 {
   const shelf = read('src/features/catalog/ProductRecommendationsShelf.tsx');
-  check(/getProductRecommendations\(/.test(shelf) && /<CatalogProductCard [\s\S]{0,400}? compact\/>/.test(shelf) && /Sofranızı bu lezzetlerle tamamlayın/.test(shelf) && !/Bu ürünün yanına yakışanlar/.test(shelf), 'The recommendations shelf uses the product-based recommendations and the category page cards (square photo).');
+  check(/getProductRecommendations\(/.test(shelf) && /<CatalogProductCard [\s\S]{0,400}? compact\/>/.test(shelf) && />Seçkinizi tamamlayın<\/h2>/.test(shelf) && !/Bu ürünün yanına yakışanlar/.test(shelf), 'The recommendations shelf uses the product-based recommendations and the category page cards (square photo).');
 }
-check(/\{showHealth\?<DetailAccordion id="safety"/.test(jsx) && /hasHealthInfo\(safetyContent\)/.test(detail), '"Sağlık bilgileri" shows only when the product has health content.');
+check(/\{showHealth\?<DetailAccordion id="safety"/.test(jsx) && /hasHealthInfo\(safetyContent\)/.test(detail), '"Sağlığınız için" shows only when the product has health content.');
 check(/\['Kökeni',\[producerLocation\?'':ed\('origin',120\)\]\],\['Teslimat',deliveryLines\],\['İade',\[returnText\]\],\['Ambalaj',\[ed\('packaging',120\)\]\],\['Üretim',\[productionFact\]\]\]/.test(detail) && !/\['Stok',/.test(detail) && !/'İçindekiler'/.test(detail), 'The künye lists the village (or Kökeni when there is no village), the maker, then Teslimat, İade, Ambalaj and Üretim (no İçindekiler or Stok row), each only when it has a value.');
 check(/const computedReturn=withdrawal\?\(withdrawal\.tier==='none'\?'Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır':'14 gün içinde, paket açılmamışsa ücretsiz iade'\):'';/.test(detail) && /const returnText=typeof editorial\.returnText==='string'\?ed\('returnText',200\):computedReturn;/.test(detail), 'İade: "14 gün içinde, paket açılmamışsa ücretsiz iade"; perishables keep "Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır".');
 check(/const deliveryLines=\[dispatchLine,\.\.\.\(coldChain\?\['Soğuk zincirle gönderilir'\]:\[\]\)\];/.test(detail) && /const dispatchLine=typeof editorial\.dispatchText==='string'\?ed\('dispatchText',160\):computedDispatch;/.test(detail) && /const coldChain=typeof editorial\.coldChain==='boolean'\?editorial\.coldChain:detail\?\.handlingProfile\?\.requiresColdChain===true;/.test(detail) && /const shippingLine=ed\('shippingNote',80\)\|\|\(shippingFeeMinor>0\?`Kargo ücreti \$\{priceText\(shippingFeeMinor,'TRY'\)\}`:'Kargo bizden'\);/.test(detail) && /if\(!preorder\)return'2-4 iş günü içinde kargoya verilir';/.test(detail) && /specifications\?\.preOrderTime/.test(detail), 'Teslimat: "2-4 iş günü içinde kargoya verilir" (pre-orders: their stored dispatch sentence) and "Soğuk zincirle gönderilir" for cold-chain products; the shipping fee line is shown once, under the photo.');

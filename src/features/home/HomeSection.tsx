@@ -1,7 +1,7 @@
 import React,{useCallback,useEffect,useMemo,useRef,useState}from'react';
 import{AlertCircle,ArrowRight,ArrowUp,RefreshCw}from'lucide-react';
 import{publicCatalogUrl}from'../catalog/api';
-import{CUSTOMER_COPY,homeSectionDisplayCopy}from'../customer-experience/customerCopy';
+import{CUSTOMER_COPY,homeCategoriesTitle,homeSectionDisplayCopy}from'../customer-experience/customerCopy';
 import HomeEventsSpotlight from'./HomeEventsSpotlight';
 import{browserHomeLocale,type HomeSectionModel}from'./homeExperienceApi';
 import{homeMerchandisingSignal}from'./homeMerchandising';
@@ -56,8 +56,8 @@ export default function HomeSection({onProductClick}:Props){
   <h1 className="sr-only">{experience.brand.name} ürünleri</h1>
   <div className="go-home-content">
    {orderedCategories.length?<section className="go-home-section go-home-categories" aria-labelledby="home-categories-title" data-server-heading={experience.interface.categoriesTitle}>
-    <SectionHeader id="home-categories-title" title={CUSTOMER_COPY.home.categoriesTitle} subtitle={CUSTOMER_COPY.home.categoriesSubtitle}/>
-    <div className="go-category-rail hide-scrollbar" role="list" aria-label={CUSTOMER_COPY.home.categoriesTitle}>
+    <SectionHeader id="home-categories-title" title={homeCategoriesTitle(experience.interface.categoriesTitle)} subtitle={CUSTOMER_COPY.home.categoriesSubtitle}/>
+    <div className="go-category-rail hide-scrollbar" role="list" aria-label={homeCategoriesTitle(experience.interface.categoriesTitle)}>
      {orderedCategories.map(({category,config})=>{const image=category.imagePath||config?.image||null;return<div role="listitem" key={category.id}><CategoryCard name={config?.title||category.name} subtitle={config?.subtitle||null} imageUrl={image?publicCatalogUrl(image):null} icon={config?.icon||category.icon} onClick={()=>navigateToCategories(category.slug)}/></div>;})}
     </div>
    </section>:null}

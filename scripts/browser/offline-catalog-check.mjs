@@ -33,7 +33,7 @@ const cards = page => page.locator('[data-product-reference], .go-product-card__
 
 let view = await open('/');
 check(await cards(view.page) > 0, `home: products drawn from the shipped copy (${await cards(view.page)} cards)`);
-check(NOTICE.test(view.body), 'home: the maintenance notice is shown');
+check(!NOTICE.test(view.body), 'home: no maintenance banner pushes the page down');
 check(!RAW.test(view.body), 'home: no raw error text');
 await view.context.close();
 
@@ -69,7 +69,7 @@ const realProduct = realHome.items.find(item => item.slug === 'daglica-karakovan
 view = await open('/', shipped);
 const realCards = await cards(view.page);
 check(realCards >= 12, `shipped copy, home: showcases filled (${realCards} cards)`);
-check(NOTICE.test(view.body) && !RAW.test(view.body), 'shipped copy, home: notice shown, no raw error text');
+check(!NOTICE.test(view.body) && !RAW.test(view.body), 'shipped copy, home: no banner, no raw error text');
 for (let i = 0; i < 8; i++) { await view.page.mouse.wheel(0, 1200); await view.page.waitForTimeout(400); }
 const homeText = await view.page.locator('body').innerText();
 const shownSections = ['Sofranın imza parçaları', 'Beklemeye değen lezzetler', 'Hasadın en güzel zamanı', 'Vitrine yeni düşenler', 'Değeri fiyatından önce gelenler'].filter(title => homeText.includes(title));
