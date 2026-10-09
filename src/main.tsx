@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary';
 import { installStaleChunkListeners, markAppLoadedSuccessfully } from './lib/staleChunkRecovery';
+import { setupServiceWorker } from './lib/serviceWorkerSetup';
 import './index.css';
 import './features/customer-experience/customerShellPolish.css';
 import './features/customer-experience/videoReferencePremium.css';
@@ -31,6 +32,7 @@ import {AuthorizationProvider} from './features/auth/AuthorizationContext';
 // Catch stale-deployment chunk failures that never reach a React boundary,
 // and clear the recovery guard once the app has actually mounted.
 installStaleChunkListeners();
+setupServiceWorker();
 window.addEventListener('load', () => markAppLoadedSuccessfully());
 
 const PwaInstallPrompt=lazy(()=>import('./features/pwa/PwaInstallPrompt'));

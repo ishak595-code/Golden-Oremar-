@@ -36,6 +36,8 @@ export default defineConfig(() => ({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Registered by src/main.tsx on the website only, never inside the app.
+      injectRegister: false,
       // Keep the service worker out of the Vite development runtime so HMR and
       // accessibility/debug sessions cannot be served stale cached application code.
       devOptions: {
@@ -45,6 +47,8 @@ export default defineConfig(() => ({
         // Back-office modules are lazy and excluded from customer precache. They are
         // fetched only after an authorized admin or producer opens the management UI.
         globIgnores: ['**/Admin*.js'],
+        // Inside the Android/iOS app this retires any leftover worker (see the file).
+        importScripts: ['sw-native-retire.js'],
         // A new deploy takes over open tabs at once instead of waiting for
         // every tab to close, so a fix reaches customers on their next tap.
         clientsClaim: true,
