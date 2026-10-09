@@ -135,3 +135,9 @@
 .go-category-menu .go-category-card__copy span{color:var(--text-muted);font-size:12px;line-height:1.35;}
 .go-category-menu__all{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;margin-top:14px;border-radius:14px;background:var(--brand-gold);color:var(--text-on-gold,#1c1503);font-weight:800;}
 .go-category-menu__all svg{width:18px;height:18px;}
+
+/* Placeholder rows appear only if a section has no copy to show within a
+   moment (normally the shipped copy is drawn at once). */
+:root[data-app-tab="home"] .go-product-list-v4--skeleton,
+:root[data-app-tab="home"] .go-spotlight--skeleton{opacity:0;animation:go-route-skeleton-in .2s ease-out .35s forwards;}
+@media(prefers-reduced-motion:reduce){:root[data-app-tab="home"] .go-product-list-v4--skeleton,:root[data-app-tab="home"] .go-spotlight--skeleton{animation:none;opacity:1;}}

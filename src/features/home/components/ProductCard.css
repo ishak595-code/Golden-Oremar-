@@ -137,14 +137,13 @@
 }
 
 :root[data-app-tab="home"] .go-product-row-v4__badge{
-  /* inline-block, not inline-flex: text-overflow never applies to a flex
-     container, so the label was cut mid-word ("İmza s") with no ellipsis.
-     The badge keeps its size; the region beside it is what shrinks. */
+  /* Never cut: the labels are short by rule (homeMerchandising.ts), the
+     badge keeps its full width and the maker/region beside it is what
+     shrinks or steps aside. */
   display:inline-block;
-  max-width:62%;
-  min-width:0;
+  min-width:max-content;
   flex:0 0 auto;
-  overflow:hidden;
+  overflow:visible;
   border:1px solid rgb(211 180 90 / .20);
   border-radius:999px;
   background:rgb(211 180 90 / .065);
@@ -153,7 +152,6 @@
   font-size:10px;
   font-weight:800;
   letter-spacing:.01em;
-  text-overflow:ellipsis;
   white-space:nowrap;
 }
 
@@ -316,5 +314,5 @@
    region steps aside; the full origin stays in the accessible label. */
 @container (max-width:150px){
   :root[data-app-tab="home"] .go-product-row-v4__region{display:none;}
-  :root[data-app-tab="home"] .go-product-row-v4__badge{max-width:100%;}
+  :root[data-app-tab="home"] .go-product-row-v4__badge{min-width:max-content;}
 }

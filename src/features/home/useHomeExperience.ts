@@ -1,3 +1,4 @@
+import{isSnapshotMode}from'../../lib/offlineCatalog';
 import{useCallback,useEffect,useRef,useState}from'react';
 import{NETWORK_RESTORED_EVENT}from'../resilience/useConnectivity';
 import{browserHomeLocale,getPublicHomeExperience,getPublicHomeSection,type HomeExperience,type HomeLocale,type HomeSectionModel,loadCatalogFallbackExperience}from'./homeExperienceApi';
@@ -85,7 +86,8 @@ export function useHomeExperience(locale:HomeLocale=browserHomeLocale()){
   try{
    const value=await getPublicHomeExperience(locale);if(request!==sequence.current)return value;
    const serverAge=Math.max(1,Number(value.cachePolicy?.compositionMaxAgeSeconds)||0)*1000;
-   persistExperience(locale,value,Date.now()+Math.max(CLIENT_FRESH_FALLBACK_MS,serverAge));
+   // A copy shipped with the app (backend down or stalling) is shown, never kept as if it were live.
+   if(!isSnapshotMode())persistExperience(locale,value,Date.now()+Math.max(CLIENT_FRESH_FALLBACK_MS,serverAge));
    setData(value);setError('');return value;
   }catch(err){
    if(cached){if(request===sequence.current){setError('');setData(cached.value);}return cached.value;}
@@ -112,12 +114,12 @@ export function useHomeExperience(locale:HomeLocale=browserHomeLocale()){
   const cached=hydrateSection(locale,key);
   if(cached&&cached.expiresAt>Date.now())return cached.value;
   if(cached){
-   void getPublicHomeSection(key,locale).then(value=>{if(value)persistSection(locale,key,value,Date.now()+CLIENT_FRESH_FALLBACK_MS);}).catch(()=>undefined);
+   void getPublicHomeSection(key,locale).then(value=>{if(value&&!isSnapshotMode())persistSection(locale,key,value,Date.now()+CLIENT_FRESH_FALLBACK_MS);}).catch(()=>undefined);
    return cached.value;
   }
   const pending=sectionRequests.get(cacheKey);
   if(pending)return pending;
-  const request=getPublicHomeSection(key,locale).then(value=>{if(value)persistSection(locale,key,value,Date.now()+CLIENT_FRESH_FALLBACK_MS);return value;}).catch(error=>{const fallback=hydrateSection(locale,key);if(fallback)return fallback.value;throw error;}).finally(()=>sectionRequests.delete(cacheKey));
+  const request=getPublicHomeSection(key,locale).then(value=>{if(value&&!isSnapshotMode())persistSection(locale,key,value,Date.now()+CLIENT_FRESH_FALLBACK_MS);return value;}).catch(error=>{const fallback=hydrateSection(locale,key);if(fallback)return fallback.value;throw error;}).finally(()=>sectionRequests.delete(cacheKey));
   sectionRequests.set(cacheKey,request);
   return request;
  },[data,locale]);

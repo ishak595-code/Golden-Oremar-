@@ -98,11 +98,13 @@ await view.context.close();
   await routeSupabase(page, {}, shipped);
   await page.route('**/rpc/get_public_home_section_v1', () => { /* never answers */ });
   await page.goto(BASE + '/'); await page.waitForTimeout(3500);
-  for (let i = 0; i < 14; i++) { await page.mouse.wheel(0, 700); await page.waitForTimeout(400); }
-  await page.waitForTimeout(9500);
+  for (let i = 0; i < 14; i++) { await page.mouse.wheel(0, 700); await page.waitForTimeout(250); }
+  // Well under the 8-second read timeout: the shipped copy is drawn at once.
+  await page.waitForTimeout(1200);
   const stuck = await page.locator('.go-product-list-v4--skeleton').count();
-  const offers = await page.locator('[data-home-source="offers"] [data-product-id]').count();
-  check(stuck === 0 && offers > 0, `stalled backend, home: no section stuck on placeholders (${stuck} stuck, ${offers} offers)`);
+  const filled = await page.locator('[data-home-source] [data-product-id]').count();
+  const spotlight = await page.locator('.go-spotlight__slide').count();
+  check(stuck === 0 && filled >= 12 && spotlight > 0, `stalled backend, home: sections and the band drawn at once from the shipped copy (${stuck} stuck, ${filled} rows, ${spotlight} band slides)`);
   await context.close();
 }
 

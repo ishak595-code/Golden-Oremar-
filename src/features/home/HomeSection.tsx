@@ -3,7 +3,7 @@ import{AlertCircle,ArrowRight,ArrowUp,RefreshCw}from'lucide-react';
 import{publicCatalogUrl}from'../catalog/api';
 import{CUSTOMER_COPY,homeCategoriesTitle,homeSectionDisplayCopy}from'../customer-experience/customerCopy';
 import HomeEventsSpotlight from'./HomeEventsSpotlight';
-import{browserHomeLocale,type HomeSectionModel}from'./homeExperienceApi';
+import{browserHomeLocale,getShippedHomeSection,type HomeSectionModel}from'./homeExperienceApi';
 import{homeMerchandisingSignal}from'./homeMerchandising';
 import{useHomeExperience}from'./useHomeExperience';
 import CategoryCard from'./components/CategoryCard';
@@ -26,6 +26,22 @@ type ProductReference={id:string;slug:string;legacyId?:string|null};
 type Props={onProductClick:(product:ProductReference)=>void};
 
 function navigateToCategories(categorySlug?:string){const url=buildTabUrl('categories',{category:categorySlug});const depth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(depth)&&depth>=0?depth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
+
+/** A showcase is a selection, not a list: never more than eight products. */
+const MAX_SECTION_ITEMS=8;
+const COPY_AFTER_MS=300;
+
+/* A section appears at once from the copy shipped with the app (or the
+   last cached answer), and the live answer replaces it quietly when it comes.
+   The grey placeholder shows only when neither copy exists, and only after a
+   short moment (CSS). */
+function loadSectionFast(key:string,loadSection:(key:string)=>Promise<HomeSectionModel|null>,apply:(section:HomeSectionModel|null,live:boolean)=>void){
+ // The copy is asked for only when the live answer (or the cached one) has
+ // not come within a moment, so a healthy backend never touches it.
+ let live=false;
+ const timer=window.setTimeout(()=>{if(!live)void getShippedHomeSection(key).then(copy=>{if(!live&&copy)apply(copy,false);});},COPY_AFTER_MS);
+ return loadSection(key).then(section=>{live=true;window.clearTimeout(timer);apply(section,true);return section;},async error=>{live=true;window.clearTimeout(timer);const copy=await getShippedHomeSection(key);if(copy){apply(copy,false);return copy;}throw error;});
+}
 
 export default function HomeSection({onProductClick}:Props){
  const locale=browserHomeLocale();
@@ -56,7 +72,7 @@ export default function HomeSection({onProductClick}:Props){
     early for it) and the featured products. */
  const[seasonalItems,setSeasonalItems]=useState<HomeSectionModel['items']|null>(null);
  const seasonalKey=experience?.sections.find(section=>section.source.kind==='seasonal')?.key||null;
- useEffect(()=>{if(!experience)return;if(!seasonalKey){setSeasonalItems([]);return;}let live=true;void loadSection(seasonalKey).then(section=>{if(live)setSeasonalItems(section?.items||[]);}).catch(()=>{if(live)setSeasonalItems([]);});return()=>{live=false;};},[experience,seasonalKey,loadSection]);
+ useEffect(()=>{if(!experience)return;if(!seasonalKey){setSeasonalItems([]);return;}let mounted=true;void loadSectionFast(seasonalKey,loadSection,(section,live)=>{if(mounted&&(live||section))setSeasonalItems(current=>live||current===null?section?.items||[]:current);}).catch(()=>{if(mounted)setSeasonalItems(current=>current??[]);});return()=>{mounted=false;};},[experience,seasonalKey,loadSection]);
  const spotlights=useMemo(()=>experience&&seasonalItems?pickSpotlights(seasonalItems,experience.sections.find(section=>!section.deferred)?.items||[]):[],[experience,seasonalItems]);
  const ownerOf=(id:string)=>initialOwners[id]??deferredOwners[id];
 
@@ -103,16 +119,18 @@ export default function HomeSection({onProductClick}:Props){
 
 function ProductSection({section,onProductClick,eagerFirst=false,isFirst=false}:{section:HomeSectionModel;onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean;isFirst?:boolean}){const copy=homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle);const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${section.source.kind}${isFirst?' go-product-section-v2--first':''}`;/* A section with nothing to show is left out: an empty promise is noise. */if(!section.items.length)return null;return<section className={sectionClass} aria-labelledby={`home-section-${section.key}`} data-server-section-title={section.title} data-home-source={section.source.kind}>
  <SectionHeader id={`home-section-${section.key}`} eyebrow={copy.eyebrow} title={copy.title} subtitle={copy.subtitle}/>
- {section.items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{section.items.map((item,index)=><ProductCard key={item.id} item={item} eager={eagerFirst&&index===0} merchandisingLabel={homeMerchandisingSignal(section.source.kind,index)} onClick={()=>onProductClick(item)}/>)}</ul>:<SectionEmptyState source={section.source.kind}/>} 
+ {section.items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{section.items.slice(0,MAX_SECTION_ITEMS).map((item,index)=><ProductCard key={item.id} item={item} eager={eagerFirst&&index===0} merchandisingLabel={homeMerchandisingSignal(section.source.kind,index)} onClick={()=>onProductClick(item)}/>)}</ul>:<SectionEmptyState source={section.source.kind}/>} 
  </section>;}
 
 function DeferredProductSection({descriptor,loadSection,onProductClick,order,ownerOf,onLoaded}:{descriptor:HomeSectionModel;loadSection:(key:string)=>Promise<HomeSectionModel|null>;onProductClick:(product:ProductReference)=>void;order:number;ownerOf:(id:string)=>number|undefined;onLoaded:(order:number,ids:string[])=>void}){
  const hostRef=useRef<HTMLElement|null>(null);const[section,setSection]=useState<HomeSectionModel|null>(null);const[loading,setLoading]=useState(false);const[error,setError]=useState('');const[done,setDone]=useState(false);const requested=useRef(false);
  const copy=homeSectionDisplayCopy(descriptor.source.kind,descriptor.title,descriptor.subtitle);
- const request=()=>{if(requested.current)return;requested.current=true;setLoading(true);setError('');void loadSection(descriptor.key).then(result=>{if(result)onLoaded(order,result.items.map(item=>item.id));setSection(result);setDone(true);}).catch(()=>{requested.current=false;setError(CUSTOMER_COPY.home.sectionRefreshError);}).finally(()=>setLoading(false));};
+ const request=()=>{if(requested.current)return;requested.current=true;setLoading(true);setError('');let shown=false;void loadSectionFast(descriptor.key,loadSection,(result,live)=>{if(!live&&!result)return;
+  // Only the live answer claims products for this section: the shipped copy is a snapshot and may list products the live answer has moved elsewhere.
+  if(result&&live)onLoaded(order,result.items.map(item=>item.id));if(!live)shown=true;setSection(result);if(live||result){setDone(true);setLoading(false);}}).catch(()=>{requested.current=false;if(!shown)setError(CUSTOMER_COPY.home.sectionRefreshError);}).finally(()=>setLoading(false));};
  useEffect(()=>{const node=hostRef.current;if(!node)return;if(typeof IntersectionObserver==='undefined'){request();return;}const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){request();observer.disconnect();}},{rootMargin:'560px 0px'});observer.observe(node);return()=>observer.disconnect();},[descriptor.key,loadSection]);
  const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${descriptor.source.kind} go-product-section-v2--deferred`;
- const items=(section?.items||[]).filter(item=>{const owner=ownerOf(item.id);return owner===undefined||owner===order;});
+ const items=(section?.items||[]).filter(item=>{const owner=ownerOf(item.id);return owner===undefined||owner===order;}).slice(0,MAX_SECTION_ITEMS);
  // Loaded and empty (or everything already shown above): leave the section out instead of announcing that it is empty.
  if(done&&!items.length&&!loading&&!error)return null;
  return<section ref={hostRef} className={sectionClass} aria-labelledby={`home-section-${descriptor.key}`} data-server-section-title={descriptor.title} data-home-source={descriptor.source.kind}>

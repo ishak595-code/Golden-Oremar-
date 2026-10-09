@@ -378,24 +378,32 @@ const SNAPSHOT_READ_TIMEOUT_MS = 8000;
 
 /** A fetch for the Supabase client: live first, the shipped copy when the backend is down or stalls. */
 export async function resilientFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  const live = fetch(input, init);
   let response: Response;
-  const hasCopy = Boolean(RESOLVERS[rpcName(input)]);
-  const controller = hasCopy ? new AbortController() : null;
-  const callerSignal = init?.signal;
-  if (controller && callerSignal) {
-    if (callerSignal.aborted) controller.abort(callerSignal.reason);
-    else callerSignal.addEventListener('abort', () => controller.abort(callerSignal.reason), { once: true });
-  }
-  const timer = controller ? setTimeout(() => controller.abort(new DOMException('snapshot_read_timeout', 'TimeoutError')), SNAPSHOT_READ_TIMEOUT_MS) : null;
   try {
-    response = await fetch(input, controller ? { ...init, signal: controller.signal } : init);
+    if (RESOLVERS[rpcName(input)]) {
+      // A read with a possible copy: if the live answer has not come after a
+      // while, answer from the copy (when there is one for these arguments)
+      // and let the slow request finish unseen. Without a copy, keep waiting.
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const stalled = new Promise<'stalled'>(resolve => { timer = setTimeout(() => resolve('stalled'), SNAPSHOT_READ_TIMEOUT_MS); });
+      const first = await Promise.race([live, stalled]);
+      clearTimeout(timer);
+      if (first === 'stalled') {
+        const fallback = await snapshotResponse(input, init);
+        if (fallback) { live.then(r => r.body?.cancel().catch(() => undefined), () => undefined); return fallback; }
+        response = await live;
+      } else {
+        response = first;
+      }
+    } else {
+      response = await live;
+    }
   } catch (error) {
-    if (callerSignal?.aborted) throw error;
+    if (init?.signal?.aborted) throw error;
     const fallback = await snapshotResponse(input, init);
     if (fallback) return fallback;
     throw error;
-  } finally {
-    if (timer) clearTimeout(timer);
   }
   if (response.status === 402 || response.status >= 500) {
     const fallback = await snapshotResponse(input, init);

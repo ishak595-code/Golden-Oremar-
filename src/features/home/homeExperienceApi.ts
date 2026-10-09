@@ -1,4 +1,5 @@
 import { supabase } from '../../lib/supabase';
+import { resolveFromOfflineCatalog } from '../../lib/offlineCatalog';
 import { getPublicHomeCatalog, listPublicCategories, publicCatalogUrl, type CatalogItem, type PublicCategory } from '../catalog/api';
 import { normalizeProductHandlingProfile } from '../catalog/productHandlingApi';
 
@@ -154,6 +155,21 @@ export async function loadCatalogFallbackExperience(locale:HomeLocale):Promise<H
 
 export async function getPublicHomeExperience(locale:HomeLocale):Promise<HomeExperience>{
   const{data,error}=await supabase.rpc('get_public_home_experience_v1',{p_locale:locale});if(error)throw error;return normalizeExperience(data);
+}
+
+/**
+ * The copy of a home section shipped with the app (public/offline-catalog),
+ * read without waiting for the server: drawn at once, then replaced quietly
+ * when the live answer comes. Null when there is no copy.
+ */
+export async function getShippedHomeSection(key:string):Promise<HomeSectionModel|null>{
+  try{
+    const sectionKey=requiredText(key,'Ana sayfa bölüm anahtarı',80);
+    const data=await resolveFromOfflineCatalog('get_public_home_section_v1',{p_key:sectionKey});
+    if(data==null)return null;
+    const normalized=normalizeSection({...(data as object),deferred:false},0);
+    return normalized.key===sectionKey?normalized:null;
+  }catch{return null;}
 }
 
 export async function getPublicHomeSection(key:string,locale:HomeLocale):Promise<HomeSectionModel|null>{

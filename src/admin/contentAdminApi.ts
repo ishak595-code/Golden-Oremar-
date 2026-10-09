@@ -34,7 +34,7 @@ export type AdminBrandPublicConfig = Record<string, unknown> & {
     social?: Record<string, string>;
   };
   heroCategories?: Array<{ id: string; title: string; subtitle: string; image: string; icon: string; targetCategory: string }>;
-  homeSections?: Array<{ id: string; title: string; active: boolean }>;
+  homeSections?: AdminHomeSection[];
   launchReadiness?: { status: string; reason?: string };
 };
 
@@ -208,16 +208,49 @@ function normalizeHeroCategories(value: unknown) {
   });
 }
 
+/** What a home showcase is filled from (private.get_public_home_section_v1). */
+export type HomeSectionSourceKind = 'featured' | 'preorder' | 'seasonal' | 'newest' | 'offers' | 'curated' | 'category';
+export type AdminHomeSection = {
+  id: string; title: string; active: boolean; subtitle: string; displayLimit: number;
+  source: { kind: HomeSectionSourceKind; collectionKey?: string; categorySlug?: string };
+  /** Set only on rows added in the panel and not saved yet; stripped before saving. */
+  _new?: boolean;
+  /** Fields the panel does not edit (sectionType, startAt, endAt, localizedTitles...), kept as they are. */
+  [key: string]: unknown;
+};
+const SOURCE_KINDS = new Set<HomeSectionSourceKind>(['featured', 'preorder', 'seasonal', 'newest', 'offers', 'curated', 'category']);
+/** Same fallback as the server when a section has no source: by its id. */
+const SOURCE_BY_ID: Record<string, HomeSectionSourceKind> = { featured: 'featured', pre_order: 'preorder', seasonal: 'seasonal', new_arrivals: 'newest', offers: 'offers' };
+export const HOME_SECTION_MAX_ITEMS = 8;
+
+function normalizeHomeSectionSource(value: unknown, id: string): AdminHomeSection['source'] {
+  const raw = isRecord(value) ? value : {};
+  const kind = SOURCE_KINDS.has(raw.kind as HomeSectionSourceKind) ? raw.kind as HomeSectionSourceKind : (SOURCE_BY_ID[id] || 'curated');
+  const key = (field: string) => typeof raw[field] === 'string' && String(raw[field]).trim() ? String(raw[field]).trim().slice(0, 120) : undefined;
+  return kind === 'curated' ? { kind, collectionKey: key('collectionKey') ?? (SOURCE_BY_ID[id] ? undefined : id) } : kind === 'category' ? { kind, categorySlug: key('categorySlug') } : { kind };
+}
+
+/**
+ * Keeps every field of a showcase. The panel used to read only id, title and
+ * active and save that back, which dropped each section's source, subtitle
+ * and product count: a curated section ("natural") then came back empty.
+ */
 function normalizeHomeSections(value: unknown) {
   if (value == null) return undefined;
   if (!Array.isArray(value) || value.length < 1 || value.length > 20) throw new Error('Ana sayfa bölüm listesi doğrulanamadı.');
   return value.map((item, index) => {
     if (!isRecord(item)) throw new Error(`${index + 1}. ana sayfa bölümü doğrulanamadı.`);
+    const id = requiredText(item.id, 'Ana sayfa bölüm kimliği', 80);
+    const limit = Number(item.displayLimit);
     return {
-      id: requiredText(item.id, 'Ana sayfa bölüm kimliği', 80),
+      ...item,
+      id,
       title: requiredText(item.title, 'Ana sayfa bölüm başlığı', 160),
       active: booleanValue(item.active, 'Ana sayfa bölüm durumu'),
-    };
+      subtitle: typeof item.subtitle === 'string' ? item.subtitle.slice(0, 240) : '',
+      displayLimit: Number.isInteger(limit) ? Math.min(HOME_SECTION_MAX_ITEMS, Math.max(1, limit)) : 6,
+      source: normalizeHomeSectionSource(item.source, id),
+    } as AdminHomeSection;
   });
 }
 
@@ -327,6 +360,22 @@ export async function adminArchiveContent(reference: string) {
 export async function adminGetBrandConfiguration(): Promise<AdminBrandConfig> {
   const { data, error } = await supabase.rpc('admin_get_brand_configuration_v1');
   return normalizeBrandConfiguration(unwrap<unknown>(data, error));
+}
+
+/** Checks a showcase list before it is saved; returns the first problem, or ''. */
+export function homeSectionsIssue(sections: AdminHomeSection[]): string {
+  const ids = new Set<string>();
+  for (const [index, section] of sections.entries()) {
+    const label = `${index + 1}. vitrin`;
+    // Saved ids are fixed (the panel shows them read-only); only a new row's id is checked for format.
+    if (section._new === true && !/^[a-z0-9][a-z0-9_-]{0,79}$/.test(section.id)) return `${label}: kimlik yalnız küçük harf, rakam, - ve _ içerebilir.`;
+    if (ids.has(section.id)) return `${label}: "${section.id}" kimliği iki kez kullanılmış.`;
+    ids.add(section.id);
+    if (!section.title.trim()) return `${label}: başlık boş olamaz.`;
+    if (section.source.kind === 'curated' && !section.source.collectionKey) return `${label}: koleksiyon anahtarını yazın (ürünlerin ana sayfa bölümü).`;
+    if (section.source.kind === 'category' && !section.source.categorySlug) return `${label}: kategori kısa adını yazın (ör. bal-sifa).`;
+  }
+  return sections.length ? '' : 'En az bir vitrin bölümü olmalı.';
 }
 
 export async function adminUpdateBrandSection(section: 'general' | 'contactInfo' | 'heroCategories' | 'homeSections' | 'staticContent', payload: Record<string, unknown>) {
