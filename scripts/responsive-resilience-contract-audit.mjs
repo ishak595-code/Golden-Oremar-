@@ -58,7 +58,7 @@ check(!/\.go-product-row-v4__(badge|region)\{/.test(afterContainers), 'No base b
 const categoryCard = read('src/features/home/components/CategoryCard.tsx');
 const home = read('src/features/home/HomeSection.tsx');
 check(/categoryIcon\(icon\)/.test(categoryCard) && /<Icon\/>/.test(categoryCard), 'CategoryCard must render the icon named by the category, not a fixed leaf for every category.');
-check(/icon=\{config\?\.icon\|\|category\.icon\}/.test(home), 'HomeSection must pass the category icon to CategoryCard.');
+check(/icon=\{config\?\.icon\|\|category\.icon\}/.test(read('src/features/home/components/CategoryMenu.tsx')), 'The categories menu must pass the category icon to CategoryCard.');
 
 // 6. Recommendation header action: never a clipped label with a hidden arrow.
 const rail = read('src/features/catalog/ProductRecommendationsRail.tsx');

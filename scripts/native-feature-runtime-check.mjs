@@ -23,7 +23,7 @@ const required=[
  ['canonical-home-composition-rpc','get_public_home_experience_v1'],
  ['canonical-deferred-home-rpc','get_public_home_section_v1'],
  ['premium-mobile-product-card','go-product-card-v2'],
- ['premium-mobile-category-rail','go-category-rail'],
+ ['premium-mobile-category-menu','go-category-menu'],
  ['voice-search-listening-state','Sesli arama dinleniyor'],
  ['editorial-product-detail','go-pdp__lower'],
  ['cold-chain-card-state','Soğuk Zincir'],

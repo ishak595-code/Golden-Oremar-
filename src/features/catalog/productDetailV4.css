@@ -312,6 +312,13 @@
 .go-pdp .product-detail-commerce-dock .product-detail-commerce-cart { flex: 0 1 11rem; min-width: 8.2rem; padding: 0 1rem; font-size: 1.02rem; font-weight: 800; box-shadow: none; }
 /* Without a price (still loading) the buttons share the bar. */
 .go-pdp .product-detail-commerce-dock:not(:has(.go-buy-dock__price)) .product-detail-commerce-cart { flex: 1 1 auto; }
+.go-buy-dock__price .go-buy-dock__deal { color: var(--brand-gold); }
+.go-buy-dock__deal s { color: var(--text-muted); font-weight: 600; }
+/* Phones and tablets: the price is in the bar, so the price card above keeps
+   only the pack and kg lines; the amount is not shown twice. */
+@media (max-width: 1023px) {
+  .go-pdp .go-price-card__main:has(.go-price-card__amounts) { display: none; }
+}
 /* Small phones (up to 374px): a little tighter, so "Kargo bizden" fits. */
 @media (max-width: 374px) {
   .go-pdp .go-buy__actions.product-detail-commerce-dock { gap: .45rem; padding-left: max(.7rem, env(safe-area-inset-left, 0px)); padding-right: max(.7rem, env(safe-area-inset-right, 0px)); }

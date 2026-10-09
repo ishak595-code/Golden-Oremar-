@@ -119,14 +119,14 @@ nav[aria-label="Ana gezinme"] button svg{width:22px!important;height:22px!import
 /* Phone width discipline: shell only; component-specific responsive rules live with components. */
 @media(max-width:520px){
  :root[data-app-tab="home"] header>div:last-child{padding-inline:var(--go-mobile-pad)!important;}
- :root[data-app-tab="home"] header>div:last-child>div{display:grid!important;grid-template-columns:44px minmax(0,1fr) auto;grid-template-rows:52px 52px;column-gap:var(--go-space-2)!important;row-gap:var(--go-space-2)!important;align-items:center;padding-block:var(--go-space-2);}
- :root[data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"]{grid-column:1;grid-row:1;}
- :root[data-app-tab="home"] header>div:last-child>div>div:nth-child(2){grid-column:1/-1;grid-row:2;min-width:0;width:100%;}
+ /* One row, as in the big shopping apps: categories menu, search, then
+    notifications and cart. The logo steps aside on phones so the products
+    start higher; it stays on wider screens. */
+ :root[data-app-tab="home"] header>div:last-child>div{display:grid!important;grid-template-columns:44px minmax(0,1fr) auto;grid-template-rows:52px;column-gap:var(--go-space-2)!important;align-items:center;padding-block:var(--go-space-2);}
+ :root[data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"]{display:none!important;}
+ :root[data-app-tab="home"] header button[aria-label="Kategoriler menüsü"]{grid-column:1;grid-row:1;}
+ :root[data-app-tab="home"] header>div:last-child>div>div:not(:last-child){grid-column:2;grid-row:1;min-width:0;width:100%;}
  :root[data-app-tab="home"] header>div:last-child>div>div:last-child{grid-column:3;grid-row:1;justify-self:end;}
- :root[data-go-header-compact="true"][data-app-tab="home"] header>div:last-child>div{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:44px;min-height:60px!important;padding-block:var(--go-space-2);}
- :root[data-go-header-compact="true"][data-app-tab="home"] header button[aria-label="Golden Oremar ana sayfası"]{display:none!important;}
- :root[data-go-header-compact="true"][data-app-tab="home"] header>div:last-child>div>div:nth-child(2){grid-column:1;grid-row:1;}
- :root[data-go-header-compact="true"][data-app-tab="home"] header>div:last-child>div>div:last-child{grid-column:2;grid-row:1;}
  .go-home-content{padding-top:var(--go-space-5);}
 }
 @media(max-width:350px){

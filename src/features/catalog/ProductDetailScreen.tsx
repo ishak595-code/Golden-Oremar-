@@ -399,7 +399,10 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
 
      {!purchaseReady&&!soldOut&&stockReady?<p className="go-buy__issue">{purchaseIssueMessage()}</p>:null}
 
-     {/* The buy bar, resting on the bottom edge of phones and tablets, laid
+     {/* The price lives in this bar on phones and tablets (the big amount in
+         the price card above is hidden there, so it is never shown twice);
+         on computers the bar is not fixed and the price card shows it.
+         The buy bar, resting on the bottom edge of phones and tablets, laid
          out like the big shopping apps: the total and the delivery line on
          the left, then a compact "Hemen Al" and the wide, filled "Sepete
          Ekle" under the right thumb. On wide screens it is not fixed: the
@@ -407,7 +410,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
          buttons are never disabled while a request runs (a disabled button
          drops the screen reader's focus); aria-disabled says so instead. */}
      <div className="go-buy__actions product-detail-commerce-dock" role="group" aria-label="Satın al">
-      {priceReady?<p className="go-buy-dock__price"><strong>{priceText(totalMinor,currency)}</strong><span>{shippingLine}</span></p>:null}
+      {priceReady?<p className="go-buy-dock__price">{discountShown?<span className="sr-only">{`Önceki fiyat ${priceText(oldTotalMinor,currency)}, şimdi `}</span>:null}<strong>{priceText(totalMinor,currency)}</strong>{discountShown?<span className="go-buy-dock__deal"><s aria-hidden="true">{priceText(oldTotalMinor,currency)}</s> %{discountPercent} indirim</span>:<span>{shippingLine}</span>}</p>:null}
       <button type="button" onClick={()=>void buyNow()} disabled={!purchaseReady} aria-disabled={busy||undefined} className="product-detail-commerce-buy"><Zap aria-hidden="true"/><span>{buyLabel}</span></button>
       <button type="button" onClick={()=>void addToCart()} disabled={!purchaseReady} aria-disabled={busy||undefined} className="product-detail-commerce-cart go-buy__primary"><span>{purchaseLabel}</span></button>
      </div>

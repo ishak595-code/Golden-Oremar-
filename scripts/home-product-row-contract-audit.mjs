@@ -20,7 +20,7 @@ requireText(card,'data-product-link="true"','Home product row must expose one fu
 requireText(card,'item.imagePath','Home product media must continue to use the catalog image path.');
 requireText(css,'flex-direction:row!important','Home product row must remain horizontal.');
 requireText(css,'.go-product-row-v4__badge','Home merchandising signals must remain inline in the row metadata.');
-requireText(prestige,'.go-category-rail','Premium Home category rail styling is missing.');
+requireText(prestige,'.go-category-menu','Premium Home categories menu styling is missing.');
 requireText(merchandising,'homeMerchandisingSignal','Source-aware Home merchandising signal layer is missing.');
 
 const anchorCount=(card.match(/<a\b/g)||[]).length;

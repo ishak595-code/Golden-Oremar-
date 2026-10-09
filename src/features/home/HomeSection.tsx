@@ -10,13 +10,17 @@ import CategoryCard from'./components/CategoryCard';
 import PremiumImage from'./components/PremiumImage';
 import ProductCard from'./components/ProductCard';
 import SectionHeader from'./components/SectionHeader';
-import{pickSpotlight}from'./components/spotlightPick';
+import{pickSpotlights}from'./components/spotlightPick';
 // Its own chunk: the customer entry bundle has a fixed budget.
 const HomeSpotlight=React.lazy(()=>import('./components/HomeSpotlight'));
+const CategoryMenu=React.lazy(()=>import('./components/CategoryMenu'));
 import'./homePrestigeV3.css';
 import'./homeLightThemes.css';
 import{scrollBehavior}from'../../lib/reducedMotion';
 import{buildTabUrl}from'../navigation/appUrl';
+
+/** Fired by the menu button in the home header. */
+export const OPEN_CATEGORY_MENU_EVENT='golden-oremar:open-category-menu';
 
 type ProductReference={id:string;slug:string;legacyId?:string|null};
 type Props={onProductClick:(product:ProductReference)=>void};
@@ -27,6 +31,9 @@ export default function HomeSection({onProductClick}:Props){
  const locale=browserHomeLocale();
  const{experience,loading,error,retry,loadSection}=useHomeExperience(locale);
  const[showScrollTop,setShowScrollTop]=useState(false);
+ const[menuOpen,setMenuOpen]=useState(false);
+ useEffect(()=>{const open=()=>setMenuOpen(true);window.addEventListener(OPEN_CATEGORY_MENU_EVENT,open);return()=>window.removeEventListener(OPEN_CATEGORY_MENU_EVENT,open);},[]);
+
  const orderedCategories=useMemo(()=>{
   if(!experience)return[];
   const bySlug=new Map(experience.categories.map(category=>[category.slug,category]));
@@ -45,13 +52,13 @@ export default function HomeSection({onProductClick}:Props){
  const initialOwners=useMemo(()=>{const owners:Record<string,number>={};(experience?.sections||[]).filter(section=>!section.deferred).forEach((section,order)=>{for(const item of section.items)if(owners[item.id]===undefined)owners[item.id]=order;});return owners;},[experience]);
  const[deferredOwners,setDeferredOwners]=useState<Record<string,number>>({});
  const claimProducts=useCallback((order:number,ids:string[])=>setDeferredOwners(current=>{let next=current;for(const id of ids){const owner=current[id];if(owner===undefined||owner>order){if(next===current)next={...current};next[id]=order;}}return next;}),[]);
- /* "Bugünün Önerisi" at the top, picked from the seasonal showcase (loaded
-    early for it). The product it shows is left out of the sections below. */
+ /* "Bugünün Önerisi" band at the top, from the seasonal showcase (loaded
+    early for it) and the featured products. */
  const[seasonalItems,setSeasonalItems]=useState<HomeSectionModel['items']|null>(null);
  const seasonalKey=experience?.sections.find(section=>section.source.kind==='seasonal')?.key||null;
  useEffect(()=>{if(!experience)return;if(!seasonalKey){setSeasonalItems([]);return;}let live=true;void loadSection(seasonalKey).then(section=>{if(live)setSeasonalItems(section?.items||[]);}).catch(()=>{if(live)setSeasonalItems([]);});return()=>{live=false;};},[experience,seasonalKey,loadSection]);
- const spotlight=useMemo(()=>experience&&seasonalItems?pickSpotlight(seasonalItems,experience.sections.find(section=>!section.deferred)?.items||[]):null,[experience,seasonalItems]);
- const ownerOf=(id:string)=>id===spotlight?.id?-1:initialOwners[id]??deferredOwners[id];
+ const spotlights=useMemo(()=>experience&&seasonalItems?pickSpotlights(seasonalItems,experience.sections.find(section=>!section.deferred)?.items||[]):[],[experience,seasonalItems]);
+ const ownerOf=(id:string)=>initialOwners[id]??deferredOwners[id];
 
  if(loading&&!experience)return<HomeLoading/>;
  if(!experience)return<HomeError message={error||CUSTOMER_COPY.home.loadErrorFallback} onRetry={()=>void retry().catch(()=>undefined)}/>;
@@ -68,14 +75,11 @@ export default function HomeSection({onProductClick}:Props){
    {experience.campaign?<CampaignCard campaign={experience.campaign}/>:null}
 
    {/* The space is held while the pick loads, so nothing below jumps. */}
-   {seasonalItems===null?<SpotlightSkeleton/>:spotlight?<React.Suspense fallback={<SpotlightSkeleton/>}><HomeSpotlight item={spotlight} title={experience.interface.heroTitle} subtitle={experience.interface.heroSubtitle} buttonText={experience.interface.heroButtonText} onOpen={()=>onProductClick(spotlight)}/></React.Suspense>:null}
+   {seasonalItems===null?<SpotlightSkeleton/>:spotlights.length?<React.Suspense fallback={<SpotlightSkeleton/>}><HomeSpotlight items={spotlights} title={experience.interface.heroTitle} buttonText={experience.interface.heroButtonText} onOpen={onProductClick}/></React.Suspense>:null}
 
-   {orderedCategories.length?<section className="go-home-section go-home-categories" aria-labelledby="home-categories-title" data-server-heading={experience.interface.categoriesTitle}>
-    <SectionHeader id="home-categories-title" title={homeCategoriesTitle(experience.interface.categoriesTitle)} subtitle={CUSTOMER_COPY.home.categoriesSubtitle}/>
-    <div className="go-category-rail hide-scrollbar" role="list" aria-label={homeCategoriesTitle(experience.interface.categoriesTitle)}>
-     {orderedCategories.map(({category,config})=>{const image=category.imagePath||config?.image||null;return<div role="listitem" key={category.id}><CategoryCard name={config?.title||category.name} subtitle={config?.subtitle||null} imageUrl={image?publicCatalogUrl(image):null} icon={config?.icon||category.icon} onClick={()=>navigateToCategories(category.slug)}/></div>;})}
-    </div>
-   </section>:null}
+   {/* Categories live behind the menu button at the top left (and the
+       Kategoriler tab), as in the big shopping apps, so the products and
+       campaigns sit higher on the first screen. */}
 
    {renderEvents('after_categories')}
 
@@ -92,6 +96,7 @@ export default function HomeSection({onProductClick}:Props){
    <button type="button" className="go-discover-all" onClick={()=>navigateToCategories()}><span>{CUSTOMER_COPY.home.discoverAll}</span><ArrowRight aria-hidden="true"/></button>
   </div>
  </div>
+ {menuOpen?<React.Suspense fallback={null}><CategoryMenu title={homeCategoriesTitle(experience.interface.categoriesTitle)} categories={orderedCategories} onClose={()=>setMenuOpen(false)} onPick={slug=>{setMenuOpen(false);navigateToCategories(slug);}}/></React.Suspense>:null}
  {showScrollTop?<button type="button" onClick={()=>window.scrollTo({top:0,behavior:scrollBehavior()})} aria-label="Başa dön" className="go-scroll-top fixed bottom-[116px] right-4 z-50 grid h-14 w-14 place-items-center rounded-full border-2 border-brand-green bg-white shadow-2xl transition-all hover:scale-105 hover:border-brand-gold hover:bg-brand-gold/5 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold dark:border-brand-gold dark:bg-gray-900" style={{bottom:'calc(116px + env(safe-area-inset-bottom, 0px))'}}><ArrowUp aria-hidden="true" className="h-6 w-6 text-brand-green dark:text-brand-gold"/></button>:null}
  </>;
 }
@@ -121,5 +126,5 @@ function SectionEmptyState({source}:{source:HomeSectionModel['source']['kind']})
 function CampaignCard({campaign}:{campaign:{title:string;description:string|null;bannerPath:string|null}}){const banner=campaign.bannerPath?publicCatalogUrl(campaign.bannerPath):null;return<section className="go-home-section go-campaign-v2" aria-label={campaign.title}>{banner?<PremiumImage src={banner} alt="" className="go-campaign-v2__media"/>:null}<div className="go-campaign-v2__copy"><span>Kampanya</span><h2>{campaign.title}</h2>{campaign.description?<p>{campaign.description}</p>:null}</div></section>;}
 function HomeError({message,onRetry}:{message:string;onRetry:()=>void}){return<div className="go-home-state" role="alert"><div className="grid h-24 w-24 place-items-center rounded-3xl bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800 dark:to-red-900"><AlertCircle aria-hidden="true" className="h-12 w-12 text-red-400"/></div><h1 className="mt-4 text-2xl font-bold">Ana sayfayı yenileyemedik</h1><p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{message}</p><button type="button" onClick={onRetry} className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl border-2 border-red-300 bg-white px-4 font-bold dark:border-red-800 dark:bg-red-950/20"><RefreshCw aria-hidden="true" className="h-4 w-4"/>Yeniden dene</button></div>;}
 function ProductRowsSkeleton(){return<div className="go-product-list-v4 go-product-list-v4--skeleton flex flex-col gap-4" role="status" aria-label="Ürünler yükleniyor">{[0,1,2].map(index=><div className="go-product-skeleton" key={index}><span/><div><i/><i/><i/></div></div>)}</div>;}
-function SpotlightSkeleton(){return<div className="go-home-section go-spotlight go-spotlight--skeleton" aria-hidden="true"><div className="go-spotlight__card"><span className="go-spotlight__media"/><span className="go-spotlight__copy"><i/><i/><i/></span></div></div>;}
+function SpotlightSkeleton(){return<div className="go-home-section go-spotlight go-spotlight--skeleton" aria-hidden="true"><div className="go-spotlight__card"><span className="go-spotlight__copy"><i/><i/><i/></span><span className="go-spotlight__media"/></div></div>;}
 function HomeLoading(){return<div className="go-premium-home-v2"><div className="go-home-content"><section className="go-home-section"><div className="go-heading-skeleton"/><div className="go-category-skeleton-rail">{[0,1,2].map(index=><div className="go-category-skeleton" key={index}/>)}</div></section><section className="go-home-section"><div className="go-heading-skeleton go-heading-skeleton--wide"/><ProductRowsSkeleton/></section></div></div>;}

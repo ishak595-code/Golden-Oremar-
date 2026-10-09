@@ -3,7 +3,7 @@ import React,{useCallback,useEffect,useRef,useState}from'react';
 import{App as CapApp}from'@capacitor/app';
 import{Capacitor}from'@capacitor/core';
 import{Haptics,ImpactStyle}from'@capacitor/haptics';
-import{Bell,CheckCircle,Grid,Heart,Home,ShoppingCart,User}from'lucide-react';
+import{Bell,CheckCircle,Grid,Heart,Home,Menu,ShoppingCart,User}from'lucide-react';
 import{useCustomerSession}from'./features/auth/useCustomerSession';
 import{useUnreadNotificationCount}from'./features/account/useUnreadNotificationCount';
 import{listFavoriteReferences as serverFavoriteReferences}from'./features/catalog/api';
@@ -18,7 +18,7 @@ import{useDeviceTheme}from'./features/appearance/useDeviceTheme';
 import{NETWORK_RESTORED_EVENT,useConnectivity}from'./features/resilience/useConnectivity';
 import{subscribeNativePushActions}from'./features/notifications/nativePush';
 import{buildProductUrl,buildProducerUrl,buildSearchUrl,buildTabUrl,parsePublicRoute,resolveAppActionTarget}from'./features/navigation/appUrl';
-import HomeSection from'./features/home/HomeSection';
+import HomeSection,{OPEN_CATEGORY_MENU_EVENT}from'./features/home/HomeSection';
 import{useNativeDeepLinks}from'./features/navigation/useNativeDeepLinks';
 import{runBackHandlers}from'./features/navigation/backHandlers';
 import{APP_TOAST_EVENT}from'./lib/appToast';
@@ -274,6 +274,7 @@ function AppContent(){
   {currentTab==='home'?<header className="sticky top-0 z-40 border-b border-gray-100 bg-white/95 shadow-sm backdrop-blur-xl dark:border-gray-800 dark:bg-gray-900/95" style={{paddingTop:'env(safe-area-inset-top, 0px)'}}>
    {!isOnline?<div role="status" aria-live="polite" className="border-b-2 border-amber-300 bg-amber-50 px-4 py-2.5 text-center text-sm font-bold text-amber-950 dark:border-amber-800 dark:bg-amber-950/70 dark:text-amber-100">Çevrimdışısınız. Sepet, sipariş, ödeme ve canlı veriler bağlantı geri gelene kadar tamamlanamaz.</div>:null}
    <div className="mx-auto max-w-7xl px-4 sm:px-6"><div className="flex min-h-16 items-center gap-3 md:min-h-20">
+    <HeaderAction label="Kategoriler menüsü" onClick={()=>window.dispatchEvent(new Event(OPEN_CATEGORY_MENU_EVENT))} icon={<Menu aria-hidden="true" className="h-6 w-6"/>}/>
     <button type="button" onClick={()=>navigateToTab('home')} aria-label="Golden Oremar ana sayfası" className="grid min-h-11 min-w-11 place-items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><img src="/logo.svg" alt="" aria-hidden="true" className="h-11 w-11 rounded-xl object-contain"/></button>
     <div className="relative min-w-0 flex-1 md:mx-auto md:max-w-2xl"><CatalogSearchInput value={searchQuery} onChange={setSearchQuery} onSubmit={value=>openSearch(value)} onVoice={triggerVoiceSearch} listening={isListening} onFocus={()=>setIsSearchFocused(true)} onBlur={()=>window.setTimeout(()=>setIsSearchFocused(false),180)}/><CatalogSearchOverlay query={searchQuery} open={isSearchFocused} onQueryChange={setSearchQuery} onProduct={slug=>{setIsSearchFocused(false);openProduct(slug);}} onProducer={(_id,slug)=>{setIsSearchFocused(false);openProducer(slug);}} onCategory={(slug,label)=>{setIsSearchFocused(false);openSearch(label,slug,null);}} onAllResults={value=>openSearch(value)}/></div>
     <div className="flex items-center gap-1"><HeaderAction label={unreadCount?`Bildirimler, ${unreadCount} okunmamış`:'Bildirimler'} onClick={()=>{openAccount('notifications');}} icon={<Bell aria-hidden="true" className="h-5 w-5"/>} badge={unreadCount}/><HeaderAction label={cartItemCount?`Sepetim, ${cartItemCount} ürün`:'Sepetim'} onClick={()=>navigateToTab('cart')} icon={<ShoppingCart aria-hidden="true" className="h-5 w-5"/>} badge={cartItemCount}/></div>
