@@ -10,6 +10,7 @@ import CategoryCard from'./components/CategoryCard';
 import PremiumImage from'./components/PremiumImage';
 import ProductCard from'./components/ProductCard';
 import SectionHeader from'./components/SectionHeader';
+import HomeSectionTabs from'./components/HomeSectionTabs';
 import{pickSpotlights}from'./components/spotlightPick';
 // Its own chunk: the customer entry bundle has a fixed budget.
 const HomeSpotlight=React.lazy(()=>import('./components/HomeSpotlight'));
@@ -75,6 +76,7 @@ export default function HomeSection({onProductClick}:Props){
  useEffect(()=>{if(!experience)return;if(!seasonalKey){setSeasonalItems([]);return;}let mounted=true;void loadSectionFast(seasonalKey,loadSection,(section,live)=>{if(mounted&&(live||section))setSeasonalItems(current=>live||current===null?section?.items||[]:current);}).catch(()=>{if(mounted)setSeasonalItems(current=>current??[]);});return()=>{mounted=false;};},[experience,seasonalKey,loadSection]);
  const spotlights=useMemo(()=>experience&&seasonalItems?pickSpotlights(seasonalItems,experience.sections.find(section=>!section.deferred)?.items||[]):[],[experience,seasonalItems]);
  const ownerOf=(id:string)=>initialOwners[id]??deferredOwners[id];
+ const sectionKeys=useMemo(()=>(experience?.sections||[]).map(section=>section.key),[experience]);
 
  if(loading&&!experience)return<HomeLoading/>;
  if(!experience)return<HomeError message={error||CUSTOMER_COPY.home.loadErrorFallback} onRetry={()=>void retry().catch(()=>undefined)}/>;
@@ -92,6 +94,8 @@ export default function HomeSection({onProductClick}:Props){
 
    {/* The space is held while the pick loads, so nothing below jumps. */}
    {seasonalItems===null?<SpotlightSkeleton/>:spotlights.length?<React.Suspense fallback={<SpotlightSkeleton/>}><HomeSpotlight items={spotlights} title={experience.interface.heroTitle} buttonText={experience.interface.heroButtonText} onOpen={onProductClick}/></React.Suspense>:null}
+
+   <HomeSectionTabs keys={sectionKeys}/>
 
    {/* Categories live behind the menu button at the top left (and the
        Kategoriler tab), as in the big shopping apps, so the products and
@@ -117,9 +121,9 @@ export default function HomeSection({onProductClick}:Props){
  </>;
 }
 
-function ProductSection({section,onProductClick,eagerFirst=false,isFirst=false}:{section:HomeSectionModel;onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean;isFirst?:boolean}){const copy=homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle);const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${section.source.kind}${isFirst?' go-product-section-v2--first':''}`;/* A section with nothing to show is left out: an empty promise is noise. */if(!section.items.length)return null;return<section className={sectionClass} aria-labelledby={`home-section-${section.key}`} data-server-section-title={section.title} data-home-source={section.source.kind}>
+function ProductSection({section,onProductClick,eagerFirst=false,isFirst=false}:{section:HomeSectionModel;onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean;isFirst?:boolean}){const copy=homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle);const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${section.source.kind}${isFirst?' go-product-section-v2--first':''}`;/* A section with nothing to show is left out: an empty promise is noise. */if(!section.items.length)return null;return<section className={sectionClass} aria-labelledby={`home-section-${section.key}`} data-home-key={section.key} data-server-section-title={section.title} data-home-source={section.source.kind}>
  <SectionHeader id={`home-section-${section.key}`} eyebrow={copy.eyebrow} title={copy.title} subtitle={copy.subtitle}/>
- {section.items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{section.items.slice(0,MAX_SECTION_ITEMS).map((item,index)=><ProductCard key={item.id} item={item} eager={eagerFirst&&index===0} merchandisingLabel={homeMerchandisingSignal(section.source.kind,index)} onClick={()=>onProductClick(item)}/>)}</ul>:<SectionEmptyState source={section.source.kind}/>} 
+ {section.items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{section.items.slice(0,MAX_SECTION_ITEMS).map((item,index)=><ProductCard key={item.id} item={item} eager={eagerFirst&&index===0} merchandisingLabel={homeMerchandisingSignal(section.source.kind,index,item)} onClick={()=>onProductClick(item)}/>)}</ul>:<SectionEmptyState source={section.source.kind}/>} 
  </section>;}
 
 function DeferredProductSection({descriptor,loadSection,onProductClick,order,ownerOf,onLoaded}:{descriptor:HomeSectionModel;loadSection:(key:string)=>Promise<HomeSectionModel|null>;onProductClick:(product:ProductReference)=>void;order:number;ownerOf:(id:string)=>number|undefined;onLoaded:(order:number,ids:string[])=>void}){
@@ -133,9 +137,9 @@ function DeferredProductSection({descriptor,loadSection,onProductClick,order,own
  const items=(section?.items||[]).filter(item=>{const owner=ownerOf(item.id);return owner===undefined||owner===order;}).slice(0,MAX_SECTION_ITEMS);
  // Loaded and empty (or everything already shown above): leave the section out instead of announcing that it is empty.
  if(done&&!items.length&&!loading&&!error)return null;
- return<section ref={hostRef} className={sectionClass} aria-labelledby={`home-section-${descriptor.key}`} data-server-section-title={descriptor.title} data-home-source={descriptor.source.kind}>
+ return<section ref={hostRef} className={sectionClass} aria-labelledby={`home-section-${descriptor.key}`} data-home-key={descriptor.key} data-server-section-title={descriptor.title} data-home-source={descriptor.source.kind}>
   <SectionHeader id={`home-section-${descriptor.key}`} eyebrow={copy.eyebrow} title={copy.title} subtitle={copy.subtitle}/>
-  {items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{items.map((item,index)=><ProductCard key={item.id} item={item} merchandisingLabel={homeMerchandisingSignal(descriptor.source.kind,index)} onClick={()=>onProductClick(item)}/>)}</ul>:loading?<ProductRowsSkeleton/>:error?<div className="mt-5 flex min-h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-6 dark:border-red-900/60 dark:bg-red-950/30" role="status"><div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800 dark:to-red-900"><AlertCircle aria-hidden="true" className="h-8 w-8 text-red-400"/></div><span className="text-center font-semibold text-red-900 dark:text-red-200">{error}</span><button type="button" onClick={request} className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-red-300 bg-white px-4 font-bold dark:border-red-800 dark:bg-red-950/20"><RefreshCw aria-hidden="true" className="h-4 w-4"/>{CUSTOMER_COPY.home.retry}</button></div>:<SectionEmptyState source={descriptor.source.kind}/>} 
+  {items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{items.map((item,index)=><ProductCard key={item.id} item={item} merchandisingLabel={homeMerchandisingSignal(descriptor.source.kind,index,item)} onClick={()=>onProductClick(item)}/>)}</ul>:loading?<ProductRowsSkeleton/>:error?<div className="mt-5 flex min-h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-6 dark:border-red-900/60 dark:bg-red-950/30" role="status"><div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800 dark:to-red-900"><AlertCircle aria-hidden="true" className="h-8 w-8 text-red-400"/></div><span className="text-center font-semibold text-red-900 dark:text-red-200">{error}</span><button type="button" onClick={request} className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-red-300 bg-white px-4 font-bold dark:border-red-800 dark:bg-red-950/20"><RefreshCw aria-hidden="true" className="h-4 w-4"/>{CUSTOMER_COPY.home.retry}</button></div>:<SectionEmptyState source={descriptor.source.kind}/>} 
  </section>;
 }
 

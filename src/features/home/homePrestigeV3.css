@@ -141,3 +141,35 @@
 :root[data-app-tab="home"] .go-product-list-v4--skeleton,
 :root[data-app-tab="home"] .go-spotlight--skeleton{opacity:0;animation:go-route-skeleton-in .2s ease-out .35s forwards;}
 @media(prefers-reduced-motion:reduce){:root[data-app-tab="home"] .go-product-list-v4--skeleton,:root[data-app-tab="home"] .go-spotlight--skeleton{animation:none;opacity:1;}}
+
+/* The band turns quietly: only its position, no controls. */
+.go-spotlight__count{position:absolute;z-index:2;right:10px;bottom:10px;padding:3px 9px;border-radius:999px;background:rgb(6 19 14 / .72);color:#f7f1e7;font-size:11.5px;font-weight:800;font-variant-numeric:tabular-nums;pointer-events:none;}
+
+/* Bugün | Mevsim | Yeni | Hediye: text only, a thin gold line under the
+   showcase in view; it stays under the header while the page scrolls. */
+:root[data-app-tab="home"] .go-section-tabs{position:sticky;top:var(--go-home-header-h,64px);z-index:30;display:flex;gap:26px;margin:14px calc(-1 * var(--go-mobile-pad,16px)) 0;padding:0 var(--go-mobile-pad,16px);overflow-x:auto;scrollbar-width:none;border-bottom:1px solid rgb(211 180 90 / .14);background:#06150f;}
+:root[data-app-tab="home"] .go-section-tabs::-webkit-scrollbar{display:none;}
+:root[data-app-tab="home"] .go-section-tabs button{position:relative;flex:0 0 auto;min-height:46px;padding:0 1px;color:#93a69c;font-size:14px;font-weight:700;letter-spacing:.03em;white-space:nowrap;transition:color .2s ease;}
+:root[data-app-tab="home"] .go-section-tabs button::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;border-radius:2px;background:#d4b75f;transform:scaleX(0);transition:transform .25s ease;}
+:root[data-app-tab="home"] .go-section-tabs button.is-active{color:#f4eee3;}
+:root[data-app-tab="home"] .go-section-tabs button.is-active::after{transform:scaleX(1);}
+:root[data-app-tab="home"] .go-section-tabs button:focus-visible{outline:2px solid #d4b75f;outline-offset:2px;border-radius:4px;}
+@media(prefers-reduced-motion:reduce){:root[data-app-tab="home"] .go-section-tabs button::after{transition:none;}}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-section-tabs{background:var(--bg-main);border-bottom-color:var(--border-main);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-section-tabs button{color:var(--text-muted);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-section-tabs button.is-active{color:var(--text-main);}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-section-tabs button::after{background:var(--brand-gold);}
+
+/* Breathing room: showcases never sit against each other, a tap on a tab
+   lands the title below the header and the strip, and the last row ends
+   above the tab bar. */
+:root[data-app-tab="home"] .go-product-section-v2{scroll-margin-top:calc(var(--go-home-header-h,64px) + 62px);}
+:root[data-app-tab="home"] .go-product-section-v2:not(.go-product-section-v2--first){margin-top:56px;}
+:root[data-app-tab="home"] .go-product-section-v2--first{margin-top:30px;}
+:root[data-app-tab="home"] .go-section-header h2:focus{outline:none;}
+:root[data-app-tab="home"] .go-home-content{padding-bottom:calc(var(--go-nav-height,72px) + 40px + env(safe-area-inset-bottom, 0px));}
+@media(min-width:1024px){
+ :root[data-app-tab="home"] .go-section-tabs{margin-inline:0;padding-inline:0;}
+ :root[data-app-tab="home"] .go-product-section-v2:not(.go-product-section-v2--first){margin-top:72px;}
+ :root[data-app-tab="home"] .go-home-content{padding-bottom:56px;}
+}

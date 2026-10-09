@@ -153,3 +153,8 @@ nav[aria-label="Ana gezinme"] button span.truncate{color:inherit!important;}
    showed two crosses. */
 .go-search-bar input[type="search"]::-webkit-search-cancel-button,
 .go-search-bar input[type="search"]::-webkit-search-decoration{-webkit-appearance:none;appearance:none;display:none;}
+/* The smallest phones: the search field gets the room to show "Ürün, köy
+   ara" whole; notifications stay one tap away under Hesabım. */
+@media(max-width:359px){
+ :root[data-app-tab="home"] header button[aria-label^="Bildirimler"]{display:none!important;}
+}

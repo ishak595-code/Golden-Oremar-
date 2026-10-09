@@ -1,31 +1,36 @@
--- Home page as a short, chosen selection instead of a long list: four
--- showcases under "Bugünün Önerisi", each at most eight products.
+-- Home page as a short, chosen selection instead of a long list. Under
+-- "Bugünün Önerisi" and the text strip Bugün | Mevsim | Yeni | Hediye:
 --
---   1. Sofranın imza parçaları   (featured)
---   2. Mevsim                    (seasonal; its title follows the season
---                                 in the app while left at the default)
---   3. Vitrine yeni düşenler     (new_arrivals)
---   4. Beklemeye değen lezzetler (pre_order)
+--   1. featured      Seçilmiş olanlar  · Sofrada iz bırakanlar
+--   2. seasonal      Şu anın hasadı    · Zamanı gelmiş lezzetler
+--   3. new_arrivals  Vitrine yeni      · Henüz az bilinenler
+--   4. natural       Özenle ayrıldı    · Verilmeye değer olanlar  (strip: Hediye)
+--   5. pre_order     Sakin seçki       · Acele etmeyen tatlar
 --
--- "offers" and "natural" stay in the list, switched off, so the super admin
--- can turn them back on in Ayarlar > Ana Sayfa Vitrini. Every section keeps
--- its source, subtitle and other fields; only order, active, displayLimit
--- and the three titles/subtitles below change. Sections the admin added are
--- kept after these, in their order. Safe to re-run.
+-- "offers" stays in the list, switched off, so the super admin can turn it
+-- back on in Ayarlar > Ana Sayfa Vitrini. Every section keeps its source and
+-- other fields; only order, active, displayLimit (at most 8) and the titles
+-- and subtitles below change, so the panel shows exactly what the page says.
+-- Sections the admin added are kept after these, in their order. Re-running
+-- restores this selection.
 
 update public.brand_settings bs
 set public_config = jsonb_set(bs.public_config, '{homeSections}', (
   select jsonb_agg(
     item
-    || case when item->>'id' in ('offers', 'natural') then '{"active": false}'::jsonb else '{}'::jsonb end
+    || case when item->>'id' = 'offers' then '{"active": false}'::jsonb
+            when item->>'id' in ('featured', 'seasonal', 'new_arrivals', 'natural', 'pre_order') then '{"active": true}'::jsonb
+            else '{}'::jsonb end
     || case item->>'id'
-         when 'featured' then '{"title": "Sofranın imza parçaları", "subtitle": "Kökeni belli, karakteri güçlü ürünler. Her biri sofrada fark yaratması için seçildi."}'::jsonb
-         when 'new_arrivals' then '{"title": "Vitrine yeni düşenler", "subtitle": "Yeni üreticiler, yeni tatlar, yeni favoriler. İlk keşfedenlerden biri olun."}'::jsonb
-         when 'pre_order' then '{"title": "Beklemeye değen lezzetler", "subtitle": "Siparişinizle hazırlanmaya başlayan, emeği ve zamanı ürüne dönüşen özel seçimler."}'::jsonb
+         when 'featured' then '{"title": "Sofrada iz bırakanlar", "subtitle": "Az bulunur, kökeni net, karakteri güçlü. Sofranı sıradanlıktan ayıranlar."}'::jsonb
+         when 'seasonal' then '{"title": "Zamanı gelmiş lezzetler", "subtitle": "Bu mevsimde toplanan, beklemeye değen, taze karakterli ürünler."}'::jsonb
+         when 'new_arrivals' then '{"title": "Henüz az bilinenler", "subtitle": "Raflara yeni düşen, keşfedilmeyi bekleyen sakin seçimler."}'::jsonb
+         when 'natural' then '{"title": "Verilmeye değer olanlar", "subtitle": "Bir sofraya veya birine bırakıldığında anlamı artan ürünler."}'::jsonb
+         when 'pre_order' then '{"title": "Acele etmeyen tatlar", "subtitle": "Yavaş üretilmiş, hikâyesi olan, uzun süre hatırlananlar."}'::jsonb
          else '{}'::jsonb
        end
     || jsonb_build_object('displayLimit', least(8, greatest(1, coalesce(case when item->>'displayLimit' ~ '^[0-9]+$' then (item->>'displayLimit')::integer end, 6))))
-    order by case item->>'id' when 'featured' then 1 when 'seasonal' then 2 when 'new_arrivals' then 3 when 'pre_order' then 4 when 'offers' then 5 when 'natural' then 6 else 7 end, position)
+    order by case item->>'id' when 'featured' then 1 when 'seasonal' then 2 when 'new_arrivals' then 3 when 'natural' then 4 when 'pre_order' then 5 when 'offers' then 6 else 7 end, position)
   from jsonb_array_elements(bs.public_config->'homeSections') with ordinality as sections(item, position)
 ), true),
     updated_at = timezone('utc', now())

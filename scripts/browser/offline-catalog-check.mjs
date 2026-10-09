@@ -72,8 +72,8 @@ check(realCards >= 12, `shipped copy, home: showcases filled (${realCards} cards
 check(!NOTICE.test(view.body) && !RAW.test(view.body), 'shipped copy, home: no banner, no raw error text');
 for (let i = 0; i < 8; i++) { await view.page.mouse.wheel(0, 1200); await view.page.waitForTimeout(400); }
 const homeText = await view.page.locator('body').innerText();
-const shownSections = ['Sofranın imza parçaları', 'Beklemeye değen lezzetler', 'Vitrine yeni düşenler', 'Değeri fiyatından önce gelenler'].filter(title => homeText.toLocaleLowerCase('tr-TR').includes(title.toLocaleLowerCase('tr-TR')));
-check(shownSections.length >= 4 && await view.page.locator('.go-spotlight__slide').count() >= 2, `shipped copy, home: showcase sections visible (${shownSections.join(', ')})`);
+const shownSections = ['Sofrada iz bırakanlar', 'Zamanı gelmiş lezzetler', 'Henüz az bilinenler', 'Verilmeye değer olanlar', 'Acele etmeyen tatlar'].filter(title => homeText.toLocaleLowerCase('tr-TR').includes(title.toLocaleLowerCase('tr-TR')));
+check(shownSections.length >= 5 && await view.page.locator('.go-spotlight__slide').count() >= 2 && (await view.page.locator('.go-section-tabs button').allInnerTexts()).join('|') === 'Bugün|Mevsim|Yeni|Hediye' && await view.page.locator('.go-spotlight button[aria-label*="geçiş"]').count() === 0, `shipped copy, home: showcase sections visible (${shownSections.join(', ')})`);
 await view.context.close();
 
 view = await open('/kategori/bal-sifa', shipped);

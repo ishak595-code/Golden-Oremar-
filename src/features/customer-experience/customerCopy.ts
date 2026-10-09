@@ -2,24 +2,27 @@ export type HomePresentationSource='featured'|'preorder'|'seasonal'|'newest'|'of
 
 type SectionCopy={eyebrow:string;title:string;subtitle:string};
 
+/* The home page's voice: calm, selective, weighty. No "premium", no
+   discounts, no bargain hunting. Each showcase is named for what it means at
+   the table, not for how it was filled. */
 const HOME_SECTION_COPY:Record<HomePresentationSource,SectionCopy>={
- featured:{eyebrow:'Golden Oremar seçkisi',title:'Sofranın imza parçaları',subtitle:'Kökeni belli, karakteri güçlü ürünler. Her biri sofrada fark yaratması için seçildi.'},
- preorder:{eyebrow:'Aceleye gelmeyenler',title:'Beklemeye değen lezzetler',subtitle:'Siparişinizle hazırlanmaya başlayan, emeği ve zamanı ürüne dönüşen özel seçimler.'},
- seasonal:{eyebrow:'Doğanın takviminden',title:'Hasadın en güzel zamanı',subtitle:'Mevsim ne sunuyorsa onu taşıyan ürünler. Sezonundayken daha canlı, sofradayken daha hatırlanır.'},
- newest:{eyebrow:'Yeni keşifler',title:'Vitrine yeni düşenler',subtitle:'Yeni üreticiler, yeni tatlar, yeni favoriler. İlk keşfedenlerden biri olun.'},
- offers:{eyebrow:'Seçili fırsatlar',title:'Değeri fiyatından önce gelenler',subtitle:'Karşılaştırmalı fiyatıyla öne çıkan ürünleri kaynağı ve niteliğiyle birlikte değerlendirin.'},
- curated:{eyebrow:'Özenle seçildi',title:'Sıradan olmayan sofralar için',subtitle:'Üreticisi, karakteri ve hikayesiyle ayrışan ürünlerden sakin ama iddialı bir seçki.'},
- category:{eyebrow:'Aynı sofradan',title:'Birlikte keşfetmeye değer',subtitle:'Aynı kategoride farklı üreticilerden öne çıkan seçenekleri tek bakışta karşılaştırın.'},
+ featured:{eyebrow:'Seçilmiş olanlar',title:'Sofrada iz bırakanlar',subtitle:'Az bulunur, kökeni net, karakteri güçlü. Sofranı sıradanlıktan ayıranlar.'},
+ seasonal:{eyebrow:'Şu anın hasadı',title:'Zamanı gelmiş lezzetler',subtitle:'Bu mevsimde toplanan, beklemeye değen, taze karakterli ürünler.'},
+ newest:{eyebrow:'Vitrine yeni',title:'Henüz az bilinenler',subtitle:'Raflara yeni düşen, keşfedilmeyi bekleyen sakin seçimler.'},
+ preorder:{eyebrow:'Sakin seçki',title:'Acele etmeyen tatlar',subtitle:'Yavaş üretilmiş, hikâyesi olan, uzun süre hatırlananlar.'},
+ offers:{eyebrow:'Doğru zamanda',title:'Değeri fiyatından önce gelenler',subtitle:'Kaynağı ve emeğiyle öne çıkan, şimdi daha erişilebilir seçimler.'},
+ curated:{eyebrow:'Özenle ayrıldı',title:'Verilmeye değer olanlar',subtitle:'Bir sofraya veya birine bırakıldığında anlamı artan ürünler.'},
+ category:{eyebrow:'Aynı sofradan',title:'Birlikte keşfetmeye değer',subtitle:'Aynı kökten gelen, yan yana daha anlamlı duran seçimler.'},
 };
 
-/* The seasonal showcase speaks of the season we are in. Months are Turkey's
-   calendar seasons; a super admin's own title or description still wins. */
-type Season={key:'spring'|'summer'|'autumn'|'winter';name:string;words:readonly string[]}&SectionCopy;
+/* Seasons by Turkey's calendar: the "Bugünün Önerisi" band picks products of
+   the season we are in. */
+type Season={key:'spring'|'summer'|'autumn'|'winter';name:string;words:readonly string[]};
 const SEASONS:readonly Season[]=[
- {key:'winter',name:'Kış',words:['kış'],eyebrow:'Kışın sıcak sofrası',title:'Kilerin en kıymetli hazineleri',subtitle:'Yazın emeği kışın sofraya iner. Yaylada saklanan, içinizi ısıtan seçimler; soğuk akşamların en güzel bahanesi.'},
- {key:'spring',name:'İlkbahar',words:['bahar','ilkbahar'],eyebrow:'Baharın ilk hasadı',title:'Doğa uyanırken ilk tadan siz olun',subtitle:'Karın çekildiği yamaçlardan ilk toplananlar. Mevsimi kısa, bulması zor; sofranıza baharın ilk sözünü taşıyor.'},
- {key:'summer',name:'Yaz',words:['yaz'],eyebrow:'Yaylanın yazı',title:'Güneşi içine çekmiş lezzetler',subtitle:'Yayla güneşinde olgunlaşan, sabah toplanıp yola çıkan ürünler. Yazın gerçek tadı, şehirde bulunmayanı.'},
- {key:'autumn',name:'Sonbahar',words:['sonbahar','güz'],eyebrow:'Sonbaharın bereketi',title:'Hasat zamanı, sofranızda',subtitle:'Dalında olgunlaşmış, yayladan yeni inmiş. Yılın bu birkaç haftasında en güzel hâlindeler; mevsimi kaçırmayın.'},
+ {key:'winter',name:'Kış',words:['kış']},
+ {key:'spring',name:'İlkbahar',words:['bahar','ilkbahar']},
+ {key:'summer',name:'Yaz',words:['yaz']},
+ {key:'autumn',name:'Sonbahar',words:['sonbahar','güz']},
 ];
 export function currentSeason(date=new Date()):Season{const month=date.getMonth();return SEASONS[month===11||month<2?0:month<5?1:month<8?2:3];}
 /** True when a product's name ties it to another season ("Bahar Çiçek Balı" in October). */
@@ -67,11 +70,11 @@ export const CUSTOMER_COPY={
 // The titles the store was seeded with. While a section still carries one of
 // these, the crafted copy above is shown; once a super admin writes their own
 // title or description in "Ana sayfa ürün vitrinleri", theirs wins.
-const SEEDED_SECTION_TEXT=new Set(['Öne Çıkan Ürünler','Ön Siparişe Açık','Mevsimlik Ürünler','Yeni Eklenenler','Fiyat Avantajı Olanlar','Üreticiden Seçimler','Golden Oremar vitrini için seçilmiş ürünler.','Hazırlık süresi bulunan ve ön siparişle sunulan ürünler.','Mevsimsel stok modeliyle sunulan ürünler.','Yakın zamanda yayına alınan ürünler.','Geçerli karşılaştırma fiyatı bulunan ürünler.','Vitrin için kürasyonla seçilmiş ürünler.','Kategoriler','Golden Oremar’ın seçkin ürünlerinden bugün sizin için özel olarak öne çıkan fırsat.','Golden Oremar’ın seçkin ürünlerinden sizin için öne çıkanlar.']);
+const SEEDED_SECTION_TEXT=new Set(['Öne Çıkan Ürünler','Ön Siparişe Açık','Mevsimlik Ürünler','Yeni Eklenenler','Fiyat Avantajı Olanlar','Üreticiden Seçimler','Golden Oremar vitrini için seçilmiş ürünler.','Hazırlık süresi bulunan ve ön siparişle sunulan ürünler.','Mevsimsel stok modeliyle sunulan ürünler.','Yakın zamanda yayına alınan ürünler.','Geçerli karşılaştırma fiyatı bulunan ürünler.','Vitrin için kürasyonla seçilmiş ürünler.','Kategoriler','Golden Oremar’ın seçkin ürünlerinden bugün sizin için özel olarak öne çıkan fırsat.','Golden Oremar’ın seçkin ürünlerinden sizin için öne çıkanlar.','Sofranın imza parçaları','Beklemeye değen lezzetler','Vitrine yeni düşenler','Kökeni belli, karakteri güçlü ürünler. Her biri sofrada fark yaratması için seçildi.','Yeni üreticiler, yeni tatlar, yeni favoriler. İlk keşfedenlerden biri olun.','Siparişinizle hazırlanmaya başlayan, emeği ve zamanı ürüne dönüşen özel seçimler.']);
 export const custom=(value:string|null|undefined)=>{const text=String(value||'').trim();return text&&!SEEDED_SECTION_TEXT.has(text)?text:'';};
 
 export function homeSectionDisplayCopy(source:HomePresentationSource,serverTitle:string,serverSubtitle:string):SectionCopy{
- const copy=source==='seasonal'?currentSeason():HOME_SECTION_COPY[source]||{eyebrow:'Golden Oremar',title:serverTitle,subtitle:serverSubtitle};
+ const copy=HOME_SECTION_COPY[source]||{eyebrow:'Golden Oremar',title:serverTitle,subtitle:serverSubtitle};
  return{eyebrow:copy.eyebrow,title:custom(serverTitle)||copy.title,subtitle:custom(serverSubtitle)||copy.subtitle};
 }
 
