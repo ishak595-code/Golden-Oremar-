@@ -9,13 +9,14 @@ import { supabase } from '../../lib/supabase';
 export type ShippingMode = 'default' | 'free' | 'paid';
 export type ProductPageContent = {
   prestige: string; pack: string; about: string; origin: string; production: string; packaging: string;
-  returnText: string; dispatchText: string; coldChain: boolean; shippingNote: string;
+  returnText: string; dispatchText: string; coldChain: boolean; shippingNote: string; priceNote: string;
   shippingMode: ShippingMode; shippingFeeMinor: number | null;
 };
-export type ProductPageContentRecord = { productId: string; slug: string; name: string; updatedAt: string; role: 'admin' | 'producer'; content: ProductPageContent; defaultShippingFeeMinor: number | null };
+/** priceNote is kept only by databases with 20261009090000_product_price_note_v1; until then the field stays hidden in the editor. */
+export type ProductPageContentRecord = { productId: string; slug: string; name: string; updatedAt: string; role: 'admin' | 'producer'; content: ProductPageContent; defaultShippingFeeMinor: number | null; priceNoteSupported: boolean };
 
 /** Character limits, the same on the server and on the page. */
-export const PAGE_CONTENT_LIMITS = { prestige: 120, pack: 80, about: 1200, origin: 120, production: 160, packaging: 120, returnText: 200, dispatchText: 160, shippingNote: 80 } as const;
+export const PAGE_CONTENT_LIMITS = { prestige: 120, pack: 80, about: 1200, origin: 120, production: 160, packaging: 120, returnText: 200, dispatchText: 160, shippingNote: 80, priceNote: 120 } as const;
 export type PageTextKey = keyof typeof PAGE_CONTENT_LIMITS;
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -31,10 +32,11 @@ function normalize(value: unknown): ProductPageContentRecord {
     productId: String(value.productId), slug: str(value.slug, 220), name: str(value.name, 300), updatedAt: str(value.updatedAt, 60),
     role: value.role === 'producer' ? 'producer' : 'admin',
     defaultShippingFeeMinor: fee(value.defaultShippingFeeMinor),
+    priceNoteSupported: typeof c.priceNote === 'string',
     content: {
       prestige: str(c.prestige, 400), pack: str(c.pack, 400), about: str(c.about, 2000), origin: str(c.origin, 400),
       production: str(c.production, 400), packaging: str(c.packaging, 400), returnText: str(c.returnText, 400),
-      dispatchText: str(c.dispatchText, 400), coldChain: c.coldChain === true, shippingNote: str(c.shippingNote, 400),
+      dispatchText: str(c.dispatchText, 400), coldChain: c.coldChain === true, shippingNote: str(c.shippingNote, 400), priceNote: str(c.priceNote, 400),
       shippingMode: mode, shippingFeeMinor: fee(c.shippingFeeMinor),
     },
   };
@@ -74,7 +76,7 @@ export async function saveProductPageContent(productId: string, content: Product
 
 export const PAGE_FIELD_LABELS: Record<PageTextKey, string> = {
   prestige: 'Fotoğraf altı satırı', pack: 'Paket satırı', about: 'Ürün bilgileri', origin: 'Kökeni', production: 'Üretim',
-  packaging: 'Ambalaj', returnText: 'İade', dispatchText: 'Teslimat', shippingNote: 'Kargo satırı',
+  packaging: 'Ambalaj', returnText: 'İade', dispatchText: 'Teslimat', shippingNote: 'Kargo satırı', priceNote: 'Fiyat gerekçesi',
 };
 
 export function pageContentError(error: unknown) {

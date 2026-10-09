@@ -346,3 +346,15 @@ nav[aria-label="Ana gezinme"] button > span.relative > span[aria-hidden="true"] 
 :where([data-color-scheme="dark"], [data-theme="dark"]) .text-gray-500:not([class*="dark:text-"]) {
   color: var(--text-muted);
 }
+
+/* Page outline while a screen loads (App RouteLoading, product page). It
+   appears only after a short moment, so quick changes show nothing. */
+.go-route-skeleton { display: flex; flex-direction: column; gap: .8rem; width: 100%; max-width: 48rem; margin: 0 auto; padding: 1rem; opacity: 0; animation: go-route-skeleton-in .25s ease-out .3s forwards; }
+.go-route-skeleton__media { display: block; width: 100%; aspect-ratio: 4 / 3; max-height: 22rem; border-radius: 1.25rem; }
+.go-route-skeleton__line { display: block; height: .95rem; width: 85%; border-radius: .5rem; }
+.go-route-skeleton__line--title { height: 1.6rem; width: 65%; margin-top: .4rem; }
+.go-route-skeleton__line--short { width: 45%; }
+.go-route-skeleton__media, .go-route-skeleton__line { background: linear-gradient(100deg, color-mix(in srgb, var(--text-main) 7%, transparent) 30%, color-mix(in srgb, var(--text-main) 13%, transparent) 50%, color-mix(in srgb, var(--text-main) 7%, transparent) 70%); background-size: 220% 100%; animation: go-route-skeleton-shine 1.4s linear infinite; }
+@keyframes go-route-skeleton-in { to { opacity: 1; } }
+@keyframes go-route-skeleton-shine { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) { .go-route-skeleton { animation: none; opacity: 1; } .go-route-skeleton__media, .go-route-skeleton__line { animation: none; } }

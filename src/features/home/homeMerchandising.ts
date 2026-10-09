@@ -1,16 +1,18 @@
 import type{HomePresentationSource}from'../customer-experience/customerCopy';
 
-const SIGNALS:Record<HomePresentationSource,readonly string[]>={
- featured:['İmza seçim','Sofrada fark','Seçkin tercih','Özenle seçildi'],
- preorder:['Ön siparişe özel','Ustasından hazırlanır','Beklemeye değer','Aceleye gelmez'],
- seasonal:['Mevsimin hasadı','Tam zamanı','Sezonun tazesi','Doğanın takvimi'],
- newest:['Yeni keşif','Vitrine yeni','İlk keşif','Yeni favori adayı'],
- offers:['Fiyat avantajı','Seçili teklif','Değerli seçim','Karşılaştırmaya değer'],
- curated:['Golden Oremar seçimi','Sofrada imza','Seçkin tercih','Özenle seçildi'],
- category:['Öne çıkan','Kategori seçimi','İyi eşleşme','Sofraya yakışır'],
+/* One clear label per showcase, the same on every row of it: a shopper reads
+   one merchandising signal and one verification mark, never a different
+   flourish on each line ("İmza seçim", "Sofrada fark", "Özenle seçildi"...). */
+const SIGNALS:Record<HomePresentationSource,string>={
+ featured:'İmza seçim',
+ preorder:'Ön siparişe özel',
+ seasonal:'Mevsiminde',
+ newest:'Yeni',
+ offers:'Fiyat avantajı',
+ curated:'Golden Oremar seçimi',
+ category:'Öne çıkan',
 };
 
-export function homeMerchandisingSignal(source:HomePresentationSource,index:number){
- const signals=SIGNALS[source];
- return signals[index%signals.length]||null;
+export function homeMerchandisingSignal(source:HomePresentationSource,_index:number){
+ return SIGNALS[source]||null;
 }

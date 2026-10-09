@@ -23,6 +23,7 @@ const HELP:Record<PageTextKey,{label:string;help:string;rows?:number}>={
  packaging:{label:'Ambalaj',help:'Örn: Cam kavanoz, özel bez kese. Boş bırakılırsa satır gizlenir.'},
  returnText:{label:'İade',help:'Örn: 14 gün içinde, paket açılmamışsa ücretsiz iade. Çabuk bozulan ürünlerde: Cayma hakkı yok; hasarlı veya hatalı üründe iade hakkınız saklıdır. Boş bırakılırsa satır gizlenir.'},
  dispatchText:{label:'Teslimat (kargoya veriliş)',help:'Örn: 2-4 iş günü içinde kargoya verilir. Ön siparişte: Yeni sezon hasadıyla gönderilir (Haziran-Temmuz). Boş bırakılırsa bu cümle gizlenir.'},
+ priceNote:{label:'Fiyat gerekçesi (isteğe bağlı)',help:'Fiyatın hemen altında tek satır: neden bu fiyat. Örn: Yılda tek hasat · 1 kg petek · ahşap kutu. Yüksek fiyatlı ürünlerde önerilir. Boş bırakılırsa satır gizlenir.'},
  about:{label:'Ürün bilgileri',help:'"Özellikleri ve içeriği" bölümünün ilk paragrafı: ürün nedir, nasıl yapılır. Hikâyede geçen cümleler sayfada tekrar edilmez. Sağlık beyanı yazmayın.',rows:6},
 };
 
@@ -71,7 +72,7 @@ export default function ProductPageContentEditor({productId,productName,onClose,
     {field('shippingNote')}
     <p className="go-pce__preview" aria-live="polite">Sayfada görünecek: <strong>{preview}</strong></p>
    </fieldset>
-   <fieldset className="go-pce__group"><legend>Fiyatın altı</legend>{field('pack')}</fieldset>
+   <fieldset className="go-pce__group"><legend>Fiyatın altı</legend>{field('pack')}{record?.priceNoteSupported?field('priceNote'):null}</fieldset>
    <fieldset className="go-pce__group"><legend>Kısa bilgiler tablosu</legend>{field('origin')}{field('production')}{field('packaging')}{field('returnText')}{field('dispatchText')}
     <label className="go-pce__check"><input type="checkbox" checked={draft.coldChain} onChange={event=>set('coldChain',event.target.checked)}/><span>Teslimat satırında "Soğuk zincirle gönderilir" yazsın</span></label>
     <p className="go-pce__help">Stok satırı (Stokta / Son 3 adet / Tükendi) stok miktarından otomatik gelir.</p>

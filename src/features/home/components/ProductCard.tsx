@@ -1,5 +1,5 @@
 import{useEffect,useMemo,useState}from'react';
-import{ChevronRight}from'lucide-react';
+import{BadgeCheck,ChevronRight}from'lucide-react';
 import type{CatalogItem}from'../../catalog/api';
 import{buildProductCardAccessibilityLabel}from'../../accessibility/productCardAccessibility';
 import{buildProductUrl}from'../../navigation/appUrl';
@@ -90,11 +90,10 @@ export default function ProductCard({item,onClick,eager=false,merchandisingLabel
   <a href={buildProductUrl(item.slug)} onClick={event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;event.preventDefault();onClick();}} className="go-product-row-v4 w-full flex flex-row items-center justify-between hover:bg-[#112217] transition-all cursor-pointer" aria-label={accessibleLabel} data-product-link="true">
    <ProductRowImage src={item.imagePath} eager={eager} item={item}/>
    <span className="go-product-row-v4__middle min-w-0 flex-1" aria-hidden="true">
-    <span className="go-product-row-v4__title">{item.name}</span>
+    <span className="go-product-row-v4__title">{item.name}{verification?<span className="go-product-row-v4__verification"><BadgeCheck aria-hidden="true"/><span className="go-product-row-v4__verification-text">{verification}</span></span>:null}</span>
     <span className="go-product-row-v4__meta text-sm text-gray-400">
      {merchandisingLabel?<span className="go-product-row-v4__badge">{merchandisingLabel}</span>:null}
      <span className="go-product-row-v4__region"><span className="go-product-row-v4__region-full">{maker||compactRegion(region)}</span><span className="go-product-row-v4__region-short">{maker||shortRegion(region)}</span></span>
-     {verification?<span className="go-product-row-v4__verification">{verification}</span>:null}
     </span>
    </span>
    <span className="go-product-row-v4__tail flex flex-shrink-0 items-center" aria-hidden="true">

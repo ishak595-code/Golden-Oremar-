@@ -9,7 +9,7 @@ export default function CatalogSearchInput({value,onChange,onSubmit,onVoice,onFo
  const voiceState=listening?'active':processing?'processing':'ready';
  const voiceStatus=listening?'Sesli arama dinleniyor.':processing?'Sesli arama hazırlanıyor.':'';
  return<form onSubmit={event=>{event.preventDefault();const query=normalized.trim();if(query)onSubmit(query);}} className="go-search-bar" data-has-value={normalized?'true':'false'} data-processing={processing?'true':'false'} data-voice-state={voiceState}>
-  <div className="go-search-bar__field"><Search aria-hidden="true"/><input type="search" autoFocus={autoFocus} value={normalized} onChange={event=>onChange(event.target.value.slice(0,100))} onFocus={onFocus} onBlur={onBlur} placeholder="Ürün, üretici veya köy ara" aria-label="Ürün, üretici veya köy ara" enterKeyHint="search" autoComplete="off"/></div>
+  <div className="go-search-bar__field"><Search aria-hidden="true"/><input type="search" autoFocus={autoFocus} value={normalized} onChange={event=>onChange(event.target.value.slice(0,100))} onFocus={onFocus} onBlur={onBlur} placeholder="Ürün, köy ara" aria-label="Ürün, üretici veya köy ara" enterKeyHint="search" autoComplete="off"/></div>
   {normalized?<button type="button" onClick={()=>onChange('')} aria-label="Aramayı temizle" className="go-search-bar__clear"><X aria-hidden="true"/></button>:null}
   {/* Screen readers say "Sesli mikrofon". No aria-pressed: TalkBack and
       VoiceOver read a pressed=false toggle as "kapalı", which sounded like

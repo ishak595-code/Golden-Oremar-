@@ -89,6 +89,23 @@ view = await open('/uretici/golden-oremar', shipped);
 check(/Golden Oremar/.test(view.body) && !RAW.test(view.body), 'shipped copy, store page opens');
 await view.context.close();
 
+// A backend that accepts the request and never answers (seen live, October
+// 2026): the home sections must still fill from the shipped copy instead of
+// showing their grey placeholder bars forever.
+{
+  const context = await browser.newContext({ viewport: { width: 412, height: 915 }, locale: 'tr-TR' });
+  const page = await context.newPage();
+  await routeSupabase(page, {}, shipped);
+  await page.route('**/rpc/get_public_home_section_v1', () => { /* never answers */ });
+  await page.goto(BASE + '/'); await page.waitForTimeout(3500);
+  for (let i = 0; i < 14; i++) { await page.mouse.wheel(0, 700); await page.waitForTimeout(400); }
+  await page.waitForTimeout(9500);
+  const stuck = await page.locator('.go-product-list-v4--skeleton').count();
+  const offers = await page.locator('[data-home-source="offers"] [data-product-id]').count();
+  check(stuck === 0 && offers > 0, `stalled backend, home: no section stuck on placeholders (${stuck} stuck, ${offers} offers)`);
+  await context.close();
+}
+
 await browser.close();
 const failed = results.filter(([ok]) => !ok).length;
 for (const [ok, label] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}`);

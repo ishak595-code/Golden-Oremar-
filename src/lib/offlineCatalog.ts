@@ -369,15 +369,33 @@ async function snapshotResponse(input: RequestInfo | URL, init?: RequestInit): P
   return new Response(JSON.stringify(value), { status: 200, headers: { 'Content-Type': 'application/json', 'X-Golden-Offline-Catalog': '1' } });
 }
 
-/** A fetch for the Supabase client: live first, the shipped copy when the backend is down. */
+/**
+ * How long a read that has a shipped copy may take before the copy answers.
+ * A restricted backend sometimes accepts the request and never replies; the
+ * home sections then showed their grey placeholder bars forever.
+ */
+const SNAPSHOT_READ_TIMEOUT_MS = 8000;
+
+/** A fetch for the Supabase client: live first, the shipped copy when the backend is down or stalls. */
 export async function resilientFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   let response: Response;
+  const hasCopy = Boolean(RESOLVERS[rpcName(input)]);
+  const controller = hasCopy ? new AbortController() : null;
+  const callerSignal = init?.signal;
+  if (controller && callerSignal) {
+    if (callerSignal.aborted) controller.abort(callerSignal.reason);
+    else callerSignal.addEventListener('abort', () => controller.abort(callerSignal.reason), { once: true });
+  }
+  const timer = controller ? setTimeout(() => controller.abort(new DOMException('snapshot_read_timeout', 'TimeoutError')), SNAPSHOT_READ_TIMEOUT_MS) : null;
   try {
-    response = await fetch(input, init);
+    response = await fetch(input, controller ? { ...init, signal: controller.signal } : init);
   } catch (error) {
+    if (callerSignal?.aborted) throw error;
     const fallback = await snapshotResponse(input, init);
     if (fallback) return fallback;
     throw error;
+  } finally {
+    if (timer) clearTimeout(timer);
   }
   if (response.status === 402 || response.status >= 500) {
     const fallback = await snapshotResponse(input, init);

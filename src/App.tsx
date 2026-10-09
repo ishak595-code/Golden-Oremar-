@@ -44,7 +44,13 @@ const GiftOrderFlow=React.lazy(()=>import('./features/gifts/GiftOrderFlow'));
 type Tab='home'|'categories'|'cart'|'account'|'product-detail'|'search-results'|'producer-profile'|'events'|'health'|'contact'|'about'|'admin';
 const SUPPORTED_TABS=new Set<Tab>(['home','categories','cart','account','product-detail','search-results','producer-profile','events','health','contact','about','admin']);
 
-function RouteLoading({label='Ekran yükleniyor'}:{label?:string}){return<div role="status" aria-live="polite" className="mx-auto flex min-h-60 max-w-7xl flex-col items-center justify-center gap-4 p-6"><div className="grid h-20 w-20 place-items-center rounded-3xl border-2 border-brand-green/20 bg-gradient-to-br from-brand-green/5 to-brand-gold/5 shadow-sm"><div className="h-10 w-10 animate-spin rounded-full border-4 border-brand-green/20 border-t-brand-green"/></div><div className="text-center font-black text-brand-text">{label}</div></div>;}
+// Between screens: no full-screen spinner. A quiet page outline (photo,
+// title, lines) that only fades in if loading takes longer than a moment, so
+// a quick change shows nothing at all. The label is for screen readers.
+function RouteLoading({label='Ekran yükleniyor'}:{label?:string}){return<div role="status" aria-live="polite" className="go-route-skeleton"><span className="sr-only">{label}</span><span aria-hidden="true" className="go-route-skeleton__media"/><span aria-hidden="true" className="go-route-skeleton__line go-route-skeleton__line--title"/><span aria-hidden="true" className="go-route-skeleton__line"/><span aria-hidden="true" className="go-route-skeleton__line go-route-skeleton__line--short"/></div>;}
+// The screens a shopper opens next are fetched while the home page is idle,
+// so opening a product or a category does not wait for its code.
+function prefetchShoppingScreens(){void import('./features/catalog/ProductDetailScreen');void import('./features/catalog/CategoryDirectoryScreen');void import('./features/catalog/CatalogSearchResults');void import('./features/cart/GuestCartView');void import('./features/catalog/PublicProducerScreen');}
 function safeTab(value:unknown):Tab{const candidate=String(value||'home')as Tab;return SUPPORTED_TABS.has(candidate)?candidate:'home';}
 // Tab addresses always start from the site root. Now that product, producer
 // and category pages live on their own paths (/urun/<slug>), keeping the
@@ -92,6 +98,7 @@ function AppContent(){
  const toastTimerRef=useRef(0);
  const showToast=useCallback((message:string)=>{setToast({message,visible:true});window.clearTimeout(toastTimerRef.current);toastTimerRef.current=window.setTimeout(()=>setToast(previous=>({...previous,visible:false})),3200);},[]);
  // Screens in lazy chunks confirm a save through src/lib/appToast.ts.
+ useEffect(()=>{const idle=(window as unknown as{requestIdleCallback?:(cb:()=>void,opts?:{timeout:number})=>number}).requestIdleCallback;const timer=window.setTimeout(()=>{if(idle)idle(prefetchShoppingScreens,{timeout:3000});else prefetchShoppingScreens();},1500);return()=>window.clearTimeout(timer);},[]);
  useEffect(()=>{const onToast=(event:Event)=>{const message=(event as CustomEvent<unknown>).detail;if(typeof message==='string')showToast(message);};window.addEventListener(APP_TOAST_EVENT,onToast);return()=>window.removeEventListener(APP_TOAST_EVENT,onToast);},[showToast]);
 
  useEffect(()=>{

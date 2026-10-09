@@ -171,10 +171,19 @@
 }
 
 :root[data-app-tab="home"] .go-product-row-v4__verification{
-  display:none;
+  /* Verification is ruby, apart from the gold merchandising label. Phones
+     show the mark alone (the words are in the row's accessible label);
+     wider screens add "Menşei doğrulandı". */
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
   flex:0 0 auto;
-  color:#afbeb6;
+  color:#ef5a82;
+  font-weight:700;
 }
+:root[data-app-tab="home"] .go-product-row-v4__verification svg{width:14px;height:14px;flex:0 0 14px;}
+:root[data-app-tab="home"] .go-product-row-v4__verification-text{display:none;}
+:root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4__verification{color:#8b1e3f;}
 
 :root[data-app-tab="home"] .go-product-row-v4__badge+.go-product-row-v4__region::before{
   content:"";
@@ -182,11 +191,7 @@
   width:6px;
 }
 
-:root[data-app-tab="home"] .go-product-row-v4__verification::before{
-  content:"·";
-  margin:0 5px;
-  color:#6f8378;
-}
+:root[data-app-tab="home"] .go-product-row-v4__verification{margin-left:6px;vertical-align:-2px;font-size:11px;}
 
 :root[data-app-tab="home"] .go-product-row-v4__tail{
   display:flex!important;
@@ -255,7 +260,7 @@
 
 @media(min-width:640px){
   /* Shown only where it fits whole; the accessible label always carries it. */
-  :root[data-app-tab="home"] .go-product-row-v4__verification{display:inline-block;}
+  :root[data-app-tab="home"] .go-product-row-v4__verification-text{display:inline;}
   :root[data-app-tab="home"] .go-product-list-v4{gap:12px!important;}
 
   :root[data-app-tab="home"] .go-product-row-v4{

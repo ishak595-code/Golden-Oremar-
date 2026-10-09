@@ -246,7 +246,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  }
  async function copyTrace(code:string){try{await copyText(code);setStatus('İzlenebilirlik kodu kopyalandı.');}catch{setError('Kod kopyalanamadı.');}}
 
- if(loading)return<div role="status" aria-live="polite" className="mx-auto max-w-5xl p-8 text-center text-brand-muted">Ürün hazırlanıyor…</div>;
+ if(loading)return<div role="status" aria-live="polite" className="go-route-skeleton"><span className="sr-only">Ürün hazırlanıyor</span><span aria-hidden="true" className="go-route-skeleton__media"/><span aria-hidden="true" className="go-route-skeleton__line go-route-skeleton__line--title"/><span aria-hidden="true" className="go-route-skeleton__line"/><span aria-hidden="true" className="go-route-skeleton__line go-route-skeleton__line--short"/></div>;
  if(error&&!detail)return<div className="mx-auto max-w-5xl p-5"><div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div><button type="button" onClick={onBack} className="mt-4 min-h-11 rounded-full border border-brand-border px-5 font-bold"><ArrowLeft aria-hidden="true" className="mr-2 inline h-4 w-4"/>Geri dön</button></div>;
  if(!detail)return null;
 
@@ -387,6 +387,9 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
       {priceReady?(discountShown?<p className="go-price-card__amounts"><span className="sr-only" aria-live="polite">{`Önceki fiyat ${priceText(oldTotalMinor,currency)}, şimdi ${priceText(totalMinor,currency)}`}</span><span className="go-price-card__price" aria-hidden="true">{priceText(totalMinor,currency)}</span><s className="go-price-card__was" aria-hidden="true">{priceText(oldTotalMinor,currency)}</s><span className="go-price-card__discount" aria-hidden="true">%{discountPercent} · {priceText(dropMinor,currency)} indirim</span></p>:<p className="go-price-card__amounts"><span className="go-price-card__price" aria-live="polite">{priceText(totalMinor,currency)}</span></p>):<p className="go-price-card__missing">Fiyat şu anda gösterilemiyor</p>}
      </div>
      {packLine||kgPriceMinor!==null?<p className="go-price-card__unit">{packLine?<span className="go-price-card__pack">{packLine}</span>:null}{kgPriceMinor!==null?<span className="go-price-card__kg">kg fiyatı {priceText(kgPriceMinor,currency)}</span>:null}</p>:null}
+     {/* Why it costs what it costs, at the moment of decision (per product,
+         "Fiyat gerekçesi" in Ürün sayfası içeriği; hidden when empty). */}
+     {ed('priceNote',120)?<p className="go-price-card__reason">{ed('priceNote',120)}</p>:null}
      {preorder?<p className="go-price-card__preorder">Sipariş üzerine hazırlanır</p>:null}
     </div>
 

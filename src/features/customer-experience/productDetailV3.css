@@ -267,3 +267,18 @@
    home rows, store page, cart and favourites), so the product stays in view
    even when the card frame is taller or wider than the square photo. */
 :where(.go-product-card__media,.go-artwork--photo,.go-product-recommendations__media,.go-product-recommendations__item,.go-reference-product-row__media,.go-store-row-art) img,img.go-product-row-v4__image,img.object-cover{object-fit:cover;object-position:center center;}
+
+/* Computers (1024px and wider): no bottom tab bar. The same navigation sits
+   as a slim rail on the left edge, as on large desktop storefronts, so every
+   screen (product pages included) keeps it, and the content moves over. */
+@media (min-width: 1024px) {
+  :root[data-app-tab] body nav[aria-label="Ana gezinme"] {
+    display: flex !important; flex-direction: column !important; justify-content: center !important; gap: .5rem !important;
+    top: 0 !important; bottom: 0 !important; left: 0 !important; right: auto !important;
+    width: 6rem !important; height: auto !important; max-width: none !important; margin: 0 !important; padding: 1rem .5rem !important;
+    border-width: 0 1px 0 0 !important; border-radius: 0 !important; box-shadow: none !important;
+  }
+  :root[data-app-tab] body nav[aria-label="Ana gezinme"] button { flex: 0 0 auto !important; width: 100% !important; height: auto !important; min-height: 4.25rem !important; }
+  :root[data-app-tab] body nav[aria-label="Ana gezinme"] button > span:last-child { font-size: .72rem !important; }
+  :root[data-app-tab] body #root > div { padding-left: 6rem !important; padding-bottom: 2rem !important; }
+}
