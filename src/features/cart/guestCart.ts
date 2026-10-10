@@ -24,6 +24,8 @@ export type GuestCartLine = {
   priceMinor: number;
   currency: string;
   imagePath: string | null;
+  /** Prepared to order (stock mode "preorder"): the cart then says "Ön Sipariş Ver". */
+  preorder?: boolean;
   addedAt: number;
 };
 
@@ -73,6 +75,7 @@ function sanitize(raw: unknown, now: number): GuestCartLine | null {
     priceMinor,
     currency,
     imagePath: text(raw.imagePath, 1000) || null,
+    ...(raw.preorder === true ? { preorder: true } : {}),
     addedAt,
   };
 }

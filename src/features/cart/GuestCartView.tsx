@@ -29,6 +29,9 @@ export default function GuestCartView({onBack,onOpenProduct,authSlot}:{onBack?:(
  const count=lines.reduce((total,line)=>total+line.quantity,0);
  const subtotal=lines.reduce((total,line)=>total+line.priceMinor*line.quantity,0);
  const mixedCurrency=lines.some(line=>line.currency!==currency);
+ // Only pre-order items: the action reads like the product page ("Ön Sipariş Ver").
+ const preorderOnly=lines.length>0&&lines.every(line=>line.preorder===true);
+ const checkoutLabel=preorderOnly?'Ön Sipariş Ver':'Siparişi tamamla';
 
  if(signIn)return<div className="mx-auto max-w-xl">
   <div className="px-4 pt-4"><button type="button" onClick={()=>setSignIn(false)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 font-semibold"><ArrowLeft className="h-4 w-4" aria-hidden="true"/>Sepete dön</button></div>
@@ -54,14 +57,14 @@ export default function GuestCartView({onBack,onOpenProduct,authSlot}:{onBack?:(
    <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">"Kargo bizden" yazan ürünlerde kargo ücreti alınmaz. Kesin tutar, sipariş kodunuzla birlikte gösterilir.</p>
    {offlineReady&&!mixedCurrency?<>
     <div className="mt-5 flex gap-3 rounded-2xl border-2 border-brand-green/20 bg-brand-green/5 p-4 text-sm font-semibold leading-relaxed dark:border-brand-green/30"><ShieldCheck className="h-5 w-5 shrink-0 text-brand-green" aria-hidden="true"/><p>Üye olmadan sipariş verebilirsiniz: WhatsApp veya Havale/EFT ile. Sipariş kodunuz anında oluşur; tutar ve kargo kesinleşmiş olarak gösterilir.</p></div>
-    <button type="button" onClick={()=>setOfflineOpen(true)} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-4 font-bold text-brand-on-green shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><MessageCircle className="h-5 w-5" aria-hidden="true"/>Siparişi tamamla</button>
+    <button type="button" onClick={()=>setOfflineOpen(true)} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-4 font-bold text-brand-on-green shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><MessageCircle className="h-5 w-5" aria-hidden="true"/>{checkoutLabel}</button>
     <button type="button" onClick={()=>setSignIn(true)} className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 font-semibold"><LogIn className="h-4 w-4" aria-hidden="true"/>Hesabıma giriş yap</button>
    </>:<>
     <div className="mt-5 flex gap-3 rounded-2xl border-2 border-brand-green/20 bg-brand-green/5 p-4 text-sm font-semibold leading-relaxed dark:border-brand-green/30"><ShieldCheck className="h-5 w-5 shrink-0 text-brand-green" aria-hidden="true"/><p>Siparişi tamamlamak için giriş yapın veya ücretsiz hesap oluşturun. Sepetinizdeki ürünler hesabınıza otomatik aktarılır.</p></div>
-    <button type="button" onClick={()=>setSignIn(true)} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-4 font-bold text-brand-on-green shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><LogIn className="h-5 w-5" aria-hidden="true"/>Siparişi tamamla</button>
+    <button type="button" onClick={()=>setSignIn(true)} className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-green px-4 font-bold text-brand-on-green shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"><LogIn className="h-5 w-5" aria-hidden="true"/>{checkoutLabel}</button>
    </>}
   </section>
-  <OfflineOrderSheet open={offlineOpen} onClose={()=>{setOfflineOpen(false);if(orderPlaced){setOrderPlaced(false);clearGuestCart();}}} authenticated={false} onLoginRequired={()=>setSignIn(true)} source="cart"
+  <OfflineOrderSheet preorder={preorderOnly} open={offlineOpen} onClose={()=>{setOfflineOpen(false);if(orderPlaced){setOrderPlaced(false);clearGuestCart();}}} authenticated={false} onLoginRequired={()=>setSignIn(true)} source="cart"
    lines={lines.map(line=>({key:line.key,productName:line.productName,variantName:line.variantName,quantity:line.quantity,priceMinor:line.priceMinor,currency:line.currency}))}
    items={lines.map(line=>({variantId:line.variantId,quantity:line.quantity,selectedOptions:line.selectedOptions}))}
    onSubmitted={()=>setOrderPlaced(true)}/>
