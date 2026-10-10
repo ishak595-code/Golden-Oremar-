@@ -2,6 +2,7 @@ import{useCallback,useEffect,useRef,useState}from'react';
 import{ArrowRight,X}from'lucide-react';
 import type{CatalogItem}from'../../catalog/api';
 import HomeImage from'./HomeImage';
+import{productMaker}from'../../catalog/productMakers';
 import{buildProductUrl}from'../../navigation/appUrl';
 import{currentSeason}from'../../customer-experience/customerCopy';
 import{prefersReducedMotion}from'../../../lib/reducedMotion';
@@ -31,7 +32,7 @@ function SlideImage({item,eager}:{item:CatalogItem;eager:boolean}){
  return<HomeImage item={item} eager={eager} artwork="hero" sizes="(min-width: 1280px) 620px, (min-width: 768px) 50vw, 100vw"/>;
 }
 
-function originLine(item:CatalogItem){const place=[item.producer?.village,item.producer?.district||item.producer?.province].filter(Boolean).join(', ');return[item.producer?.name,place].filter(Boolean).join(' · ');}
+function originLine(item:CatalogItem){const place=[item.producer?.village,item.producer?.district||item.producer?.province].filter(Boolean).join(', ');return[productMaker(item.slug,item.makerName),place].filter(Boolean).join(' · ');}
 
 type Props={items:CatalogItem[];title:string;buttonText:string;onOpen:(item:CatalogItem)=>void};
 export default function HomeSpotlight({items,title,buttonText,onOpen}:Props){

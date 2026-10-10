@@ -15,6 +15,24 @@ This document is the permanent product-design contract for the Golden Oremar Hom
 9. Hidden duplicate per-product copy such as `sr-only` mirrors is prohibited. The link itself owns the accessible name.
 10. `go-product-card-v2` may exist only as the native audit data marker. It must never return as a Home visual class.
 
+## Editorial v5 (October 2026)
+
+The row list stays the default showcase. Three showcase layouts may wrap or
+replace it, each still one product = one link with one accessible name and no
+hidden duplicate copy:
+
+- **Feature story** (`featured`, 3+ products): the first product as a large
+  editorial card, the rest as rows beside or below it.
+- **Rail** (`seasonal`, 3+ products): a horizontal, snapping list of tiles; on
+  desktop it becomes a grid.
+- **Gift panel** (`curated`): the rows inside a gold-edged panel with one note
+  about "Hediye Et".
+
+Also: a visible H1 brand line; an editorial hero of at most three products
+that are never repeated in the showcases below; a producer strip ("Her ürünün
+arkasında bir isim", one chip per maker, linking to the store). Desktop row
+lists run in two columns.
+
 ## Premium Home principles
 
 - Quiet luxury over decoration. Forest, ivory and restrained gold remain the core palette.
