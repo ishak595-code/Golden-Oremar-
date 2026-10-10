@@ -123,6 +123,16 @@ async function main() {
     + `<link rel="preconnect" href="https://rmfcziawxjgcnxexbrvw.supabase.co" crossorigin>`;
 
   if (!html.includes('<div id="root"></div>') || !html.includes('</head>')) return warn('unexpected index.html shape; skipping.');
+  // On the home page the first screen is the inline shell above, so the main
+  // stylesheet stops blocking paint there: it is fetched at high priority and
+  // the app mounts once it has arrived (window.__goCss). Every other page
+  // keeps it render-blocking, exactly as before.
+  const cssLink = html.match(/<link rel="stylesheet"[^>]*href="(\/assets\/index-[^"]+\.css)"[^>]*>/);
+  if (cssLink) {
+    const href = JSON.stringify(cssLink[1]);
+    const loader = `<link rel="preload" as="style" href=${href} crossorigin><script>(function(){var h=${href},home=location.pathname==='/'&&(function(){var t=new URLSearchParams(location.search).get('tab');return !t||t==='home';})();if(!home){document.write('<link rel="stylesheet" crossorigin href="'+h+'">');return;}var l=document.createElement('link');l.rel='stylesheet';l.crossOrigin='';l.href=h;l.media='print';window.__goCss=new Promise(function(r){var done=function(){l.media='all';r();};l.onload=done;l.onerror=done;setTimeout(done,5000);});document.head.appendChild(l);})();</script><noscript>${cssLink[0]}</noscript>`;
+    html = html.replace(cssLink[0], loader);
+  }
   html = html.replace(/<head>\s*/, match => `${match}${preload}\n`).replace('</head>', `${style}\n</head>`).replace('<div id="root"></div>', `<div id="root"></div>${shell}`);
   fs.writeFileSync(indexPath, html);
   log(`wrote the home first screen (${list.map(item => item.slug).join(', ')}), ${Math.round(css.length / 1024)} KB of home styles inlined.`);

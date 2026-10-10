@@ -49,7 +49,10 @@ void loadAndApplyBrandAppearance().catch(error=>sendClientError('appearance.bran
 void initNativeFeatures(initialTheme).catch(error=>sendClientError('native.init',error,'warning'));
 void initNativePushListeners().catch(error=>sendClientError('native.push.init',error,'warning'));
 
-createRoot(document.getElementById('root')!).render(
+// Home: the main stylesheet loads without blocking the first paint (see
+// scripts/prerender-home.mjs); the app mounts once it is in.
+const cssReady:Promise<void>=(window as unknown as{__goCss?:Promise<void>}).__goCss||Promise.resolve();
+void cssReady.then(()=>createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <AuthorizationProvider>
@@ -64,4 +67,4 @@ createRoot(document.getElementById('root')!).render(
       </AuthorizationProvider>
     </ErrorBoundary>
   </StrictMode>,
-);
+));
