@@ -101,6 +101,9 @@
 
 /* Tablet */
 @media(min-width:768px){
+  /* Row lists in two columns from tablet up: each row keeps a phone-like width instead of one long line. */
+  :root[data-app-tab="home"] .go-product-section-v2:not(.go-product-section-v2--feature) > .go-product-list-v4,
+  .go-gift-v5 > .go-product-list-v4{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:20px;}
   .go-home-intro{margin:6px 0 20px;}
   .go-hero-v5 .go-spotlight__card{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);min-height:340px;}
   .go-hero-v5 .go-spotlight__media{order:1;aspect-ratio:auto;height:100%;}
@@ -119,7 +122,7 @@
 /* Laptop and desktop */
 @media(min-width:1024px){
   :root[data-app-tab="home"] .go-product-section-v2:not(.go-product-section-v2--feature) > .go-product-list-v4,
-  .go-gift-v5 > .go-product-list-v4{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px;}
+  .go-gift-v5 > .go-product-list-v4{column-gap:28px;}
   .go-hero-v5 .go-spotlight__card{min-height:420px;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);}
   .go-hero-v5 .go-spotlight__copy{padding:44px 40px 44px 48px;}
   .go-hero-v5 .go-hero-v5__story{font-size:15px;-webkit-line-clamp:3;line-clamp:3;max-width:30rem;}
