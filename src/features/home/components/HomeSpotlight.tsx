@@ -6,6 +6,7 @@ import{productMaker}from'../../catalog/productMakers';
 import{buildProductUrl}from'../../navigation/appUrl';
 import{currentSeason}from'../../customer-experience/customerCopy';
 import{prefersReducedMotion}from'../../../lib/reducedMotion';
+import{removeHomeShell}from'../homeShell';
 
 /**
  * "Bugünün Önerisi": a compact band at the top of the home page, like the
@@ -29,7 +30,7 @@ function closedToday(){try{return localStorage.getItem(CLOSED_KEY)===today();}ca
 function priceText(minor:number,currency:string){const digits=minor%100===0?0:2;const amount=(minor/100).toLocaleString('tr-TR',{minimumFractionDigits:digits,maximumFractionDigits:digits});return currency.toUpperCase()==='TRY'?`${amount} TL`:`${amount} ${currency}`;}
 
 function SlideImage({item,eager}:{item:CatalogItem;eager:boolean}){
- return<HomeImage item={item} eager={eager} artwork="hero" sizes="(min-width: 1280px) 620px, (min-width: 768px) 50vw, 100vw"/>;
+ return<HomeImage item={item} eager={eager} artwork="hero" sizes="(min-width: 1280px) 620px, (min-width: 768px) 50vw, 86vw"/>;
 }
 
 function originLine(item:CatalogItem){const place=[item.producer?.village,item.producer?.district||item.producer?.province].filter(Boolean).join(', ');return[productMaker(item.slug,item.makerName),place].filter(Boolean).join(' · ');}
@@ -46,6 +47,8 @@ export default function HomeSpotlight({items,title,buttonText,onOpen}:Props){
  const stop=()=>{setPaused(true);};
  const[held,setHeld]=useState(false);
  const count=items.length;
+ // The real hero is on screen: the build-time copy above it can go.
+ useEffect(()=>{const frame=requestAnimationFrame(()=>removeHomeShell());return()=>cancelAnimationFrame(frame);},[]);
 
  const goTo=useCallback((next:number)=>{const track=trackRef.current;if(!track)return;const target=(next+count)%count;track.scrollTo({left:target*track.clientWidth,behavior:prefersReducedMotion()?'auto':'smooth'});},[count]);
  useEffect(()=>{
