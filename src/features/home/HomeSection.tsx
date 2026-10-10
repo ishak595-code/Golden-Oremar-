@@ -12,9 +12,6 @@ import ProductCard from'./components/ProductCard';
 import SectionHeader from'./components/SectionHeader';
 import HomeSectionTabs from'./components/HomeSectionTabs';
 import{pickSpotlights}from'./components/spotlightPick';
-import{removeHomeShell}from'./homeShell';
-import{HomeBrandIntro,HomeFeatureCard,HomeGiftPanel,HomeProducerStrip,HomeRail}from'./components/HomeEditorial';
-import'./homeEditorialV5.css';
 // Its own chunk: the customer entry bundle has a fixed budget.
 const HomeSpotlight=React.lazy(()=>import('./components/HomeSpotlight'));
 const CategoryMenu=React.lazy(()=>import('./components/CategoryMenu'));
@@ -23,18 +20,16 @@ import'./homeLightThemes.css';
 import{scrollBehavior}from'../../lib/reducedMotion';
 import{buildTabUrl}from'../navigation/appUrl';
 
-import{OPEN_CATEGORY_MENU_EVENT}from'./homeEvents';
-export{OPEN_CATEGORY_MENU_EVENT};
+/** Fired by the menu button in the home header. */
+export const OPEN_CATEGORY_MENU_EVENT='golden-oremar:open-category-menu';
 
 type ProductReference={id:string;slug:string;legacyId?:string|null};
-type Props={onProductClick:(product:ProductReference)=>void;onProducerClick?:(reference:string)=>void};
+type Props={onProductClick:(product:ProductReference)=>void};
 
 function navigateToCategories(categorySlug?:string){const url=buildTabUrl('categories',{category:categorySlug});const depth=Number(window.history.state?.goldenOremarDepth);const nextDepth=Number.isSafeInteger(depth)&&depth>=0?depth+1:1;const state={...window.history.state,goldenOremar:true,goldenOremarDepth:nextDepth,tab:'categories'};window.history.pushState(state,'',url.toString());window.dispatchEvent(new PopStateEvent('popstate',{state}));window.scrollTo({top:0,behavior:'auto'});}
 
 /** A showcase is a selection, not a list: never more than eight products. */
 const MAX_SECTION_ITEMS=8;
-/** The editorial hero turns over at most three products; they are not repeated below. */
-const HERO_ITEMS=3;
 const COPY_AFTER_MS=300;
 
 /* A section appears at once from the copy shipped with the app (or the
@@ -49,9 +44,9 @@ function loadSectionFast(key:string,loadSection:(key:string)=>Promise<HomeSectio
  return loadSection(key).then(section=>{live=true;window.clearTimeout(timer);apply(section,true);return section;},async error=>{live=true;window.clearTimeout(timer);const copy=await getShippedHomeSection(key);if(copy){apply(copy,false);return copy;}throw error;});
 }
 
-export default function HomeSection({onProductClick,onProducerClick}:Props){
+export default function HomeSection({onProductClick}:Props){
  const locale=browserHomeLocale();
- const{experience,loading,error,retry,loadSection,contentVersion}=useHomeExperience(locale);
+ const{experience,loading,error,retry,loadSection}=useHomeExperience(locale);
  const[showScrollTop,setShowScrollTop]=useState(false);
  const[menuOpen,setMenuOpen]=useState(false);
  useEffect(()=>{const open=()=>setMenuOpen(true);window.addEventListener(OPEN_CATEGORY_MENU_EVENT,open);return()=>window.removeEventListener(OPEN_CATEGORY_MENU_EVENT,open);},[]);
@@ -79,14 +74,8 @@ export default function HomeSection({onProductClick,onProducerClick}:Props){
  const[seasonalItems,setSeasonalItems]=useState<HomeSectionModel['items']|null>(null);
  const seasonalKey=experience?.sections.find(section=>section.source.kind==='seasonal')?.key||null;
  useEffect(()=>{if(!experience)return;if(!seasonalKey){setSeasonalItems([]);return;}let mounted=true;void loadSectionFast(seasonalKey,loadSection,(section,live)=>{if(mounted&&(live||section))setSeasonalItems(current=>live||current===null?section?.items||[]:current);}).catch(()=>{if(mounted)setSeasonalItems(current=>current??[]);});return()=>{mounted=false;};},[experience,seasonalKey,loadSection]);
- const spotlights=useMemo(()=>experience&&seasonalItems?pickSpotlights(seasonalItems,experience.sections.find(section=>!section.deferred)?.items||[],new Date(),HERO_ITEMS):[],[experience,seasonalItems]);
- // A product in the hero belongs to the hero: no showcase repeats it.
- const heroIds=useMemo(()=>new Set(spotlights.map(item=>item.id)),[spotlights]);
- const ownerOf=(id:string)=>heroIds.has(id)?-1:(initialOwners[id]??deferredOwners[id]);
- const pageItems=useMemo(()=>[...spotlights,...(experience?.sections||[]).flatMap(section=>section.items),...(seasonalItems||[])],[spotlights,experience,seasonalItems]);
- // No hero to take over (none today, closed, or the home could not load): drop the build-time first screen now.
- useEffect(()=>removeHomeShell,[]);
- useEffect(()=>{if((seasonalItems!==null&&!spotlights.length)||(!loading&&!experience))removeHomeShell();},[seasonalItems,spotlights.length,loading,experience]);
+ const spotlights=useMemo(()=>experience&&seasonalItems?pickSpotlights(seasonalItems,experience.sections.find(section=>!section.deferred)?.items||[]):[],[experience,seasonalItems]);
+ const ownerOf=(id:string)=>initialOwners[id]??deferredOwners[id];
  const sectionKeys=useMemo(()=>(experience?.sections||[]).map(section=>section.key),[experience]);
 
  if(loading&&!experience)return<HomeLoading/>;
@@ -97,9 +86,9 @@ export default function HomeSection({onProductClick,onProducerClick}:Props){
  function renderEvents(placement:'after_hero'|'after_categories'|'before_products'){return eventSpotlight?.enabled===true&&eventSpotlight.placement===placement?<HomeEventsSpotlight settings={eventSpotlight}/>:null;}
 
  return<>
-  <div className="go-premium-home-v2" data-home-contract-version={experience.version} data-home-content-version={contentVersion||undefined} data-home-prestige-contract="single-row-v4">
+  <div className="go-premium-home-v2" data-home-contract-version={experience.version} data-home-prestige-contract="single-row-v4">
+  <h1 className="sr-only">{experience.brand.name} ürünleri</h1>
   <div className="go-home-content">
-   <HomeBrandIntro brand={experience.brand.name} line={experience.interface.heroSubtitle}/>
    {/* A live campaign leads the page, as in the big shopping apps. */}
    {experience.campaign?<CampaignCard campaign={experience.campaign}/>:null}
 
@@ -114,13 +103,13 @@ export default function HomeSection({onProductClick,onProducerClick}:Props){
 
    {renderEvents('after_categories')}
 
-   {initialSections.map((section,index)=><React.Fragment key={section.key}><ProductSection section={{...section,items:sectionItems(section.items,index,ownerOf,heroIds)}} onProductClick={onProductClick} eagerFirst={index===0&&!spotlights.length} isFirst={index===0}/>{index===0&&onProducerClick?<HomeProducerStrip items={pageItems} onOpen={onProducerClick}/>:null}</React.Fragment>)}
+   {initialSections.map((section,index)=><ProductSection key={section.key} section={{...section,items:section.items.filter(item=>ownerOf(item.id)===index)}} onProductClick={onProductClick} eagerFirst={index===0} isFirst={index===0}/>) }
 
    {renderEvents('after_hero')}
 
    {renderEvents('before_products')}
 
-   {deferredSections.map((section,index)=><DeferredProductSection key={`${section.key}:${contentVersion}`} descriptor={section} loadSection={loadSection} onProductClick={onProductClick} order={initialSections.length+index} ownerOf={ownerOf} heroIds={heroIds} onLoaded={claimProducts}/>) }
+   {deferredSections.map((section,index)=><DeferredProductSection key={section.key} descriptor={section} loadSection={loadSection} onProductClick={onProductClick} order={initialSections.length+index} ownerOf={ownerOf} onLoaded={claimProducts}/>) }
 
    {experience.interface.footerText?<section className="go-brand-provenance" aria-label={`${experience.brand.name} hakkında`}><span>{experience.brand.name}</span><p>{experience.interface.footerText}</p></section>:null}
 
@@ -132,18 +121,12 @@ export default function HomeSection({onProductClick,onProducerClick}:Props){
  </>;
 }
 
-/* One product, one place, but never an empty showcase: items owned by an
-   earlier section (or the hero) are left out; a section that would fall below
-   MIN_SECTION_ITEMS is topped up from its own pool (hero items excluded). */
-const MIN_SECTION_ITEMS=3;
-export function sectionItems<T extends{id:string}>(items:T[],order:number,ownerOf:(id:string)=>number|undefined,heroIds:Set<string>):T[]{const own=items.filter(item=>{const owner=ownerOf(item.id);return owner===undefined||owner===order;});if(own.length>=MIN_SECTION_ITEMS)return own;const picked=new Set(own.map(item=>item.id));const extra=items.filter(item=>!picked.has(item.id)&&!heroIds.has(item.id));return[...own,...extra].slice(0,Math.max(own.length,MIN_SECTION_ITEMS));}
-
-function ProductSection({section,onProductClick,eagerFirst=false,isFirst=false}:{section:HomeSectionModel;onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean;isFirst?:boolean}){const copy=homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle);const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${section.source.kind}${section.source.kind==='featured'?' go-product-section-v2--feature':''}${isFirst?' go-product-section-v2--first':''}`;/* A section with nothing to show is left out: an empty promise is noise. */if(!section.items.length)return null;return<section className={sectionClass} aria-labelledby={`home-section-${section.key}`} data-home-key={section.key} data-server-section-title={section.title} data-home-source={section.source.kind}>
+function ProductSection({section,onProductClick,eagerFirst=false,isFirst=false}:{section:HomeSectionModel;onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean;isFirst?:boolean}){const copy=homeSectionDisplayCopy(section.source.kind,section.title,section.subtitle);const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${section.source.kind}${isFirst?' go-product-section-v2--first':''}`;/* A section with nothing to show is left out: an empty promise is noise. */if(!section.items.length)return null;return<section className={sectionClass} aria-labelledby={`home-section-${section.key}`} data-home-key={section.key} data-server-section-title={section.title} data-home-source={section.source.kind}>
  <SectionHeader id={`home-section-${section.key}`} eyebrow={copy.eyebrow} title={copy.title} subtitle={copy.subtitle}/>
- {section.items.length?<Showcase kind={section.source.kind} items={section.items.slice(0,MAX_SECTION_ITEMS)} onProductClick={onProductClick} eagerFirst={eagerFirst}/>:null} 
+ {section.items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{section.items.slice(0,MAX_SECTION_ITEMS).map((item,index)=><ProductCard key={item.id} item={item} eager={eagerFirst&&index===0} merchandisingLabel={homeMerchandisingSignal(section.source.kind,index,item)} onClick={()=>onProductClick(item)}/>)}</ul>:<SectionEmptyState source={section.source.kind}/>} 
  </section>;}
 
-function DeferredProductSection({descriptor,loadSection,onProductClick,order,ownerOf,heroIds,onLoaded}:{descriptor:HomeSectionModel;heroIds:Set<string>;loadSection:(key:string)=>Promise<HomeSectionModel|null>;onProductClick:(product:ProductReference)=>void;order:number;ownerOf:(id:string)=>number|undefined;onLoaded:(order:number,ids:string[])=>void}){
+function DeferredProductSection({descriptor,loadSection,onProductClick,order,ownerOf,onLoaded}:{descriptor:HomeSectionModel;loadSection:(key:string)=>Promise<HomeSectionModel|null>;onProductClick:(product:ProductReference)=>void;order:number;ownerOf:(id:string)=>number|undefined;onLoaded:(order:number,ids:string[])=>void}){
  const hostRef=useRef<HTMLElement|null>(null);const[section,setSection]=useState<HomeSectionModel|null>(null);const[loading,setLoading]=useState(false);const[error,setError]=useState('');const[done,setDone]=useState(false);const requested=useRef(false);
  const copy=homeSectionDisplayCopy(descriptor.source.kind,descriptor.title,descriptor.subtitle);
  const request=()=>{if(requested.current)return;requested.current=true;setLoading(true);setError('');let shown=false;void loadSectionFast(descriptor.key,loadSection,(result,live)=>{if(!live&&!result)return;
@@ -151,28 +134,19 @@ function DeferredProductSection({descriptor,loadSection,onProductClick,order,own
   if(result&&live)onLoaded(order,result.items.map(item=>item.id));if(!live)shown=true;setSection(result);if(live||result){setDone(true);setLoading(false);}}).catch(()=>{requested.current=false;if(!shown)setError(CUSTOMER_COPY.home.sectionRefreshError);}).finally(()=>setLoading(false));};
  useEffect(()=>{const node=hostRef.current;if(!node)return;if(typeof IntersectionObserver==='undefined'){request();return;}const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){request();observer.disconnect();}},{rootMargin:'560px 0px'});observer.observe(node);return()=>observer.disconnect();},[descriptor.key,loadSection]);
  const sectionClass=`go-home-section go-product-section-v2 go-product-section-v2--${descriptor.source.kind} go-product-section-v2--deferred`;
- const items=sectionItems(section?.items||[],order,ownerOf,heroIds).slice(0,MAX_SECTION_ITEMS);
+ const items=(section?.items||[]).filter(item=>{const owner=ownerOf(item.id);return owner===undefined||owner===order;}).slice(0,MAX_SECTION_ITEMS);
  // Loaded and empty (or everything already shown above): leave the section out instead of announcing that it is empty.
  if(done&&!items.length&&!loading&&!error)return null;
  return<section ref={hostRef} className={sectionClass} aria-labelledby={`home-section-${descriptor.key}`} data-home-key={descriptor.key} data-server-section-title={descriptor.title} data-home-source={descriptor.source.kind}>
   <SectionHeader id={`home-section-${descriptor.key}`} eyebrow={copy.eyebrow} title={copy.title} subtitle={copy.subtitle}/>
-  {items.length?<Showcase kind={descriptor.source.kind} items={items} onProductClick={onProductClick}/>:loading?<ProductRowsSkeleton/>:error?<div className="mt-5 flex min-h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-6 dark:border-red-900/60 dark:bg-red-950/30" role="status"><div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800 dark:to-red-900"><AlertCircle aria-hidden="true" className="h-8 w-8 text-red-400"/></div><span className="text-center font-semibold text-red-900 dark:text-red-200">{error}</span><button type="button" onClick={request} className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-red-300 bg-white px-4 font-bold dark:border-red-800 dark:bg-red-950/20"><RefreshCw aria-hidden="true" className="h-4 w-4"/>{CUSTOMER_COPY.home.retry}</button></div>:<ProductRowsSkeleton/>} 
+  {items.length?<ul className="go-product-list-v4 flex flex-col gap-4">{items.map((item,index)=><ProductCard key={item.id} item={item} merchandisingLabel={homeMerchandisingSignal(descriptor.source.kind,index,item)} onClick={()=>onProductClick(item)}/>)}</ul>:loading?<ProductRowsSkeleton/>:error?<div className="mt-5 flex min-h-40 flex-col items-center justify-center gap-3 rounded-2xl border-2 border-red-200 bg-red-50 p-6 dark:border-red-900/60 dark:bg-red-950/30" role="status"><div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800 dark:to-red-900"><AlertCircle aria-hidden="true" className="h-8 w-8 text-red-400"/></div><span className="text-center font-semibold text-red-900 dark:text-red-200">{error}</span><button type="button" onClick={request} className="inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-red-300 bg-white px-4 font-bold dark:border-red-800 dark:bg-red-950/20"><RefreshCw aria-hidden="true" className="h-4 w-4"/>{CUSTOMER_COPY.home.retry}</button></div>:<SectionEmptyState source={descriptor.source.kind}/>} 
  </section>;
 }
 
-/* How a showcase is laid out, by what it is: the signature selection opens
-   with a feature story, the season runs as a rail, gifts sit in their own
-   panel; everything else stays the classic row list. One product, one link. */
-function Showcase({kind,items,onProductClick,eagerFirst=false}:{kind:HomeSectionModel['source']['kind'];items:HomeSectionModel['items'];onProductClick:(product:ProductReference)=>void;eagerFirst?:boolean}){
- const rows=(list:HomeSectionModel['items'],offset=0)=>list.length?<ul className="go-product-list-v4 flex flex-col gap-4">{list.map((item,index)=><ProductCard key={item.id} item={item} eager={eagerFirst&&offset+index===0} merchandisingLabel={homeMerchandisingSignal(kind,offset+index,item)} onClick={()=>onProductClick(item)}/>)}</ul>:null;
- if(kind==='featured'&&items.length>=3)return<div className="go-showcase-v5 go-showcase-v5--feature"><ul className="go-feature-v5__list"><HomeFeatureCard item={items[0]} label={homeMerchandisingSignal(kind,0,items[0])} onOpen={()=>onProductClick(items[0])}/></ul>{rows(items.slice(1),1)}</div>;
- if(kind==='seasonal'&&items.length>=3)return<HomeRail items={items} label={item=>homeMerchandisingSignal(kind,0,item)} onOpen={onProductClick}/>;
- if(kind==='curated')return<HomeGiftPanel>{rows(items)}</HomeGiftPanel>;
- return rows(items);
-}
+function SectionEmptyState({source}:{source:HomeSectionModel['source']['kind']}){const copy:{title:string;body:string}={preorder:{title:'Şu an yeni ön sipariş yok',body:'Yeni hazırlıklar açıldığında bu seçki kendiliğinden burada görünecek.'},seasonal:{title:'Mevsimin yeni seçkisi hazırlanıyor',body:'Hasat takvimi değiştikçe bu bölüm güncellenecek.'},newest:{title:'Yeni keşifler yolda',body:'Yeni ürünler yayına alındığında bu vitrin otomatik olarak yenilenecek.'},offers:{title:'Şu an seçili bir fiyat avantajı yok',body:'Yeni avantajlı seçenekler oluştuğunda burada göstereceğiz.'},curated:{title:'Özenle seçilen yeni ürünler hazırlanıyor',body:'Kürasyon güncellendiğinde bu bölüm otomatik olarak dolacak.'},featured:{title:'Seçki güncelleniyor',body:'Vitrin seçimleri hazır olduğunda ürünler burada görünecek.'},category:{title:'Bu bölüm şu an sakin',body:'Yeni ürünler geldikçe seçki burada görünecek.'}}[source];return<div className="go-home-section-empty" role="status"><strong>{copy.title}</strong><span>{copy.body}</span></div>;}
 
 function CampaignCard({campaign}:{campaign:{title:string;description:string|null;bannerPath:string|null}}){const banner=campaign.bannerPath?publicCatalogUrl(campaign.bannerPath):null;return<section className="go-home-section go-campaign-v2" aria-label={campaign.title}>{banner?<PremiumImage src={banner} alt="" className="go-campaign-v2__media"/>:null}<div className="go-campaign-v2__copy"><span>Kampanya</span><h2>{campaign.title}</h2>{campaign.description?<p>{campaign.description}</p>:null}</div></section>;}
 function HomeError({message,onRetry}:{message:string;onRetry:()=>void}){return<div className="go-home-state" role="alert"><div className="grid h-24 w-24 place-items-center rounded-3xl bg-gradient-to-br from-red-100 to-red-200 dark:from-red-800 dark:to-red-900"><AlertCircle aria-hidden="true" className="h-12 w-12 text-red-400"/></div><h1 className="mt-4 text-2xl font-bold">Ana sayfayı yenileyemedik</h1><p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{message}</p><button type="button" onClick={onRetry} className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl border-2 border-red-300 bg-white px-4 font-bold dark:border-red-800 dark:bg-red-950/20"><RefreshCw aria-hidden="true" className="h-4 w-4"/>Yeniden dene</button></div>;}
 function ProductRowsSkeleton(){return<div className="go-product-list-v4 go-product-list-v4--skeleton flex flex-col gap-4" role="status" aria-label="Ürünler yükleniyor">{[0,1,2].map(index=><div className="go-product-skeleton" key={index}><span/><div><i/><i/><i/></div></div>)}</div>;}
-function SpotlightSkeleton(){return<div className="go-home-section go-spotlight go-hero-v5 go-spotlight--skeleton" aria-hidden="true"><div className="go-spotlight__card"><span className="go-spotlight__copy"><i/><i/><i/></span><span className="go-spotlight__media"/></div></div>;}
+function SpotlightSkeleton(){return<div className="go-home-section go-spotlight go-spotlight--skeleton" aria-hidden="true"><div className="go-spotlight__card"><span className="go-spotlight__copy"><i/><i/><i/></span><span className="go-spotlight__media"/></div></div>;}
 function HomeLoading(){return<div className="go-premium-home-v2"><div className="go-home-content"><section className="go-home-section"><div className="go-heading-skeleton"/><div className="go-category-skeleton-rail">{[0,1,2].map(index=><div className="go-category-skeleton" key={index}/>)}</div></section><section className="go-home-section"><div className="go-heading-skeleton go-heading-skeleton--wide"/><ProductRowsSkeleton/></section></div></div>;}
