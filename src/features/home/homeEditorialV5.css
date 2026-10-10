@@ -125,7 +125,8 @@
   .go-hero-v5 .go-hero-v5__story{font-size:15px;-webkit-line-clamp:3;line-clamp:3;max-width:30rem;}
   .go-hero-v5.go-spotlight--skeleton .go-spotlight__card{min-height:420px;}
   .go-showcase-v5--feature{grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:28px;}
-  .go-rail-v5{grid-auto-flow:row;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));overflow:visible;}
+  /* The season fills the row (auto-fit), instead of three small cards on the left. */
+  .go-rail-v5{grid-auto-flow:row;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));overflow:visible;}
 }
 @media(min-width:1600px){
   .go-hero-v5 .go-spotlight__card{min-height:480px;}
