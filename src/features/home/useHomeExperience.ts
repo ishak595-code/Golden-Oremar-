@@ -148,12 +148,16 @@ export function useHomeExperience(locale:HomeLocale=browserHomeLocale()){
     a few bytes and changes nothing on screen. */
  useEffect(()=>{
   let busy=false;let lastActive=Date.now();
+  // Backend unreachable: wait longer each time (10 s, 20 s ... 2 min) instead of asking every few seconds.
+  let failures=0,retryAt=0;
   const active=()=>{lastActive=Date.now();};
   const check=async(fromReturn=false)=>{
    if(busy||document.hidden)return;
    if(!fromReturn&&Date.now()-lastActive>HOME_VERSION_IDLE_MS)return;
+   if(Date.now()<retryAt)return;
    busy=true;
-   try{const version=await fetchHomeContentVersion();const cached=experienceCache.get(locale);if(!cached||cached.contentVersion!==version)await load(true);}catch{/* backend unreachable: keep what is shown */}
+   try{const version=await fetchHomeContentVersion();failures=0;retryAt=0;const cached=experienceCache.get(locale);if(!cached||cached.contentVersion!==version)await load(true);}
+   catch{failures+=1;retryAt=Date.now()+Math.min(120_000,5_000*2**failures);/* keep what is shown */}
    finally{busy=false;}
   };
   const timer=window.setInterval(()=>void check(),HOME_VERSION_POLL_MS);

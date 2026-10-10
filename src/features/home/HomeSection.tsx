@@ -12,6 +12,7 @@ import ProductCard from'./components/ProductCard';
 import SectionHeader from'./components/SectionHeader';
 import HomeSectionTabs from'./components/HomeSectionTabs';
 import{pickSpotlights}from'./components/spotlightPick';
+import{removeHomeShell}from'./homeShell';
 import{HomeBrandIntro,HomeFeatureCard,HomeGiftPanel,HomeProducerStrip,HomeRail}from'./components/HomeEditorial';
 import'./homeEditorialV5.css';
 // Its own chunk: the customer entry bundle has a fixed budget.
@@ -83,6 +84,9 @@ export default function HomeSection({onProductClick,onProducerClick}:Props){
  const heroIds=useMemo(()=>new Set(spotlights.map(item=>item.id)),[spotlights]);
  const ownerOf=(id:string)=>heroIds.has(id)?-1:(initialOwners[id]??deferredOwners[id]);
  const pageItems=useMemo(()=>[...spotlights,...(experience?.sections||[]).flatMap(section=>section.items),...(seasonalItems||[])],[spotlights,experience,seasonalItems]);
+ // No hero to take over (none today, closed, or the home could not load): drop the build-time first screen now.
+ useEffect(()=>removeHomeShell,[]);
+ useEffect(()=>{if((seasonalItems!==null&&!spotlights.length)||(!loading&&!experience))removeHomeShell();},[seasonalItems,spotlights.length,loading,experience]);
  const sectionKeys=useMemo(()=>(experience?.sections||[]).map(section=>section.key),[experience]);
 
  if(loading&&!experience)return<HomeLoading/>;
