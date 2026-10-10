@@ -1,4 +1,4 @@
-import{ArrowRight,Gift,MapPin}from'lucide-react';
+import{ArrowRight,Gift,MapPin,MessageCircle,Sprout,Sun}from'lucide-react';
 import type{CatalogItem}from'../../catalog/api';
 import{buildProducerUrl,buildProductUrl}from'../../navigation/appUrl';
 import{productMaker}from'../../catalog/productMakers';
@@ -74,3 +74,8 @@ export function HomeProducerStrip({items,onOpen}:{items:CatalogItem[];onOpen:(id
 export function HomeGiftPanel({children}:{children:React.ReactNode}){
  return<div className="go-gift-v5"><span className="go-gift-v5__mark" aria-hidden="true"><Gift/></span><p className="go-gift-v5__note">Her ürün sayfasında <b>Hediye Et</b> ile alıcının adresine, notunuzla gönderilir.</p>{children}</div>;
 }
+
+/* A slim line of promises that hold for every product on the shop (shipping
+   and returns differ per product, so they stay on the product page). */
+const TRUST_ITEMS=[{icon:Sprout,text:'Üreticisi belli'},{icon:Sun,text:'Mevsiminde, taze'},{icon:Gift,text:'Notunuzla hediye'},{icon:MessageCircle,text:'WhatsApp\'tan destek'}] as const;
+export function HomeTrustStrip(){return<ul className="go-trust-v5" aria-label="Golden Oremar güvencesi">{TRUST_ITEMS.map(({icon:Icon,text})=><li key={text}><Icon aria-hidden="true"/><span>{text}</span></li>)}</ul>;}

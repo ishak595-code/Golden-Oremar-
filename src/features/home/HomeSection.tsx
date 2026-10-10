@@ -13,7 +13,7 @@ import SectionHeader from'./components/SectionHeader';
 import HomeSectionTabs from'./components/HomeSectionTabs';
 import{pickSpotlights}from'./components/spotlightPick';
 import{removeHomeShell}from'./homeShell';
-import{HomeBrandIntro,HomeFeatureCard,HomeGiftPanel,HomeProducerStrip,HomeRail}from'./components/HomeEditorial';
+import{HomeBrandIntro,HomeFeatureCard,HomeGiftPanel,HomeProducerStrip,HomeRail,HomeTrustStrip}from'./components/HomeEditorial';
 import'./homeEditorialV5.css';
 // Its own chunk: the customer entry bundle has a fixed budget.
 const HomeSpotlight=React.lazy(()=>import('./components/HomeSpotlight'));
@@ -105,6 +105,8 @@ export default function HomeSection({onProductClick,onProducerClick}:Props){
 
    {/* The space is held while the pick loads, so nothing below jumps. */}
    {seasonalItems===null?<SpotlightSkeleton/>:spotlights.length?<React.Suspense fallback={<SpotlightSkeleton/>}><HomeSpotlight items={spotlights} title={experience.interface.heroTitle} buttonText={experience.interface.heroButtonText} onOpen={onProductClick}/></React.Suspense>:null}
+
+   <HomeTrustStrip/>
 
    <HomeSectionTabs keys={sectionKeys}/>
 

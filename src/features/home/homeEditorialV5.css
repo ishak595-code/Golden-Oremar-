@@ -16,6 +16,13 @@
 .go-home-intro__brand{color:var(--h-gold);font-size:10.5px;font-weight:820;letter-spacing:.24em;text-transform:uppercase;}
 .go-home-intro__line{max-width:36rem;color:var(--h-ink);font-family:var(--font-serif);font-size:clamp(21px,5.6vw,30px);font-weight:680;line-height:1.14;letter-spacing:-.018em;text-wrap:balance;}
 
+/* Trust strip: four quiet promises under the hero */
+.go-trust-v5{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;margin:14px 0 4px;padding:12px 14px;list-style:none;border:1px solid var(--h-line);border-radius:16px;background:var(--h-surface);}
+.go-trust-v5 li{display:flex;align-items:center;gap:8px;min-width:0;color:var(--h-muted);font-size:12.5px;font-weight:650;line-height:1.25;}
+.go-trust-v5 svg{flex:none;width:16px;height:16px;color:var(--h-gold);}
+.go-trust-v5 span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+@media(min-width:768px){.go-trust-v5{grid-template-columns:repeat(4,minmax(0,1fr));justify-items:center;padding:13px 18px;}.go-trust-v5 li{font-size:13px;}}
+
 /* Editorial hero */
 .go-hero-v5 .go-spotlight__track{gap:0;border-radius:var(--h-radius);}
 .go-hero-v5 .go-spotlight__slide{min-width:0;overflow:hidden;border-radius:var(--h-radius);}
