@@ -18,11 +18,7 @@ import{useDeviceTheme}from'./features/appearance/useDeviceTheme';
 import{NETWORK_RESTORED_EVENT,useConnectivity}from'./features/resilience/useConnectivity';
 import{subscribeNativePushActions}from'./features/notifications/nativePush';
 import{buildProductUrl,buildProducerUrl,buildSearchUrl,buildTabUrl,parsePublicRoute,resolveAppActionTarget}from'./features/navigation/appUrl';
-import{OPEN_CATEGORY_MENU_EVENT}from'./features/home/homeEvents';
-// The home page is its own chunk, requested at once (in parallel with the
-// entry) so it is not on the critical path of the other pages.
-const homeChunk=import('./features/home/HomeSection');
-const HomeSection=React.lazy(()=>homeChunk);
+import HomeSection,{OPEN_CATEGORY_MENU_EVENT}from'./features/home/HomeSection';
 import{useNativeDeepLinks}from'./features/navigation/useNativeDeepLinks';
 import{runBackHandlers}from'./features/navigation/backHandlers';
 import{APP_TOAST_EVENT}from'./lib/appToast';
@@ -206,7 +202,7 @@ function AppContent(){
  const addToCart=useCallback(async(product:any,quantity=1,silent=false)=>{
   if(!currentUser){
    // Visitors fill a cart on this device; the account is asked for at checkout.
-   try{const reference=product?.slug||String(product?.id||'');if(!reference)throw new Error('Ürün referansı bulunamadı.');const resolved=await resolveDefaultVariant(reference);const variant=resolved.variant,detail=resolved.detail;const priceMinor=Number(variant.priceMinor);const currency=String(detail.currency||'').toUpperCase();if(!Number.isSafeInteger(priceMinor)||!/^[A-Z]{3}$/.test(currency))throw new Error('Fiyat bilgisi şu anda doğrulanamadı.');const image=(Array.isArray(detail.images)?detail.images:[]).find((item:any)=>item?.primary===true)||(Array.isArray(detail.images)?detail.images[0]:null);addToGuestCart({variantId:String(variant.id),selectedOptions:variant.options&&typeof variant.options==='object'?variant.options:{},productSlug:String(detail.slug||reference),productName:String(detail.name||product?.name||'Ürün'),variantName:String(variant.name||''),producerName:String(detail.producer?.name||''),priceMinor,currency,imagePath:typeof image?.path==='string'?image.path:null,...(detail.stockMode==='preorder'?{preorder:true}:{})},Math.max(1,Math.min(99,Math.floor(Number(quantity)||1))));if(Capacitor.isNativePlatform()){try{await Haptics.impact({style:ImpactStyle.Light});}catch{}}if(!silent)showToast(`${product?.name||detail.name||'Ürün'} sepetinize eklendi.`);}
+   try{const reference=product?.slug||String(product?.id||'');if(!reference)throw new Error('Ürün referansı bulunamadı.');const resolved=await resolveDefaultVariant(reference);const variant=resolved.variant,detail=resolved.detail;const priceMinor=Number(variant.priceMinor);const currency=String(detail.currency||'').toUpperCase();if(!Number.isSafeInteger(priceMinor)||!/^[A-Z]{3}$/.test(currency))throw new Error('Fiyat bilgisi şu anda doğrulanamadı.');const image=(Array.isArray(detail.images)?detail.images:[]).find((item:any)=>item?.primary===true)||(Array.isArray(detail.images)?detail.images[0]:null);addToGuestCart({variantId:String(variant.id),selectedOptions:variant.options&&typeof variant.options==='object'?variant.options:{},productSlug:String(detail.slug||reference),productName:String(detail.name||product?.name||'Ürün'),variantName:String(variant.name||''),producerName:String(detail.producer?.name||''),priceMinor,currency,imagePath:typeof image?.path==='string'?image.path:null},Math.max(1,Math.min(99,Math.floor(Number(quantity)||1))));if(Capacitor.isNativePlatform()){try{await Haptics.impact({style:ImpactStyle.Light});}catch{}}if(!silent)showToast(`${product?.name||detail.name||'Ürün'} sepetinize eklendi.`);}
    catch(error:any){showToast(userFacingError(error,'Sepete eklenemedi. Tekrar deneyin.'));}
    return;
   }
@@ -275,7 +271,7 @@ function AppContent(){
   if(currentTab==='health')return<PublicHealthScreen onBack={goBack} authenticated={!!currentUser} locale={currentUser?.locale||'tr'} onLoginRequired={()=>{showToast('İçerikleri favoriye kaydetmek için hesabınıza giriş yapın.');openAccount('menu');}} onOpenProduct={slug=>openProduct(slug)}/>;
   if(currentTab==='contact')return<PublicContactScreen onBack={goBack} currentUser={currentUser} locale={currentUser?.locale||'tr'}/>;
   if(currentTab==='about')return<PublicInfoScreen page="about" locale={currentUser?.locale||'tr'} onBack={goBack}/>;
-  return<HomeSection onProductClick={product=>openProduct(product?.slug||product?.legacyId||product?.id)} onProducerClick={reference=>openProducer(reference)}/>;
+  return<HomeSection onProductClick={product=>openProduct(product?.slug||product?.legacyId||product?.id)}/>;
  };
 
  if(currentTab==='admin'){if(!adminSession.checked)return<RouteLoading label="Yönetici yetkisi doğrulanıyor"/>;if(isAdminLoggedIn)return<React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor"/>}><AdminPage initialTab={adminView} onBack={goBack} onLogout={async()=>{await signOutCurrentSession();setCurrentUser(null);setAdminSession({checked:true,isAdmin:false,roles:[]});setCart([]);setCartItemCount(0);replaceWithHome();}}/></React.Suspense>;}
