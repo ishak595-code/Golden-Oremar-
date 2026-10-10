@@ -20,8 +20,8 @@ import'./homeLightThemes.css';
 import{scrollBehavior}from'../../lib/reducedMotion';
 import{buildTabUrl}from'../navigation/appUrl';
 
-/** Fired by the menu button in the home header. */
-export const OPEN_CATEGORY_MENU_EVENT='golden-oremar:open-category-menu';
+import{OPEN_CATEGORY_MENU_EVENT}from'./homeEvents';
+export{OPEN_CATEGORY_MENU_EVENT};
 
 type ProductReference={id:string;slug:string;legacyId?:string|null};
 type Props={onProductClick:(product:ProductReference)=>void};
@@ -46,7 +46,7 @@ function loadSectionFast(key:string,loadSection:(key:string)=>Promise<HomeSectio
 
 export default function HomeSection({onProductClick}:Props){
  const locale=browserHomeLocale();
- const{experience,loading,error,retry,loadSection}=useHomeExperience(locale);
+ const{experience,loading,error,retry,loadSection,contentVersion}=useHomeExperience(locale);
  const[showScrollTop,setShowScrollTop]=useState(false);
  const[menuOpen,setMenuOpen]=useState(false);
  useEffect(()=>{const open=()=>setMenuOpen(true);window.addEventListener(OPEN_CATEGORY_MENU_EVENT,open);return()=>window.removeEventListener(OPEN_CATEGORY_MENU_EVENT,open);},[]);
@@ -86,7 +86,7 @@ export default function HomeSection({onProductClick}:Props){
  function renderEvents(placement:'after_hero'|'after_categories'|'before_products'){return eventSpotlight?.enabled===true&&eventSpotlight.placement===placement?<HomeEventsSpotlight settings={eventSpotlight}/>:null;}
 
  return<>
-  <div className="go-premium-home-v2" data-home-contract-version={experience.version} data-home-prestige-contract="single-row-v4">
+  <div className="go-premium-home-v2" data-home-contract-version={experience.version} data-home-content-version={contentVersion||undefined} data-home-prestige-contract="single-row-v4">
   <h1 className="sr-only">{experience.brand.name} ürünleri</h1>
   <div className="go-home-content">
    {/* A live campaign leads the page, as in the big shopping apps. */}
@@ -109,7 +109,7 @@ export default function HomeSection({onProductClick}:Props){
 
    {renderEvents('before_products')}
 
-   {deferredSections.map((section,index)=><DeferredProductSection key={section.key} descriptor={section} loadSection={loadSection} onProductClick={onProductClick} order={initialSections.length+index} ownerOf={ownerOf} onLoaded={claimProducts}/>) }
+   {deferredSections.map((section,index)=><DeferredProductSection key={`${section.key}:${contentVersion}`} descriptor={section} loadSection={loadSection} onProductClick={onProductClick} order={initialSections.length+index} ownerOf={ownerOf} onLoaded={claimProducts}/>) }
 
    {experience.interface.footerText?<section className="go-brand-provenance" aria-label={`${experience.brand.name} hakkında`}><span>{experience.brand.name}</span><p>{experience.interface.footerText}</p></section>:null}
 

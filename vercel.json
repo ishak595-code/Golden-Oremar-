@@ -10,7 +10,7 @@
       "destination": "/kullanim-sartlari/index.html"
     },
     {
-      "source": "/((?!assets/|offline-catalog/|brand/|product-photos/|\\.well-known/).*)",
+      "source": "/((?!api/|assets/|offline-catalog/|brand/|product-photos/|\\.well-known/).*)",
       "destination": "/"
     }
   ],

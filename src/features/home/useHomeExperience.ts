@@ -1,10 +1,11 @@
 import{isSnapshotMode}from'../../lib/offlineCatalog';
 import{useCallback,useEffect,useRef,useState}from'react';
 import{NETWORK_RESTORED_EVENT}from'../resilience/useConnectivity';
-import{browserHomeLocale,getPublicHomeExperience,getPublicHomeSection,type HomeExperience,type HomeLocale,type HomeSectionModel,loadCatalogFallbackExperience}from'./homeExperienceApi';
+import{browserHomeLocale,getPublicHomeExperience,getPublicHomeSection,normalizeHomeExperience,normalizeHomeSection,type HomeExperience,type HomeLocale,type HomeSectionModel,loadCatalogFallbackExperience}from'./homeExperienceApi';
+import{fetchHomeBundle,fetchHomeContentVersion,HOME_VERSION_IDLE_MS,HOME_VERSION_POLL_MS}from'./homeFreshness';
 
-type CacheEntry={value:HomeExperience;expiresAt:number;staleUntil:number};
-type SectionCacheEntry={value:HomeSectionModel;expiresAt:number;staleUntil:number};
+type CacheEntry={value:HomeExperience;expiresAt:number;staleUntil:number;contentVersion?:number};
+type SectionCacheEntry={value:HomeSectionModel;expiresAt:number;staleUntil:number;contentVersion?:number};
 
 const experienceCache=new Map<HomeLocale,CacheEntry>();
 const sectionCache=new Map<string,SectionCacheEntry>();
@@ -38,38 +39,68 @@ function hydrateExperience(locale:HomeLocale):CacheEntry|null{
  const now=Date.now();
  const memory=experienceCache.get(locale);
  if(memory&&memory.staleUntil>now)return memory;
- const stored=readStorage<{value:HomeExperience;cachedAt:number;expiresAt?:number;staleUntil?:number}>(`${HOME_CACHE_PREFIX}${locale}`);
+ const stored=readStorage<{value:HomeExperience;cachedAt:number;expiresAt?:number;staleUntil?:number;contentVersion?:number}>(`${HOME_CACHE_PREFIX}${locale}`);
  if(!stored?.value)return null;
  const cachedAt=Number(stored.cachedAt)||0;
  if(!cachedAt||now-cachedAt>CLIENT_STALE_MS){removeStorage(`${HOME_CACHE_PREFIX}${locale}`);return null;}
- const entry:CacheEntry={value:stored.value,expiresAt:Number(stored.expiresAt)||cachedAt+CLIENT_FRESH_FALLBACK_MS,staleUntil:Number(stored.staleUntil)||cachedAt+CLIENT_STALE_MS};
+ const entry:CacheEntry={value:stored.value,expiresAt:Number(stored.expiresAt)||cachedAt+CLIENT_FRESH_FALLBACK_MS,staleUntil:Number(stored.staleUntil)||cachedAt+CLIENT_STALE_MS,contentVersion:Number(stored.contentVersion)||undefined};
  if(entry.staleUntil<=now)return null;
  experienceCache.set(locale,entry);return entry;
 }
 
-function persistExperience(locale:HomeLocale,value:HomeExperience,expiresAt:number){
+function persistExperience(locale:HomeLocale,value:HomeExperience,expiresAt:number,contentVersion?:number){
  const cachedAt=Date.now();
- const entry:CacheEntry={value,expiresAt,staleUntil:cachedAt+CLIENT_STALE_MS};
+ const entry:CacheEntry={value,expiresAt,staleUntil:cachedAt+CLIENT_STALE_MS,contentVersion};
  experienceCache.set(locale,entry);
- writeStorage(`${HOME_CACHE_PREFIX}${locale}`,{value,cachedAt,expiresAt,staleUntil:entry.staleUntil});
+ writeStorage(`${HOME_CACHE_PREFIX}${locale}`,{value,cachedAt,expiresAt,staleUntil:entry.staleUntil,contentVersion});
  return entry;
 }
 
 function hydrateSection(locale:HomeLocale,key:string):SectionCacheEntry|null{
  const cacheKey=`${locale}:${key}`;const now=Date.now();
  const memory=sectionCache.get(cacheKey);if(memory&&memory.staleUntil>now)return memory;
- const stored=readStorage<{value:HomeSectionModel;cachedAt:number;expiresAt?:number;staleUntil?:number}>(`${SECTION_CACHE_PREFIX}${cacheKey}`);
+ const stored=readStorage<{value:HomeSectionModel;cachedAt:number;expiresAt?:number;staleUntil?:number;contentVersion?:number}>(`${SECTION_CACHE_PREFIX}${cacheKey}`);
  if(!stored?.value)return null;
  const cachedAt=Number(stored.cachedAt)||0;
  if(!cachedAt||now-cachedAt>CLIENT_STALE_MS){removeStorage(`${SECTION_CACHE_PREFIX}${cacheKey}`);return null;}
- const entry:SectionCacheEntry={value:stored.value,expiresAt:Number(stored.expiresAt)||cachedAt+CLIENT_FRESH_FALLBACK_MS,staleUntil:Number(stored.staleUntil)||cachedAt+CLIENT_STALE_MS};
+ const entry:SectionCacheEntry={value:stored.value,expiresAt:Number(stored.expiresAt)||cachedAt+CLIENT_FRESH_FALLBACK_MS,staleUntil:Number(stored.staleUntil)||cachedAt+CLIENT_STALE_MS,contentVersion:Number(stored.contentVersion)||undefined};
  if(entry.staleUntil<=now)return null;
  sectionCache.set(cacheKey,entry);return entry;
 }
 
-function persistSection(locale:HomeLocale,key:string,value:HomeSectionModel,expiresAt:number){
- const cachedAt=Date.now();const cacheKey=`${locale}:${key}`;const entry:SectionCacheEntry={value,expiresAt,staleUntil:cachedAt+CLIENT_STALE_MS};
- sectionCache.set(cacheKey,entry);writeStorage(`${SECTION_CACHE_PREFIX}${cacheKey}`,{value,cachedAt,expiresAt,staleUntil:entry.staleUntil});return entry;
+function persistSection(locale:HomeLocale,key:string,value:HomeSectionModel,expiresAt:number,contentVersion?:number){
+ const cachedAt=Date.now();const cacheKey=`${locale}:${key}`;const entry:SectionCacheEntry={value,expiresAt,staleUntil:cachedAt+CLIENT_STALE_MS,contentVersion};
+ sectionCache.set(cacheKey,entry);writeStorage(`${SECTION_CACHE_PREFIX}${cacheKey}`,{value,cachedAt,expiresAt,staleUntil:entry.staleUntil,contentVersion});return entry;
+}
+
+/** Last content version seen from the server (null while unknown or unreachable). */
+let knownContentVersion:number|null=null;
+/** A version-keyed entry stays valid until the version moves, never by the clock. */
+const VERSIONED_MS=CLIENT_STALE_MS;
+
+/**
+ * The version-aware path: one tiny version request; when the stored home has
+ * that version nothing else is downloaded, otherwise the whole home (all
+ * showcases included) comes in one edge-cached answer. Null when the edge
+ * path is unavailable (then the direct path below is used).
+ */
+async function loadVersioned(locale:HomeLocale,cached:CacheEntry|null):Promise<{value:HomeExperience;changed:boolean}|null>{
+ let version:number;
+ try{version=await fetchHomeContentVersion();}catch{return null;}
+ knownContentVersion=version;
+ if(cached&&cached.contentVersion===version)return{value:cached.value,changed:false};
+ try{
+  const bundle=await fetchHomeBundle(version,locale);
+  const value=normalizeHomeExperience(bundle.experience);
+  const contentVersion=bundle.version||version;knownContentVersion=Math.max(version,contentVersion);
+  const until=Date.now()+VERSIONED_MS;
+  for(const[key,raw]of Object.entries(bundle.sections)){
+   if(raw==null)continue;
+   try{const section=normalizeHomeSection({...(raw as object),deferred:false},0);if(section.key===key)persistSection(locale,key,section,until,knownContentVersion);}catch{/* a bad showcase is loaded on its own later */}
+  }
+  persistExperience(locale,value,until,knownContentVersion);
+  return{value,changed:true};
+ }catch{return null;}
 }
 
 export function useHomeExperience(locale:HomeLocale=browserHomeLocale()){
@@ -80,10 +111,14 @@ export function useHomeExperience(locale:HomeLocale=browserHomeLocale()){
  const sequence=useRef(0);
 
  const load=useCallback(async(force=false)=>{
-  const request=++sequence.current;const now=Date.now();const cached=hydrateExperience(locale);
-  if(!force&&cached&&cached.expiresAt>now){setData(cached.value);setLoading(false);setError('');return cached.value;}
+  const request=++sequence.current;const cached=hydrateExperience(locale);
   if(cached){setData(cached.value);setLoading(false);setError('');}else setLoading(true);
   try{
+   // 1. Version check: fresh within seconds of an admin edit, no clock-based staleness.
+   const versioned=await loadVersioned(locale,cached);
+   if(versioned){if(request===sequence.current&&(versioned.changed||!cached)){setData(versioned.value);setError('');}return versioned.value;}
+   // 2. Edge path unavailable: the direct database call (with the shipped copy behind it).
+   if(!force&&cached&&cached.expiresAt>Date.now()&&cached.contentVersion===undefined)return cached.value;
    const value=await getPublicHomeExperience(locale);if(request!==sequence.current)return value;
    const serverAge=Math.max(1,Number(value.cachePolicy?.compositionMaxAgeSeconds)||0)*1000;
    // A copy shipped with the app (backend down or stalling) is shown, never kept as if it were live.
@@ -108,11 +143,34 @@ export function useHomeExperience(locale:HomeLocale=browserHomeLocale()){
  useEffect(()=>{void load(false).catch(()=>undefined);return()=>{sequence.current+=1;};},[load]);
  useEffect(()=>{const restore=()=>void load(true).catch(()=>undefined);window.addEventListener(NETWORK_RESTORED_EVENT,restore);return()=>window.removeEventListener(NETWORK_RESTORED_EVENT,restore);},[load]);
 
+ /* While the page is open, visible and in use, look at the version every
+    5 s and whenever the visitor comes back to it; an unchanged version costs
+    a few bytes and changes nothing on screen. */
+ useEffect(()=>{
+  let busy=false;let lastActive=Date.now();
+  const active=()=>{lastActive=Date.now();};
+  const check=async(fromReturn=false)=>{
+   if(busy||document.hidden)return;
+   if(!fromReturn&&Date.now()-lastActive>HOME_VERSION_IDLE_MS)return;
+   busy=true;
+   try{const version=await fetchHomeContentVersion();const cached=experienceCache.get(locale);if(!cached||cached.contentVersion!==version)await load(true);}catch{/* backend unreachable: keep what is shown */}
+   finally{busy=false;}
+  };
+  const timer=window.setInterval(()=>void check(),HOME_VERSION_POLL_MS);
+  const onVisible=()=>{if(!document.hidden){active();void check(true);}};
+  const activity=['pointerdown','keydown','scroll','touchstart'] as const;
+  activity.forEach(name=>window.addEventListener(name,active,{passive:true}));
+  document.addEventListener('visibilitychange',onVisible);window.addEventListener('focus',onVisible);
+  return()=>{window.clearInterval(timer);activity.forEach(name=>window.removeEventListener(name,active));document.removeEventListener('visibilitychange',onVisible);window.removeEventListener('focus',onVisible);};
+ },[load,locale]);
+
  const loadSection=useCallback(async(key:string)=>{
   if(!data)return null;
   const cacheKey=`${locale}:${key}`;
   const cached=hydrateSection(locale,key);
-  if(cached&&cached.expiresAt>Date.now())return cached.value;
+  // Saved with the current content version: exact, nothing to ask.
+  if(cached&&cached.contentVersion!==undefined&&cached.contentVersion===knownContentVersion)return cached.value;
+  if(cached&&cached.contentVersion===undefined&&cached.expiresAt>Date.now())return cached.value;
   if(cached){
    void getPublicHomeSection(key,locale).then(value=>{if(value&&!isSnapshotMode())persistSection(locale,key,value,Date.now()+CLIENT_FRESH_FALLBACK_MS);}).catch(()=>undefined);
    return cached.value;
@@ -124,5 +182,6 @@ export function useHomeExperience(locale:HomeLocale=browserHomeLocale()){
   return request;
  },[data,locale]);
 
- return{experience:data,loading,error,retry:()=>load(true),loadSection};
+ const contentVersion=experienceCache.get(locale)?.contentVersion??0;
+ return{experience:data,loading,error,retry:()=>load(true),loadSection,contentVersion};
 }
