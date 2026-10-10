@@ -1,4 +1,4 @@
-import {StrictMode,lazy,Suspense,startTransition} from 'react';
+import {StrictMode,lazy,Suspense} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary';
@@ -49,10 +49,7 @@ void loadAndApplyBrandAppearance().catch(error=>sendClientError('appearance.bran
 void initNativeFeatures(initialTheme).catch(error=>sendClientError('native.init',error,'warning'));
 void initNativePushListeners().catch(error=>sendClientError('native.push.init',error,'warning'));
 
-// Home: the main stylesheet loads without blocking the first paint (see
-// scripts/prerender-home.mjs); the app mounts once it is in.
-const cssReady:Promise<void>=(window as unknown as{__goCss?:Promise<void>}).__goCss||Promise.resolve();
-void cssReady.then(()=>{const root=createRoot(document.getElementById('root')!);/* Time-sliced first mount: no single long task on slow phones. */startTransition(()=>root.render(
+createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <AuthorizationProvider>
@@ -67,4 +64,4 @@ void cssReady.then(()=>{const root=createRoot(document.getElementById('root')!);
       </AuthorizationProvider>
     </ErrorBoundary>
   </StrictMode>,
-));});
+);
