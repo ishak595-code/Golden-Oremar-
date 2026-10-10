@@ -275,7 +275,7 @@ function AppContent(){
   if(currentTab==='health')return<PublicHealthScreen onBack={goBack} authenticated={!!currentUser} locale={currentUser?.locale||'tr'} onLoginRequired={()=>{showToast('İçerikleri favoriye kaydetmek için hesabınıza giriş yapın.');openAccount('menu');}} onOpenProduct={slug=>openProduct(slug)}/>;
   if(currentTab==='contact')return<PublicContactScreen onBack={goBack} currentUser={currentUser} locale={currentUser?.locale||'tr'}/>;
   if(currentTab==='about')return<PublicInfoScreen page="about" locale={currentUser?.locale||'tr'} onBack={goBack}/>;
-  return<HomeSection onProductClick={product=>openProduct(product?.slug||product?.legacyId||product?.id)}/>;
+  return<HomeSection onProductClick={product=>openProduct(product?.slug||product?.legacyId||product?.id)} onProducerClick={reference=>openProducer(reference)}/>;
  };
 
  if(currentTab==='admin'){if(!adminSession.checked)return<RouteLoading label="Yönetici yetkisi doğrulanıyor"/>;if(isAdminLoggedIn)return<React.Suspense fallback={<RouteLoading label="Yönetim yükleniyor"/>}><AdminPage initialTab={adminView} onBack={goBack} onLogout={async()=>{await signOutCurrentSession();setCurrentUser(null);setAdminSession({checked:true,isAdmin:false,roles:[]});setCart([]);setCartItemCount(0);replaceWithHome();}}/></React.Suspense>;}
