@@ -8,10 +8,10 @@ type ScrollDirection='up'|'down'|null;
 
 export function installPremiumMobileShellRuntime(){
  if(installed||typeof window==='undefined'||typeof document==='undefined')return;installed=true;
- const root=document.documentElement;let lastY=Math.max(0,window.scrollY);let compact=lastY>COMPACT_ENTER_Y;let ticking=false;let inputDirection:ScrollDirection=null;let directionAnchorY=lastY;let touchY:number|null=null;
+ const root=document.documentElement;/* Scroll position and viewport are first read in the next frame: reading them while the page is still being built forces an early layout on slow phones. */let lastY=0;let compact=false;let ticking=false;let inputDirection:ScrollDirection=null;let directionAnchorY=lastY;let touchY:number|null=null;
  const apply=(next:boolean)=>{if(compact===next)return;compact=next;root.dataset.goHeaderCompact=next?'true':'false';};
  const setInputDirection=(next:Exclude<ScrollDirection,null>)=>{if(inputDirection===next)return;inputDirection=next;directionAnchorY=Math.max(0,window.scrollY);};
- root.dataset.goHeaderCompact=compact?'true':'false';
+ root.dataset.goHeaderCompact='false';
  const onWheel=(event:WheelEvent)=>{if(event.deltaY>2)setInputDirection('down');else if(event.deltaY<-2)setInputDirection('up');};
  const onTouchStart=(event:TouchEvent)=>{touchY=event.touches[0]?.clientY??null;};
  const onTouchMove=(event:TouchEvent)=>{const current=event.touches[0]?.clientY;if(current==null||touchY==null)return;const delta=current-touchY;if(delta>3)setInputDirection('up');else if(delta<-3)setInputDirection('down');touchY=current;};
@@ -24,5 +24,6 @@ export function installPremiumMobileShellRuntime(){
   lastY=y;ticking=false;
  });};
  const syncViewport=()=>{const viewport=window.visualViewport;root.style.setProperty('--go-visual-viewport-height',`${Math.round(viewport?.height||window.innerHeight)}px`);};
- window.addEventListener('wheel',onWheel,{passive:true});window.addEventListener('touchstart',onTouchStart,{passive:true});window.addEventListener('touchmove',onTouchMove,{passive:true});window.addEventListener('touchend',onTouchEnd,{passive:true});window.addEventListener('touchcancel',onTouchEnd,{passive:true});window.addEventListener('keydown',onKeyDown);window.addEventListener('scroll',onScroll,{passive:true});window.visualViewport?.addEventListener('resize',syncViewport,{passive:true});window.addEventListener('resize',syncViewport,{passive:true});syncViewport();
+ window.addEventListener('wheel',onWheel,{passive:true});window.addEventListener('touchstart',onTouchStart,{passive:true});window.addEventListener('touchmove',onTouchMove,{passive:true});window.addEventListener('touchend',onTouchEnd,{passive:true});window.addEventListener('touchcancel',onTouchEnd,{passive:true});window.addEventListener('keydown',onKeyDown);window.addEventListener('scroll',onScroll,{passive:true});window.visualViewport?.addEventListener('resize',syncViewport,{passive:true});window.addEventListener('resize',syncViewport,{passive:true});
+ requestAnimationFrame(()=>{lastY=Math.max(0,window.scrollY);directionAnchorY=lastY;apply(lastY>COMPACT_ENTER_Y);syncViewport();});
 }
