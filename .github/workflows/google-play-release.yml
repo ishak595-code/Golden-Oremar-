@@ -121,8 +121,8 @@ jobs:
           test -s "$aab"
           jarsigner -verify -verbose -certs "$aab" >/tmp/golden-oremar-aab-signature.txt
           grep -q 'jar verified' /tmp/golden-oremar-aab-signature.txt
-          grep -q 'versionCode = 33' android/app/build.gradle
-          grep -q 'versionName = "1.3.29"' android/app/build.gradle
+          grep -q 'versionCode = 34' android/app/build.gradle
+          grep -q 'versionName = "1.3.30"' android/app/build.gradle
       - name: Upload AAB to Google Play
         uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5
         with:
@@ -131,7 +131,7 @@ jobs:
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           tracks: ${{ inputs.track }}
           status: ${{ inputs.status }}
-          releaseName: Golden Oremar 1.3.29 (33)
+          releaseName: Golden Oremar 1.3.30 (34)
           whatsNewDirectory: distribution/whatsnew
       - name: Preserve published bundle evidence
         uses: actions/upload-artifact@v7
