@@ -1,4 +1,4 @@
-import {StrictMode,lazy,Suspense} from 'react';
+import {StrictMode,lazy,Suspense,startTransition} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import ErrorBoundary from './ErrorBoundary';
@@ -52,7 +52,7 @@ void initNativePushListeners().catch(error=>sendClientError('native.push.init',e
 // Home: the main stylesheet loads without blocking the first paint (see
 // scripts/prerender-home.mjs); the app mounts once it is in.
 const cssReady:Promise<void>=(window as unknown as{__goCss?:Promise<void>}).__goCss||Promise.resolve();
-void cssReady.then(()=>createRoot(document.getElementById('root')!).render(
+void cssReady.then(()=>{const root=createRoot(document.getElementById('root')!);/* Time-sliced first mount: no single long task on slow phones. */startTransition(()=>root.render(
   <StrictMode>
     <ErrorBoundary>
       <AuthorizationProvider>
@@ -67,4 +67,4 @@ void cssReady.then(()=>createRoot(document.getElementById('root')!).render(
       </AuthorizationProvider>
     </ErrorBoundary>
   </StrictMode>,
-));
+));});

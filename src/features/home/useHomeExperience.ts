@@ -1,5 +1,5 @@
 import{isSnapshotMode}from'../../lib/offlineCatalog';
-import{useCallback,useEffect,useRef,useState}from'react';
+import{startTransition,useCallback,useEffect,useRef,useState}from'react';
 import{NETWORK_RESTORED_EVENT}from'../resilience/useConnectivity';
 import{browserHomeLocale,getPublicHomeExperience,getPublicHomeSection,normalizeHomeExperience,normalizeHomeSection,type HomeExperience,type HomeLocale,type HomeSectionModel,loadCatalogFallbackExperience}from'./homeExperienceApi';
 import{fetchHomeBundle,fetchHomeContentVersion,HOME_VERSION_IDLE_MS,HOME_VERSION_POLL_MS}from'./homeFreshness';
@@ -105,7 +105,9 @@ async function loadVersioned(locale:HomeLocale,cached:CacheEntry|null):Promise<{
 
 export function useHomeExperience(locale:HomeLocale=browserHomeLocale()){
  const initialCache=useRef(hydrateExperience(locale)).current;
- const[data,setData]=useState<HomeExperience|null>(()=>initialCache?.value||null);
+ const[data,setDataNow]=useState<HomeExperience|null>(()=>initialCache?.value||null);
+ // A new home is rendered as a transition: React slices the work, so the page stays responsive while it arrives.
+ const setData=useCallback((value:Parameters<typeof setDataNow>[0])=>startTransition(()=>setDataNow(value)),[]);
  const[loading,setLoading]=useState(!initialCache);
  const[error,setError]=useState('');
  const sequence=useRef(0);
