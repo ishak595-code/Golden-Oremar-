@@ -198,7 +198,7 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  // A visitor's choice goes to the cart on this device; signing in moves it
  // into the account cart (see cart/guestCart.ts).
  function addToGuestCartFromPage(){
-  addToGuestCart({variantId:variantReference!,selectedOptions:selectedOptionsPayload(),productSlug:safeText(detail?.slug,220)||safeText(detail?.id,160),productName:safeText(detail?.name,300),variantName:safeText(variant?.name,240),producerName:safeText(detail?.producer?.name,240),priceMinor:priceMinor!,currency:currency!,imagePath:safeText((images.find((item:any)=>item?.primary===true)||images[0])?.path,1000)||null},quantity);
+  addToGuestCart({variantId:variantReference!,selectedOptions:selectedOptionsPayload(),productSlug:safeText(detail?.slug,220)||safeText(detail?.id,160),productName:safeText(detail?.name,300),variantName:safeText(variant?.name,240),producerName:safeText(detail?.producer?.name,240),priceMinor:priceMinor!,currency:currency!,imagePath:safeText((images.find((item:any)=>item?.primary===true)||images[0])?.path,1000)||null,...(preorder?{preorder:true}:{})},quantity);
  }
  async function addToCart(){
   if(busy)return;
