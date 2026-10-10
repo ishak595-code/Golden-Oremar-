@@ -18,7 +18,11 @@ import{useDeviceTheme}from'./features/appearance/useDeviceTheme';
 import{NETWORK_RESTORED_EVENT,useConnectivity}from'./features/resilience/useConnectivity';
 import{subscribeNativePushActions}from'./features/notifications/nativePush';
 import{buildProductUrl,buildProducerUrl,buildSearchUrl,buildTabUrl,parsePublicRoute,resolveAppActionTarget}from'./features/navigation/appUrl';
-import HomeSection,{OPEN_CATEGORY_MENU_EVENT}from'./features/home/HomeSection';
+import{OPEN_CATEGORY_MENU_EVENT}from'./features/home/homeEvents';
+// The home page is its own chunk, requested at once (in parallel with the
+// entry) so it is not on the critical path of the other pages.
+const homeChunk=import('./features/home/HomeSection');
+const HomeSection=React.lazy(()=>homeChunk);
 import{useNativeDeepLinks}from'./features/navigation/useNativeDeepLinks';
 import{runBackHandlers}from'./features/navigation/backHandlers';
 import{APP_TOAST_EVENT}from'./lib/appToast';

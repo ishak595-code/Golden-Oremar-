@@ -82,6 +82,7 @@ function normalizeSource(value:unknown):HomeSectionSource{
   return{kind:kind as HomeSectionSource['kind'],collectionKey:optionalText(value.collectionKey,80)||undefined,categorySlug:optionalText(value.categorySlug,220)||undefined};
 }
 
+export function normalizeHomeSection(value:unknown,index:number):HomeSectionModel{return normalizeSection(value,index);}
 function normalizeSection(value:unknown,index:number):HomeSectionModel{
   if(!isRecord(value)||!Array.isArray(value.items))throw new Error(`${index+1}. ana sayfa bölümü doğrulanamadı.`);
   const type=requiredText(value.type,'Bölüm türü',40);if(type!=='product_carousel')throw new Error('Desteklenmeyen ana sayfa bölüm türü.');
@@ -95,6 +96,7 @@ function normalizeCampaign(value:unknown):HomeCampaign|null{
   return{id:requiredText(value.id,'Kampanya kimliği',160),slug:requiredText(value.slug,'Kampanya bağlantısı',180),title:requiredText(value.title,'Kampanya başlığı',200),description:optionalText(value.description,1000),bannerPath:optionalText(value.bannerPath,1200),startsAt:dateTime(value.startsAt,'Kampanya başlangıcı'),endsAt:dateTime(value.endsAt,'Kampanya bitişi'),targetScope:scope as HomeCampaign['targetScope'],targetIds:value.targetIds.map((id,index)=>requiredText(id,`${index+1}. kampanya hedefi`,220))};
 }
 
+export function normalizeHomeExperience(value:unknown):HomeExperience{return normalizeExperience(value);}
 function normalizeExperience(value:unknown):HomeExperience{
   if(!isRecord(value)||!isRecord(value.brand)||!isRecord(value.interface)||!isRecord(value.search)||!isRecord(value.cachePolicy)||!isRecord(value.salesReadiness)||!Array.isArray(value.categories)||!Array.isArray(value.categoryOrder)||!Array.isArray(value.sections))throw new Error('Ana sayfa deneyimi şu anda yüklenemedi. Lütfen tekrar deneyin.');
   const version=integer(value.version,'Ana sayfa sözleşme sürümü',2,20);const locale=normalizeHomeLocale(value.locale);const generatedAt=dateTime(value.generatedAt,'Ana sayfa oluşturma zamanı'),updatedAt=dateTime(value.updatedAt,'Ana sayfa güncelleme zamanı');
