@@ -1,6 +1,6 @@
 import React,{useEffect,useMemo,useRef,useState}from'react';
 import{addToGuestCart}from'../cart/guestCart';
-import{ArrowLeft,BadgeCheck,Bell,BellRing,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,Package,PackageCheck,Plus,QrCode,RotateCcw,Share2,ShieldCheck,Sprout,Star,Store,Truck,User,X,Zap}from'lucide-react';
+import{ArrowLeft,BadgeCheck,Bell,BellRing,CheckCircle2,ChevronLeft,ChevronRight,Copy,ExternalLink,Gift,Heart,MapPin,MessageCircle,Minus,Package,PackageCheck,Plus,QrCode,RotateCcw,Share2,ShoppingCart,ShieldCheck,Sprout,Star,Store,Truck,User,X,Zap}from'lucide-react';
 import{getProductDetail,listProductReviews,publicCatalogUrl,toggleProducerFollow,toggleProductFavorite}from'./api';
 // The review form is loaded only when a customer taps "Değerlendirme yaz".
 const ProductReviewComposer=React.lazy(()=>import('./ProductReviewComposer'));
@@ -42,6 +42,7 @@ type Props={
  favoriteReferences?:string[];
  onFavoriteChanged?:(reference:string,isFavorite:boolean)=>void;
  onBack:()=>void;
+ headerSearch?:React.ReactNode;cartCount?:number;onOpenCart?:()=>void;
  onLoginRequired:()=>void;
  onCartChanged?:()=>Promise<void>|void;
  onGift:(reference:string,quantity:number)=>void;
@@ -62,7 +63,7 @@ function safeReference(value:unknown,max=220){const normalized=safeText(value,ma
 function firstInteger(...values:unknown[]){for(const value of values){const parsed=safeInteger(value);if(parsed!==null)return parsed;}return null;}
 function firstRating(...values:unknown[]){for(const value of values){const parsed=safeRating(value);if(parsed!==null)return parsed;}return null;}
 
-export default function ProductDetailScreen({reference,authenticated,favoriteReferences=[],onFavoriteChanged,onBack,onLoginRequired,onCartChanged,onGift,onProducer,onCategory,onOpenProduct,onAddCatalogItem}:Props){
+export default function ProductDetailScreen({reference,authenticated,headerSearch,cartCount=0,onOpenCart,favoriteReferences=[],onFavoriteChanged,onBack,onLoginRequired,onCartChanged,onGift,onProducer,onCategory,onOpenProduct,onAddCatalogItem}:Props){
  const[detail,setDetail]=useState<any>(null);
  const[safetyContent,setSafetyContent]=useState<any>(null);
  const[reviews,setReviews]=useState<any>(null);
@@ -368,16 +369,17 @@ export default function ProductDetailScreen({reference,authenticated,favoriteRef
  return<article className="go-pdp mx-auto max-w-6xl px-4 pb-10 sm:px-6">
   <div className="sticky z-30 -mx-4 mb-4 flex min-h-16 items-center gap-2 border-b border-brand-border bg-brand-card/95 px-4 backdrop-blur-xl sm:-mx-6 sm:px-6" style={{top:'env(safe-area-inset-top, 0px)', paddingTop:'env(safe-area-inset-top, 0px)'}}>
    <button type="button" onClick={onBack} aria-label="Geri" className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card"><ArrowLeft aria-hidden="true" className="h-5 w-5"/></button>
-   <div className="min-w-0 flex-1 text-center"><div className="truncate text-sm font-black text-brand-text" aria-live="off">{showHeaderTitle?detailName:'Ürün Detayı'}</div></div>
-   <button type="button" onClick={()=>void favorite()} disabled={busy} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card disabled:opacity-50"><Heart aria-hidden="true" className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-brand-text'}`}/></button>
-   <button type="button" onClick={()=>void shareProduct()} disabled={shareBusy} aria-label="Ürünü paylaş" className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card disabled:opacity-50"><Share2 aria-hidden="true" className="h-5 w-5"/></button>
+   {headerSearch?<div className="relative min-w-0 flex-1 md:mx-auto md:max-w-2xl">{headerSearch}</div>:<div className="min-w-0 flex-1 text-center"><div className="truncate text-sm font-black text-brand-text" aria-live="off">{showHeaderTitle?detailName:'Ürün Detayı'}</div></div>}
+   <button type="button" onClick={onOpenCart} aria-label={cartCount?`Sepetim, ${cartCount} ürün`:'Sepetim'} data-pdp-cart className="relative grid min-h-11 min-w-11 shrink-0 place-items-center rounded-full text-brand-text hover:text-brand-gold"><ShoppingCart aria-hidden="true" className="h-6 w-6"/>{cartCount>0?<span aria-hidden="true" className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-gold px-1 text-[11px] font-black leading-none text-black">{cartCount>99?'99+':cartCount}</span>:null}</button><div className="hidden items-center gap-2 sm:flex"><button type="button" onClick={()=>void favorite()} disabled={busy} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card disabled:opacity-50"><Heart aria-hidden="true" className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-brand-text'}`}/></button>
+   <button type="button" onClick={()=>void shareProduct()} disabled={shareBusy} aria-label="Ürünü paylaş" className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card disabled:opacity-50"><Share2 aria-hidden="true" className="h-5 w-5"/></button></div>
   </div>
 
   {error?<div role="alert" className="mb-4 rounded-2xl border-2 border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200">{error}</div>:null}
   {status&&!cartAdded?<div role="status" aria-live="polite" className="mb-4 rounded-2xl border-2 border-green-200 bg-green-50 p-3 text-sm font-semibold text-green-800 dark:border-green-900/60 dark:bg-green-950/30 dark:text-green-200">{status}</div>:null}
 
   <div className="go-detail-grid grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-10">
-   <div className="go-detail-media"><ProductGallery slides={gallerySlides} productName={detailName} productSlug={safeText(detail?.slug,220)} categorySlug={categorySlug} categoryName={categoryName} productType={safeText(detail?.handlingProfile?.productType,60)} safetyClass={safeText(detail?.handlingProfile?.safetyClass,60)} onOpenPhoto={path=>{setSelectedImagePath(path);setImageViewerOpen(true);}}/>{prestigeParts.length?<p className="go-prestige">{prestigeParts.map((part,index)=><React.Fragment key={part}>{index?<span className="go-prestige__dot" aria-hidden="true"> · </span>:null}<span>{part}</span></React.Fragment>)}</p>:null}<p className="go-prestige-note">{shippingLine}</p></div>
+   <div className="go-detail-media relative"><div className="absolute right-3 top-3 z-10 flex flex-col gap-2 sm:hidden" data-pdp-media-actions><button type="button" onClick={()=>void favorite()} disabled={busy} aria-label={isFavorite?'Favorilerden çıkar':'Favorilere ekle'} className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card/90 shadow-md backdrop-blur disabled:opacity-50"><Heart aria-hidden="true" className={`h-5 w-5 ${isFavorite?'fill-red-500 text-red-500':'text-brand-text'}`}/></button>
+   <button type="button" onClick={()=>void shareProduct()} disabled={shareBusy} aria-label="Ürünü paylaş" className="grid min-h-11 min-w-11 place-items-center rounded-full border border-brand-border bg-brand-card/90 shadow-md backdrop-blur disabled:opacity-50"><Share2 aria-hidden="true" className="h-5 w-5"/></button></div><ProductGallery slides={gallerySlides} productName={detailName} productSlug={safeText(detail?.slug,220)} categorySlug={categorySlug} categoryName={categoryName} productType={safeText(detail?.handlingProfile?.productType,60)} safetyClass={safeText(detail?.handlingProfile?.safetyClass,60)} onOpenPhoto={path=>{setSelectedImagePath(path);setImageViewerOpen(true);}}/>{prestigeParts.length?<p className="go-prestige">{prestigeParts.map((part,index)=><React.Fragment key={part}>{index?<span className="go-prestige__dot" aria-hidden="true"> · </span>:null}<span>{part}</span></React.Fragment>)}</p>:null}<p className="go-prestige-note">{shippingLine}</p></div>
 
    <section className="go-buybox" aria-labelledby="product-detail-title">
     <h1 id="product-detail-title" ref={titleRef} className="go-buybox__title">{detailName}</h1>
