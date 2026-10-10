@@ -188,6 +188,15 @@ export const syncNativeAppearance = async (theme?: string) => {
   await StatusBar.setStyle({ style: resolved === 'dark' ? Style.Dark : Style.Light });
 };
 
+/** Lifts the launch screen once the first screen is actually painted, not before (a blank flash) and not after a fixed wait. */
+export function hideSplashAfterFirstPaint() {
+  if (!Capacitor.isNativePlatform()) return;
+  let done = false;
+  const hide = () => { if (done) return; done = true; void SplashScreen.hide({ fadeOutDuration: 200 }).catch(() => undefined); };
+  requestAnimationFrame(() => requestAnimationFrame(hide));
+  setTimeout(hide, 600); // frames can be held back while the WebView starts
+}
+
 export const initNativeFeatures = async (theme?: string) => {
   if (!Capacitor.isNativePlatform()) return;
   markNativePlatform();
@@ -197,7 +206,6 @@ export const initNativeFeatures = async (theme?: string) => {
       syncNativeAppearance(theme),
       initNativeKeyboardSignals(),
     ]);
-    await SplashScreen.hide();
   } catch (error) {
     console.warn('Native features init error:', error);
   }

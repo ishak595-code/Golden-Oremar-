@@ -16,7 +16,7 @@ import './features/customer-experience/productDiscoveryPremium.css';
 import './features/customer-experience/productDetailPrestige.css';
 import './features/customer-experience/premiumMobileV2.css';
 import './features/customer-experience/productDetailV3.css';
-import { initNativeFeatures } from './native';
+import { hideSplashAfterFirstPaint, initNativeFeatures } from './native';
 import { initNativePushListeners } from './features/notifications/nativePush';
 import { applyThemeToDocument, resolveInitialTheme } from './features/appearance/theme';
 import { loadAndApplyBrandAppearance } from './features/appearance/brandAppearance';
@@ -65,3 +65,5 @@ createRoot(document.getElementById('root')!).render(
     </ErrorBoundary>
   </StrictMode>,
 );
+// The first frame after this render is the first painted screen.
+hideSplashAfterFirstPaint();

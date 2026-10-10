@@ -358,3 +358,13 @@ nav[aria-label="Ana gezinme"] button > span.relative > span[aria-hidden="true"] 
 @keyframes go-route-skeleton-in { to { opacity: 1; } }
 @keyframes go-route-skeleton-shine { from { background-position: 120% 0; } to { background-position: -120% 0; } }
 @media (prefers-reduced-motion: reduce) { .go-route-skeleton { animation: none; opacity: 1; } .go-route-skeleton__media, .go-route-skeleton__line { animation: none; } }
+
+/* Headings that receive focus after a screen change (for screen readers)
+   never show a focus ring to sighted users. */
+main h1[tabindex="-1"]:focus, #main-content:focus { outline: none; }
+
+/* Android/iOS app: no backdrop blur on any layer. In the WebView a blurred
+   fixed bar (header, tab bar, sheets) is re-blurred on every scrolled frame,
+   which made scrolling and taps feel heavy on mid-range phones. The bars keep
+   their near-opaque backgrounds, so nothing behind them shows through. */
+:root[data-native-platform] *, :root[data-native-platform] *::before, :root[data-native-platform] *::after { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }

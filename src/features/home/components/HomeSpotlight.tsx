@@ -14,7 +14,9 @@ import{prefersReducedMotion}from'../../../lib/reducedMotion';
  * there is no play/pause control on the band.
  *
  * Accessibility: a labelled carousel region; each slide is one link with the
- * product name and price. It never moves while the visitor touches it, while
+ * product name and price. Slides are never hidden from screen readers while
+ * the band turns: a slide TalkBack is reading stays in place even when the
+ * band has moved on (hiding it made "what I touched disappear"). It never moves while the visitor touches it, while
  * focus is inside it, when the page is hidden, or when reduced motion is on
  * (it then stays still). Once the visitor swipes, taps or focuses it, it
  * stops turning for the rest of the visit, which is the pause mechanism that
@@ -59,9 +61,9 @@ export default function HomeSpotlight({items,title,buttonText,onOpen}:Props){
 
  return<section className="go-home-section go-spotlight" aria-roledescription="carousel" aria-label={`${heading}, ${season.name} seçkisi`} onPointerEnter={()=>setHeld(true)} onPointerLeave={()=>setHeld(false)} onTouchStart={()=>{setHeld(true);stop();}} onTouchEnd={()=>window.setTimeout(()=>setHeld(false),1500)} onFocus={()=>{setHeld(true);stop();}} onBlur={event=>{if(!event.currentTarget.contains(event.relatedTarget as Node|null))setHeld(false);}}>
   <div ref={trackRef} className="go-spotlight__track hide-scrollbar" onScroll={onScroll} aria-live={paused||held?'polite':'off'}>
-   {items.map((item,position)=>{const price=priceText(item.variant.priceMinor,item.currency);return<div key={item.id} className="go-spotlight__slide" role="group" aria-roledescription="slide" aria-label={`${position+1} / ${count}`} aria-hidden={position!==index||undefined}>
-    <a href={buildProductUrl(item.slug)} tabIndex={position===index?0:-1} className="go-spotlight__card" data-home-spotlight={item.slug} onClick={event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;event.preventDefault();onOpen(item);}} aria-label={`${heading}: ${item.name}, ${price}`}>
-     <span className="go-spotlight__copy" aria-hidden="true">
+   {items.map((item,position)=>{const price=priceText(item.variant.priceMinor,item.currency);return<div key={item.id} className="go-spotlight__slide" role="group" aria-roledescription="slide" aria-label={`${position+1} / ${count}`}>
+    <a href={buildProductUrl(item.slug)} tabIndex={position===index?0:-1} className="go-spotlight__card" data-home-spotlight={item.slug} onClick={event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;event.preventDefault();onOpen(item);}}>
+     <span className="go-spotlight__copy">
       <span className="go-spotlight__eyebrow">{heading}</span>
       <strong className="go-spotlight__name">{item.name}</strong>
       <span className="go-spotlight__foot"><span className="go-spotlight__price">{price}</span><span className="go-spotlight__cta">{cta}<ArrowRight/></span></span>

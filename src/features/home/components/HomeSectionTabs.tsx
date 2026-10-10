@@ -34,10 +34,14 @@ export default function HomeSectionTabs({keys}:{keys:readonly string[]}){
   };
   const schedule=()=>{if(!frame)frame=window.requestAnimationFrame(measure);};
   measure();
-  const timer=window.setInterval(schedule,1500);
+  // No timer: it measures when the page scrolls, resizes, or grows (a showcase
+  // filling in), so the screen reader tree changes only when the marked tab does.
+  const content=document.querySelector('.go-home-content');
+  const grow=typeof ResizeObserver!=='undefined'&&content?new ResizeObserver(schedule):null;
+  if(grow&&content)grow.observe(content);
   window.addEventListener('scroll',schedule,{passive:true});
   window.addEventListener('resize',schedule);
-  return()=>{window.clearInterval(timer);window.removeEventListener('scroll',schedule);window.removeEventListener('resize',schedule);if(frame)window.cancelAnimationFrame(frame);};
+  return()=>{grow?.disconnect();window.removeEventListener('scroll',schedule);window.removeEventListener('resize',schedule);if(frame)window.cancelAnimationFrame(frame);};
  },[keys]);
  if(present.length<2)return null;
  return<nav className="go-section-tabs" aria-label="Ana sayfa seçkileri">

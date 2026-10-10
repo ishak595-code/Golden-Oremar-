@@ -1,7 +1,6 @@
 import{useEffect,useMemo,useState}from'react';
 import{BadgeCheck,ChevronRight}from'lucide-react';
 import type{CatalogItem}from'../../catalog/api';
-import{buildProductCardAccessibilityLabel}from'../../accessibility/productCardAccessibility';
 import{buildProductUrl}from'../../navigation/appUrl';
 import ProductArtwork,{isBrandFallbackImage}from'../../catalog/ProductArtwork';
 import{productMaker}from'../../catalog/productMakers';
@@ -84,19 +83,20 @@ export default function ProductCard({item,onClick,eager=false,merchandisingLabel
  // The maker's name, when confirmed, says more than the province every row shares.
  const maker=productMaker(item.slug,item.makerName);
  const verification=verificationLabel(item);
- const compareMinor=typeof item.variant.compareAtPriceMinor==='number'&&Number.isSafeInteger(item.variant.compareAtPriceMinor)?item.variant.compareAtPriceMinor:null;
- const accessibleLabel=buildProductCardAccessibilityLabel({name:item.name,price:item.variant.priceMinor/100,currency:item.currency,compareAtPrice:compareMinor!==null?compareMinor/100:null,statuses:[merchandisingLabel,maker?`Üreten ${maker}`:null,item.producer.name,region,verification]});
+ // The link reads its own visible words (name, verification, label, maker,
+ // price), so what TalkBack says matches what is on screen and voice control
+ // ("Karakovan'a dokun") works.
  return<li className="go-product-row-v4__item w-full" data-product-id={item.id} data-product-reference={item.slug} data-row-layout="horizontal-list" data-home-row-contract="single-link-v4" data-native-feature-marker="go-product-card-v2">
-  <a href={buildProductUrl(item.slug)} onClick={event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;event.preventDefault();onClick();}} className="go-product-row-v4 w-full flex flex-row items-center justify-between hover:bg-[#112217] transition-all cursor-pointer" aria-label={accessibleLabel} data-product-link="true">
+  <a href={buildProductUrl(item.slug)} onClick={event=>{if(event.metaKey||event.ctrlKey||event.shiftKey||event.altKey||event.button!==0)return;event.preventDefault();onClick();}} className="go-product-row-v4 w-full flex flex-row items-center justify-between hover:bg-[#112217] transition-all cursor-pointer" data-product-link="true">
    <ProductRowImage src={item.imagePath} eager={eager} item={item}/>
-   <span className="go-product-row-v4__middle min-w-0 flex-1" aria-hidden="true">
+   <span className="go-product-row-v4__middle min-w-0 flex-1">
     <span className="go-product-row-v4__title">{item.name}{verification?<span className="go-product-row-v4__verification"><BadgeCheck aria-hidden="true"/><span className="go-product-row-v4__verification-text">{verification}</span></span>:null}</span>
     <span className="go-product-row-v4__meta text-sm text-gray-400">
      {merchandisingLabel?<span className="go-product-row-v4__badge">{merchandisingLabel}</span>:null}
      <span className="go-product-row-v4__region"><span className="go-product-row-v4__region-full">{maker||compactRegion(region)}</span><span className="go-product-row-v4__region-short">{maker||shortRegion(region)}</span></span>
     </span>
    </span>
-   <span className="go-product-row-v4__tail flex flex-shrink-0 items-center" aria-hidden="true">
+   <span className="go-product-row-v4__tail flex flex-shrink-0 items-center">
     <span className="go-product-row-v4__price">{formatMinor(item.variant.priceMinor,item.currency)}</span>
     <ChevronRight className="go-product-row-v4__chevron" aria-hidden="true"/>
    </span>

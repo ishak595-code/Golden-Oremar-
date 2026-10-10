@@ -8,7 +8,9 @@ const maxChunkBytes = 450 * 1024;
 // all 50 products); main was already within 0.3 KiB of the old 250 KiB limit.
 // 260 KiB since 8 Oct 2026: the seasonal copy for the four seasons and the
 // "Bugünün Önerisi" pick live in the entry (the card itself is lazy).
-const maxEntryBytes = 260 * 1024;
+// 248 KiB since 10 Oct 2026: the events showcase left the entry (lazy), which
+// freed about 20 KiB; the tighter limit keeps that room from silently refilling.
+const maxEntryBytes = 248 * 1024;
 
 if (!fs.existsSync(assetsDir)) {
   console.error('Bundle budget audit failed: dist/assets does not exist. Run the production build first.');

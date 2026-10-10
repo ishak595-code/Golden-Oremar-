@@ -11,9 +11,11 @@ const config: CapacitorConfig = {
       insetsHandling: 'css',
     },
     SplashScreen: {
-      launchShowDuration: 2000,
+      // Hidden by the app as soon as the first screen is painted (main.tsx);
+      // this duration is only the safety net if that never happens.
+      launchShowDuration: 3000,
       backgroundColor: "#16A34A",
-      showSpinner: true,
+      showSpinner: false,
       androidSpinnerStyle: "large",
       spinnerColor: "#ffffff",
     },

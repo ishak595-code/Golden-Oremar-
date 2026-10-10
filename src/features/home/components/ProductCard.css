@@ -180,7 +180,7 @@
   font-weight:700;
 }
 :root[data-app-tab="home"] .go-product-row-v4__verification svg{width:14px;height:14px;flex:0 0 14px;}
-:root[data-app-tab="home"] .go-product-row-v4__verification-text{display:none;}
+:root[data-app-tab="home"] .go-product-row-v4__verification-text{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
 :root[data-color-scheme="light"][data-app-tab="home"] .go-product-row-v4__verification{color:#8b1e3f;}
 
 :root[data-app-tab="home"] .go-product-row-v4__badge+.go-product-row-v4__region::before{
@@ -258,7 +258,7 @@
 
 @media(min-width:640px){
   /* Shown only where it fits whole; the accessible label always carries it. */
-  :root[data-app-tab="home"] .go-product-row-v4__verification-text{display:inline;}
+  :root[data-app-tab="home"] .go-product-row-v4__verification-text{position:static;width:auto;height:auto;overflow:visible;clip:auto;}
   :root[data-app-tab="home"] .go-product-list-v4{gap:12px!important;}
 
   :root[data-app-tab="home"] .go-product-row-v4{

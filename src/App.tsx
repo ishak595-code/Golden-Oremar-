@@ -47,6 +47,9 @@ const SUPPORTED_TABS=new Set<Tab>(['home','categories','cart','account','product
 // Between screens: no full-screen spinner. A quiet page outline (photo,
 // title, lines) that only fades in if loading takes longer than a moment, so
 // a quick change shows nothing at all. The label is for screen readers.
+const ROUTE_LABELS:Partial<Record<Tab,string>>={home:'Ana Sayfa',categories:'Kategoriler',cart:'Sepetim',account:'Hesabım','product-detail':'Ürün',
+ 'search-results':'Arama sonuçları','producer-profile':'Mağaza',events:'Etkinlikler',health:'Sağlık',contact:'İletişim',about:'Hakkımızda',admin:'Yönetim'};
+
 function RouteLoading({label='Ekran yükleniyor'}:{label?:string}){return<div role="status" aria-live="polite" className="go-route-skeleton"><span className="sr-only">{label}</span><span aria-hidden="true" className="go-route-skeleton__media"/><span aria-hidden="true" className="go-route-skeleton__line go-route-skeleton__line--title"/><span aria-hidden="true" className="go-route-skeleton__line"/><span aria-hidden="true" className="go-route-skeleton__line go-route-skeleton__line--short"/></div>;}
 // The screens a shopper opens next are fetched while the home page is idle,
 // so opening a product or a category does not wait for its code.
@@ -108,10 +111,39 @@ function AppContent(){
   if(resolvedInitialTab!==initialTab){setSelectedProductReference(null);setSelectedProducerReference(null);setAccountView('menu');setAdminView('dashboard');}
  },[]);
 
+ const[routeNotice,setRouteNotice]=useState('');
  const pushRoute=useCallback((url:string,tab:Tab)=>{
-  if(window.location.href!==url){const next=routeDepthRef.current+1;routeDepthRef.current=next;setRouteDepth(next);window.history.pushState({goldenOremar:true,goldenOremarDepth:next,tab},'',url);}
+  // Same address (the active tab tapped again): no new history entry, back to
+  // the top, and a short spoken note so a screen reader user hears that the
+  // tap landed ("Zaten Hesabım sayfasındasınız").
+  let same=false;try{same=new URL(url,window.location.href).href===window.location.href;}catch{same=window.location.href===url;}
+  if(same){window.scrollTo({top:0,behavior:'auto'});setRouteNotice('');window.setTimeout(()=>setRouteNotice(`Zaten ${ROUTE_LABELS[tab]||'bu'} sayfasındasınız`),60);return;}
+  leavingHeadingRef.current=document.querySelector<HTMLElement>('#main-content h1');leavingHeadingTextRef.current=leavingHeadingRef.current?.textContent||'';
+  const next=routeDepthRef.current+1;routeDepthRef.current=next;setRouteDepth(next);window.history.pushState({goldenOremar:true,goldenOremarDepth:next,tab},'',url);
   setCurrentTab(tab);window.scrollTo({top:0,behavior:'auto'});
  },[]);
+ // After a screen change, focus moves to the new page's heading (or the main
+ // area), so TalkBack reads where the visitor is. Not on the first load.
+ const firstScreenRef=useRef(true);
+ const leavingHeadingRef=useRef<HTMLElement|null>(null),leavingHeadingTextRef=useRef('');
+ useEffect(()=>{
+  if(firstScreenRef.current){firstScreenRef.current=false;return;}
+  // Wait for the new screen's own heading (a screen loading its code still
+  // shows the previous one for a moment), then focus it; the main area if
+  // the screen has none. Timers, not animation frames, which a busy WebView
+  // may hold back.
+  let tries=0,timer=0;
+  const previous=leavingHeadingRef.current,previousText=leavingHeadingTextRef.current;
+  const attempt=()=>{
+   const main=document.getElementById('main-content');if(!main)return;
+   const heading=main.querySelector<HTMLElement>('h1');
+   if(heading&&heading.isConnected&&(heading!==previous||heading.textContent!==previousText)){if(!heading.hasAttribute('tabindex'))heading.setAttribute('tabindex','-1');heading.focus({preventScroll:true});return;}
+   if(++tries<25){timer=window.setTimeout(attempt,80);return;}
+   main.focus({preventScroll:true});
+  };
+  timer=window.setTimeout(attempt,40);
+  return()=>window.clearTimeout(timer);
+ },[currentTab,accountView,selectedProductReference]);
 
  const openAccount=useCallback((view:string)=>{setAccountView(view);pushRoute(accountUrl(view),'account');},[pushRoute]);
 
@@ -288,7 +320,8 @@ function AppContent(){
    </div></div>
   </header>:null}
 
-  <main id="main-content"><React.Suspense fallback={<RouteLoading/>}>{renderContent()}</React.Suspense></main>
+  <div className="sr-only" role="status" aria-live="polite">{routeNotice}</div>
+  <main id="main-content" tabIndex={-1} className="outline-none"><React.Suspense fallback={<RouteLoading/>}>{renderContent()}</React.Suspense></main>
   <nav aria-label="Ana gezinme" className="fixed bottom-4 left-2 right-2 z-[60] mx-auto flex h-[72px] max-w-[44rem] items-center justify-around rounded-3xl border-2 border-gray-200/80 bg-white/95 px-1 shadow-2xl min-[360px]:left-3 min-[360px]:right-3 min-[360px]:px-1.5 backdrop-blur-xl dark:border-gray-700/80 dark:bg-gray-900/95" style={{bottom:'calc(0.75rem + env(safe-area-inset-bottom, 0px))'}}><BottomNavButton icon={Home} label="Ana Sayfa" active={currentTab==='home'} onClick={()=>navigateToTab('home')}/><BottomNavButton icon={Grid} label="Kategoriler" active={currentTab==='categories'} onClick={()=>navigateToTab('categories')}/><BottomNavButton icon={Heart} label="Favoriler" active={currentTab==='account'&&accountView==='favorites'} onClick={()=>{openAccount('favorites');}}/><BottomNavButton icon={ShoppingCart} label="Sepet" active={currentTab==='cart'} onClick={()=>navigateToTab('cart')} badge={cartItemCount}/><BottomNavButton icon={User} label="Hesabım" active={currentTab==='account'&&accountView!=='favorites'} onClick={()=>{openAccount('menu');}}/></nav>
 
   {showGiftModal&&giftProduct?<React.Suspense fallback={<RouteLoading label="Hediye sipariş ekranı yükleniyor"/>}><GiftOrderFlow productReference={giftProduct.slug||String(giftProduct.id)} initialQuantity={giftProduct.quantity} onClose={()=>setShowGiftModal(false)} onOpenPayments={()=>{setShowGiftModal(false);openAccount('payments');}} onCreated={()=>{showToast('Hediye siparişiniz oluşturuldu ve ödeme doğrulaması bekliyor.');setShowGiftModal(false);openAccount('gifts');}}/></React.Suspense>:null}

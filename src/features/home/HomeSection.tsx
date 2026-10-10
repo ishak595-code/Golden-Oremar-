@@ -2,7 +2,7 @@ import React,{useCallback,useEffect,useMemo,useRef,useState}from'react';
 import{AlertCircle,ArrowRight,ArrowUp,RefreshCw}from'lucide-react';
 import{publicCatalogUrl}from'../catalog/api';
 import{CUSTOMER_COPY,homeCategoriesTitle,homeSectionDisplayCopy}from'../customer-experience/customerCopy';
-import HomeEventsSpotlight from'./HomeEventsSpotlight';
+
 import{browserHomeLocale,getShippedHomeSection,type HomeSectionModel}from'./homeExperienceApi';
 import{homeMerchandisingSignal}from'./homeMerchandising';
 import{useHomeExperience}from'./useHomeExperience';
@@ -14,6 +14,8 @@ import HomeSectionTabs from'./components/HomeSectionTabs';
 import{pickSpotlights}from'./components/spotlightPick';
 // Its own chunk: the customer entry bundle has a fixed budget.
 const HomeSpotlight=React.lazy(()=>import('./components/HomeSpotlight'));
+// Shown only when the super admin turns the events showcase on: kept out of the entry bundle.
+const HomeEventsSpotlight=React.lazy(()=>import('./HomeEventsSpotlight'));
 const CategoryMenu=React.lazy(()=>import('./components/CategoryMenu'));
 import'./homePrestigeV3.css';
 import'./homeLightThemes.css';
@@ -83,7 +85,7 @@ export default function HomeSection({onProductClick}:Props){
  const initialSections=experience.sections.filter(section=>!section.deferred);
  const deferredSections=experience.sections.filter(section=>section.deferred);
  const eventSpotlight=experience.eventSpotlight;
- function renderEvents(placement:'after_hero'|'after_categories'|'before_products'){return eventSpotlight?.enabled===true&&eventSpotlight.placement===placement?<HomeEventsSpotlight settings={eventSpotlight}/>:null;}
+ function renderEvents(placement:'after_hero'|'after_categories'|'before_products'){return eventSpotlight?.enabled===true&&eventSpotlight.placement===placement?<React.Suspense fallback={null}><HomeEventsSpotlight settings={eventSpotlight}/></React.Suspense>:null;}
 
  return<>
   <div className="go-premium-home-v2" data-home-contract-version={experience.version} data-home-prestige-contract="single-row-v4">

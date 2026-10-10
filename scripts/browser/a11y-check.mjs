@@ -100,6 +100,28 @@ for (const [name, path, overrides] of screens) {
   record(await page.locator('#product-video-heading').count() === 0, 'no video section when the product has none');
   await context.close();
 }
+// Screen reader feedback on navigation (October 2026 TalkBack report):
+// a new screen moves focus to its heading; tapping the active tab again adds
+// no history entry and says "Zaten ... sayfasındasınız"; the home band never
+// hides its slides from screen readers; no tab or band timer runs.
+{
+  const context = await browser.newContext({ viewport: { width: 412, height: 915 }, locale: 'tr-TR' });
+  const page = await context.newPage();
+  await routeSupabase(page, {}, { quota: true, offlineCatalog: 'shipped' });
+  await page.goto(BASE + '/'); await page.waitForTimeout(3500);
+  record(await page.locator('.go-spotlight [aria-hidden="true"] a, .go-spotlight__slide[aria-hidden="true"]').count() === 0, 'home band: no slide hidden from screen readers');
+  const nav = page.locator('nav[aria-label="Ana gezinme"]');
+  await nav.getByRole('button', { name: 'Kategoriler' }).click(); await page.waitForTimeout(1500);
+  const focused = await page.evaluate(() => { const el = document.activeElement; return el ? `${el.tagName}:${(el.textContent || '').trim().slice(0, 40)}` : ''; });
+  record(/^H1:/.test(focused), `new screen: focus moves to its heading (${focused})`);
+  const before = await page.evaluate(() => history.length);
+  await nav.getByRole('button', { name: 'Kategoriler' }).click(); await page.waitForTimeout(400);
+  const after = await page.evaluate(() => history.length);
+  const notice = await page.locator('[role="status"][aria-live="polite"].sr-only').first().innerText().catch(() => '');
+  record(before === after && /Zaten Kategoriler sayfasındasınız/.test(notice), `active tab tapped again: no new history entry, spoken note ("${notice}")`);
+  await context.close();
+}
+
 await browser.close();
 
 const failed = results.filter(([ok]) => !ok).length;
